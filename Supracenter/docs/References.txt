@@ -1,0 +1,26 @@
+################
+#  References  #
+################
+
+-------------
+Initial Code:
+-------------
+
+Supracenter & Genetic Search Algorithm:
+Edwards, W. N., Supracenter: Locating Fireball Explosions, University of Calgary, Department of Geology and Geophysics, Calgary, Alberta, (May, 2003). 
+
+Particle Swarm Optimization:
+pyswarm, found here: https://github.com/tisimst/pyswarm/tree/master/pyswarm
+
+---------------------
+Atmospheric Profiles:
+---------------------
+
+MERRA-2:
+Global Modeling and Assimilation Office (GMAO)(2015), MERRA-2 inst3_3d_asm_Nv: 3d,3-Hourly,Instantaneous,Model-Level,Assimilation,Assimilated Meteorological Fields V5.12.4, Greenbelt, MD, USA, Goddard Earth Sciences Data and Information Services Center (GES DISC), Accessed July 2018 10.5067/WWQSXQ8IVFW8
+
+ECMWF:
+Dee, D. P., Uppala, S. M., Simmons, A. J., Berrisford, P., Poli, P., Kobayashi, S., Andrae, U., Balmaseda, M. A., Balsamo, G., Bauer, P., Bechtold, P., Beljaars, A. C. M., van de Berg, L., Bidlot, J., Bormann, N., Delsol, C., Dragani, R., Fuentes, M., Geer, A. J., Haimberger, L., Healy, S. B., Hersbach, H., Hólm, E. V., Isaksen, L., Kållberg, P., Köhler, M., Matricardi, M., McNally, A. P., Monge-Sanz, B. M., Morcrette, J.-J., Park, B.-K., Peubey, C., de Rosnay, P., Tavolato, C., Thépaut, J.-N. and Vitart, F. (2011), The ERA-Interim reanalysis: configuration and performance of the data assimilation system. Q.J.R. Meteorol. Soc., 137: 553–597. doi: 10.1002/qj.828
+
+UKMO:
+A.C. Lorenc, S.P. Ballard, R.S. Bell, N.B. Ingleby, P.L.F. Andrews, D.M. Barker, J.R. Bray, A.M. Clayton, T. Dalby, D. Li, T.J. Payne and F.W. Saunders, The Met. Office Global three-dimensional variational data assimilation scheme. Q.J.R.Meteorol.Soc., 126, No.570, PartB, pp 2991, Oct. 2000

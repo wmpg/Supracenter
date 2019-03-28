@@ -1,0 +1,72 @@
+User Manual
+#################################
+For:
+	Darkflight.py
+
+For estimating the darkflight fall of a meteor. Wrapper for Darkflight.c
+on the Western Meteor Group network.
+
+Luke McFadden
+
+############################
+#		  Inputs           #
+############################
+
+	SeismicTrajectory.py should supply all of the inputs needed, but they can be created manually.
+	An example .ini file can be found in the /docs folder
+
+############################
+#      .ini Variables      #
+############################
+
+	[General]
+	error: [boolean] whether to include Monte Carlo random data to simulate the error in landing locations
+	output: [string] path of the output location
+	atm: [string] location of the input atmospheric profile. This is a txt file with space separated values, 
+		where the columns are: Height (m), Temp (C), Windspeed (m/s), Wind direction (deg), Pressure (hPa)
+		Atmosphetic profiles can ge obtained here: http://weather.uwyo.edu/upperair/sounding.html
+		Just make sure to convert the wind speed from knots to meters per second (1 knot = 0.514 m/s)
+	help: [boolean] brings up darkflight.c help menu, then exits
+
+	[Tweaks]
+	enable_time: [boolean] switch to include travel time labels on the points in the kml files
+	mags: [int] divisions of masses to use in the calculation.
+							10 - every magnitude (0.01, 0.1, 1, 10, 100)
+							5  - every magnitude and half magnitude (0.01, 0.05, 0.1, 0.5, 1, 5, 10, 50, 100)
+							Other values are unsupported
+
+	[Variables]
+	lat: [float] initial latitude (deg north)
+	lon: [float] initial longitude (deg east)
+	z: [float] initial elevation (km above ground)
+	v: [float] initial velocity (km/s)
+	az: [float] initial azimuth (+E due N) *(1)
+	ze: [float] initial zenith (from horizontal) *(1)
+	mass_min: [float] minimum mass to consider in the simulation (kg). (default 0.01 kg)
+	mass_max: [float] maximum mass to consider in the simulation (kg). (default 25.0 kg)
+	tan: [float] meteoroid velocity perpendicular to radiant (km/s). (default 0.0 km/s)
+	sig: [float] perpendicular velocity gaussian spread (km/s). (default 0.0 km/s) *(2)
+	frag: [boolean] switch to enable meteoroid fragmentation simulation.
+	den: [float] meteoroid density (kg/m^3). (default Stoney Chrondrite 3700 kg/m^3)
+	end: [float] darkflight stopping elevation (i.e. ground) (km). (default 0.0 km)
+	shape: [int] meteoroid shape type.
+                			0 - Sphere (Radius: R)
+               	(DEFAULT)   1 - Brick  (Length: 2x3x5 L) 
+                			2 - Cone   (Radius/Height: R)
+
+	max_iter: [int] simulation maximum iteration number. (default 1000)
+	drag: [int] drag coefficient function
+                (DEFAULT)   0 - Ceplecha et al. (1992) "original"
+                			1 - Carter et al. (2009): Fit to vertical gun
+	dlat: [float] initial latitude uncertainty (deg)
+	dlon: [float] initial longitude uncertainty (deg)
+	dv: [float] initial velocity uncertainty (km/s)
+	daz: [float] radiant azimuth uncertainty (deg)
+	dze: [float] radiant zenith uncertainty (deg)
+
+	*(1) From the ground looking toward the meteorite
+	*(2) To use this, "tan" must be non-zero, and "frag" must be on
+
+############################
+#         Outputs          #
+############################
