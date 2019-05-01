@@ -52,3 +52,7 @@ Mar. 6, 2019
 	Redefined coordinate system as standard cartesian coordinate system, with azimuth from the north, increasing east. 
 	Created position objects
 	Created station objects 
+
+May. 1, 2019
+	
+	Separated files from wmpl.

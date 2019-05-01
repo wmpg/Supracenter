@@ -10,6 +10,7 @@ import argparse
 import obspy
 import numpy as np
 import scipy.signal
+import matplotlib
 import time
 import copy
 
@@ -17,6 +18,16 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.widgets import Button
 from matplotlib.widgets import Slider
+
+
+from matplotlib.backends.qt_compat import QtCore, QtWidgets
+from PyQt5.QtWidgets import QApplication, QLabel, QWidget, QGridLayout, QPushButton, QSlider
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+
+from matplotlib.backends.backend_qt5agg import (
+    FigureCanvas, NavigationToolbar2QT as NavigationToolbar)
+from matplotlib.figure import Figure
 
 # # Force backend
 # plt.switch_backend("TkAgg")
@@ -29,8 +40,9 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, \
     plotAllWaveforms, convolutionDifferenceFilter
-from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, parseWeather, Constants
-from supra.Fireballs.Program import configRead, configParse, position
+from supra.Fireballs.SeismicTrajectory import latLon2Local, local2LatLon, timeOfArrival, waveReleasePoint, \
+    parseWeather, Constants
+from supra.Fireballs.Program import configRead, configParse, position, station
 from supra.Supracenter.angleConv import geo2Loc, loc2Geo
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
@@ -38,11 +50,32 @@ from supra.Supracenter.SPPT import perturb
 from supra.Supracenter.weatherGraph import graphWeather
 from wmpl.Utils.Earth import greatCircleDistance
 from wmpl.Utils.PlotMap import GroundMap
+from wmpl.Utils.Math import rotateVector
 from wmpl.Utils.TrajConversions import datetime2JD
 
 global arrTimes 
 global sounding
 
+def clickable(widget):
+
+    class Filter(QObject):
+    
+        clicked = pyqtSignal()
+        
+        def eventFilter(self, obj, event):
+        
+            if obj == widget:
+                if event.type() == QEvent.MouseButtonRelease:
+                    if obj.rect().contains(event.pos()):
+                        self.clicked.emit()
+                        # The developer can opt for .emit(obj) to get the object within the slot.
+                        return True
+            
+            return False
+    
+    filter = Filter(widget)
+    widget.installEventFilter(filter)
+    return filter.clicked
 
 def trajCalc(setup):
     """ Creates trajectory between point A and the ground (B) based off of the initial position and the angle of travel
@@ -105,6 +138,9 @@ def calcAllTimes(stn_list, setup, sounding):
 
         # Ballistic Prediction
         ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        #lat0, lon0, elev0 = data_list[0][2], data_list[0][3], data_list[0][4]
+        # if setup.fragmentation_point == '':
+        #     setup.fragmentation_point = []
 
         no_of_frags = len(setup.fragmentation_point)
 
@@ -114,12 +150,16 @@ def calcAllTimes(stn_list, setup, sounding):
 
         # Initialize variables
         b_time = 0
+        b_dist = 0
 
         consts = Constants()
 
         # convert angles to radians
         az = np.radians(setup.azim)
         ze = np.radians(setup.zangle)
+
+        # vector of the trajectory of the fireball
+        traj_vect = np.array([np.cos(az)*np.sin(ze), np.sin(az)*np.cos(ze), -np.cos(ze)])
 
         # For temporal perturbations, fetch the soudning data for the hour before and after the event
         if setup.perturb_method == 'temporal':
@@ -173,11 +213,18 @@ def calcAllTimes(stn_list, setup, sounding):
                             
                             stn.position.pos_loc(ref_pos)
                             setup.traj_f.pos_loc(ref_pos)
+                            # Station location in local coordinates
+                            # xx, yy, zz  = geo2Loc(lat0, lon0, elev0, \
+                            #                             stat_lat, stat_lon, stat_elev)
+
+                            #xx, yy, zz = rotateVector(np.array([xx, yy, zz]), np.array([0, 0, 1]), -np.pi/2)
 
                             # Time to travel from trajectory to station
                             b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
                                                         np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
 
+                            # Distance from the source location to the station
+                            #b_dist = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
 
                             bTimes[i] = b_time
                         else:
@@ -187,6 +234,7 @@ def calcAllTimes(stn_list, setup, sounding):
 
                 # Fragmentation Prediction
                 f_time = np.array([0]*no_of_frags)
+                f_dist = 0
 
                 # If manual fragmentation search is on
                 if setup.show_fragmentation_waveform:
@@ -201,8 +249,19 @@ def calcAllTimes(stn_list, setup, sounding):
                         # convert to local coordinates based off of the ref_pos
                         supra.pos_loc(ref_pos)
 
+                        # Supracenter location in reference to the source location
+                        # sx, sy, sz = latLon2Local(np.radians(lat0), np.radians(lon0), elev0, \
+                        #                         np.radians(float(line[0])), np.radians(float(line[1])), float(line[2]))
+
                         # convert station coordinates to local coordinates based on the ref_pos
                         stn.position.pos_loc(ref_pos)
+
+                        # Station location in local coordinates in reference to the source location
+                        # xx, yy, zz = latLon2Local(np.radians(lat0), np.radians(lon0), elev0, \
+                        #                     np.radians(stat_lat), np.radians(stat_lon), stat_elev)
+
+                        # sx, sy, sz = rotateVector(np.array([sx, sy, sz]), np.array([0, 0, 1]), -np.pi/2)
+                        # xx, yy, zz = rotateVector(np.array([xx, yy, zz]), np.array([0, 0, 1]), -np.pi/2)
 
                         # Cut down atmospheric profile to the correct heights, and interp
                         zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
@@ -231,10 +290,72 @@ def calcAllTimes(stn_list, setup, sounding):
 
         return allTimes
 
-
-class WaveformPicker(object):
+class ApplicationWindow(QtWidgets.QMainWindow):
     def __init__(self, dir_path, setup, sounding, data_list, waveform_window=600, \
         difference_filter_all=False):
+        super().__init__()
+        self._main = QWidget()
+        self.setCentralWidget(self._main)
+        layout = QGridLayout(self._main)
+
+        map_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        layout.addWidget(map_canvas, 1, 5, 1, 1)
+        # self.addToolBar(QtCore.Qt.BottomToolBarArea,
+        #                 NavigationToolbar(dynamic_canvas, self))
+
+        station_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        layout.addWidget(station_canvas, 1, 1, 1, 2)
+        # self.addToolBar(NavigationToolbar(static_canvas, self))
+
+        self.waveform_canvas = FigureCanvas(Figure(figsize=(5, 3)))
+        layout.addWidget(self.waveform_canvas, 3, 1, 1, 5)
+        # self.addToolBar(NavigationToolbar(static_canvas, self))
+
+        self.next_button = QPushButton('Next')
+        layout.addWidget(self.next_button, 8, 1)
+
+        self.prev_button = QPushButton('Previous')
+        layout.addWidget(self.prev_button,10,1)
+
+        self.bandpass_button = QPushButton('Bandpass Filter')
+        layout.addWidget(self.bandpass_button,8,2, 1, 2)
+
+        self.spectrogram_button = QPushButton('Spectrogram of Raw Data')
+        layout.addWidget(self.spectrogram_button,9,2, 1, 2)
+
+        self.difference_button = QPushButton('Difference Filter')
+        layout.addWidget(self.difference_button,10, 2,1, 2)
+
+        self.export_button = QPushButton('Export Picks to CSV')
+        layout.addWidget(self.export_button,10,5, 1, 1)
+
+        self.high_slider = QSlider(1)
+        layout.addWidget(self.high_slider, 6, 3, 1, 1)
+        self.high_slider.setMinimum(0)
+        self.high_slider.setMaximum(20)
+
+        self.low_slider = QSlider(1)
+        layout.addWidget(self.low_slider, 7, 3, 1, 1)
+        self.low_slider.setMinimum(0)
+        self.low_slider.setMaximum(20)
+
+        self.high_label = QLabel('High:')
+        layout.addWidget(self.high_label, 6, 2, 1, 1)
+
+        self.low_label = QLabel('Low:')
+        layout.addWidget(self.low_label, 7, 2, 1, 1)
+
+        # Plotting
+        self._station_ax = station_canvas.figure.subplots()
+
+        self._map_ax = map_canvas.figure.subplots()
+
+        self._waveform_ax = self.waveform_canvas.figure.subplots()
+        
+        self._timer = map_canvas.new_timer(
+            100, [(self._update_plot, (), {})])
+        self._timer.start()
+
         """
 
         Arguments:
@@ -354,7 +475,7 @@ class WaveformPicker(object):
         self.lon_list = [stn.position.lon_r for stn in stn_list]
 
         # Init ground map
-        self.m = GroundMap(self.lat_list, self.lon_list, ax=self.ax_map, color_scheme='light')
+        self.m = GroundMap(self.lat_list, self.lon_list, ax=self._map_ax, color_scheme='light')
 
         for stn in self.stn_list:
 
@@ -382,12 +503,40 @@ class WaveformPicker(object):
         # Manual trajectory search
         if setup.show_ballistic_waveform:
 
+            # Calculate the coordinates of the trajectory intersection with the ground
+            #setup.traj_f.pos_loc(ref_pos)
+            #lat_i, lon_i, elev_i = local2LatLon(float(np.radians(lat0)), float(np.radians(lon0)), float(elev0), np.array([float(setup.lat_f), float(setup.lon_f), 0]))
+
+            # Calculate the coordinate of the beginning of the trajectory
+            # lat_beg, lon_beg = np.radians(float(np.degrees(lat_i)) - np.cos(np.radians(setup.azim))), \
+            #                    np.radians(float(np.degrees(lon_i)) - np.sin(np.radians(setup.azim)))
+
+
+
+            # if setup.lat_i == '':
+            #     #plot the trajectory with the tail end known
+            #     A, B = trajCalc(setup)
+            #     self.m.plot([np.radians(A[0]), np.radians(B[0])], [np.radians(A[1]), np.radians(B[1])], c='b')
+            #     # Plot intersection with the ground
+            #     self.m.scatter(np.radians(B[0]), np.radians(B[1]), s=10, marker='x', c='b')
+            #     setup.lat_f, setup.lon_f, _ = latLon2Local(float(np.radians(lat0)), float(np.radians(lon0)), elev0, np.radians(B[0]), np.radians(B[1]), 0)
+            # # else:   
             # Plot the trajectory with the bottom point known
             self.m.plot([setup.traj_i.lat_r, setup.traj_f.lat_r], [setup.traj_i.lon_r, setup.traj_f.lon_r], c='b')
             # Plot intersection with the ground
             self.m.scatter(setup.traj_f.lat_r, setup.traj_f.lon_r, s=10, marker='x', c='b')
 
+            #self.ax_all_waves.legend()
+
             ### CONTOUR ###
+
+            # if setup.geomode:
+            #     # Convert to local coordinates
+            #     setup.x0, setup.y0, _ = latLon2Local(np.radians(lat0), np.radians(lon0), elev0, \
+            #                                 np.radians(setup.x0), np.radians(setup.y0), 0)
+            #     setup.x0 /= 1000
+            #     setup.y0 /= 1000
+
 
             # Get the limits of the plot
             x_min = setup.lat_f - 100000*setup.deg_radius
@@ -406,8 +555,13 @@ class WaveformPicker(object):
 
             times_of_arrival = np.zeros_like(xx.ravel())
 
+            # print('Creating contour plot...')
+            # # Calculate times of arrival for each point on the reference plane
+            # Calculate times of arrival for each point on the reference plane
+            #az = np.radians(180 - setup.azim)%(2*np.pi)
             az = np.radians(setup.azim)
             ze = np.radians(setup.zangle)
+            #ze = np.radians(setup.zangle)
 
             # vector of the trajectory of the fireball
             traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
@@ -425,6 +579,8 @@ class WaveformPicker(object):
 
                 p = waveReleasePoint(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
                                           ze, setup.v_sound)
+                # # Coordinate transformation (rotate 90 deg CCW)
+                #p[0], p[1] = -p[1], p[0]
 
                 # # vector between the wave release point and the plane coordinate
                 d_vect = plane_coords - p
@@ -437,7 +593,7 @@ class WaveformPicker(object):
                     # time of arrival from the trajectory
                     ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
                                        az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=True)# - setup.t + setup.t0
-
+                    #ti = np.sqrt(d_vect[0]**2 + d_vect[1]**2 + d_vect[2]**2)/setup.v_sound
                 # escape value for if sound never reaches the plane_coord
                 else:
                    ti = np.nan
@@ -477,8 +633,11 @@ class WaveformPicker(object):
             toa_conture = self.m.m.contourf(lon_cont, lat_cont, times_of_arrival, levels, zorder=3, \
                 latlon=True, cmap='viridis_r', alpha=0.5)
 
+            # # Plot colorcoded times of arrival on the surface
+            # toa_conture = self.m.m.contour(xx, yy, times_of_arrival, levels, cmap='inferno',\
+            #      alpha=1.0, zorder=3, latlon=False)
             # # Add a color bar which maps values to colors
-            self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
+           # self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
 
         if setup.arrival_times_file != '':
             try:
@@ -495,110 +654,135 @@ class WaveformPicker(object):
 
     
 
+    def _update_plot(self):
+        self.low_label.clear()
+        self.high_label.clear()
+
+        #self._dynamic_ax.figure.canvas.draw()
+        self.low_label.setText('Low: {:2.0f} Hz'.format(self.low_slider.value()))
+        self.high_label.setText('High: {:2.0f} Hz'.format(self.high_slider.value()))
+
+
     def initPlot(self, setup, sounding):
         """ Initializes the plot framework. """
 
 
         ### Init the basic grid ###
 
-        gs = gridspec.GridSpec(4, 3, width_ratios=[1, 1, 1], height_ratios=[10, 5, 1, 1])
+        # gs = gridspec.GridSpec(4, 3, width_ratios=[1, 1, 1], height_ratios=[10, 5, 1, 1])
 
 
-        # All waveform axis
-        self.ax_all_waves = plt.subplot(gs[0, 0:2])
+        # # All waveform axis
+        # self._station_ax = plt.subplot(gs[0, 0:2])
 
-        # Map axis
-        self.ax_map = plt.subplot(gs[0, 2])
+        # # Map axis
+        # self._map_ax = plt.subplot(gs[0, 2])
 
-        # Waveform axis
-        self.ax_wave = plt.subplot(gs[1, :])
+        # # Waveform axis
+        # self._waveform_ax = plt.subplot(gs[1, :])
 
-        # Register a mouse press event on the waveform axis
-        plt.gca().figure.canvas.mpl_connect('button_press_event', self.onWaveMousePress)
+        # # Register a mouse press event on the waveform axis
+        # plt.gca().figure.canvas.mpl_connect('button_press_event', self.onWaveMousePress)
 
-        # Init what happes when a keyboard key is pressed or released
-        plt.gca().figure.canvas.mpl_connect('key_press_event', self.onKeyPress)
-        plt.gca().figure.canvas.mpl_connect('key_release_event', self.onKeyRelease)
+        # # Init what happes when a keyboard key is pressed or released
+        # self.keyPressed.connect(self.onKeyPress)
+        # self.keyReleased.connect(self.onKeyRelease)
+        # plt.gca().figure.canvas.mpl_connect('key_press_event', self.onKeyPress)
+        # plt.gca().figure.canvas.mpl_connect('key_release_event', self.onKeyRelease)
 
-        # Register window resize
-        plt.gca().figure.canvas.mpl_connect('resize_event', self.onResize)
+        # # Register window resize
+        # plt.gca().figure.canvas.mpl_connect('resize_event', self.onResize)
 
-        # Previous button axis
-        self.ax_prev_btn = plt.subplot(gs[2, 0])
+        # # Previous button axis
+        # self.ax_prev_btn = plt.subplot(gs[2, 0])
 
-        # Next button axis
-        self.ax_next_btn = plt.subplot(gs[3, 0])
+        # # Next button axis
+        # self.ax_next_btn = plt.subplot(gs[3, 0])
 
-        # Bandpass options
-        bandpass_gridspec = gridspec.GridSpecFromSubplotSpec(5, 1, subplot_spec=gs[2:4, 1])
-        self.ax_bandpass_low = plt.subplot(bandpass_gridspec[0])
-        self.ax_bandpass_high = plt.subplot(bandpass_gridspec[1])
-        self.ax_bandpass_button = plt.subplot(bandpass_gridspec[2])
+        # # Bandpass options
+        # bandpass_gridspec = gridspec.GridSpecFromSubplotSpec(5, 1, subplot_spec=gs[2:4, 1])
+        # self.ax_bandpass_low = plt.subplot(bandpass_gridspec[0])
+        # self.ax_bandpass_high = plt.subplot(bandpass_gridspec[1])
+        # self.ax_bandpass_button = plt.subplot(bandpass_gridspec[2])
 
-        # Spectrogram button
-        self.ax_specgram_btn = plt.subplot(bandpass_gridspec[3])
+        # # Spectrogram button
+        # self.ax_specgram_btn = plt.subplot(bandpass_gridspec[3])
 
-        # Convolution filter button
-        self.ax_convolution_button = plt.subplot(bandpass_gridspec[4])
+        # # Convolution filter button
+        # self.ax_convolution_button = plt.subplot(bandpass_gridspec[4])
         
 
-        # Pick list
-        picks_gridspec = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[2:, 2])
-        self.ax_picks = plt.subplot(picks_gridspec[:3])
+        # # Pick list
+        # picks_gridspec = gridspec.GridSpecFromSubplotSpec(4, 1, subplot_spec=gs[2:, 2])
+        # self.ax_picks = plt.subplot(picks_gridspec[:3])
 
-        # Disable ticks and axis lines
-        self.ax_picks.set_axis_off()
+        # # Disable ticks and axis lines
+        # self.ax_picks.set_axis_off()
 
-        # Export CSV button
-        self.ax_export_csv_btn = plt.subplot(picks_gridspec[3])
-
-
-        ############################
+        # # Export CSV button
+        # self.ax_export_csv_btn = plt.subplot(picks_gridspec[3])
 
 
-        # Create 'prev' button
-        self.prev_btn = Button(self.ax_prev_btn, 'Previous')
-        self.prev_btn.on_clicked(self.decrementStation)
+        # ############################
 
-        # Create 'next' button
-        self.next_btn = Button(self.ax_next_btn, 'Next')
-        self.next_btn.on_clicked(self.incrementStation)
+        # # Create 'prev' button
+        # self.prev_btn = Button(self.ax_prev_btn, 'Previous')
+        self.prev_button.clicked.connect(self.decrementStation)
 
+        # # Create 'next' button
+        # self.next_btn = Button(self.ax_next_btn, 'Next')
+        self.next_button.clicked.connect(self.incrementStation)
 
-        # Bandpass sliders and button
-        self.bandpass_low_slider = Slider(self.ax_bandpass_low, 'Low:', 0.1, 5, \
-            valinit=self.bandpass_low_default)
-        self.bandpass_high_slider = Slider(self.ax_bandpass_high, 'High:', 3, 40, \
-            valinit=self.bandpass_high_default, slidermin=self.bandpass_low_slider)
+        # # Bandpass sliders and button
+        # self.bandpass_low_slider = Slider(self.ax_bandpass_low, 'Low:', 0.1, 5, \
+        #     valinit=self.bandpass_low_default)
+        # self.bandpass_high_slider = Slider(self.ax_bandpass_high, 'High:', 3, 40, \
+        #     valinit=self.bandpass_high_default, slidermin=self.bandpass_low_slider)
         
-        self.bandpass_button = Button(self.ax_bandpass_button, 'Bandpass filter')
-        self.bandpass_button.on_clicked(self.filterBandpass)
+        # self.bandpass_button = Button(self.ax_bandpass_button, 'Bandpass filter')
+        self.bandpass_button.clicked.connect(self.filterBandpass)
 
 
-        # Spectrogram button
-        self.specgram_btn = Button(self.ax_specgram_btn, 'Spectrogram of raw data')
-        self.specgram_btn.on_clicked(self.showSpectrogram)
+        # # Spectrogram button
+        # self.specgram_btn = Button(self.ax_specgram_btn, 'Spectrogram of raw data')
+        self.spectrogram_button.clicked.connect(self.showSpectrogram)
 
-        # Convolution filter button
-        self.convolution_button = Button(self.ax_convolution_button, '$S_i - (S_{i-1} + S_{i+1})/2$ filter')
-        self.convolution_button.on_clicked(self.filterConvolution)
+        # # Convolution filter button
+        # self.convolution_button = Button(self.ax_convolution_button, '$S_i - (S_{i-1} + S_{i+1})/2$ filter')
+        self.difference_button.clicked.connect(self.filterConvolution)
 
 
-        # Export CSV button
-        self.export_csv_btn = Button(self.ax_export_csv_btn, 'Export CSV: ' + OUTPUT_CSV)
-        self.export_csv_btn.on_clicked(self.exportCSV)
+        # # Export CSV button
+        # self.export_csv_btn = Button(self.ax_export_csv_btn, 'Export CSV: ' + OUTPUT_CSV)
+        self.export_button.clicked.connect(self.exportCSV)
     
+        clickable(self.waveform_canvas).connect(self.findPos)
+
         # Plot all waveforms
-        plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self.ax_all_waves, \
+        plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self._station_ax, \
             waveform_window=self.waveform_window, difference_filter_all=setup.difference_filter_all)
 
-    def onKeyPress(self, event):
+    def keyPressEvent(self, event):
         
-        if event.key == 'control':
+        if event.key() == QtCore.Qt.Key_Control:
             self.ctrl_pressed = True
 
+        elif event.key() == QtCore.Qt.Key_D:
+            self.incrementStation()
 
-        elif event.key == '+':
+        elif event.key() == QtCore.Qt.Key_A:
+            self.decrementStation()
+
+        elif event.key() == QtCore.Qt.Key_W:
+            self.filterBandpass(event)
+
+        elif event.key() == QtCore.Qt.Key_S:
+            self.showSpectrogram(event)
+
+        elif event.key() == QtCore.Qt.Key_C:
+            self.filterConvolution(event)
+
+        elif event.key() == QtCore.Qt.Key_Plus:
             
             # Increment the pick group
             self.pick_group += 1
@@ -606,7 +790,7 @@ class WaveformPicker(object):
             self.updatePlot()
 
 
-        elif event.key == '-':
+        elif event.key() == QtCore.Qt.Key_Minus:
             # Decrement the pick group
 
             if self.pick_group > 0:
@@ -615,9 +799,9 @@ class WaveformPicker(object):
             self.updatePlot()
 
 
-    def onKeyRelease(self, event):
+    def keyReleaseEvent(self, event):
 
-        if event.key == 'control':
+        if event.key() == QtCore.Qt.Key_Control:
             self.ctrl_pressed = False
 
 
@@ -699,7 +883,7 @@ class WaveformPicker(object):
         dists_with_picks = [self.source_dists[stat_no] for stat_no in stations_with_picks]
 
         # Mark picks on the all waveform plot
-        self.all_waves_picks_handle = self.ax_all_waves.scatter(dists_with_picks, all_pick_times, \
+        self.all_waves_picks_handle = self._station_ax.scatter(dists_with_picks, all_pick_times, \
             marker='*', s=50, c='r')
 
         self.updatePlot(draw_waveform=False)
@@ -736,7 +920,7 @@ class WaveformPicker(object):
             current_station_picks)])
 
         # Print picks on screen
-        self.pick_text_handle = self.ax_picks.text(0, 1, pick_txt_str, va='top', fontsize=7)
+        #self.pick_text_handle = self.ax_picks.text(0, 1, pick_txt_str, va='top', fontsize=7)
 
 
         # Remove old pick markers
@@ -770,7 +954,7 @@ class WaveformPicker(object):
                 pick_y_list = [0]*len(current_station_picks)
 
             # Set pick marker on the current wavefrom
-            scat_handle = self.ax_wave.scatter(current_station_picks, pick_y_list, marker='*', \
+            scat_handle = self._waveform_ax.scatter(current_station_picks, pick_y_list, marker='*', \
                 c=color_list, s=50)
 
             self.pick_markers_handles.append(scat_handle)
@@ -778,19 +962,23 @@ class WaveformPicker(object):
             # Plot group numbers above picks
             #self.pick_wavefrom_text_handles = []
             for c, grp, pt in zip(color_list, current_station_groups, current_station_picks):
-                txt_handle = self.ax_wave.text(pt, 0, str(grp), color=c, ha='center', va='bottom')
+                txt_handle = self._waveform_ax.text(pt, 0, str(grp), color=c, ha='center', va='bottom')
 
                 self.pick_markers_handles.append(txt_handle)
 
+    def findPos(self):
+        x = QCursor.pos().x()
+        y = QCursor.pos().y()
+        print(x, y)
 
     def onWaveMousePress(self, event):
-
+        print('here')
         # Check if the mouse was pressed within the waveform axis
-        if event.inaxes == self.ax_wave:
+        if event.inaxes == self._waveform_ax:
 
             # Check if CTRL is pressed
             if self.ctrl_pressed:
-
+                
                 pick_time = event.xdata
 
                 # Check if left button was pressed
@@ -810,10 +998,6 @@ class WaveformPicker(object):
                     print('Removing pick...')
 
                     self.removePick(self.current_station, pick_time)
-
-
-
-
 
     def incrementStation(self, event=None):
         """ Increments the current station index. """
@@ -854,6 +1038,9 @@ class WaveformPicker(object):
         # Extract current station
         stn = self.stn_list[self.current_station]
 
+        # # Extract station coordinates
+        # stat_lat, stat_lon = stat_entry[2], stat_entry[3]
+
         if self.current_station_scat is None:
 
             # Mark the current station on the map
@@ -867,7 +1054,7 @@ class WaveformPicker(object):
 
             # Set the new position
             self.current_station_scat.set_offsets([stat_x, stat_y])
-
+        self._station_ax.figure.canvas.draw()
 
     def checkExists(self):
         """
@@ -910,10 +1097,16 @@ class WaveformPicker(object):
         setup = self.setup
 
         # Clear waveform axis
-        self.ax_wave.cla()
+        self._waveform_ax.clear()
+
+        #sounding = parseWeather(setup, consts)
+
 
         # Extract current station
         stn = self.stn_list[self.current_station]
+
+        # Unpack the station entry
+        # net, station_code, stat_lat, stat_lon, stat_elev, station_name, channel, mseed_file = stat_entry
 
         # Get the miniSEED file path
         mseed_file_path = os.path.join(self.dir_path, stn.file_name)
@@ -926,6 +1119,12 @@ class WaveformPicker(object):
             print('mseed file could not be read:', mseed_file_path)
             #self.incrementStation()
             return None
+
+        # if self.checkExists == True:
+        #     # Read the miniSEED file
+            
+        # else:
+        #     return None
 
         # Unpact miniSEED data
         delta = mseed[0].stats.delta
@@ -944,6 +1143,9 @@ class WaveformPicker(object):
         # Convert the beginning and the end time to datetime objects
         start_datetime = start_time.datetime
         end_datetime = end_time.datetime
+        # start_datetime = setup.start_datetime
+        # end_datetime = setup.end_datetime
+
 
         self.current_wavefrom_delta = delta
         self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
@@ -985,15 +1187,27 @@ class WaveformPicker(object):
         time_win_min = t_arrival - self.waveform_window/2
         time_win_max = t_arrival + self.waveform_window/2
 
+
+        # Plot the estimated time of arrival
+        # self.ax_wave.plot([t_arrival]*2, [np.min(waveform_data), np.max(waveform_data)], color='red', \
+        #     alpha=0.5, zorder=3, label='const $v_{sound}$')
+
+
         # Plot the wavefrom
-        self.ax_wave.plot(time_data, waveform_data, color='k', linewidth=0.2, zorder=3)
+        self._waveform_ax.plot(time_data, waveform_data, color='k', linewidth=0.2, zorder=3)
+
+        # Ballistic Prediction
+        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
 
         # Initialize variables
         b_time = 0
+        b_dist = 0
 
         az = np.radians(setup.azim)
         ze = np.radians(setup.zangle)
 
+        # vector of the trajectory of the fireball
+        traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
         print('####################')
         print("Current Station: {:}".format(stn.name))
         print("Channel: {:}".format(stn.channel))
@@ -1005,7 +1219,7 @@ class WaveformPicker(object):
             
             # check if nan
             if b_time == b_time:
-                self.ax_wave.plot([b_time]*2, [np.min(waveform_data), np.max(waveform_data)], c='b', label='Ballistic', zorder=3)
+                self._waveform_ax.plot([b_time]*2, [np.min(waveform_data), np.max(waveform_data)], c='b', label='Ballistic', zorder=3)
                 
                 print("Ballistic Arrival: {:.3f} s".format(b_time))
             else:
@@ -1014,7 +1228,7 @@ class WaveformPicker(object):
             for i in range(setup.perturb_times):
                 if i >= 1:
                     try:
-                        self.ax_wave.plot([self.arrTimes[i, self.current_station, 0, 0]]*2, \
+                        self._waveform_ax.plot([self.arrTimes[i, self.current_station, 0, 0]]*2, \
                          [np.min(waveform_data), np.max(waveform_data)], alpha=0.3, c='b', zorder=3)
                     except:
                         pass
@@ -1029,11 +1243,11 @@ class WaveformPicker(object):
             #     # check if nan
                 if f_time == f_time:
                     # Plot Fragmentation Prediction
-                    self.ax_wave.plot([f_time]*2, [np.min(waveform_data), np.max(waveform_data)], c=self.pick_group_colors[(i+1)%4], label='Fragmentation', zorder=3)
+                    self._waveform_ax.plot([f_time]*2, [np.min(waveform_data), np.max(waveform_data)], c=self.pick_group_colors[(i+1)%4], label='Fragmentation', zorder=3)
                     
                     if len(setup.fragmentation_point) > 1:
                         #self.ax_wave.text(f_time, np.min(waveform_data), 'Frag{:}'.format(i+1))
-                        self.ax_wave.text(f_time, np.min(waveform_data) + int(i)/(len(setup.fragmentation_point))*(np.max(waveform_data) - np.min(waveform_data)), '{:.1f} km'.format(line[2]/1000))
+                        self._waveform_ax.text(f_time, np.min(waveform_data) + int(i)/(len(setup.fragmentation_point))*(np.max(waveform_data) - np.min(waveform_data)), '{:.1f} km'.format(line[2]/1000))
                 
                     print('Fragmentation {:} Arrival: {:.3f} s'.format(i+1, f_time))
 
@@ -1043,32 +1257,33 @@ class WaveformPicker(object):
                 for j in range(setup.perturb_times):
                     if j >= 1:
                         try:
-                            self.ax_wave.plot([self.arrTimes[j, self.current_station, 1, i]]*2, [np.min(waveform_data),\
+                            self._waveform_ax.plot([self.arrTimes[j, self.current_station, 1, i]]*2, [np.min(waveform_data),\
                                  np.max(waveform_data)], alpha=0.3,\
                                  c=self.pick_group_colors[(i+1)%4], zorder=3)
                         except:
                             pass
 
         # Set the time limits to be within the given window
-        self.ax_wave.set_xlim(time_win_min, time_win_max)
+        self._waveform_ax.set_xlim(time_win_min, time_win_max)
 
-        self.ax_wave.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.5)
+        self._waveform_ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.5)
 
         #self.ax_wave.legend()
 
         # Add text with station label
         if stn.code in setup.high_f:
-            self.ax_wave.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            self._waveform_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
                 + "(" + stn.channel + ")" +", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='g')
 
         elif stn.code in setup.high_b:
-            self.ax_wave.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            self._waveform_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
                 + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='b')
 
         else:
-            self.ax_wave.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            self._waveform_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
                 + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='k')
 
+        self._waveform_ax.figure.canvas.draw()
 
     def markStationWaveform(self):
         """ Mark the currently shown waveform in the plot of all waveform. """
@@ -1085,14 +1300,15 @@ class WaveformPicker(object):
         t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
 
         # Plot the marker
-        marker1 = self.ax_all_waves.scatter(dist, t_arrival - 500, marker='^', s=100, linewidths=3, c='k', 
+        marker1 = self._station_ax.scatter(dist, t_arrival - 500, marker='^', s=100, linewidths=3, c='k', 
             alpha=1, zorder=3)
 
-        marker2 = self.ax_all_waves.scatter(dist, t_arrival + 500, marker='v', s=100, linewidths=3, c='k', 
+        marker2 = self._station_ax.scatter(dist, t_arrival + 500, marker='v', s=100, linewidths=3, c='k', 
             alpha=1, zorder=3)
 
 
         self.current_station_all_markers = [marker1, marker2]
+        self._map_ax.figure.canvas.draw()
 
 
     def showSpectrogram(self, event):
@@ -1100,7 +1316,7 @@ class WaveformPicker(object):
 
 
         # Get time limits of the shown waveform
-        x_min, x_max = self.ax_wave.get_xlim()
+        x_min, x_max = self._waveform_ax.get_xlim()
 
         # Extract the time and waveform
         crop_window = (self.current_waveform_time >= x_min) & (self.current_waveform_time <= x_max)
@@ -1127,8 +1343,8 @@ class WaveformPicker(object):
         """ Run bandpass filtering using values set on sliders. """
 
         # Get bandpass filter values
-        bandpass_low = self.bandpass_low_slider.val
-        bandpass_high = self.bandpass_high_slider.val
+        bandpass_low = self.low_slider.value()
+        bandpass_high = self.high_slider.value()
 
 
         # Limit the high frequency to be lower than the Nyquist frequency
@@ -1177,11 +1393,14 @@ class WaveformPicker(object):
         self.updatePickTextAndWaveMarker()
 
         # Reset bandpass filter values to default
-        self.bandpass_low_slider.set_val(self.bandpass_low_default)
-        self.bandpass_high_slider.set_val(self.bandpass_high_default)
+        self.low_slider.setValue(self.bandpass_low_default)
+        self.high_slider.setValue(self.bandpass_high_default)
 
-        plt.draw()
-        plt.pause(0.001)
+        # plt.draw()
+        # plt.pause(0.001)
+        self._station_ax.figure.canvas.draw()
+        self._waveform_ax.figure.canvas.draw()
+        self._map_ax.figure.canvas.draw()
 
 
     def exportCSV(self, event):
@@ -1280,6 +1499,11 @@ if __name__ == "__main__":
         print('Station and waveform data file not found! Download the waveform files first!')
         sys.exit()
 
+    # Remove duplicate lines recieved from different sources
+    # stn_list = set(tuple(element) for element in stn_list)
+    # stn_list = [list(t) for t in set(tuple(element) for element in stn_list)]
+
+
     if setup.stations is not None:
         stn_list = stn_list + setup.stations
 
@@ -1307,10 +1531,14 @@ if __name__ == "__main__":
         exit()
 
     # Init the wave\from picker
-    WaveformPicker(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all)
+    #WaveformPicker(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all)
 
     plt.tight_layout()
 
     #plt.waitforbuttonpress(timeout=-1)
 
-    plt.show()
+    qapp = QApplication(sys.argv)
+    app = ApplicationWindow(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all)
+
+    app.show()
+    qapp.exec_()

@@ -2,15 +2,12 @@
 
 import numpy as np
 
-import copy
-import time
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Supracenter.angleConv import loc2Geo, roundToNearest
+from supra.Supracenter.angleConv import loc2Geo
 from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound
 from supra.Supracenter.cyzInteg import zInteg
-from supra.Supracenter.bisearch import bisearch
 
 def nearestPoint2D(points_list, point):
     """ HELPER FUNCTION: finds the index of the closest point to point out of a grid of points (points_list)

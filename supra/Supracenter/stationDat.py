@@ -5,8 +5,8 @@ import sys
 sys.path.insert(0,'..')
 
 from supra.Supracenter.angleConv import geo2Loc
-from wmpl.Utils.TrajConversions import date2JD
-from supra.Fireballs.Program import position
+# from wmpl.Utils.TrajConversions import date2JD
+# from supra.Fireballs.Program import position
 
 def readStationDat(station_name):
     """ Reads the station data .txt file for use with convStationDat (made from the template)

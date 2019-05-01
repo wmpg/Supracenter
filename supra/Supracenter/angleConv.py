@@ -3,7 +3,86 @@
 import numpy as np
 
 from wmpl.Utils.Math import rotateVector
-import supra.Fireballs.SeismicTrajectory
+from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
+
+def latLon2Local(lat0, lon0, elev0, lat, lon, elev):
+    """ Convert geographic coordinates into a local coordinate system where the reference coordinates will be
+        the origin. The positive direction of the X axis points towards the south, the positive direction of
+        the Y axis points towards the east and the positive direction of the Z axis points to the zenith at
+        the reference coordinates.
+
+    Arguments:
+        lat0: [float] reference latitude +N (radians).
+        lon0: [float] reference longtidue +E (radians).
+        elev0: [float] reference zangle above sea level (meters).
+        lat: [float] Latitude +N (radians).
+        lon: [float] Longtidue +E (radians).
+        elev: [float] zangle above sea level (meters).
+
+
+    Return:
+        (x, y, z): [3 element ndarray] (x, y, z) local coordinates.
+    """
+
+    # Calculate the ECEF coordinates of the reference position
+    x0, y0, z0 = latLonAlt2ECEF(lat0, lon0, elev0)
+    ref_ecef = np.array([x0, y0, z0])
+
+    # Convert the geo coordinates of the station into ECEF coordinates
+    coord_ecef = latLonAlt2ECEF(lat, lon, elev)
+
+
+    ### Convert the ECEF coordinates into to local coordinate system ###
+    
+    local_coord = coord_ecef - ref_ecef
+
+    # Rotate the coordinates so the origin point is tangent to the Earth's surface
+    local_coord = np.array(ecef2ENU(lat0, lon0, *local_coord))
+
+    # Rotate the coordinate system so X points towards the south and Y towards the east
+    local_coord = rotateVector(local_coord, np.array([0, 0, 1]), np.pi/2)
+
+    ######
+
+
+    return local_coord
+
+
+
+
+def local2LatLon(lat0, lon0, elev0, local_coord):
+    """ Convert local coordinates into geographic coordinates. See latLon2Local for more details.
+
+    Arguments:
+        lat0: [float] reference latitude +N (radians).
+        lon0: [float] reference longtidue +E (radians).
+        elev0: [float] reference zangle above sea level (meters).
+        local_coord: [3 element ndarray] (x, y, z):
+            - x: [float] Local X coordinate (meters).
+            - y: [float] Local Y coordinate (meters).
+            - z: [float] Local Z coordinate (meters).
+
+    Return:
+        (lat, lon, elev): [3 element ndarray] Geographic coordinates, angles in radians, zangle in meters.
+    """
+
+
+    # Calculate the ECEF coordinates of the reference position
+    x0, y0, z0 = latLonAlt2ECEF(lat0, lon0, elev0)
+    ref_ecef = np.array([x0, y0, z0])
+
+
+    # Rotate the coordinate system back to ENU
+    local_coord = rotateVector(local_coord, np.array([0, 0, 1]), -np.pi/2)
+
+    # Convert the coordinates back to ECEF
+    coord_ecef = np.array(enu2ECEF(lat0, lon0, *local_coord)) + ref_ecef
+
+    # Convert ECEF coordinates back to geo coordinates
+    lat, lon, elev = ecef2LatLonAlt(*coord_ecef)
+
+
+    return lat, lon, elev
 
 def angle2NDE(angle):
     """ Converts an angle in degrees from an East due North coordinate system to a North due East coordinate system
@@ -41,7 +120,7 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     lat, lon = lat*np.pi/180, lon*np.pi/180
 
     # Convert to local
-    x, y, z = supra.Fireballs.SeismicTrajectory.latLon2Local(lat0, lon0, elev0, lat, lon, elev)
+    x, y, z = latLon2Local(lat0, lon0, elev0, lat, lon, elev)
 
     # Rotate to a +X = East, +Y = North grid
     local_coord = np.array([x, y, z])
@@ -70,7 +149,7 @@ def loc2Geo(lat0, lon0, elev0, local_coord):
     local_coord = rotateVector(local_coord, np.array([0, 0, 1]), np.pi/2)
 
     # Convert to geographic
-    lat, lon, elev = supra.Fireballs.SeismicTrajectory.local2LatLon(lat0, lon0, elev0, local_coord)
+    lat, lon, elev = local2LatLon(lat0, lon0, elev0, local_coord)
 
     # Convert to degrees
     lat, lon = lat*180/np.pi, lon*180/np.pi

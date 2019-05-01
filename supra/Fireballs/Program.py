@@ -873,7 +873,7 @@ def configParse(setup, ini_type):
         pass
         #Either two points or one point and angles
 
-    if setup.perturb_times == '':
+    if setup.perturb_times == '' or not setup.perturb:
         setup.perturb_times = 0
     setup.perturb_times += 1
 
