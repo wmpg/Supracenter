@@ -77,7 +77,7 @@ def readStationCSV(station_name):
 
             # Split the line by the delimiter
             line = line.split(',')
-            names.append(str(line[1]) + '-' + str(line[2]))
+            names.append(str(line[1]).strip() + '-' + str(line[2]).strip())
             # weights.append(float(line[-1]))
             line = line[3:]
 
@@ -147,7 +147,7 @@ def dweight(data, d_min, d_max):
     return w
 
 
-def convStationDat(station_name, d_min, d_max, ref_time, setup):
+def convStationDat(station_name, setup=[], d_min=0, d_max=100000):
     """ Reads and converts the station data, and returns it in a usable format
     
     Arguments:
@@ -179,12 +179,16 @@ def convStationDat(station_name, d_min, d_max, ref_time, setup):
     ref_pos = np.array([0.0, 0.0, 0.0])
 
     # Choose reference position to be the average coordinate (for least error), and at ground level
-    # for i in range(2):
+
+    try:
+        ref_pos[0] = setup.lat_centre
+        ref_pos[1] = setup.lon_centre
+        ref_pos[2] = 0
+    except:
+        for i in range(2):
     #     #ref_pos[i] = np.mean(data[:, i],axis=0)
-    #     ref_pos[i] = data[0, i]
-    ref_pos[0] = setup.lat_centre
-    ref_pos[1] = setup.lon_centre
-    ref_pos[2] = 0
+            ref_pos[i] = data[0, i]
+
 
     # convert station positions to local coordinate system
     for i in range(len(data)):

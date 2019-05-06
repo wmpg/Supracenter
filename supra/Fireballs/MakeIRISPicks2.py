@@ -1397,8 +1397,7 @@ class ApplicationWindow(QtWidgets.QMainWindow):
         self.high_slider.setValue(self.bandpass_high_default)
 
         # plt.draw()
-        # plt.pause(0.001)
-        self._station_ax.figure.canvas.draw()
+        # plt.pause(0.001)        self._station_ax.figure.canvas.draw()
         self._waveform_ax.figure.canvas.draw()
         self._map_ax.figure.canvas.draw()
 

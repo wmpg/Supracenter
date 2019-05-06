@@ -29,6 +29,9 @@ Thanks to Gunter Stober for advice on atmospheric profiles
     Supracenter.py
     python -m supra.Supracenter.mainmenu <location of .ini file>
 
+    iniBuilder
+    python -m supra.Fireballs.SolutionGUI
+
     Optional Inputs:
         -h - help menu
 
@@ -39,6 +42,8 @@ Thanks to Gunter Stober for advice on atmospheric profiles
 #################################
 #         Example Usage         #
 #################################
+
+    First create a .ini file describing the meteor that will be studied. This can be done manually, or through the inibuilder found in SolutionGUI.py
 
     Run GetIRISData.py to see if there is any possible seismic signals in the location and time. If there are not enough stations, other stations not listed on IRIS or ORFEUS may be obtainable through their respective websites, and added through [Extra Stations]. If video or external evidence of fragmentations or the trajectory exists, they can be plotted on the graphs through [Ballistic] and [Fragmentation]. This plot can also be used as a manual search for the variables in [Ballistic] and 
     [Fragmentation] by plotting the expected arrival times over the raw, station data.
@@ -62,9 +67,9 @@ Thanks to Gunter Stober for advice on atmospheric profiles
     All values should not have any quotation marks
 
 
-    ###################################
-                Variables
-    ###################################
+###################################
+            Variables
+###################################
 
     ***Running the program without any variables will bring up a message which will display the required variable inputs for that part of the program. Any empty variable that is not a core variable will be set to its default value. To not use a feature, such as the manual fragmentation point search, or restricted_time, just leave the variable blank, and it will be set to a default which will turn the feature off.
 

@@ -420,11 +420,14 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     global sup
     global errors
 
-    # Potential Supracenter locations
-    sup = np.delete(sup, 0, 0)
+    try:
+        # Potential Supracenter locations
+        sup = np.delete(sup, 0, 0)
 
-    # Error in each potential Supracenter
-    errors = np.delete(errors, 0)
+        # Error in each potential Supracenter
+        errors = np.delete(errors, 0)
+    except:
+        pass
 
     #Filter errors
     try:

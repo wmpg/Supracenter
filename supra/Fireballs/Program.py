@@ -73,6 +73,122 @@ class station:
         self.file_name = file_name
         self.name = name
 
+def configWrite(ini_file, setup):
+    config = configparser.RawConfigParser()
+
+    config.add_section('General')
+    config.set('General', 'fireball_name', str(setup.fireball_name))
+    config.set('General', 'difference_filter_all', str(setup.difference_filter_all))
+    config.set('General', 'get_data', str(setup.get_data))
+    config.set('General', 'run_mode', str(setup.run_mode))
+    config.set('General', 'debug', str(setup.debug))
+
+    config.add_section('Files')
+    config.set('Files', 'working_directory', str(setup.working_directory))
+    config.set('Files', 'arrival_times_file', str(setup.arrival_times_file))
+    config.set('Files', 'sounding_file', str(setup.sounding_file))
+    config.set('Files', 'perturbation_spread_file', str(setup.perturbation_spread_file))
+    config.set('Files', 'station_picks_file', str(setup.station_picks_file))
+    config.set('Files', 'replot_points_file', str(setup.replot_points_file))
+
+    config.add_section('Parameters')
+    config.set('Parameters', 'lat_centre', str(setup.lat_centre))
+    config.set('Parameters', 'lon_centre', str(setup.lon_centre))
+    config.set('Parameters', 'deg_radius', str(setup.deg_radius))
+    config.set('Parameters', 'start_datetime', str(setup.start_datetime))
+    config.set('Parameters', 'end_datetime', str(setup.end_datetime))                    
+    config.set('Parameters', 'v_sound', str(setup.v_sound))    
+
+    config.add_section('Ballistic')
+    config.set('Ballistic', 't0', str(setup.t0))
+    config.set('Ballistic', 'v', str(setup.v))
+    config.set('Ballistic', 'azim', str(setup.azim))
+    config.set('Ballistic', 'zangle', str(setup.zangle))
+    config.set('Ballistic', 'lat_i', str(setup.lat_i))
+    config.set('Ballistic', 'lon_i', str(setup.lon_i))
+    config.set('Ballistic', 'elev_i', str(setup.elev_i))
+    config.set('Ballistic', 'lat_f', str(setup.lat_f))
+    config.set('Ballistic', 'lon_f', str(setup.lon_f))
+    config.set('Ballistic', 'elev_f', str(setup.elev_f))
+    config.set('Ballistic', 'show_ballistic_waveform', str(setup.show_ballistic_waveform))
+
+    config.add_section('Fragmentation')
+    config.set('Fragmentation', 'fragmentation_point', str(setup.fragmentation_point))
+    config.set('Fragmentation', 'show_fragmentation_waveform', str(setup.show_fragmentation_waveform))
+    config.set('Fragmentation', 'manual_fragmentation_search', str(setup.manual_fragmentation_search))
+
+    config.add_section('Restrictions')
+    config.set('Restrictions', 'v_fixed', str(setup.v_fixed))
+    config.set('Restrictions', 'azimuth_min', str(setup.azimuth_min))
+    config.set('Restrictions', 'azimuth_max', str(setup.azimuth_max))
+    config.set('Restrictions', 'zangle_min', str(setup.zangle_min))
+    config.set('Restrictions', 'zangle_max', str(setup.zangle_max))
+    config.set('Restrictions', 'x_min', str(setup.x_min))
+    config.set('Restrictions', 'x_max', str(setup.x_max))
+    config.set('Restrictions', 'y_min', str(setup.y_min))
+    config.set('Restrictions', 'y_max', str(setup.y_max))
+    config.set('Restrictions', 't_min', str(setup.t_min))
+    config.set('Restrictions', 't_max', str(setup.t_max))
+    config.set('Restrictions', 'v_min', str(setup.v_min))
+    config.set('Restrictions', 'v_max', str(setup.v_max))
+    config.set('Restrictions', 'max_error', str(setup.max_error))
+    config.set('Restrictions', 'restricted_time', str(setup.restricted_time))  
+    config.set('Restrictions', 'min_time', str(setup.min_time))
+    config.set('Restrictions', 'max_time', str(setup.max_time))
+    config.set('Restrictions', 'traj_tol', str(setup.traj_tol))
+    config.set('Restrictions', 'restrict_to_trajectory', str(setup.restrict_to_trajectory))
+    config.set('Restrictions', 'weight_distance_min', str(setup.weight_distance_min))
+    config.set('Restrictions', 'weight_distance_max', str(setup.weight_distance_max))
+    config.set('Restrictions', 'search_area', str(setup.search_area))
+    config.set('Restrictions', 'search_height', str(setup.search_area))
+
+    config.add_section('Atmosphere')
+    config.set('Atmosphere', 'enable_winds', str(setup.enable_winds))
+    config.set('Atmosphere', 'weather_type', str(setup.weather_type))
+    config.set('Atmosphere', 'grid_size', str(setup.grid_size))
+
+    config.add_section('Perturbations')
+    config.set('Perturbations', 'perturb', str(setup.perturb))
+    config.set('Perturbations', 'perturb_method', str(setup.perturb_method))
+    config.set('Perturbations', 'perturb_times', str(setup.perturb_times))
+    config.set('Perturbations', 'observe_frag_no', str(setup.observe_frag_no))
+
+    config.add_section('Speed')
+    config.set('Speed', 'fast_ballistic', str(setup.fast_ballistic))
+    config.set('Speed', 'fit_type', str(setup.fit_type))
+    config.set('Speed', 'n_theta', str(setup.n_theta))
+    config.set('Speed', 'n_phi', str(setup.n_phi))
+    config.set('Speed', 'angle_precision', str(setup.angle_precision))
+    config.set('Speed', 'angle_error_tol', str(setup.angle_error_tol))
+
+    config.add_section('PSO')
+    config.set('PSO', 'maxiter', str(setup.maxiter))
+    config.set('PSO', 'swarmsize', str(setup.swarmsize))
+    config.set('PSO', 'run_times', str(setup.run_times))
+    config.set('PSO', 'minfunc', str(setup.minfunc))
+    config.set('PSO', 'minstep', str(setup.minstep))
+    config.set('PSO', 'minstep', str(setup.phip))
+    config.set('PSO', 'minstep', str(setup.phig))
+    config.set('PSO', 'minstep', str(setup.omega))
+    config.set('PSO', 'minstep', str(setup.pso_debug))
+
+    config.add_section('Graphing')
+    config.set('Graphing', 'plot_all_stations', str(setup.plot_all_stations))
+    config.set('Graphing', 'colortoggle', str(setup.colortoggle))
+    config.set('Graphing', 'dot_tol', str(setup.dot_tol))
+    config.set('Graphing', 'contour_res', str(setup.contour_res))
+    config.set('Graphing', 'high_f', str(setup.high_f))
+    config.set('Graphing', 'high_b', str(setup.high_b))
+    config.set('Graphing', 'rm_stat', str(setup.rm_stat))
+    config.set('Graphing', 'img_dim', str(setup.img_dim))
+    config.set('Graphing', 'reported_points', str(setup.reported_points))
+    
+    config.add_section('Extra Stations')
+    config.set('Extra Stations', 'stations', str(setup.stations))
+
+    with open(ini_file, 'w') as configfile:
+        config.write(configfile)
+
 def configRead(ini_file):
 
     class Config:
@@ -422,7 +538,7 @@ def configRead(ini_file):
             print("DEBUG: max_error not detected.")
 
     try:
-        setup.restricted_time = datetime.strptime(config.get('Restrictions', 'restricted_time'), "%Y-%m-%d %H:%M:%S.%f")
+        setup.restricted_time = datetime.datetime.strptime(config.get('Restrictions', 'restricted_time'), "%Y-%m-%d %H:%M:%S.%f")
     except:
         setup.restricted_time = ''
         if setup.debug:
@@ -1074,6 +1190,4 @@ def configParse(setup, ini_type):
     setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
     setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
 
-def iniBuilder():
-    pass
 

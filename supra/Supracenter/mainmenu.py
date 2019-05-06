@@ -199,7 +199,8 @@ def main(setup):
     ##########################
     
     # Grab station info from file
-    s_info, s_name, weights, ref_pos = convStationDat(setup.station_name, setup.weight_distance_min, setup.weight_distance_max, setup.start_datetime, setup)
+    s_info, s_name, weights, ref_pos = convStationDat(setup.station_name, setup=setup, \
+        d_min=setup.weight_distance_min, d_max=setup.weight_distance_max)
     station_no = s_info[:, 5]
 
     ref_pos = position(ref_pos[0], ref_pos[1], ref_pos[2])

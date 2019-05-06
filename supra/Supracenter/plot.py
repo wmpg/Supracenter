@@ -152,7 +152,6 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
             print('ERROR: Cannot find optimal solution!')
             exit()
 
-    print(setup.manual_fragmentation_search)
     # User defined occurrence time
     if kotc != None:
         motc = kotc
