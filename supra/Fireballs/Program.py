@@ -132,6 +132,7 @@ def configWrite(ini_file, setup):
     config.set('Restrictions', 'v_min', str(setup.v_min))
     config.set('Restrictions', 'v_max', str(setup.v_max))
     config.set('Restrictions', 'max_error', str(setup.max_error))
+    config.set('Restrictions', 'enable_restricted_time', str(setup.enable_restricted_time))
     config.set('Restrictions', 'restricted_time', str(setup.restricted_time))  
     config.set('Restrictions', 'min_time', str(setup.min_time))
     config.set('Restrictions', 'max_time', str(setup.max_time))
@@ -140,7 +141,7 @@ def configWrite(ini_file, setup):
     config.set('Restrictions', 'weight_distance_min', str(setup.weight_distance_min))
     config.set('Restrictions', 'weight_distance_max', str(setup.weight_distance_max))
     config.set('Restrictions', 'search_area', str(setup.search_area))
-    config.set('Restrictions', 'search_height', str(setup.search_area))
+    config.set('Restrictions', 'search_height', str(setup.search_height))
 
     config.add_section('Atmosphere')
     config.set('Atmosphere', 'enable_winds', str(setup.enable_winds))
@@ -167,10 +168,10 @@ def configWrite(ini_file, setup):
     config.set('PSO', 'run_times', str(setup.run_times))
     config.set('PSO', 'minfunc', str(setup.minfunc))
     config.set('PSO', 'minstep', str(setup.minstep))
-    config.set('PSO', 'minstep', str(setup.phip))
-    config.set('PSO', 'minstep', str(setup.phig))
-    config.set('PSO', 'minstep', str(setup.omega))
-    config.set('PSO', 'minstep', str(setup.pso_debug))
+    config.set('PSO', 'phip', str(setup.phip))
+    config.set('PSO', 'phig', str(setup.phig))
+    config.set('PSO', 'omega', str(setup.omega))
+    config.set('PSO', 'pso_debug', str(setup.pso_debug))
 
     config.add_section('Graphing')
     config.set('Graphing', 'plot_all_stations', str(setup.plot_all_stations))
@@ -315,14 +316,20 @@ def configRead(ini_file):
             print("DEBUG: deg_radius not detected.")
 
     try:
-        setup.start_datetime = datetime.datetime.strptime(config.get('Parameters', 'start_datetime'), "%Y-%m-%d %H:%M:%S.%f")
+        try:
+            setup.start_datetime = datetime.datetime.strptime(config.get('Parameters', 'start_datetime'), "%Y-%m-%d %H:%M:%S.%f")
+        except:
+            setup.start_datetime = datetime.datetime.strptime(config.get('Parameters', 'start_datetime'), "%Y-%m-%d %H:%M:%S")
     except:
         setup.start_datetime = ''
         if setup.debug:
             print("DEBUG: start_datetime not detected.")
 
     try:
-        setup.end_datetime = datetime.datetime.strptime(config.get('Parameters', 'end_datetime'), "%Y-%m-%d %H:%M:%S.%f")
+        try:
+            setup.end_datetime = datetime.datetime.strptime(config.get('Parameters', 'end_datetime'), "%Y-%m-%d %H:%M:%S.%f")
+        except:
+            setup.end_datetime = datetime.datetime.strptime(config.get('Parameters', 'end_datetime'), "%Y-%m-%d %H:%M:%S")
     except:
         setup.end_datetime = ''
         if setup.debug:
@@ -538,7 +545,17 @@ def configRead(ini_file):
             print("DEBUG: max_error not detected.")
 
     try:
-        setup.restricted_time = datetime.datetime.strptime(config.get('Restrictions', 'restricted_time'), "%Y-%m-%d %H:%M:%S.%f")
+        setup.enable_restricted_time = config.get('Restrictions', 'enable_restricted_time')
+    except:
+        setup.enable_restricted_time = 'false'
+
+    setup.enable_restricted_time = (setup.enable_restricted_time.lower() == 'true')  
+
+    try:
+        try:
+            setup.restricted_time = datetime.datetime.strptime(config.get('Restrictions', 'restricted_time'), "%Y-%m-%d %H:%M:%S.%f")
+        except:
+            setup.restricted_time = datetime.datetime.strptime(config.get('Restrictions', 'restricted_time'), "%Y-%m-%d %H:%M:%S")
     except:
         setup.restricted_time = ''
         if setup.debug:
@@ -587,14 +604,14 @@ def configRead(ini_file):
     setup.restrict_to_trajectory = (setup.restrict_to_trajectory.lower() == 'true')    
 
     try:
-        setup.search_area = list((config.get('Restrictions', 'search_area')).replace(' ', '').split(','))
+        setup.search_area = eval((config.get('Restrictions', 'search_area')))#.replace(' ', '').split(','))
     except:
         setup.search_area = ''
         if setup.debug:
             print("DEBUG: search_area not detected.")
 
     try:
-        setup.search_height = list((config.get('Restrictions', 'search_height')).replace(' ', '').split(','))
+        setup.search_height = eval((config.get('Restrictions', 'search_height')))#.replace(' ', '').split(','))
     except:
         setup.search_height = ''
         if setup.debug:

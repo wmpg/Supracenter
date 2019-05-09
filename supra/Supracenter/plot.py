@@ -165,6 +165,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
         motc = np.dot(w, sotc)/sum(w)
 
     # Station residuals (from average)
+
     r = sotc - motc
 
     return time3D, az, tf, r, motc, sotc

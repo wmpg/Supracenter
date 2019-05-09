@@ -90,9 +90,15 @@ def findECMWFSound(lat, lon, dataset):
     # pressure levels in hPa
     height = dataset[5]
 
+
     # Find the closest data point to the requested lat, lon
-    lat_i = bisearch(latitude, lat%360)
-    lon_i = bisearch(longitude, lon%360)
+    try:
+        lat_i = bisearch(latitude, lat%360)
+        lon_i = bisearch(longitude, lon%360)
+    except:
+        print('ERROR: Cannot find given latitude/longitude in atmospheric profile range! (netCDFconv.py)')
+        exit()
+
 
     # Create sounding array of all levels from the closest lat and lon
     # Initialize arrays
@@ -250,65 +256,6 @@ def findUKMOSound(lat, lon, dataset):
 
     return sounding
 
-
-# def storeNetCDFECMWF(file_name, consts):
-#     """ HELPER FUNCTION: Reads ECMWF netCDF file and stores it in memory for reuse later in the program 
-
-#     Arguments:
-#         file_name: [String] name of file
-#         consts: [object] physical constants
-
-#     Returns:
-#         store_data: [list[ndarray]] atmospheric profile for the search area
-#     """
-
-#     print('Converting weather data. This may take a while...')
-
-#     # Read the file
-#     dataset = Dataset(file_name, "r+", format="NETCDF4")
-
-#     # Check file type
-#     if not (set(['t', 'u', 'v', 'latitude', 'longitude']) < set(dataset.variables.keys())):
-#         print('FILE ERROR: File does not contain the correct parameters! Variables Required: t, u, v, latitude, longitude')
-#         sys.exit()
-
-#     # Check against UKMO files
-#     elif not (set(['level']) < set(dataset.variables.keys())):
-#         a = input('WARNING: File is an unrecognized .nc! May be old ECMWF or UKMO file. Running may cause program to crash.\
-#                                                                                                  Bypass? (y/n) ')
-#         if a.lower() != 'y': 
-#             sys.exit()
-
-#     # Pull variables from the file
-#     latitude = dataset.variables['latitude']
-#     longitude = dataset.variables['longitude']
-#     temperature = dataset.variables['t']
-
-#     # Wind, positive from W to E
-#     x_wind = dataset.variables['u']
-
-#     # Wind, positive from S to N
-#     y_wind = dataset.variables['v']
-
-#     # Transform Temperature to Speed of Sound (m/s)
-#     temps = (consts.GAMMA*consts.R/consts.M_0*temperature[:])**0.5
-
-#     # Magnitude of winds (m/s)
-#     mags = np.sqrt(x_wind[:]**2 + y_wind[:]**2)
-
-#     # Direction the winds are coming from, angle in radians from North due East
-#     dirs = (np.arctan2(-y_wind[:], -x_wind[:]))%(2*np.pi)*180/np.pi
-#     dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
-
-#     # Store data in a list of arrays
-#     store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temps), np.array(mags), np.array(dirs)]
-    
-#     # Store data in a list of ndarrays
-#     # store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temperature[:]), np.array(x_wind[:]), np.array(y_wind[:])]
-#     dataset.close()
-
-#     return store_data
-
 def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     """ HELPER FUNCTION: Reads ECMWF netCDF file and stores it in memory for reuse later in the program 
 
@@ -319,8 +266,6 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     Returns:
         store_data: [list[ndarray]] atmospheric profile for the search area
     """
-
-    print('Converting weather data. This may take a while...')
 
     try:
         # Read the file
@@ -345,8 +290,9 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     # print(dataset)
     #print(dataset.variables)
 
-    lon_index = int((lon%360)*4)
-    lat_index = int(-(lat+90)*4)# - 90*4
+    lon_index = int(np.around((lon%360)*4))
+    lat_index = int(np.around(-(lat+90)*4))# - 90*4
+
     longitude = np.array(dataset.variables['longitude'][lon_index-20:lon_index+21])
     latitude = np.array(dataset.variables['latitude'][lat_index-20:lat_index+21])
 
@@ -357,7 +303,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #not known
 
     start_time = int(start_time)
-
+    
     # time, (number), level, lat, lon
     temperature = np.array(dataset.variables['t'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
     x_wind = -np.array(dataset.variables['u'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
@@ -377,7 +323,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
 
     dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
     dirs = supra.Supracenter.angleConv.angle2NDE(np.degrees(dirs))
-
+    
     level = convLevels()
     level = np.flipud(np.array(level))
 
@@ -390,6 +336,27 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
 
     return store_data
 
+    def parseGeneralECMWF(file_name, lat, lon, time, variables):
+        
+        try:
+        # Read the file
+            dataset = Dataset(file_name, "r+", format="NETCDF4")
+        except:
+            print("ERROR: Unable to read weather file: ", file_name)
+            exit()
+
+        lon_index = int(np.around((lon%360)*4))
+        lat_index = int(np.around(-(lat+90)*4))
+        time_index = int(time)
+
+        sounding = []
+
+        for var in variables:
+            if (set([var]) < set(dataset.variables.keys())):
+                sounding.append(np.array(dataset.variables[var][time_index, :, lat_index, lon_index]))
+
+        sounding = np.array(sounding)
+        print(sounding)
 
 def storeHDF(file_name, consts):
     """ HELPER FUNCTION: Reads MERRA HDF file and stores it in memory for reuse later in the program

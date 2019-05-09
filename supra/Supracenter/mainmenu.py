@@ -123,10 +123,7 @@ def main(setup):
         setup.restricted_time = None
 
     # time is restriced
-    else:
-        setup.restricted_time = setup.restricted_time.hour*3600 + setup.restricted_time.minute*60 \
-                        + setup.restricted_time.second + setup.restricted_time.microsecond/1e6
-
+    
     # key setting for if not using a manual search
     if setup.manual_fragmentation_search == '':
         setup.manual_fragmentation_search = []

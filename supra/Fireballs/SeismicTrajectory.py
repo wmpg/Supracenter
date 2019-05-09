@@ -129,6 +129,7 @@ def parseWeather(setup, consts, time=0):
         #     fetchECMWF(setup, setup.sounding_file)
 
         # GetIRISData/MakeIRISPicks
+
         try:
             #Get closest hour
             start_time = (setup.start_datetime.hour + np.round(setup.start_datetime.minute/60) + time)%24

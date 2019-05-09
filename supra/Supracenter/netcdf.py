@@ -41,7 +41,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     """
 
     print('Converting weather data. This may take a while...')
-
+    print('AAAAAAAAAA')
     try:
         # Read the file
         dataset = Dataset(file_name, "r+", format="NETCDF4")
@@ -71,8 +71,6 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     lat_index = int(-(lat+90)*4) -1# - 90*4
     longitude = np.array(dataset.variables['longitude'][:])
     latitude = np.array(dataset.variables['latitude'][:])
-    print(latitude[lat_index])
-    print(longitude[lon_index])
 
     level = np.array(dataset.variables['level'])
     #pressure 1 - 1000 hPa , non-linear
@@ -81,7 +79,6 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #not known
 
     start_time = int(start_time)
-    print(start_time)
 
     # time, (number), level, lat, lon
     #z =  np.array(dataset.variables['z'][start_time, :, lat_index, lon_index])

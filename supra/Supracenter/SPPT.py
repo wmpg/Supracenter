@@ -285,11 +285,8 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
         V = spread_r(v, spread_v)
 
     else:
-        print('WARNING: Unrecognized perturbation type, using SPPT')
-        r = rGen(mode='normal')
-        T = SPPT(t, level, r)
-        U = SPPT(u, level, r)
-        V = SPPT(v, level, r)
+        #print('WARNING: Unrecognized perturbation type, using SPPT')
+        return None
 
     # convert temp to speed of sound
     TEMPS = (consts.GAMMA*consts.R/consts.M_0*T)**0.5

@@ -309,20 +309,36 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
     print('Data converted. Searching...')
 
-    search = setup.search
+    search = [float(setup.search_area[0]),float(setup.search_area[1]), float(setup.search_area[2]), float(setup.search_area[3]),\
+                            float(setup.search_height[0]), float(setup.search_height[1])]
     ref_pos = setup.ref_pos
-    output_name = setup.output_name
+    output_name = setup.working_directory
     single_point = setup.manual_fragmentation_search
     ref_time = setup.start_datetime
-    kotc = setup.restricted_time
+
+    # try:
+    #     setup.restricted_time = setup.restricted_time.hour*3600 + setup.restricted_time.minute*60 \
+    #                 + setup.restricted_time.second + setup.restricted_time.microsecond/1e6
+    # except:
+    #     pass
+    if setup.enable_restricted_time:
+        kotc = setup.restricted_time
+    else:
+        kotc = None
+    
 
     if len(single_point) != 0:
         print('Position from mean station location')
 
+
     # check if user defined occurrence time is used
     if kotc != None:
-        kotc -= ref_time.hour*3600 + ref_time.minute*60 + ref_time.second + ref_time.microsecond/1e6
-
+    
+        kotc = (kotc - ref_time).total_seconds()
+        # kotc.hour        -= ref_time.hour
+        # kotc.minute      -= ref_time.minute
+        # kotc.second      -= ref_time.second
+        # kotc.microsecond -= ref_time.microsecond
     # number of stations total
     n_stations = len(stns)
 
@@ -357,7 +373,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
         search[4] = max(xstn[:, 2]) + 0.0001
 
     # If automatic search
-    if len(single_point) == 0:
+    if (len(single_point) == 0) or (single_point == [None, None, None, None]):
 
         # Boundaries of search volume
         #  [x, y, z] local coordinates
@@ -376,10 +392,10 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
         if setup.restrict_to_trajectory:
             #cons = [lineConstraintx, lineConstrainty, lineConstraintz]
-            x_opt, f_opt = pso(timeFunction, lb, ub, f_ieqcons=lineConstraint, args=args, swarmsize=setup.swarmsize, maxiter=setup.maxiter, \
+            x_opt, f_opt = pso(timeFunction, lb, ub, f_ieqcons=lineConstraint, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
                         phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep) 
         else:
-            x_opt, f_opt = pso(timeFunction, lb, ub, args=args, swarmsize=setup.swarmsize, maxiter=setup.maxiter, \
+            x_opt, f_opt = pso(timeFunction, lb, ub, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
                         phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep) 
 
         pool.close()
@@ -395,7 +411,6 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     # Get results for current Supracenter
     time3D, az, tf, r, motc, sotc = outputWeather(n_stations, x_opt, stns, setup, consts, \
                                                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, output_name, s_name, kotc, w)
-
 
     # Find error for manual searches
     if len(single_point) != 0:
@@ -419,7 +434,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
     global sup
     global errors
-
+    print(sup)
     try:
         # Potential Supracenter locations
         sup = np.delete(sup, 0, 0)

@@ -400,6 +400,7 @@ Thanks to Gunter Stober for advice on atmospheric profiles
     ECMWF Instructions - Script Download
     ====================================
     As of August 2018 this may be outdated with Climate Change Service
+    https://cds.climate.copernicus.eu/api-how-to
 
     ECMWF has moved to here:
     https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=form
