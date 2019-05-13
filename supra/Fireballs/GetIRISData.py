@@ -31,7 +31,7 @@ from wmpl.Utils.Math import subsampleAverage
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Fireballs.SeismicTrajectory import timeOfArrival, local2LatLon, latLon2Local, waveReleasePoint, parseWeather, Constants
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, parseWeather, Constants
 from supra.Fireballs.Program import configRead, configParse, position, station
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
@@ -1143,7 +1143,6 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
     sounding_p = sounding
 
     if setup.show_ballistic_waveform:
-
         # Input coordinate type. True - coordinates are given as lat/lon. False - coordinates are given in local 
         # coordinates in reference to the source center
 
@@ -1251,7 +1250,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
     ax.set_xlabel('Distance (km)')
     ax.set_ylabel('Time (s)')
 
-    ax.set_ylim(min_time - 200, max_time + 500)
+    #ax.set_ylim(min_time - 200, max_time + 500)
     ax.set_xlim(0, max_wave_value)
 
     ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.7)

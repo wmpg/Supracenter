@@ -434,7 +434,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
     global sup
     global errors
-    print(sup)
+
     try:
         # Potential Supracenter locations
         sup = np.delete(sup, 0, 0)
@@ -446,17 +446,17 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
     #Filter errors
     try:
-        while max(errors) > setup.max_error/100:
-            a = []
-            std_error = np.std(errors)
-            lim = np.mean(errors) + 0*std_error
+        #while max(errors) > setup.max_error/100:
+        a = []
+        std_error = np.std(errors)
+        lim = np.mean(errors) + 0*std_error
 
-            for i in range(len(errors)):
-                if errors[i] >= lim:
-                    a.append(i)
+        for i in range(len(errors)):
+            if errors[i] >= lim:
+                a.append(i)
 
-            errors = np.delete(errors, (a), axis=0)
-            sup = np.delete(sup, (a), axis=0)
+        errors = np.delete(errors, (a), axis=0)
+        sup = np.delete(sup, (a), axis=0)
     except:
         print("WARNING: Unable to filter errors")
 

@@ -39,6 +39,7 @@ import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
+from supra.Supracenter.angleConv import loc2Geo, latLon2Local, local2LatLon
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
 from supra.Fireballs.Program import configParse, configRead
@@ -504,10 +505,14 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     y0 *= 1000
     v  *= 1000
 
-    if v_fixed != '':
+    # if v_fixed != '':
 
-        # Keep the fireball velocity fixed
-        v = v_fixed
+    #     # Keep the fireball velocity fixed
+    #     v = v_fixed
+    try:
+        v = float(v_fixed)
+    except:
+        pass
 
 
     # If the azimuth offset is given, recalculate the proper values
@@ -515,8 +520,8 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         azim += azim_off
 
     # Wrap azimuth and zenith angle to the allowed range
-    azim = azim%360
-    zangle = zangle%360
+    azim = azim%(2*np.pi)
+    zangle = zangle%(2*np.pi)
 
     cost_value = 0
 
@@ -552,18 +557,18 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     # check: large err
     if cost_value > MAX_ERROR:
         errors = np.hstack((errors, MAX_ERROR))
-        sup = np.vstack((sup, [x0, y0, t0, v, azim, 90 - np.degrees(zangle)]))
+        sup = np.vstack((sup, [x0, y0, t0, v, azim, zangle]))
         #cost_value = MAX_ERROR
 
     # If no errors:
     else:
         errors = np.hstack((errors, cost_value))
-        sup = np.vstack((sup, [x0, y0, t0, v, azim, 90 - np.degrees(zangle)]))
+        sup = np.vstack((sup, [x0, y0, t0, v, azim, zangle]))
 
     # Optional print status of searches
     if setup.debug:
         print('Loc: x0 = {:10.2f}, y0 = {:10.2f}, t = {:8.2f}, v = {:4.1f}, azim = {:7.2f}, zangle = {:5.2f}, Err: {:8.2f}'\
-            .format(x0, y0, t0, v/1000, np.degrees(azim)%360, 90 - np.degrees(zangle), cost_value))\
+            .format(x0, y0, t0, v/1000, np.degrees(azim), np.degrees(zangle), cost_value))\
 
     return cost_value
 
@@ -682,7 +687,6 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
         p0[5] = np.radians(45)
 
 
-
     # Find the trajectory by minimization
     # The minimization will probably fail as t0 and the velocity of the fireball are dependant, but the
     # radiant should converge
@@ -716,6 +720,15 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     zangle_min = np.min((np.radians(setup.zangle_max), np.radians(setup.zangle_min)))
     zangle_max = np.max((np.radians(setup.zangle_max), np.radians(setup.zangle_min)))
 
+        # Fix order, since min/max of angle angle is counter-intuitive
+    if setup.azimuth_min < setup.azimuth_max:
+        setup.azimuth_min, setup.azimuth_max = setup.azimuth_max, setup.azimuth_min
+
+    # Set the zangle bounds
+    # Calculate zenith angles
+    azim_down = np.min((np.radians(setup.azimuth_max), np.radians(setup.azimuth_min)))
+    azim_up   = np.max((np.radians(setup.azimuth_max), np.radians(setup.azimuth_min)))
+
     # Set the bounds for every parameters
     bounds = [
         (setup.x_min, setup.x_max), # X0
@@ -742,10 +755,10 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     for i in range(setup.run_times):
 
         print('Running PSO, run', i)
-
+        print()
         # Use PSO for minimization
         x, fopt = pyswarm.pso(timeResidualsAzimuth, lower_bounds, upper_bounds, args=(stat_coord_list, \
-            pick_time, setup, sounding, azim_avg, v_fixed), maxiter=setup.maxiter, swarmsize=setup.swarmsize, \
+            pick_time, setup, sounding, np.radians(azim_avg), v_fixed), maxiter=setup.maxiter, swarmsize=setup.swarmsize, \
             phip=setup.phip, phig=setup.phig, debug=setup.debug, omega=setup.omega)
 
         print('Run', i, 'best estimation', fopt)
@@ -883,7 +896,7 @@ def addPressure(sounding):
 def getTrajectoryVector(azim, zangle):
         
     # Calculate the trajectory vector
-    u = np.array([np.cos(np.pi - azim)*np.sin(zangle), np.sin(np.pi - azim)*np.cos(zangle), -np.cos(zangle)])
+    u = np.array([np.sin(azim)*np.sin(zangle), np.cos(azim)*np.sin(zangle), -np.cos(zangle)])
 
     return u
 
@@ -938,6 +951,8 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     jd_list = np.array(jd_list)
     stat_obs_times_of_arrival = pick_time#(jd_list - jd_ref)*86400.0
 
+
+    
     # Convert station coordiantes to local coordinates, with the station of the first arrival being the
     # origin of the coordinate system
     stat_coord_list = convertStationCoordinates(station_list, ref_indx)
@@ -958,7 +973,7 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
 
     # Calculate the trajectory vector
-    u = np.array([np.cos(np.pi - azim)*np.sin(zangle), np.sin(np.pi - azim)*np.cos(zangle), -np.cos(zangle)])
+    u = np.array([np.sin(azim)*np.sin(zangle), np.cos(azim)*np.sin(zangle), -np.cos(zangle)])
 
     # Calculate modelled times of arrival and points of wave releasefor every station
     stat_model_times_of_arrival = []
@@ -1036,7 +1051,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
     # Determine the maximum absolute residual
     toa_res_max = np.max(toa_residuals)
-
 
 
     ### PLOT 3D ###
@@ -1272,7 +1286,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
         # Add border to text
         txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
-
 
     # Plot intersection with the ground
     m.scatter(lat_i, lon_i, s=10, marker='x', c='g')

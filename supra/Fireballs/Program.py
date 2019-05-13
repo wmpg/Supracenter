@@ -1203,8 +1203,13 @@ def configParse(setup, ini_type):
     else:
         print("Trajectory unknown")
 
-    #turn coordinates into position objects
-    setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
-    setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
+    try:
+        #turn coordinates into position objects
+        setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
+        setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
+    except:
+        setup.traj_i = position(0, 0, 0)
+        setup.traj_f = position(0, 0, 0)
+        print("Warning: Unable to build trajectory points")
 
 

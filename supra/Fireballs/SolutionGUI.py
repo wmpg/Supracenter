@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 import time
 import datetime
+import copy
+import obspy
+import scipy.signal
 
 from netCDF4 import Dataset
 
@@ -15,6 +18,7 @@ from PyQt5.QtCore import *
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
+import matplotlib.gridspec as gridspec
 
 from functools import partial
 
@@ -26,12 +30,27 @@ from mpl_toolkits.mplot3d import Axes3D
 
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
-from supra.Fireballs.Program import position, configRead, configWrite
-from supra.Fireballs.SeismicTrajectory import Constants, parseWeather
+from supra.Fireballs.Program import position, configRead, configWrite, station
+from supra.Fireballs.SeismicTrajectory import Constants, parseWeather, waveReleasePoint, timeOfArrival
 from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE
+from supra.Supracenter.convLevels import convLevels
 from supra.Supracenter.netCDFconv import findECMWFSound
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.fetchCopernicus import copernicusAPI
+from supra.Fireballs.MakeIRISPicks import WaveformPicker
+from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, plotAllWaveforms, \
+butterworthBandpassFilter, convolutionDifferenceFilter
+from wmpl.Utils.Earth import greatCircleDistance
+from wmpl.Utils.PlotMap import GroundMap
+from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyweatherInterp import getWeather
+from supra.Supracenter.SPPT import perturb
+
+global arrTimes 
+global sounding
+
+DATA_FILE = 'data.txt'
+OUTPUT_CSV = 'data_picks.csv'
 
 class SolutionGUI(QMainWindow):
     def __init__(self):
@@ -49,6 +68,9 @@ class SolutionGUI(QMainWindow):
         p.setColor(self.backgroundRole(), Qt.black)
         self.setPalette(p)
 
+        self.slider_scale = 0.25
+        self.bandpass_scale = 0.1
+
         self.tab_widget = QTabWidget()
         self.tab_widget.blockSignals(True)
         self.tab_widget.currentChanged.connect(self.tabChange)
@@ -57,6 +79,7 @@ class SolutionGUI(QMainWindow):
         self.addIniWidgets()
         self.addSupraWidgets()
         self.addSupWidgets()
+        self.addMakePicksWidgets()
         self.addFetchATMWidgets()
         self.addProfileWidgets()
         self.addDocsWidgets()
@@ -66,22 +89,14 @@ class SolutionGUI(QMainWindow):
         self.tab_widget.blockSignals(False)
         layout.addWidget(self.tab_widget, 1, 1)
 
-        # extractAction = QtGui.QAction("&GET TO THE CHOPPAH!!!", self)
-        # extractAction.setShortcut("Ctrl+Q")
-        # extractAction.setStatusTip('Leave The App')
-        # extractAction.triggered.connect(self.close_application)
-
-        # self.statusBar()
-
-        # mainMenu = self.menuBar()
-        # fileMenu = mainMenu.addMenu('&File')
-        # fileMenu.addAction(extractAction)
-
         menu_bar = self.menuBar() 
         layout.addWidget(menu_bar, 0, 1)
-        fileMenu = menu_bar.addMenu('&File')
-        aboutMenu = menu_bar.addMenu('&About')
-        #fileMenu.addAction(exitAction)
+        file_menu = menu_bar.addMenu('&File')
+        about_menu = menu_bar.addMenu('&About')
+
+        file_exit = QAction("Exit", self)
+        file_exit.triggered.connect(qApp.quit)
+        file_menu.addAction(file_exit)
 
         stylesheet = """ 
         QTabWidget>QWidget>QWidget{background: gray;}
@@ -90,6 +105,11 @@ class SolutionGUI(QMainWindow):
         """
 
         self.setStyleSheet(stylesheet)
+
+        # timer = QtCore.QTimer()
+        # timer.timeout.connect(self.update)
+        # timer.start(0)
+    
 
         pg.setConfigOptions(antialias=True)
 
@@ -401,8 +421,8 @@ class SolutionGUI(QMainWindow):
         consts = Constants()
         setup = self.saveINI(False)
 
-        setup.lat_centre = self.fatm_lat_slide.value()
-        setup.lon_centre = self.fatm_lon_slide.value()
+        setup.lat_centre = self.fatm_lat_slide.value()*self.slider_scale
+        setup.lon_centre = self.fatm_lon_slide.value()*self.slider_scale
         setup.sounding_file = self.fatm_name_edits.text()
         setup.weather_type = 'ecmwf'
 
@@ -437,8 +457,9 @@ class SolutionGUI(QMainWindow):
             X = mags*np.sin(np.radians(dirs))
             Y = sounding[:, 0]
         else:
-            print('error, atmPlotProfile')
-            print(self.fatm_variable_combo.currentText())
+            self.errorMessage('Error reading fatmPlotProfile combo box', 2, detail=self.fatm_variable_combo.currentText())
+            X = []
+            Y = []
 
         self.fatm_canvas.clear()
         self.fatm_canvas.plot(x=X, y=Y, pen='w')
@@ -481,39 +502,93 @@ class SolutionGUI(QMainWindow):
     def fatmValueChange(self, obj, slider):
         
         if obj == self.fatm_lat_label:
-            obj.setText('Latitude: {:.1f}'.format(slider.value()))
+            obj.setText('Latitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         elif obj == self.fatm_lon_label:
-            obj.setText('Longitude: {:.1f}'.format(slider.value()))
+            obj.setText('Longitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         else:
-            self.errorMessage(self, 'Bad atm slider pass in fatmValueChange', 2)
+            self.errorMessage('Bad atm slider pass in fatmValueChange', 2)
 
         #self.atmPlotProfile(self.atm_lat_slide.value(), self.atm_lon_slide.value(), self.var_typ)
     
+    def parseGeneralECMWF(self, file_name, lat, lon, time_of, variables):
+
+        try:
+        # Read the file
+            dataset = Dataset(file_name, "r+", format="NETCDF4")
+        except:
+            self.errorMessage("Unable to read weather file: {:}".format(file_name), 2)
+            return None
+
+        lon_index = int(np.around((lon%360)*4))
+        lat_index = int(np.around(-(lat+90)*4))
+        time_index = int(time_of)
+
+        sounding = []
+        pressures = np.array(dataset.variables['level'])
+        # level = convLevels()
+        # # level = np.flipud(np.array(level))
+
+        # sounding.append(level)
+        sounding.append(pressures)
+
+        for var in variables:
+            if (set([var]) < set(dataset.variables.keys())):
+                sounding.append(np.array(dataset.variables[var][time_index, :, lat_index, lon_index]))
+            else:
+                print("WARNING: Variable {:} not found in dataset!".format(var))
+
+        sounding = np.array(sounding).transpose()
+
+        dataset.close()
+        return sounding
+
     def fatmPrint(self):
         
         filename = QFileDialog.getSaveFileName(self, 'Save File', '', 'Text File (*.txt)')
 
-        consts = Constants()
         setup = self.saveINI(False)
 
-        setup.lat_centre = self.fatm_lat_slide.value()
-        setup.lon_centre = self.fatm_lon_slide.value()
+        setup.lat_centre = self.fatm_lat_slide.value()*self.slider_scale
+        setup.lon_centre = self.fatm_lon_slide.value()*self.slider_scale
         setup.sounding_file = self.fatm_name_edits.text()
+        atm_time = self.fatm_datetime_edits.dateTime().time().hour()
         setup.weather_type = 'ecmwf'
 
-        try:
-            dataset = parseWeather(setup, consts)
-            sounding = findECMWFSound(setup.lat_centre, setup.lon_centre, dataset)
-        except:
-            self.errorMessage('Error reading weather profile in fatmPrint', 2)
-            return None
+        variables = []
+
+        if self.fatm_temp.isChecked():
+            variables.append('t')
+        if self.fatm_u_wind.isChecked():
+            variables.append('u')
+        if self.fatm_v_wind.isChecked():
+            variables.append('v')
+            
+        # try:
+        sounding = self.parseGeneralECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, atm_time, variables)
+        #     # dataset = parseWeather(setup, consts)
+        #     # sounding = findECMWFSound(setup.lat_centre, setup.lon_centre, dataset)
+        # except:
+        #     self.errorMessage('Error reading weather profile in fatmPrint', 2)
+        #     return None
 
         if '.txt' not in filename[0]:
             filename[0] = filename[0] + '.txt'
 
+
+        header = 'Pressures (hPa)'
+
+        for element in variables:
+
+            if element == variables[-1]:
+                header = header + ', ' + element + '\n'
+            else:
+                header = header + ', ' + element
+
+
+
         with open(str(filename[0]), 'w') as f:
             
-            f.write('Height (m) , Speed of Sound (m/s), Wind Magnitude (m/s), Wind Direction (deg f N)')
+            f.write(header)
 
             for line in sounding:
                 info = ''
@@ -594,8 +669,8 @@ class SolutionGUI(QMainWindow):
         self.fatm_lat_slide = QSlider(Qt.Horizontal)
         fetch_content.addWidget(self.fatm_lat_label, 7, 1)
         fetch_content.addWidget(self.fatm_lat_slide, 7, 2)
-        self.fatm_lat_slide.setMinimum(-90)
-        self.fatm_lat_slide.setMaximum(90)
+        self.fatm_lat_slide.setMinimum(-90/self.slider_scale)
+        self.fatm_lat_slide.setMaximum(90/self.slider_scale)
         self.fatm_lat_slide.setValue(0)
         self.fatm_lat_slide.setTickInterval(0.5)
         self.fatm_lat_slide.valueChanged.connect(partial(self.fatmValueChange, self.fatm_lat_label, self.fatm_lat_slide))
@@ -604,8 +679,8 @@ class SolutionGUI(QMainWindow):
         self.fatm_lon_slide = QSlider(Qt.Horizontal)
         fetch_content.addWidget(self.fatm_lon_label, 8, 1)
         fetch_content.addWidget(self.fatm_lon_slide, 8, 2,)
-        self.fatm_lon_slide.setMinimum(-180)
-        self.fatm_lon_slide.setMaximum(180)
+        self.fatm_lon_slide.setMinimum(-180/self.slider_scale)
+        self.fatm_lon_slide.setMaximum(180/self.slider_scale)
         self.fatm_lon_slide.setValue(0)
         self.fatm_lon_slide.setTickInterval(0.5)
         self.fatm_lon_slide.valueChanged.connect(partial(self.fatmValueChange, self.fatm_lon_label, self.fatm_lon_slide))
@@ -661,9 +736,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         folder5 = QTreeWidgetItem(root, ["Weather Perturbations"])
         folder5.setData(2, Qt.EditRole, '') 
 
-
-        # folder1_2 = QTreeWidgetItem(folder1, ["Living room", "Approved by client"])
-        # folder1_2.setData(2, Qt.EditRole, '') 
 
         docs_tab_content.addWidget(self.docTree)
 
@@ -1476,7 +1548,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Direction", units='deg from N')
         else:
-            print('error, atmPlotProfile')
+            self.errorMessage('Error reading var_typ in atmPlotProfile', 2)
+            return None
 
         self.atm_canvas.clear()
         self.atm_canvas.plot(x=X, y=Y, pen='w')
@@ -1526,13 +1599,13 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
     def atmValueChange(self, obj, slider):
         
         if obj == self.atm_lat_label:
-            obj.setText('Latitude: {:.1f}'.format(slider.value()))
+            obj.setText('Latitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         elif obj == self.atm_lon_label:
-            obj.setText('Longitude: {:.1f}'.format(slider.value()))
+            obj.setText('Longitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         else:
             self.errorMessage(self, 'Bad atm slider pass in atmValueChange', 2)
 
-        self.atmPlotProfile(self.atm_lat_slide.value(), self.atm_lon_slide.value(), self.var_typ)
+        self.atmPlotProfile(self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, self.var_typ)
     
     def addProfileWidgets(self):
         profile_tab = QWidget()
@@ -1547,8 +1620,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.atm_lat_slide = QSlider(Qt.Horizontal)
         profile_tab_content.addWidget(self.atm_lat_label, 6, 1)
         profile_tab_content.addWidget(self.atm_lat_slide, 6, 2, 1, 3)
-        self.atm_lat_slide.setMinimum(-90)
-        self.atm_lat_slide.setMaximum(90)
+        self.atm_lat_slide.setMinimum(-90/self.slider_scale)
+        self.atm_lat_slide.setMaximum(90/self.slider_scale)
         self.atm_lat_slide.setValue(0)
         self.atm_lat_slide.setTickInterval(0.5)
         self.atm_lat_slide.valueChanged.connect(partial(self.atmValueChange, self.atm_lat_label, self.atm_lat_slide))
@@ -1557,8 +1630,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.atm_lon_slide = QSlider(Qt.Horizontal)
         profile_tab_content.addWidget(self.atm_lon_label, 7, 1)
         profile_tab_content.addWidget(self.atm_lon_slide, 7, 2, 1, 3)
-        self.atm_lon_slide.setMinimum(-180)
-        self.atm_lon_slide.setMaximum(180)
+        self.atm_lon_slide.setMinimum(-180/self.slider_scale)
+        self.atm_lon_slide.setMaximum(180/self.slider_scale)
         self.atm_lon_slide.setValue(0)
         self.atm_lon_slide.setTickInterval(0.5)
         self.atm_lon_slide.valueChanged.connect(partial(self.atmValueChange, self.atm_lon_label, self.atm_lon_slide))
@@ -1573,15 +1646,15 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         self.atm_T_button = QPushButton('Temperature')
         profile_tab_content_graph.addWidget(self.atm_T_button)
-        self.atm_T_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value(), self.atm_lon_slide.value(), var_typ='t'))
+        self.atm_T_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='t'))
 
         self.atm_mag_button = QPushButton('Wind Magnitude')
         profile_tab_content_graph.addWidget(self.atm_mag_button)
-        self.atm_mag_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value(), self.atm_lon_slide.value(), var_typ='m'))
+        self.atm_mag_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='m'))
 
         self.atm_dir_button = QPushButton('Wind Direction')
         profile_tab_content_graph.addWidget(self.atm_dir_button)
-        self.atm_dir_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value(), self.atm_lon_slide.value(), var_typ='d'))
+        self.atm_dir_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='d'))
 
         self.atm_atm_file_label = QLabel("Atmospheric File:")
         self.atm_atm_file_edits = QLineEdit("")
@@ -1626,6 +1699,1381 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.atm_perturb_method_edits.addItem("spread_r")
 
         self.tab_widget.addTab(profile_tab, "Atmospheric Profile")
+
+    def makeStationObj(self, lst):
+
+        new_lst = []
+
+        for line in lst:
+
+            pos = position(line[2], line[3], line[4])
+            stn = station(line[0], line[1], pos, line[5], line[6], line[7])
+            new_lst.append(stn)
+
+        return new_lst
+    
+    def makePicks(self):
+
+        setup  = self.saveINI(write=False)
+        
+        if not os.path.exists(setup.working_directory):
+            os.makedirs(setup.working_directory)
+
+            #Build seismic data path
+        dir_path = os.path.join(setup.working_directory, setup.fireball_name)
+
+        # Load the station and waveform files list
+        data_file_path = os.path.join(dir_path, DATA_FILE)
+        if os.path.isfile(data_file_path):
+            
+            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
+
+        else:
+            print('Station and waveform data file not found! Download the waveform files first!')
+            sys.exit()
+
+        if setup.stations is not None:
+            stn_list = stn_list + self.makeStationObj(setup.stations)
+
+        # Init the constants
+        consts = Constants()
+        setup.search_area = [0, 0, 0, 0]
+        setup.search_area[0] = setup.lat_centre - setup.deg_radius 
+        setup.search_area[1] = setup.lat_centre + setup.deg_radius
+        setup.search_area[2] = setup.lon_centre - setup.deg_radius
+        setup.search_area[3] = setup.lon_centre + setup.deg_radius
+
+        sounding = parseWeather(setup, consts)
+        arrTimes = np.array([])
+
+        if len(stn_list) == 0:
+            self.errorMessage('No Stations to load', 2)
+            return None 
+
+        try:
+            #turn coordinates into position objects
+            setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
+            setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
+        except:
+            setup.traj_i = position(0, 0, 0)
+            setup.traj_f = position(0, 0, 0)
+            print("Warning: Unable to build trajectory points")
+
+        self.waveformPicker(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all, stn_list=stn_list)
+    
+    def trajCalc(setup):
+        """ Creates trajectory between point A and the ground (B) based off of the initial position and the angle of travel
+
+        Arguments:
+        setup: [Object] ini file parameters
+
+        Returns: 
+        A [list] lat/lon/elev of the tail of the trajectory
+        B [list] lat/lon/elev of the head of the trajectory
+        """
+        print("Trajectory Calculation...")
+
+        ref = position(setup.lat_centre, setup.lon_centre, 0)
+
+        # Tail of the trajectory
+        A = geo2Loc(ref.lat, ref.lon, ref.elev, setup.lat_i, setup.lon_i, setup.elev_i*1000)
+
+        # convert angles to radians
+        ze = np.radians(setup.zangle)
+        az = np.radians(setup.azim)
+
+        # Create trajectory vector
+        traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
+
+        # How far along the trajectory until it reaches the ground
+        n = -A[2]/traj[2]
+
+        # B is the intersection between the trajectory vector and the ground
+        B = A + n*traj
+
+        # Convert back to geo coordinates
+        B = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, B))
+        A = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, A))
+
+        print("Created Trajectory between A and B:")
+        print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
+        print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
+
+        return A, B
+
+
+    def calcAllTimes(self, stn_list, setup, sounding):
+        """ 
+        Method to calculate all arrival times and place them into an array, so that they are not recalculated every
+        time a new waveform is opened
+                
+        Arguments:
+        data_list: [ndarray] array containing all station names and locations
+        setup: [object] ini file parameters
+        sounding: [ndarray] atmospheric profile
+
+        Returns:
+        allTimes: [ndarray] a ndarray that stores the arrival times for all stations over every perturbation
+        [perturbation, station, 0 - ballistic/ 1 - fragmentation, frag number (0 for ballistic)]
+        """
+
+        #All perturbation happens here
+        allTimes = [0]*setup.perturb_times
+
+        # Ballistic Prediction
+        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+
+        no_of_frags = len(setup.fragmentation_point)
+
+        # array of frags and ballistic arrivals have to be the same size. So, minimum can be 1
+        if no_of_frags == 0:
+            no_of_frags = 1
+
+        # Initialize variables
+        b_time = 0
+
+        consts = Constants()
+
+        # For temporal perturbations, fetch the soudning data for the hour before and after the event
+        if setup.perturb_method == 'temporal':
+
+            # sounding data one hour later
+            sounding_u = parseWeather(setup, consts, time= 1)
+
+            # sounding data one hour earlier
+            sounding_l = parseWeather(setup, consts, time=-1)
+
+        else:
+            sounding_u = []
+            sounding_l = []
+
+        d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
+        count = 0
+
+        #number of perturbations
+        for ptb_n in range(setup.perturb_times):
+
+            if ptb_n > 0:
+                
+                if setup.debug:
+                    print("STATUS: Perturbation {:}".format(ptb_n))
+
+                # generate a perturbed sounding profile
+                sounding_p = perturb(setup, sounding, setup.perturb_method, \
+                    sounding_u=sounding_u, sounding_l=sounding_l, \
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+            else:
+
+                # if not using perturbations on this current step, then return the original sounding profile
+                sounding_p = sounding
+
+            # Initialize station times array
+            stnTimes = [0]*len(stn_list)
+
+            #number of stations
+            for n, stn in enumerate(stn_list):
+
+                # For ballistic arrivals
+                if setup.show_ballistic_waveform:
+                    bTimes = [0]*no_of_frags
+                    for i in range(no_of_frags):
+                        count += 1
+                        sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
+                        sys.stdout.flush()
+                        time.sleep(0.001)
+                        #need filler values to make this a numpy array with fragmentation
+                        if i == 0:
+                            
+                            stn.position.pos_loc(ref_pos)
+                            setup.traj_f.pos_loc(ref_pos)
+
+                            # Time to travel from trajectory to station
+                            b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+                                                        np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
+
+
+                            bTimes[i] = b_time
+                        else:
+                            bTimes[i] = np.nan
+                else:
+                    bTimes = [np.nan]*no_of_frags
+
+                # Fragmentation Prediction
+                f_time = np.array([0]*no_of_frags)
+
+                # If manual fragmentation search is on
+                if setup.show_fragmentation_waveform:
+                    fTimes = [0]*no_of_frags
+                    for i, line in enumerate(setup.fragmentation_point):
+                        count += 1
+                        sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
+
+                        # location of supracenter
+                        supra = position(float(line[0]), float(line[1]), float(line[2]))
+                        
+                        # convert to local coordinates based off of the ref_pos
+                        supra.pos_loc(ref_pos)
+
+                        # convert station coordinates to local coordinates based on the ref_pos
+                        stn.position.pos_loc(ref_pos)
+
+                        # Cut down atmospheric profile to the correct heights, and interp
+                        zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
+                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=True)
+
+                        # Travel time of the fragmentation wave
+                        f_time, _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
+
+                        fTimes[i] = f_time + line[3]
+
+                else:
+
+                    # Repack all arrays into allTimes array
+                    fTimes = [np.nan]*no_of_frags
+
+                stnTimes[n] = ([np.array(bTimes), np.array(fTimes)])
+
+            allTimes[ptb_n] = np.array(stnTimes)
+
+        allTimes = np.array(allTimes)
+
+        # Save as .npy file to be reused in SeismicTrajectory and Supracenter
+        np.save(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times'), allTimes)
+        print("All Times File saved as {:}".format(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times.npy')))
+
+        return allTimes
+
+
+    def waveformPicker(self, dir_path, setup, sounding, data_list, waveform_window=600, \
+        difference_filter_all=False, stn_list=[]):
+        """
+
+        Arguments:
+            data_list: [list]
+
+        Keyword arguments:
+            waveform_window: [int] Number of seconds for the wavefrom window.
+            difference_filter_all: [bool] If True, the Kalenda et al. (2014) difference filter will be applied
+                on the data plotted in the overview plot of all waveforms.
+        """
+        self.setup = setup
+        self.dir_path = dir_path
+
+        self.v_sound = setup.v_sound
+        self.t0 = setup.t0
+
+        self.stn_list = stn_list
+
+        # Filter out all stations for which the mseed file does not exist
+        filtered_stn_list = []
+
+        names = []
+        lats = []
+        lons = []
+
+        for stn in self.stn_list:
+            
+            mseed_file = stn.file_name
+            mseed_file_path = os.path.join(self.dir_path, mseed_file)
+
+            if os.path.isfile(mseed_file_path):
+                filtered_stn_list.append(stn)
+
+            else:
+                print('mseed file does not exist:', mseed_file_path)
+
+        self.stn_list = filtered_stn_list
+
+
+        self.lat_centre = setup.lat_centre
+        self.lon_centre = setup.lon_centre
+
+        self.waveform_window = waveform_window
+
+
+        self.current_station = 0
+        self.current_wavefrom_raw = None
+        self.current_wavefrom_delta = None
+        self.current_waveform_processed = None
+
+        # List of picks
+        self.pick_list = []
+
+        self.pick_group = 0
+
+        # Define a list of colors for groups
+        self.pick_group_colors = ['r', 'g', 'm', 'k', 'y']
+
+        # Current station map handle
+        self.current_station_scat = None
+
+        # Station waveform marker handle
+        self.current_station_all_markers = None
+
+        # Picks on all waveform plot handle
+        self.all_waves_picks_handle = None
+
+        # Handle for pick text
+        self.pick_text_handle = None
+        self.pick_markers_handles = []
+
+        # handle for pick marker on the wavefrom
+        self.pick_wavefrom_handle = None
+
+
+        # Default bandpass values
+        self.bandpass_low_default = 2.0
+        self.bandpass_high_default = 8.0
+
+        # Flag indicating whether CTRL is pressed or not
+        self.ctrl_pressed = False
+
+
+        ### Sort stations by distance from source ###
+
+        # Calculate distances of station from source
+        self.source_dists = []
+
+
+        for stn in self.stn_list:
+
+            stat_name, stat_lat, stat_lon = stn.code, stn.position.lat, stn.position.lon
+
+            names.append(stat_name)
+            lats.append(stat_lat)
+            lons.append(stat_lon)
+
+            # Calculate the distance in kilometers
+            dist = greatCircleDistance(np.radians(setup.lat_centre), np.radians(setup.lon_centre), \
+                np.radians(stat_lat), np.radians(stat_lon))
+
+            self.source_dists.append(dist)
+
+        # Get sorted arguments
+        dist_sorted_args = np.argsort(self.source_dists)
+
+        # Sort the stations by distance
+        self.stn_list = [self.stn_list[i] for i in dist_sorted_args]
+        self.source_dists = [self.source_dists[i] for i in dist_sorted_args]
+        #############################################
+        
+        # Init the plot framework
+        self.initPlot(setup, sounding)
+
+        # Extract the list of station locations
+        self.lat_list = [stn.position.lat_r for stn in stn_list]
+        self.lon_list = [stn.position.lon_r for stn in stn_list]
+
+        plt.style.use('dark_background')
+        fig = plt.figure(figsize=plt.figaspect(0.5))
+        fig.set_size_inches(8, 5)
+        self.map_ax = fig.add_subplot(1, 1, 1)
+
+        # Init ground map
+        self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
+
+        for stn in self.stn_list:
+
+            # Plot stations
+            if stn.code in setup.high_f:
+                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='g', s=2)
+            elif stn.code in setup.high_b:
+                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='b', s=2)
+            else:
+                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
+
+        # Manual Supracenter search
+        if setup.show_fragmentation_waveform:
+            
+            # Fragmentation plot
+            for i, line in enumerate(setup.fragmentation_point):
+                self.m.scatter([np.radians(float(line[0]))], [np.radians(float(line[1]))], c=self.pick_group_colors[(i+1)%4], marker='x')
+
+        # Extract coordinates of the reference station
+        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+
+        # Plot source location
+        self.m.scatter([np.radians(setup.lat_centre)], [np.radians(setup.lon_centre)], marker='*', c='yellow')
+
+        # Manual trajectory search
+        if setup.show_ballistic_waveform:
+
+            # Plot the trajectory with the bottom point known
+            self.m.plot([setup.traj_i.lat_r, setup.traj_f.lat_r], [setup.traj_i.lon_r, setup.traj_f.lon_r], c='b')
+            # Plot intersection with the ground
+            self.m.scatter(setup.traj_f.lat_r, setup.traj_f.lon_r, s=10, marker='x', c='b')
+
+            ### CONTOUR ###
+
+            # Get the limits of the plot
+            x_min = setup.lat_f - 100000*setup.deg_radius
+            x_max = setup.lat_f + 100000*setup.deg_radius
+            y_min = setup.lon_f - 100000*setup.deg_radius
+            y_max = setup.lon_f + 100000*setup.deg_radius
+
+            img_dim = int(setup.contour_res)
+            x_data = np.linspace(x_min, x_max, img_dim)
+            y_data = np.linspace(y_min, y_max, img_dim)
+            xx, yy = np.meshgrid(x_data, y_data)
+
+
+            # # Make an array of all plane coordinates
+            plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
+
+            times_of_arrival = np.zeros_like(xx.ravel())
+
+            az = np.radians(setup.azim)
+            ze = np.radians(setup.zangle)
+
+            # vector of the trajectory of the fireball
+            traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
+
+            for i, plane_coords in enumerate(plane_coordinates):
+
+                # Print out percentage complete
+                if (i + 1) % 10 == 0:
+                    sys.stdout.write("\rDrawing Contour: {:.2f} %".format(100*(i + 1)/img_dim**2))
+                    sys.stdout.flush()
+                    time.sleep(0.001)
+
+                setup.traj_f.pos_loc(ref_pos)
+                # Point on the trajectory where the sound wave that will hit the plane_coord originated from
+
+                p = waveReleasePoint(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
+                                          ze, setup.v_sound)
+
+                # # vector between the wave release point and the plane coordinate
+                d_vect = plane_coords - p
+
+                # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
+                # of the vectors are small.
+
+                if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
+
+                    # time of arrival from the trajectory
+                    ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+                                       az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=True)# - setup.t + setup.t0
+
+                # escape value for if sound never reaches the plane_coord
+                else:
+                   ti = np.nan
+
+                times_of_arrival[i] = ti + setup.t0
+
+            print('')
+
+            # if sound never reaches the plane_coord, set to maximum value of the contour
+            max_time = np.nanmax(times_of_arrival)
+            for i in range(len(times_of_arrival)):
+                if np.isnan(times_of_arrival[i]):
+                    times_of_arrival[i] = max_time
+
+            times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
+
+            # Determine range and number of contour levels, so they are always centred around 0
+            toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+            #  toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+            levels = np.linspace(0, toa_abs_max, 25)
+
+            # Convert contour local coordinated to geo coordinates
+            lat_cont = []
+            lon_cont = []
+
+            for x_cont, y_cont in zip(xx.ravel(), yy.ravel()):
+                
+                lat_c, lon_c, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, np.array([x_cont, y_cont, 0]))
+
+                lat_cont.append(lat_c)
+                lon_cont.append(lon_c)
+
+            lat_cont = np.array(lat_cont).reshape(img_dim, img_dim)
+            lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
+
+            # Plot the time of arrival contours
+            toa_conture = self.m.m.contourf(lon_cont, lat_cont, times_of_arrival, levels, zorder=3, \
+                latlon=True, cmap='viridis_r', alpha=0.5)
+
+            # # Add a color bar which maps values to colors
+            self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
+
+        if setup.arrival_times_file != '':
+            try:
+                self.arrTimes = np.load(setup.arrival_times_file)
+                print("Reading in arrival times file...")
+            except:
+                print("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file))
+                self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+        else:  
+            # Calculate all arrival times
+            self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+        
+
+        self.make_picks_top_graphs.removeWidget(self.make_picks_map_graph_canvas)
+        self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
+        self.make_picks_map_graph_canvas = FigureCanvas(fig)
+        self.make_picks_map_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)    
+        self.make_picks_map_graph_canvas.draw()
+        SolutionGUI.update(self)
+
+        self.updatePlot(setup)
+
+    def makeValueChange(self, obj, slider):
+        
+        if obj == self.low_bandpass_label:
+            obj.setText('Low: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
+        elif obj == self.high_bandpass_label:
+            obj.setText('High: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
+        else:
+            self.errorMessage('Bad atm slider pass in makeValueChange', 2)
+
+        self.updatePlot()
+        #self.atmPlotProfile(self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, self.var_typ)
+    
+    def chooseFilter(self, obj):
+
+        if obj.currentText() == 'Bandpass Filter':
+            self.filterBandpass()
+        elif obj.currentText() == 'Spectrogram of Raw Data':
+            self.showSpectrogram()
+        elif obj.currentText() == 'Difference Filter':
+            self.filterConvolution()
+        else:
+            pass
+
+    def navStats(self):
+
+        self.current_station = self.make_picks_station_choice.currentIndex()
+        self.updatePlot()
+
+
+    def initPlot(self, setup, sounding):
+        """ Initializes the plot framework. """
+        
+               ### Init the basic grid ###
+
+
+        # Register a mouse press event on the waveform axis
+        # plt.gca().figure.canvas.mpl_connect('button_press_event', self.onWaveMousePress)
+
+
+        # Register window resize
+        #plt.gca().figure.canvas.mpl_connect('resize_event', self.onResize)
+
+        self.make_picks_station_choice.clear()
+
+        self.prev_stat.clicked.connect(self.decrementStation)
+        self.next_stat.clicked.connect(self.incrementStation)
+
+        self.filter_combo_box.addItem('Raw Data')
+        self.filter_combo_box.addItem('Bandpass Filter')
+        self.filter_combo_box.addItem('Spectrogram of Raw Data')
+        self.filter_combo_box.addItem('Difference Filter')
+
+        self.filter_combo_box.currentTextChanged.connect(partial(self.chooseFilter, self.filter_combo_box))
+
+        self.export_to_csv.clicked.connect(self.exportCSV)
+
+        for stn in self.stn_list:
+            self.make_picks_station_choice.addItem("{:}-{:}".format(stn.network, stn.code))
+
+        self.make_picks_station_choice.currentTextChanged.connect(self.navStats)
+
+        plt.style.use('dark_background')
+        fig = plt.figure(figsize=plt.figaspect(0.5))
+        fig.set_size_inches(8, 5)
+        self.station_ax = fig.add_subplot(1, 1, 1)
+        
+        self.make_picks_waveform_canvas.scene().sigMouseClicked.connect(self.mouseClicked)
+        pg.QtGui.QApplication.processEvents()
+        # Plot all waveforms
+        plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self.station_ax)#, \
+            #waveform_window=self.waveform_window, difference_filter_all=setup.difference_filter_all)
+
+        self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
+        self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
+        self.make_picks_station_graph_canvas = FigureCanvas(fig)
+        self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
+        self.make_picks_station_graph_canvas.draw()
+        SolutionGUI.update(self)
+
+    def keyPressEvent(self, event):
+        
+        if event.key() == QtCore.Qt.Key_Control:
+            self.ctrl_pressed = True
+
+        elif event.key() == QtCore.Qt.Key_D:
+            self.incrementStation()
+
+        elif event.key() == QtCore.Qt.Key_A:
+            self.decrementStation()
+
+        elif event.key() == QtCore.Qt.Key_W:
+            self.make_picks_waveform_canvas.clear()
+            self.filterBandpass(event=event)
+
+        elif event.key() == QtCore.Qt.Key_S:
+            self.showSpectrogram(event=event)
+
+        elif event.key() == QtCore.Qt.Key_C:
+            self.make_picks_waveform_canvas.clear()
+            self.filterConvolution(event=event)
+
+        elif event.key() == QtCore.Qt.Key_Plus:
+            
+            # Increment the pick group
+            self.pick_group += 1
+
+            self.updatePlot()
+
+
+        elif event.key() == QtCore.Qt.Key_Minus:
+            # Decrement the pick group
+
+            if self.pick_group > 0:
+                self.pick_group -= 1
+
+            self.updatePlot()
+
+
+    def keyReleaseEvent(self, event):
+
+        if event.key() == QtCore.Qt.Key_Control:
+            self.ctrl_pressed = False
+
+
+
+    def onResize(self, event):
+
+        # Perform tight layout when window is resized
+        plt.tight_layout()
+
+
+
+
+    def addPick(self, pick_group, station_no, pick_time):
+        """ Adds the pick to the list of picks. """
+
+        self.pick_list.append([pick_group, station_no, pick_time])
+
+        self.updatePickList()
+
+
+    def removePick(self, station_no, pick_time_remove):
+        """ Removes the pick from the list of picks with the closest time. """
+
+
+        if len(self.pick_list):
+
+            closest_pick_indx = None
+            min_time_diff = np.inf
+
+            # Go though all stations and find the pick with closest to the given time
+            for i, entry in enumerate(self.pick_list):
+
+                pick_grp, stat_no, pick_time = entry
+
+                # Check if current station
+                if stat_no == self.current_station:
+
+                    time_diff = abs(pick_time - pick_time_remove)
+
+                    # Store the minimum time difference
+                    if time_diff < min_time_diff:
+
+                        min_time_diff = time_diff
+                        closest_pick_indx = i
+
+
+
+            if closest_pick_indx is not None:
+                
+                # Remove pick on the given station closest the given time
+                self.pick_list.pop(closest_pick_indx)
+
+
+                self.updatePickList()
+
+
+
+
+    def updatePickList(self):
+        """ Updates the list of picks on the screen for the given station. """
+
+        stations_with_picks = []
+        all_pick_times = []
+
+        for entry in self.pick_list:
+
+            pick_grp, station_no, pick_time = entry
+
+            stations_with_picks.append(station_no)
+            all_pick_times.append(pick_time)
+
+
+        # Remove old picks on all wavefrom plot
+        if self.all_waves_picks_handle is not None:
+            self.all_waves_picks_handle.remove()
+
+
+        # Get distances of of pick stations
+        dists_with_picks = [self.source_dists[stat_no] for stat_no in stations_with_picks]
+
+        # Mark picks on the all waveform plot
+        self.all_waves_picks_handle = self.ax_all_waves.scatter(dists_with_picks, all_pick_times, \
+            marker='*', s=50, c='r')
+
+        self.updatePlot(draw_waveform=False)
+
+
+    def updatePickTextAndWaveMarker(self):
+        """ Updates the list of picks on the screen. """
+
+
+        current_station_groups = []
+        current_station_picks = []
+
+        for entry in self.pick_list:
+
+            pick_grp, station_no, pick_time = entry
+
+            # Take picks taken on the current station
+            if station_no == self.current_station:
+                current_station_groups.append(pick_grp)
+                current_station_picks.append(pick_time)
+
+        # Remove old pick text
+        if self.pick_text_handle is not None:
+            self.pick_text_handle.remove()
+
+        # Generate the pick string
+        pick_txt_str  = 'Change group: +/-\n'
+        pick_txt_str += 'Add/remove pick: CTRL + left/right click \n'
+        pick_txt_str += '\n'
+        pick_txt_str += 'Current group: {:5d}\n\n'.format(self.pick_group)
+        pick_txt_str += 'Picks: Group, Time\n'
+        pick_txt_str += '------\n'
+        pick_txt_str += "\n".join(["{:5d},   {:.2f}".format(gr, pt) for gr, pt in zip(current_station_groups, \
+            current_station_picks)])
+
+        # Print picks on screen
+        #self.pick_text_handle = self.picks_ax.text(0, 1, pick_txt_str, va='top', fontsize=7)
+
+
+        # Remove old pick markers
+        for handle in self.pick_markers_handles:
+            try:
+                handle.remove()
+            except:
+                pass
+
+
+        self.pick_markers_handles = []
+
+
+        if len(current_station_picks) > 0:
+
+            # Get a list of colors per groups
+            color_list = [self.pick_group_colors[grp%len(self.pick_group_colors)] \
+                for grp in current_station_groups]
+
+
+            # Get the Y coordinate of the pick in the waveform plot
+            if self.current_waveform_processed is not None:
+                pick_y_list = []
+                for pick_time in current_station_picks:
+                    
+                    pick_indx = np.abs(self.current_waveform_time - pick_time).argmin()
+                    pick_y = self.current_waveform_processed[pick_indx]
+                    pick_y_list.append(pick_y)
+
+            else:
+                pick_y_list = [0]*len(current_station_picks)
+
+            # Set pick marker on the current wavefrom
+            scat_handle = self.ax_wave.scatter(current_station_picks, pick_y_list, marker='*', \
+                c=color_list, s=50)
+
+            self.pick_markers_handles.append(scat_handle)
+
+            # Plot group numbers above picks
+            #self.pick_wavefrom_text_handles = []
+            for c, grp, pt in zip(color_list, current_station_groups, current_station_picks):
+                txt_handle = self.ax_wave.text(pt, 0, str(grp), color=c, ha='center', va='bottom')
+
+                self.pick_markers_handles.append(txt_handle)
+
+
+    def onWaveMousePress(self, event):
+
+        # Check if the mouse was pressed within the waveform axis
+        if event.inaxes == self.ax_wave:
+
+            # Check if CTRL is pressed
+            if self.ctrl_pressed:
+
+                pick_time = event.xdata
+
+                # Check if left button was pressed
+                if event.button == 1:
+
+                    # Extract network and station code
+                    net, station_code = self.stn_list[self.current_station].network, self.stn_list[self.current_station].code
+
+                    print('Adding pick on station {:s} at {:.2f}'.format(net + ": " + station_code, \
+                        pick_time))
+
+                    self.addPick(self.pick_group, self.current_station, pick_time)
+
+
+                # Check if right button was pressed
+                elif event.button == 3:
+                    print('Removing pick...')
+
+                    self.removePick(self.current_station, pick_time)
+
+
+
+
+
+    def incrementStation(self, event=None):
+        """ Increments the current station index. """
+
+        self.make_picks_waveform_canvas.clear()
+
+        self.current_station += 1
+
+        if self.current_station >= len(self.stn_list):
+            self.current_station = 0
+
+        while self.checkExists() == False:
+            self.current_station += 1
+            if self.current_station >= len(self.stn_list):
+                self.current_station = 0
+
+        self.updatePlot()
+
+
+    def decrementStation(self, event=None):
+        """ Decrements the current station index. """
+
+        self.make_picks_waveform_canvas.clear()
+
+        self.current_station -= 1
+
+        if self.current_station < 0:
+            self.current_station = len(self.stn_list) - 1
+
+        while self.checkExists() == False:
+            self.current_station -= 1
+            if self.current_station < 0:
+                self.current_station = len(self.stn_list) - 1
+
+        self.updatePlot()
+
+
+
+    def markCurrentStation(self):
+        """ Mark the position of the current station on the map. """
+
+
+        # Extract current station
+        stn = self.stn_list[self.current_station]
+
+        if self.current_station_scat is None:
+
+            # Mark the current station on the map
+            self.current_station_scat = self.m.scatter([stn.position.lat_r], [stn.position.lon_r], s=20, \
+                edgecolors='r', facecolors='none')
+
+        else:
+
+            # Calculate map coordinates
+            stat_x, stat_y = self.m.m(stn.position.lon, stn.position.lat)
+
+            # Set the new position
+            self.current_station_scat.set_offsets([stat_x, stat_y])
+
+
+    def checkExists(self):
+        """
+        Checks if the current waveform is readable
+        """
+
+        # Extract current station
+        stn = self.stn_list[self.current_station]
+
+        # Get the miniSEED file path
+        mseed_file_path = os.path.join(self.dir_path, stn.file_name)
+
+        try:
+            
+            if os.path.isfile(mseed_file_path):
+                pass
+            else:
+                print('File {:s} does not exist!'.format(mseed_file_path))
+                return False
+
+        except TypeError as e:
+            
+            print('Opening file {:s} failed with error: {:s}'.format(mseed_file_path, str(e)))
+            return False
+
+        try:
+            obspy.read(mseed_file_path)
+
+        except TypeError:
+            print('mseed file could not be read:', mseed_file_path)
+            return False
+
+        return True
+    
+    def mouseClicked(self, evt):
+
+        mousePoint = self.make_picks_waveform_canvas.vb.mapSceneToView(evt.pos())
+
+        self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[mousePoint.y()], pen='r', update=True)
+
+        
+        print((mousePoint.x(), mousePoint.y()))
+
+
+    def drawWaveform(self, waveform_data=None):
+        """ Draws the current waveform from the current station in the wavefrom window. Custom wavefrom 
+            can be given an drawn, which is used when bandpass filtering is performed. 
+
+        """
+        setup = self.setup
+
+        # Clear waveform axis
+        self.make_picks_waveform_canvas.clear()
+
+        # Extract current station
+        stn = self.stn_list[self.current_station]
+
+        # Get the miniSEED file path
+        mseed_file_path = os.path.join(self.dir_path, stn.file_name)
+
+        # Try reading the mseed file, if it doesn't work, skip to the next frame
+        try:
+            mseed = obspy.read(mseed_file_path)
+
+        except TypeError:
+            print('mseed file could not be read:', mseed_file_path)
+            #self.incrementStation()
+            return None
+
+        # Unpact miniSEED data
+        delta = mseed[0].stats.delta
+        start_time = mseed[0].stats.starttime
+        end_time = mseed[0].stats.endtime
+        
+
+        # Check if the waveform data is already given or not
+        if waveform_data is None:
+            waveform_data = mseed[0].data
+
+            # Store raw data for bookkeeping on first open
+            self.current_wavefrom_raw = waveform_data
+
+
+        # Convert the beginning and the end time to datetime objects
+        start_datetime = start_time.datetime
+        end_datetime = end_time.datetime
+
+        self.current_wavefrom_delta = delta
+        self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
+            delta)
+
+
+        # ### BANDPASS FILTERING ###
+
+        # # Init the butterworth bandpass filter
+        # butter_b, butter_a = butterworthBandpassFilter(self.bandpass_low_default, \
+        #     self.bandpass_high_default, 1.0/delta, order=6)
+
+        # # Filter the data
+        # waveform_data = scipy.signal.filtfilt(butter_b, butter_a, waveform_data)
+
+        # ##########################
+
+
+        # Construct time array, 0 is at start_datetime
+        time_data = np.copy(self.current_waveform_time)
+
+        # Cut the waveform data length to match the time data
+        waveform_data = waveform_data[:len(time_data)]
+        time_data = time_data[:len(waveform_data)]
+
+
+        # Trim the ends to avoid issues with differenced data
+        # time_data = time_data[1:-1]
+        # waveform_data = waveform_data[1:-1]
+
+        # Store currently plotted waveform
+        self.current_waveform_processed = waveform_data
+
+        # Calculate the time of arrival assuming constant propagation with the given speed of sound
+        t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
+        #t_arrival = 0
+
+        # Calculate the limits of the plot to be within the given window limit
+        time_win_min = t_arrival - self.waveform_window/2
+        time_win_max = t_arrival + self.waveform_window/2
+
+        # Plot the wavefrom
+        #self.wave_ax.plot(time_data, waveform_data, color='k', linewidth=0.2, zorder=3)
+        self.make_picks_waveform_canvas.plot(x=time_data, y=waveform_data, pen='w')
+        #self.make_picks_waveform_canvas.setXRange(t_arrival, t_arrival, padding=150)
+        # proxy = pg.SignalProxy(self.make_picks_waveform_canvas.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        #self.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+
+        SolutionGUI.update(self)
+        # Initialize variables
+        b_time = 0
+
+        # print('####################')
+        # print("Current Station: {:}".format(stn.name))
+        # print("Channel: {:}".format(stn.channel))
+        # # If manual ballistic search is on
+        # if setup.show_ballistic_waveform:
+
+        #     # Plot Ballistic Prediction
+        #     b_time = self.arrTimes[0, self.current_station, 0, 0]
+            
+        #     # check if nan
+        #     if b_time == b_time:
+        #         self.wave_ax.plot([b_time]*2, [np.min(waveform_data), np.max(waveform_data)], c='b', label='Ballistic', zorder=3)
+                
+        #         print("Ballistic Arrival: {:.3f} s".format(b_time))
+        #     else:
+        #         print("No Ballistic Arrival")
+
+        #     for i in range(setup.perturb_times):
+        #         if i >= 1:
+        #             try:
+        #                 self.wave_ax.plot([self.arrTimes[i, self.current_station, 0, 0]]*2, \
+        #                  [np.min(waveform_data), np.max(waveform_data)], alpha=0.3, c='b', zorder=3)
+        #             except:
+        #                 pass
+        # # Fragmentation Prediction
+
+        # # If manual fragmentation search is on
+        # if setup.show_fragmentation_waveform:
+
+        #     for i, line in enumerate(setup.fragmentation_point):
+
+        #         f_time = self.arrTimes[0, self.current_station, 1, i]
+        #     #     # check if nan
+        #         if f_time == f_time:
+        #             # Plot Fragmentation Prediction
+        #             self.wave_ax.plot([f_time]*2, [np.min(waveform_data), np.max(waveform_data)], c=self.pick_group_colors[(i+1)%4], label='Fragmentation', zorder=3)
+                    
+        #             if len(setup.fragmentation_point) > 1:
+        #                 #self.ax_wave.text(f_time, np.min(waveform_data), 'Frag{:}'.format(i+1))
+        #                 self.wave_ax.text(f_time, np.min(waveform_data) + int(i)/(len(setup.fragmentation_point))*(np.max(waveform_data) - np.min(waveform_data)), '{:.1f} km'.format(line[2]/1000))
+                
+        #             print('Fragmentation {:} Arrival: {:.3f} s'.format(i+1, f_time))
+
+        #         else:
+        #             print('No Fragmentation {:} Arrival'.format(i+1))
+
+        #         for j in range(setup.perturb_times):
+        #             if j >= 1:
+        #                 try:
+        #                     self.wave_ax.plot([self.arrTimes[j, self.current_station, 1, i]]*2, [np.min(waveform_data),\
+        #                          np.max(waveform_data)], alpha=0.3,\
+        #                          c=self.pick_group_colors[(i+1)%4], zorder=3)
+        #                 except:
+        #                     pass
+
+        # # Set the time limits to be within the given window
+        # self.wave_ax.set_xlim(time_win_min, time_win_max)
+
+        # self.wave_ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.5)
+
+        # #self.ax_wave.legend()
+
+        # # Add text with station label
+        # if stn.code in setup.high_f:
+        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+        #         + "(" + stn.channel + ")" +", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='g')
+
+        # elif stn.code in setup.high_b:
+        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+        #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='b')
+
+        # else:
+        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+        #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='k')
+
+        # # self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
+        # # self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(3, 3)))
+        # # self.make_picks_station_graph_canvas = FigureCanvas(fig)
+        # # self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        # # self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
+        # # self.make_picks_station_graph_canvas.draw()
+        # # SolutionGUI.update(self)
+
+    def markStationWaveform(self):
+        """ Mark the currently shown waveform in the plot of all waveform. """
+        
+        if self.current_station_all_markers is not None:
+            for marker in self.current_station_all_markers:
+                marker.remove()
+
+
+        # Calculate the position
+        dist = self.source_dists[self.current_station]
+
+        # Calcualte the time of arrival
+        t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
+
+        # Plot the marker
+        marker1 = self.station_ax.scatter(dist, t_arrival - 500, marker='^', s=100, linewidths=3, c='w', 
+            alpha=1, zorder=3)
+
+        marker2 = self.station_ax.scatter(dist, t_arrival + 500, marker='v', s=100, linewidths=3, c='w', 
+            alpha=1, zorder=3)
+
+
+        self.current_station_all_markers = [marker1, marker2]
+
+
+    def showSpectrogram(self, event=None):
+        """ Show the spectrogram of the waveform in the current window. """
+
+
+        # Get time limits of the shown waveform
+        #x_min, x_max = self.wave_ax.get_xlim()
+
+        # Extract the time and waveform
+        #crop_window = (self.current_waveform_time >= x_min) & (self.current_waveform_time <= x_max)
+        wave_arr = self.current_wavefrom_raw#[crop_window]
+
+
+        ### Show the spectrogram ###
+        
+        fig = plt.figure()
+        ax_spec = fig.add_subplot(111)
+
+        ax_spec.specgram(wave_arr, Fs=1.0/self.current_wavefrom_delta, cmap=plt.cm.inferno)
+
+        ax_spec.set_xlabel('Time (s)')
+        ax_spec.set_ylabel('Frequency (Hz)')
+
+        fig.show()
+
+        ###
+
+
+    def filterBandpass(self, event=None):
+        """ Run bandpass filtering using values set on sliders. """
+
+        # Get bandpass filter values
+        bandpass_low = self.low_bandpass_slider.value()*self.bandpass_scale
+        bandpass_high = self.high_bandpass_slider.value()*self.bandpass_scale
+
+
+        # Limit the high frequency to be lower than the Nyquist frequency
+        max_freq = (1.0/self.current_wavefrom_delta)/2
+
+        if bandpass_high > max_freq:
+            bandpass_high = max_freq - 0.1
+
+            self.high_bandpass_slider.setValue(bandpass_high*self.bandpass_scale)
+        
+
+        # Init the butterworth bandpass filter
+        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
+            1.0/self.current_wavefrom_delta, order=6)
+
+        # Filter the data
+        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_wavefrom_raw))
+
+
+        # Plot the updated waveform
+        self.drawWaveform(waveform_data)
+
+
+    def filterConvolution(self, event=None):
+        """ Apply the convolution filter on data as suggested in Kalenda et al. (2014). """
+
+        waveform_data = convolutionDifferenceFilter(self.current_wavefrom_raw)
+
+        self.drawWaveform(waveform_data)
+
+
+    def updatePlot(self, draw_waveform=True):
+        """ Update the plot after changes. """
+
+        self.make_picks_waveform_canvas.clear()
+
+        # Mark the position of the current station on the map
+
+        self.make_picks_station_choice.setCurrentIndex(self.current_station)
+
+        # Plot the wavefrom from the current station
+        if draw_waveform:
+            self.drawWaveform()
+
+        # Set an arrow pointing to the current station on the waveform
+        self.markStationWaveform()
+        self.markCurrentStation()
+
+        # Update the pick list text and plot marker on the waveform
+        self.updatePickTextAndWaveMarker()
+
+        # Reset bandpass filter values to default
+        # self.make_picks.set_val(self.bandpass_low_default)
+        # self.bandpass_high_slider.set_val(self.bandpass_high_default)
+
+        SolutionGUI.update(self)
+
+    def exportCSV(self, event):
+        """ Save picks to a CSV file. """
+
+        # Open the output CSV
+        with open(os.path.join(self.dir_path, OUTPUT_CSV), 'w') as f:
+
+            # Write the header
+            f.write('Pick group, Network, Code, Lat, Lon, Elev, Pick JD, Pick time, station_number \n')
+
+            # Go through all picks
+            for entry in self.pick_list:
+
+                # Unpack pick data
+                pick_group, station_no, pick_time = entry
+
+                # # Extract current station
+                stn = self.stn_list[station_no]
+
+                # # Unpack the station entry
+                # net, station_code, stat_lat, stat_lon, stat_elev, station_name, channel, mseed_file = stat_entry
+
+                # Get the miniSEED file path
+                mseed_file_path = os.path.join(self.dir_path, stn.file_name)
+
+                try:
+                    
+                    if os.path.isfile(mseed_file_path):
+                        
+                        # Read the miniSEED file
+                        mseed = obspy.read(mseed_file_path)
+
+                    else:
+                        print('File {:s} does not exist!'.format(mseed_file_path))
+                        continue
+
+                except TypeError as e:
+
+                    print('Opening file {:s} failed with error: {:s}'.format(mseed_file_path, e))
+                    continue
+
+                # Find datetime of the beginning of the file
+                start_datetime = mseed[0].stats.starttime.datetime
+
+                # Calculate Julian date of the pick time
+                pick_jd = datetime2JD(start_datetime + datetime.timedelta(seconds=pick_time))
+
+
+                # Write the CSV entry
+                f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(pick_group, stn.network, \
+                    stn.code, stn.position.lat, stn.position.lon, stn.position.elev, pick_jd, pick_time, station_no))
+
+
+        print('CSV written to:', OUTPUT_CSV)
+
+    def addMakePicksWidgets(self):
+        make_picks_master_tab = QWidget()
+        make_picks_master = QVBoxLayout()
+        make_picks_master_tab.setLayout(make_picks_master)
+
+        self.make_picks_top_graphs = QHBoxLayout()
+        self.make_picks_bottom_graphs = QVBoxLayout()
+        make_picks_master.addLayout(self.make_picks_top_graphs)
+        make_picks_master.addLayout(self.make_picks_bottom_graphs)
+
+        self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
+        self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
+        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)
+        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)
+
+
+        self.make_picks_waveform_view = pg.GraphicsLayoutWidget()
+        self.make_picks_waveform_canvas = self.make_picks_waveform_view.addPlot()
+        self.make_picks_bottom_graphs.addWidget(self.make_picks_waveform_view)
+        self.make_picks_waveform_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+        make_picks_control_panel = QHBoxLayout()
+        self.make_picks_bottom_graphs.addLayout(make_picks_control_panel)
+
+        make_picks_station_group = QGroupBox("Station Navigation")
+        make_picks_control_panel.addWidget(make_picks_station_group)
+
+        station_group_layout = QGridLayout()
+        make_picks_station_group.setLayout(station_group_layout)
+
+        self.make_picks_station_choice = QComboBox()
+        station_group_layout.addWidget(self.make_picks_station_choice, 0, 0, 1, 2)
+
+        self.prev_stat = QPushButton('Prev')
+        station_group_layout.addWidget(self.prev_stat, 1, 0, 2, 1)
+
+        self.next_stat = QPushButton('Next')
+        station_group_layout.addWidget(self.next_stat, 1, 1, 2, 1)
+
+        launch = QPushButton('Load Station Data')
+        station_group_layout.addWidget(launch, 3, 0, 1, 2)
+        launch.clicked.connect(self.makePicks)
+
+        make_picks_filter_group = QGroupBox("Waveform Filtering")
+        make_picks_control_panel.addWidget(make_picks_filter_group)
+
+        filter_group_layout = QGridLayout()
+        make_picks_filter_group.setLayout(filter_group_layout)
+
+        self.low_bandpass_label = QLabel('Low: 2 Hz')
+        filter_group_layout.addWidget(self.low_bandpass_label, 0, 0, 1, 1)
+
+        self.low_bandpass_slider = QSlider(Qt.Horizontal)
+        filter_group_layout.addWidget(self.low_bandpass_slider, 0, 1, 1, 1)
+
+        self.high_bandpass_label = QLabel("High: 8 Hz")
+        filter_group_layout.addWidget(self.high_bandpass_label, 1, 0, 1, 1)
+
+        self.high_bandpass_slider = QSlider(Qt.Horizontal)
+        filter_group_layout.addWidget(self.high_bandpass_slider, 1, 1, 1, 1)
+
+        self.low_bandpass_slider.setMinimum(0/self.bandpass_scale)
+        self.low_bandpass_slider.setMaximum(5/self.bandpass_scale)
+        self.low_bandpass_slider.setValue(2/self.bandpass_scale)
+        self.low_bandpass_slider.setTickInterval(0.5)
+        self.low_bandpass_slider.valueChanged.connect(partial(self.makeValueChange, self.low_bandpass_label, self.low_bandpass_slider))
+
+        self.high_bandpass_slider.setMinimum(3/self.bandpass_scale)
+        self.high_bandpass_slider.setMaximum(40/self.bandpass_scale)
+        self.high_bandpass_slider.setValue(8/self.bandpass_scale)
+        self.high_bandpass_slider.setTickInterval(0.5)
+        self.high_bandpass_slider.valueChanged.connect(partial(self.makeValueChange, self.high_bandpass_label, self.high_bandpass_slider))
+
+
+        self.filter_combo_box = QComboBox()
+        filter_group_layout.addWidget(self.filter_combo_box, 2, 0, 1, 2)
+
+        make_picks_picks_group = QGroupBox("Arrival Picks")
+        make_picks_control_panel.addWidget(make_picks_picks_group)
+
+        pick_group_layout = QGridLayout()
+        make_picks_picks_group.setLayout(pick_group_layout)
+
+        self.export_to_csv = QPushButton('Export to CSV')
+        pick_group_layout.addWidget(self.export_to_csv)
+
+        self.tab_widget.addTab(make_picks_master_tab, 'Make Picks')         
 
     def changeRows(self, obj, change):
         n_rows = obj.rowCount()
@@ -1716,8 +3164,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             self.sup_results_table.setItem(i+1, 3, QTableWidgetItem(str(xstn[i][2])))
             self.sup_results_table.setItem(i+1, 4, QTableWidgetItem(str(results.r[i])))
 
-
-
     def supraSearch(self):
 
         setup = self.saveINI(write=False)
@@ -1779,15 +3225,18 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
     def toTable(self, obj, table):
         
-        X = len(table)
-        Y = len(table[0])
+        if len(table) > 0:
+            X = len(table)
+            Y = len(table[0])
 
-        obj.setRowCount(X)
-        obj.setColumnCount(Y)
+            obj.setRowCount(X)
+            obj.setColumnCount(Y)
 
-        for x in range(X):
-            for y in range(Y):
-                obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
+            for x in range(X):
+                for y in range(Y):
+                    obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
+        else:
+            print("Warning: Table has no length")
 
     def fromTable(self, obj):
 
@@ -1836,7 +3285,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             return int(fr)
         except:
             return None
-
 
     def saveINI(self, write=True):
 
@@ -1957,12 +3405,12 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         setup.plot_all_stations = self.plot_all_stations_edits.currentText()
         setup.colortoggle = self.color_toggle_edits.currentText()
-        setup.dot_tol = self.tryFloat(self.dot_tol_edits.text())
-        setup.contour_res = self.tryFloat(self.contour_res_edits.text())
+        setup.dot_tol = self.tryInt(self.dot_tol_edits.text())
+        setup.contour_res = self.tryInt(self.contour_res_edits.text())
         setup.high_f = self.high_f_edits.text()
         setup.high_b = self.high_b_edits.text()
         setup.rm_stat = self.rm_stat_edits.text()
-        setup.img_dim = self.tryFloat(self.img_dim_edits.text())
+        setup.img_dim = self.tryInt(self.img_dim_edits.text())
         setup.reported_points = self.fromTable(self.reported_points)
 
         setup.stations = self.fromTable(self.extra_point)
@@ -1979,7 +3427,13 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             else:
                 configWrite(dlg[0], setup)
 
+        setup.restrict_to_trajectory = (setup.restrict_to_trajectory.lower() == 'true')
+        setup.show_ballistic_waveform = (setup.show_ballistic_waveform.lower() == 'true')
+        setup.show_fragmentation_waveform = (setup.show_fragmentation_waveform.lower() == 'true')    
+
         return setup
+
+
 
     def loadINI(self):
         dlg = QFileDialog()
@@ -2055,12 +3509,19 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.search_time_min_edits.setText(str(setup.min_time))
         self.search_time_max_edits.setText(str(setup.max_time))
 
-        self.search_lat_min_edits.setText(str(setup.search_area[0]))
-        self.search_lat_max_edits.setText(str(setup.search_area[1]))
-        self.search_lon_min_edits.setText(str(setup.search_area[2]))
-        self.search_lon_max_edits.setText(str(setup.search_area[3]))
-        self.search_elev_min_edits.setText(str(setup.search_height[0]))
-        self.search_elev_max_edits.setText(str(setup.search_height[1]))
+        if len(setup.search_area) > 0:
+            self.search_lat_min_edits.setText(str(setup.search_area[0]))
+            self.search_lat_max_edits.setText(str(setup.search_area[1]))
+            self.search_lon_min_edits.setText(str(setup.search_area[2]))
+            self.search_lon_max_edits.setText(str(setup.search_area[3]))
+        else:
+            print("Warning: Unable to detect search_area")
+
+        if len(setup.search_area) > 0:
+            self.search_elev_min_edits.setText(str(setup.search_height[0]))
+            self.search_elev_max_edits.setText(str(setup.search_height[1]))
+        else:
+            print("Warning: Unable to detect search_height")
 
         self.comboSet(self.enable_winds_edits, setup.enable_winds)
         self.comboSet(self.weather_type_edits, setup.weather_type)
@@ -2170,9 +3631,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         ax.text(x_opt[0], x_opt[1], x_opt[2], '%s' % ('Supracenter'), zorder=1, color='w')
 
         if not manual:
-            for i in range(len(sup)):
-                print(sup)
-                sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], sup[i, :])
+            #for i in range(len(sup)):
+                #sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], sup[i, :])
             sc = ax.scatter(sup[:, 0], sup[:, 1], sup[:, 2], c=errors, cmap='inferno_r', depthshade=False)
             a = plt.colorbar(sc, ax=ax)
             a.set_label("Error in Supracenter (s)")
@@ -2189,7 +3649,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             self.plots.removeWidget(self.three_canvas)
             self.three_canvas = FigureCanvas(Figure(figsize=(3, 3)))
             self.three_canvas = FigureCanvas(fig)
-            self.three_canvas.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
+            self.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
             self.threelbar = NavigationToolbar(self.three_canvas, self)
             self.plots.addWidget(self.three_canvas)
             self.plots.addWidget(self.threelbar)
@@ -2199,7 +3659,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
                 self.sup_plots.removeWidget(self.sup_threelbar)
             except:
                 pass
-            self.sup_plots.removeWidget(self.three_canvas)
+            self.sup_plots.removeWidget(self.sup_three_canvas)
             self.sup_three_canvas = FigureCanvas(Figure(figsize=(3, 3)))
             self.sup_three_canvas = FigureCanvas(fig)
             self.sup_three_canvas.setSizePolicy(QSizePolicy.Preferred,QSizePolicy.Preferred)
@@ -2209,7 +3669,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             self.sup_three_canvas.draw()
         ax.mouse_init()
         SolutionGUI.update(self)
-
 
     def residPlot(self, results_arr, s_name, xstn, output_name, n_stations, manual=True):
         """ outputs a 2D residual plot of the stations with the optimal supracenter
@@ -2262,6 +3721,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             self.plots.addWidget(self.twolbar)
             self.two_canvas.draw()
         else:
+
             self.sup_plots.removeWidget(self.sup_two_canvas)
             try:
                 self.sup_plots.removeWidget(self.sup_twolbar)
@@ -2275,7 +3735,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             self.sup_plots.addWidget(self.sup_twolbar)
             self.sup_two_canvas.draw()
         SolutionGUI.update(self)
-
 
     def tabChange(self):
 

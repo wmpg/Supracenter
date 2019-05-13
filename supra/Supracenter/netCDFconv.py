@@ -337,7 +337,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     return store_data
 
     def parseGeneralECMWF(file_name, lat, lon, time, variables):
-        
+
         try:
         # Read the file
             dataset = Dataset(file_name, "r+", format="NETCDF4")
@@ -356,7 +356,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
                 sounding.append(np.array(dataset.variables[var][time_index, :, lat_index, lon_index]))
 
         sounding = np.array(sounding)
-        print(sounding)
+        return sounding
 
 def storeHDF(file_name, consts):
     """ HELPER FUNCTION: Reads MERRA HDF file and stores it in memory for reuse later in the program

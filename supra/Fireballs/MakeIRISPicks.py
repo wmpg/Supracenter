@@ -117,9 +117,6 @@ def calcAllTimes(stn_list, setup, sounding):
 
         consts = Constants()
 
-        # convert angles to radians
-        az = np.radians(setup.azim)
-        ze = np.radians(setup.zangle)
 
         # For temporal perturbations, fetch the soudning data for the hour before and after the event
         if setup.perturb_method == 'temporal':
@@ -234,7 +231,7 @@ def calcAllTimes(stn_list, setup, sounding):
 
 class WaveformPicker(object):
     def __init__(self, dir_path, setup, sounding, data_list, waveform_window=600, \
-        difference_filter_all=False):
+        difference_filter_all=False, stn_list=[]):
         """
 
         Arguments:
@@ -251,7 +248,7 @@ class WaveformPicker(object):
         self.v_sound = setup.v_sound
         self.t0 = setup.t0
 
-        self.stn_list = stn_list
+        self.stn_list = data_list
 
         # Filter out all stations for which the mseed file does not exist
         filtered_stn_list = []
@@ -350,8 +347,8 @@ class WaveformPicker(object):
         self.initPlot(setup, sounding)
 
         # Extract the list of station locations
-        self.lat_list = [stn.position.lat_r for stn in stn_list]
-        self.lon_list = [stn.position.lon_r for stn in stn_list]
+        self.lat_list = [stn.position.lat_r for stn in self.stn_list]
+        self.lon_list = [stn.position.lon_r for stn in self.stn_list]
 
         # Init ground map
         self.m = GroundMap(self.lat_list, self.lon_list, ax=self.ax_map, color_scheme='light')
@@ -990,9 +987,6 @@ class WaveformPicker(object):
 
         # Initialize variables
         b_time = 0
-
-        az = np.radians(setup.azim)
-        ze = np.radians(setup.zangle)
 
         print('####################')
         print("Current Station: {:}".format(stn.name))
