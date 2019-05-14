@@ -241,6 +241,11 @@ def point2LineDist3D(a, b, c):
 
     return d
 
+def strToBool(my_str):
+
+    return (my_str.lower() == 'true')
+
+
 if __name__ == "__main__":
 
     # convert 90 east due north to north due east

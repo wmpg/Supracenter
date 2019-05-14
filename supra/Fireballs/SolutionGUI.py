@@ -45,6 +45,7 @@ from wmpl.Utils.PlotMap import GroundMap
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
+from wmpl.Utils.TrajConversions import datetime2JD
 
 global arrTimes 
 global sounding
@@ -52,6 +53,13 @@ global sounding
 DATA_FILE = 'data.txt'
 OUTPUT_CSV = 'data_picks.csv'
 
+class Pick:
+    def __init__(self, time, stn, stn_no):
+        self.time = time
+        self.stn = stn
+        self.stn_no = stn_no
+
+             
 class SolutionGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -77,12 +85,14 @@ class SolutionGUI(QMainWindow):
         # self.tab_widget.blockSignals(False)
 
         self.addIniWidgets()
+        self.addPicksReadWidgets()
         self.addSupraWidgets()
         self.addSupWidgets()
         self.addMakePicksWidgets()
         self.addFetchATMWidgets()
         self.addProfileWidgets()
         self.addDocsWidgets()
+
 
         self.var_typ = 't'
 
@@ -112,6 +122,84 @@ class SolutionGUI(QMainWindow):
     
 
         pg.setConfigOptions(antialias=True)
+
+    def addPicksReadWidgets(self):
+        picks_read_tab = QWidget()
+        picks_read_tab_content = QGridLayout()
+        picks_read_tab.setLayout(picks_read_tab_content)
+
+        self.tab_widget.addTab(picks_read_tab, "Picks Read")
+
+        self.csv_table = QTableWidget(0, 9)
+        picks_read_tab_content.addWidget(self.csv_table, 1, 1, 1, 4)
+        self.csv_table.setHorizontalHeaderLabels(['Pick Group', 'Network', 'Code', 'Latitude', 'Longitude', 'Elevation', 'Pick JD', 'Pick Time', 'station_number'])
+        header = self.csv_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+        self.csv_table_add = QPushButton("+")
+        picks_read_tab_content.addWidget(self.csv_table_add, 2, 2, 1, 1)
+        self.csv_table_add.clicked.connect(partial(self.changeRows, self.csv_table, 1))
+        self.csv_table_add.setToolTip("Add row")
+
+        self.csv_table_min = QPushButton("-")
+        picks_read_tab_content.addWidget(self.csv_table_min, 2, 1, 1, 1)
+        self.csv_table_min.clicked.connect(partial(self.changeRows, self.csv_table, -1))
+        self.csv_table_min.setToolTip("Remove row")
+
+        self.csv_table_load = QPushButton("Load")
+        picks_read_tab_content.addWidget(self.csv_table_load, 2, 3, 1, 1)
+        self.csv_table_load.clicked.connect(self.csvLoad)
+
+        self.csv_table_save = QPushButton("Save")
+        picks_read_tab_content.addWidget(self.csv_table_save, 2, 4, 1, 1)
+        self.csv_table_save.clicked.connect(self.csvSave)
+
+    def csvLoad(self):
+        
+        dlg = QFileDialog()
+        dlg.setFileMode(QFileDialog.AnyFile)
+        dlg.setNameFilters(['CSV File (*.csv)'])
+        dlg.exec_()
+
+        filename = dlg.selectedFiles()
+
+        data_table = []
+
+        with open(filename[0]) as f:
+            
+            next(f)
+            
+            for line in f:
+                data_table.append(line.split(','))
+
+        self.toTable(self.csv_table, data_table)
+
+
+    def csvSave(self):
+
+        dlg = QFileDialog.getSaveFileName(self, 'Save File')
+
+
+        if '.csv' not in dlg[0]:
+            file_name = dlg[0] + '.csv'
+        else:
+            file_name = dlg[0]
+
+        data_set = self.fromTable(self.csv_table)
+        # Open the output CSV
+        with open(os.path.join(file_name), 'w') as f:
+
+            # Write the header
+            f.write('Pick group, Network, Code, Lat, Lon, Elev, Pick JD, Pick time, station_number \n')
+
+            # Go through all picks
+            for line in data_set:
+
+                # Write the CSV entry
+                f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}\n".format(*line))
+
+        self.errorMessage('Output to CSV!', 0, title='Exported!')
+
 
     def toolTime(self, var):
 
@@ -152,7 +240,7 @@ class SolutionGUI(QMainWindow):
     def supraSaveChanges(self):
 
         self.sounding_file_edits.setText(self.atmospheric_file_edit.text())
-        self.station_picks_file_edits.setText(self.picks_file_edit.text())
+        self.station_picks_edits.setText(self.picks_file_edit.text())
         self.start_datetime_edits.setDateTime(self.ref_edit.dateTime().toPyDateTime())
         self.lat_frag_edits.setText(str(self.lat_edit.text()))
         self.lon_frag_edits.setText(str(self.lon_edit.text()))
@@ -290,86 +378,19 @@ class SolutionGUI(QMainWindow):
         self.two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
         self.two_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.plots.addWidget(self.two_canvas)
-        #self.two_ax = self.two_canvas.figure.subplots()
-        
-        # self.three_canvas = gl.GLViewWidget()
-        # self.three_canvas.opts['distance'] = 20
-        # g = gl.GLGridItem()
-        # self.three_canvas.addItem(g)
-        # self.three_ax = gl.GLScatterPlotItem(pxMode=False)
-        # self.three_ax.translate(5,5,0)
-        # self.three_canvas.addItem(self.three_ax)
-        # self.three_canvas.show()
-        # self.w = gl.GLViewWidget()
-        # self.w.opts['distance'] = 40
-        # self.w.setWindowTitle('graph')
-        # self.w.setGeometry(0, 110, 1920, 1080)
-        # self.w.show()
-        
-        # self.gx = gl.GLGridItem()
-        # self.gx.scale(10000, 10000, 10000)
-        # # gx.rotate(90, 0, 1, 0)
-        # # gx.translate(-10, 0, 0)
-
-        # pos = np.empty((53, 3))
-        # size = np.empty((53))
-        # color = np.empty((53, 4))
-        # pos[0] = (1,0,0); size[0] = 0.5;   color[0] = (1.0, 0.0, 0.0, 0.5)
-        # pos[1] = (0,1,0); size[1] = 0.2;   color[1] = (0.0, 0.0, 1.0, 0.5)
-        # pos[2] = (0,0,1); size[2] = 2./3.; color[2] = (0.0, 1.0, 0.0, 0.5)
-
-        # z = 0.5
-        # d = 6.0
-        # for i in range(3,53):
-        #     pos[i] = (0,0,z)
-        #     size[i] = 2./d
-        #     color[i] = (0.0, 1.0, 0.0, 0.5)
-        #     z *= 0.5
-        #     d *= 2.0
-            
-        # self.p13d = gl.GLScatterPlotItem(pos=pos, size=size, color=color, pxMode=False)
-        # self.p13d = gl.GLScatterPlotItem(pxMode=False)
-        # self.w.addItem(self.p13d)
-        # self.w.addItem(self.gx)
-
-
-        # self.plots.addWidget(self.view)
-        # self.plots.addWidget(self.three_canvas)
 
         self.three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
         self.three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.plots.addWidget(self.three_canvas)
-        #self.three_ax = self.three_canvas.figure.subplots()
-
-        # self.two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        # self.two_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        # self.plots.addWidget(self.two_canvas)
-        #self.two_ax = self.two_canvas.figure.subplots()
 
         self.search_button = QPushButton('Search')
         self.supra_tab_content.addWidget(self.search_button, 11, 3, 1, 3)
         self.search_button.clicked.connect(self.supraSearch)
 
-        self.lat_label = QLabel("Latitude: ")
-        self.supra_tab_content.addWidget(self.lat_label, 1, 3, 1, 1)
-
-        self.lon_label = QLabel("Longitude: ")
-        self.supra_tab_content.addWidget(self.lon_label, 2, 3, 1, 1)
-
-        self.elev_label = QLabel("Elevation: ")
-        self.supra_tab_content.addWidget(self.elev_label, 3, 3, 1, 1)
-
-        self.time_label = QLabel("Time: ")
-        self.supra_tab_content.addWidget(self.time_label, 4, 3, 1, 1)
-
-        self.ref_label = QLabel("Reference Datetime: ")
-        self.supra_tab_content.addWidget(self.ref_label, 5, 3, 1, 1)
-
-        self.picks_search_label = QLabel("Picks File: ")
-        self.supra_tab_content.addWidget(self.picks_search_label, 6, 3, 1, 1)
-
-        self.atmospheric_search_label = QLabel("Atmospheric File: ")
-        self.supra_tab_content.addWidget(self.atmospheric_search_label, 7, 3, 1, 1)
+        self.lat_label, self.lat_edit = self.createLabelEditObj("Latitude: ", self.supra_tab_content, 1, h_shift=2, width=2)
+        self.lon_label, self.lon_edit = self.createLabelEditObj("Longitude: ", self.supra_tab_content, 2, h_shift=2, width=2)
+        self.elev_label, self.elev_edit = self.createLabelEditObj("Elevation: ", self.supra_tab_content, 3, h_shift=2, width=2)
+        self.time_label, self.time_edit = self.createLabelEditObj("Time: ", self.supra_tab_content, 4, h_shift=2, width=2)
 
         self.supra_save_changes_button = QPushButton('Copy to INI Builder')
         self.supra_tab_content.addWidget(self.supra_save_changes_button, 8, 3, 1, 1)
@@ -381,35 +402,18 @@ class SolutionGUI(QMainWindow):
         self.tableWidget = QTableWidget(0, 0)
         self.supra_tab_content.addWidget(self.tableWidget, 10, 1, 1, 10)
 
-        self.lat_edit = QLineEdit("0")
-        self.supra_tab_content.addWidget(self.lat_edit, 1, 4, 1, 2)
-
-        self.lon_edit = QLineEdit("0")
-        self.supra_tab_content.addWidget(self.lon_edit, 2, 4, 1, 2)
-
-        self.elev_edit = QLineEdit("0")
-        self.supra_tab_content.addWidget(self.elev_edit, 3, 4, 1, 2)
-
-        self.time_edit = QLineEdit("0")
-        self.supra_tab_content.addWidget(self.time_edit, 4, 4, 1, 2)
-
+        self.ref_label = QLabel("Reference Datetime: ")
+        self.supra_tab_content.addWidget(self.ref_label, 5, 3, 1, 1)
         self.ref_edit = QDateTimeEdit()
         self.supra_tab_content.addWidget(self.ref_edit, 5, 4, 1, 2)
         self.ref_edit.setCalendarPopup(True)
+        
+        self.picks_file_label, self.picks_file_edit, self.picks_file_buton = self.createFileSearchObj("Picks File: ", self.supra_tab_content, 6, h_shift=2)
+        self.picks_file_buton.clicked.connect(partial(self.fileSearch, ["CSV Picks File (*.csv)"], self.picks_file_edit))
 
-        self.picks_file_edit = QLineEdit("")
-        self.supra_tab_content.addWidget(self.picks_file_edit, 6, 4, 1, 1)
-
-        self.atmospheric_file_edit = QLineEdit("")
-        self.supra_tab_content.addWidget(self.atmospheric_file_edit, 7, 4, 1, 1)
-
-        self.picks_file_button = QPushButton('Browse')
-        self.supra_tab_content.addWidget(self.picks_file_button, 6, 5, 1, 1)
-        self.picks_file_button.clicked.connect(partial(self.fileSearch, ["CSV Picks File (*.csv)"], self.picks_file_edit))
-
-        self.atmospheric_file_button = QPushButton('Browse')
-        self.supra_tab_content.addWidget(self.atmospheric_file_button, 7, 5, 1, 1)
-        self.atmospheric_file_button.clicked.connect(partial(self.fileSearch, ["NetCDF (*.nc)"], self.atmospheric_file_edit))
+        self.atmospheric_file_label, self.atmospheric_file_edit, self.atmospheric_file_buton = self.createFileSearchObj("Atmospheric File: ", self.supra_tab_content, 7, h_shift=2)
+        self.atmospheric_file_buton.clicked.connect(partial(self.fileSearch, ["NetCDF (*.nc)"], self.atmospheric_file_edit))
+        
         self.master_supra.addLayout(self.supra_tab_content)
         self.master_supra.addLayout(self.plots)
 
@@ -525,10 +529,7 @@ class SolutionGUI(QMainWindow):
 
         sounding = []
         pressures = np.array(dataset.variables['level'])
-        # level = convLevels()
-        # # level = np.flipud(np.array(level))
 
-        # sounding.append(level)
         sounding.append(pressures)
 
         for var in variables:
@@ -563,13 +564,7 @@ class SolutionGUI(QMainWindow):
         if self.fatm_v_wind.isChecked():
             variables.append('v')
             
-        # try:
         sounding = self.parseGeneralECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, atm_time, variables)
-        #     # dataset = parseWeather(setup, consts)
-        #     # sounding = findECMWFSound(setup.lat_centre, setup.lon_centre, dataset)
-        # except:
-        #     self.errorMessage('Error reading weather profile in fatmPrint', 2)
-        #     return None
 
         if '.txt' not in filename[0]:
             filename[0] = filename[0] + '.txt'
@@ -620,11 +615,7 @@ class SolutionGUI(QMainWindow):
         fetch_plots.addWidget(self.fatm_variable_combo)
         self.fatm_variable_combo.currentTextChanged.connect(self.fatmPlot)
 
-        self.fatm_name_label = QLabel("Name: ")
-        fetch_content.addWidget(self.fatm_name_label, 1, 1)
-
-        self.fatm_name_edits = QLineEdit("")
-        fetch_content.addWidget(self.fatm_name_edits, 1, 2)
+        self.fatm_name_label, self.fatm_name_edits = self.createLabelEditObj('Name:', fetch_content, 1)
 
         self.fatm_button = QPushButton('Browse')
         fetch_content.addWidget(self.fatm_button, 1, 3)
@@ -739,50 +730,84 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         docs_tab_content.addWidget(self.docTree)
 
+
+    def createLabelEditObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip=''):
+        """ Creates a label and line edit object beside each other
+
+        Arguments:
+        label_name [String]: string to be displayed in the label
+        parent [obj]: the object to hold this item. Must be in QGridLayout
+        row [int]: the row the object will sit on
+        
+        Keyword Arguments:
+        width [int]: width of the lineedit box
+        h_shift [int]: horizontal position to place the combination
+        tool_tip [String]: identifier name in tool_tips.csv that the tool tip is under
+
+        Returns:
+        label_obj, edits_obj [obj]: the label and lineedit objects
+        """
+
+        label_obj = QLabel(label_name)
+        edits_obj = QLineEdit('')
+        parent.addWidget(label_obj, row, 1 + h_shift)
+        parent.addWidget(edits_obj, row, 2 + h_shift, 1, width)
+
+        if tool_tip != '':
+            label_obj.setToolTip(self.toolTime(tool_tip))
+
+        return label_obj, edits_obj
+
+    def createFileSearchObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip=''):
+
+        label_obj, edits_obj = self.createLabelEditObj(label_name, parent, row, width=width, h_shift=h_shift, tool_tip=tool_tip)
+
+        buton_obj = QPushButton('Browse')
+        parent.addWidget(buton_obj, row, 3 + h_shift)
+
+        return label_obj, edits_obj, buton_obj
+
+    def createComboBoxObj(self, label_name, parent, row, items=[], width=1, h_shift=0, tool_tip=''):
+
+        label_obj = QLabel(label_name)
+        combo_obj = QComboBox()
+        parent.addWidget(label_obj, row, 1 + h_shift)
+        parent.addWidget(combo_obj, row, 2 + h_shift, 1, width)
+
+        for item in items: combo_obj.addItem(item)
+
+        if tool_tip != '':
+            label_obj.setToolTip(self.toolTime(tool_tip))
+
+        return label_obj, combo_obj
+
+    def createLabelDateEditObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip='', popup=True):
+        
+        label_obj = QLabel(label_name)
+        dedit_obj = QDateTimeEdit()
+        parent.addWidget(label_obj, row, 1 + h_shift)
+        parent.addWidget(dedit_obj, row, 2 + h_shift, 1, width)
+        dedit_obj.setCalendarPopup(popup)
+
+        if tool_tip != '':
+            label_obj.setToolTip(self.toolTime(tool_tip))
+
+        return label_obj, dedit_obj
+
+
     def initGeneralTab(self):
+
         general = QWidget()
         general_content = QGridLayout()
         general.setLayout(general_content)
         self.section_widget.addTab(general, "General")
 
-        self.fireball_name_label = QLabel("Fireball Name:")
-        self.fireball_name_edits = QLineEdit("")
-        general_content.addWidget(self.fireball_name_label, 1, 1)
-        general_content.addWidget(self.fireball_name_edits, 1, 2)
-        self.fireball_name_label.setToolTip(self.toolTime('fireball_name'))
+        self.fireball_name_label, self.fireball_name_edits = self.createLabelEditObj('Fireball Name:', general_content, 1, tool_tip='fireball_name')
 
-        self.difference_filter_label = QLabel("Difference Filter:")
-        self.difference_filter_edits = QComboBox()
-        general_content.addWidget(self.difference_filter_label, 2, 1)
-        general_content.addWidget(self.difference_filter_edits, 2, 2)
-        self.difference_filter_edits.addItem("True")
-        self.difference_filter_edits.addItem("False")
-        self.difference_filter_label.setToolTip(self.toolTime('difference_filter'))
-
-        self.get_data_label = QLabel("Get Data:")
-        self.get_data_edits = QComboBox()
-        general_content.addWidget(self.get_data_label, 3, 1)
-        general_content.addWidget(self.get_data_edits, 3, 2)
-        self.get_data_edits.addItem("True")
-        self.get_data_edits.addItem("False")
-        self.get_data_label.setToolTip(self.toolTime('get_data'))
-
-        self.run_mode_label = QLabel("Run Mode:")
-        self.run_mode_edits = QComboBox()
-        general_content.addWidget(self.run_mode_label, 4, 1)
-        general_content.addWidget(self.run_mode_edits, 4, 2)
-        self.run_mode_edits.addItem("Search")
-        self.run_mode_edits.addItem("Replot")
-        self.run_mode_edits.addItem("Manual")
-        self.run_mode_label.setToolTip(self.toolTime('run_mode'))
-
-        self.debug_label = QLabel("Debug:")
-        self.debug_edits = QComboBox()
-        general_content.addWidget(self.debug_label, 5, 1)
-        general_content.addWidget(self.debug_edits, 5, 2)
-        self.debug_edits.addItem("True")
-        self.debug_edits.addItem("False")
-        self.debug_label.setToolTip(self.toolTime('debug'))
+        self.difference_filter_label, self.difference_filter_edits = self.createComboBoxObj('Difference Filter:', general_content, 2, items=['True', 'False'], tool_tip='difference_filter')
+        self.get_data_label, self.get_data_edits = self.createComboBoxObj('Get Data: ', general_content, 3, items=['True', 'False'], tool_tip='get_data')
+        self.run_mode_label, self.run_mode_edits = self.createComboBoxObj('Run Mode: ', general_content, 4, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
+        self.debug_label, self.debug_edits = self.createComboBoxObj('Debug: ', general_content, 5, items=['True', 'False'], tool_tip='debug')
 
     def initFilesTab(self):
         files = QWidget()
@@ -790,59 +815,23 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         files.setLayout(files_content)
         self.section_widget.addTab(files, "Files")
 
-        self.working_directory_label = QLabel("Working Directory:")
-        self.working_directory_edits = QLineEdit("")
-        self.working_directory_buton = QPushButton("Browse")
-        files_content.addWidget(self.working_directory_label, 1, 1)
-        files_content.addWidget(self.working_directory_edits, 1, 2)
-        files_content.addWidget(self.working_directory_buton, 1, 3)
+        self.working_directory_label, self.working_directory_edits, self.working_directory_buton = self.createFileSearchObj('Working Directory: ', files_content, 1, width=1, h_shift=0, tool_tip='working_directory')
         self.working_directory_buton.clicked.connect(partial(self.folderSearch, self.working_directory_edits))
-        self.working_directory_label.setToolTip(self.toolTime('working_directory'))
 
-        self.arrival_times_label = QLabel("Arrival Times:")
-        self.arrival_times_edits = QLineEdit("")
-        self.arrival_times_buton = QPushButton("Browse")
-        files_content.addWidget(self.arrival_times_label, 2, 1)
-        files_content.addWidget(self.arrival_times_edits, 2, 2)
-        files_content.addWidget(self.arrival_times_buton, 2, 3)
+        self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = self.createFileSearchObj('Arrival Times:', files_content, 2, width=1, h_shift=0, tool_tip='arrival_times_file')
         self.arrival_times_buton.clicked.connect(partial(self.fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
-        self.arrival_times_label.setToolTip(self.toolTime('arrival_times_file'))
 
-        self.sounding_file_label = QLabel("Sounding File:")
-        self.sounding_file_edits = QLineEdit("")
-        self.sounding_file_buton = QPushButton("Browse")
-        files_content.addWidget(self.sounding_file_label, 3, 1)
-        files_content.addWidget(self.sounding_file_edits, 3, 2)
-        files_content.addWidget(self.sounding_file_buton, 3, 3)
+        self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = self.createFileSearchObj('Sounding File:', files_content, 3, width=1, h_shift=0, tool_tip='sounding_file')
         self.sounding_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)'], self.sounding_file_edits))
-        self.sounding_file_label.setToolTip(self.toolTime('sounding_file'))
 
-        self.perturbation_file_label = QLabel("Perturbation File:")
-        self.perturbation_file_edits = QLineEdit("")
-        self.perturbation_file_buton = QPushButton("Browse")
-        files_content.addWidget(self.perturbation_file_label, 4, 1)
-        files_content.addWidget(self.perturbation_file_edits, 4, 2)
-        files_content.addWidget(self.perturbation_file_buton, 4, 3)
+        self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = self.createFileSearchObj('Perturbation', files_content, 4, width=1, h_shift=0, tool_tip='perturbation_spread_file')
         self.perturbation_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
-        self.perturbation_file_label.setToolTip(self.toolTime('perturbation_spread_file'))
 
-        self.station_picks_file_label = QLabel("Station Picks File:")
-        self.station_picks_file_edits = QLineEdit("")
-        self.station_picks_file_buton = QPushButton("Browse")
-        files_content.addWidget(self.station_picks_file_label, 5, 1)
-        files_content.addWidget(self.station_picks_file_edits, 5, 2)
-        files_content.addWidget(self.station_picks_file_buton, 5, 3)
-        self.station_picks_file_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_file_edits))
-        self.station_picks_file_label.setToolTip(self.toolTime('station_picks_file'))
+        self.station_picks_label, self.station_picks_edits, self.station_picks_buton = self.createFileSearchObj('Station Picks File: ', files_content, 5, width=1, h_shift=0, tool_tip='station_picks_file')
+        self.station_picks_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
 
-        self.points_name_label = QLabel("Replot Points File:")
-        self.points_name_edits = QLineEdit("")
-        self.points_name_buton = QPushButton("Browse")
-        files_content.addWidget(self.points_name_label, 6, 1)
-        files_content.addWidget(self.points_name_edits, 6, 2)
-        files_content.addWidget(self.points_name_buton, 6, 3)
+        self.points_name_label, self.points_name_edits, self.points_name_buton = self.createFileSearchObj('Replot Points File: ', files_content, 6, width=1, h_shift=0, tool_tip='points_name')
         self.points_name_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)'], self.points_name_edits))
-        self.points_name_label.setToolTip(self.toolTime('points_name'))
 
     def initParametersTab(self):
         params = QWidget()
@@ -850,43 +839,14 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         params.setLayout(params_content)
         self.section_widget.addTab(params, "Parameters")
 
-        self.lat_centre_label = QLabel("Latitude Center:")
-        self.lat_centre_edits = QLineEdit("")
-        params_content.addWidget(self.lat_centre_label, 1, 1)
-        params_content.addWidget(self.lat_centre_edits, 1, 2)
-        self.lat_centre_label.setToolTip(self.toolTime('lat_centre'))
+        self.lat_centre_label, self.lat_centre_edits = self.createLabelEditObj('Latitude Center:', params_content, 1, tool_tip='lat_centre')
+        self.lon_centre_label, self.lon_centre_edits = self.createLabelEditObj('Longitude Center:', params_content, 2, tool_tip='lon_centre')
+        self.deg_radius_label, self.deg_radius_edits = self.createLabelEditObj('Degrees in Search Radius:', params_content, 3, tool_tip='deg_radius')
 
-        self.lon_centre_label = QLabel("Longitude Center:")
-        self.lon_centre_edits = QLineEdit("")
-        params_content.addWidget(self.lon_centre_label, 2, 1)
-        params_content.addWidget(self.lon_centre_edits, 2, 2)
-        self.lon_centre_label.setToolTip(self.toolTime('lon_centre'))
+        self.start_datetime_label, self.start_datetime_edits = self.createLabelDateEditObj("Start Datetime", params_content, 4, tool_tip='start_datetime')
+        self.end_datetime_label, self.end_datetime_edits = self.createLabelDateEditObj("End Datetime", params_content, 5, tool_tip='end_datetime')
 
-        self.deg_radius_label = QLabel("Degrees in Search Radius:")
-        self.deg_radius_edits = QLineEdit("")
-        params_content.addWidget(self.deg_radius_label, 3, 1)
-        params_content.addWidget(self.deg_radius_edits, 3, 2)
-        self.deg_radius_label.setToolTip(self.toolTime('deg_radius'))
-
-        self.start_datetime_label = QLabel("Start Datetime:")
-        self.start_datetime_edits = QDateTimeEdit()
-        params_content.addWidget(self.start_datetime_label, 4, 1)
-        params_content.addWidget(self.start_datetime_edits, 4, 2)
-        self.start_datetime_edits.setCalendarPopup(True)
-        self.start_datetime_label.setToolTip(self.toolTime('start_datetime'))
-
-        self.end_datetime_label = QLabel("End Datetime:")
-        self.end_datetime_edits = QDateTimeEdit()
-        params_content.addWidget(self.end_datetime_label, 5, 1)
-        params_content.addWidget(self.end_datetime_edits, 5, 2)
-        self.end_datetime_edits.setCalendarPopup(True)
-        self.end_datetime_label.setToolTip(self.toolTime('end_datetime'))
-
-        self.v_sound_label = QLabel("Average Speed of Sound:")
-        self.v_sound_edits = QLineEdit("")
-        params_content.addWidget(self.v_sound_label, 6, 1)
-        params_content.addWidget(self.v_sound_edits, 6, 2)
-        self.v_sound_label.setToolTip(self.toolTime('v_sound'))
+        self.v_sound_label, self.v_sound_edits = self.createLabelEditObj('Average Speed of Sound:', params_content, 6, tool_tip='v_sound')
 
     def initBallisticTab(self):
 
@@ -895,73 +855,18 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         ballistic.setLayout(ballistic_content)
         self.section_widget.addTab(ballistic, "Ballistic")
 
-        self.t0_label = QLabel("t0:")
-        self.t0_edits = QLineEdit("")
-        ballistic_content.addWidget(self.t0_label, 1, 1)
-        ballistic_content.addWidget(self.t0_edits, 1, 2, 1, 3)
-        self.t0_label.setToolTip(self.toolTime('t0'))
+        self.t0_label, self.t0_edits = self.createLabelEditObj('t0:', ballistic_content, 1, width=3, tool_tip='t0')
+        self.v_label, self.v_edits = self.createLabelEditObj('v:', ballistic_content, 2, width=3, tool_tip='v')
+        self.azim_label, self.azim_edits = self.createLabelEditObj('azim:', ballistic_content, 3, width=3, tool_tip='azim')
+        self.zangle_label, self.zangle_edits = self.createLabelEditObj('zangle:', ballistic_content, 4, width=3, tool_tip='zangle')
+        self.lat_i_label, self.lat_i_edits = self.createLabelEditObj('lat_i:', ballistic_content, 5, tool_tip='lat_i')
+        self.lon_i_label, self.lon_i_edits = self.createLabelEditObj('lon_i:', ballistic_content, 6, tool_tip='lon_i')
+        self.elev_i_label, self.elev_i_edits = self.createLabelEditObj('elev_i:', ballistic_content, 7, tool_tip='elev_i')
+        self.lat_f_label, self.lat_f_edits = self.createLabelEditObj('lat_f:', ballistic_content, 5, h_shift=2, tool_tip='lat_f')
+        self.lon_f_label, self.lon_f_edits = self.createLabelEditObj('lon_f:', ballistic_content, 6, h_shift=2, tool_tip='lon_f')
+        self.elev_f_label, self.elev_f_edits = self.createLabelEditObj('elev_f:', ballistic_content, 7, h_shift=2, tool_tip='elev_f')
 
-        self.v_label = QLabel("v:")
-        self.v_edits = QLineEdit("")
-        ballistic_content.addWidget(self.v_label, 2, 1)
-        ballistic_content.addWidget(self.v_edits, 2, 2, 1, 3)
-        self.v_label.setToolTip(self.toolTime('v'))
-
-        self.azim_label = QLabel("azim:")
-        self.azim_edits = QLineEdit("")
-        ballistic_content.addWidget(self.azim_label, 3, 1)
-        ballistic_content.addWidget(self.azim_edits, 3, 2, 1, 3)
-        self.azim_label.setToolTip(self.toolTime('azim'))
-
-        self.zangle_label = QLabel("zangle:")
-        self.zangle_edits = QLineEdit("")
-        ballistic_content.addWidget(self.zangle_label, 4, 1)
-        ballistic_content.addWidget(self.zangle_edits, 4, 2, 1, 3)
-        self.zangle_label.setToolTip(self.toolTime('zangle'))
-
-        self.lat_i_label = QLabel("lat_i:")
-        self.lat_i_edits = QLineEdit("")
-        ballistic_content.addWidget(self.lat_i_label, 5, 1)
-        ballistic_content.addWidget(self.lat_i_edits, 5, 2)
-        self.lat_i_label.setToolTip(self.toolTime('lat_i'))
-
-        self.lon_i_label = QLabel("lon_i:")
-        self.lon_i_edits = QLineEdit("")
-        ballistic_content.addWidget(self.lon_i_label, 6, 1)
-        ballistic_content.addWidget(self.lon_i_edits, 6, 2)
-        self.lon_i_label.setToolTip(self.toolTime('lon_i'))
-
-        self.elev_i_label = QLabel("elev_i:")
-        self.elev_i_edits = QLineEdit("")
-        ballistic_content.addWidget(self.elev_i_label, 7, 1)
-        ballistic_content.addWidget(self.elev_i_edits, 7, 2)
-        self.elev_i_label.setToolTip(self.toolTime('elev_i'))
-
-        self.lat_f_label = QLabel("lat_f:")
-        self.lat_f_edits = QLineEdit("")
-        ballistic_content.addWidget(self.lat_f_label, 5, 3)
-        ballistic_content.addWidget(self.lat_f_edits, 5, 4)
-        self.lat_f_label.setToolTip(self.toolTime('lat_f'))
-
-        self.lon_f_label = QLabel("lon_f:")
-        self.lon_f_edits = QLineEdit("")
-        ballistic_content.addWidget(self.lon_f_label, 6, 3)
-        ballistic_content.addWidget(self.lon_f_edits, 6, 4)
-        self.lon_f_label.setToolTip(self.toolTime('lon_f'))
-
-        self.elev_f_label = QLabel("elev_f:")
-        self.elev_f_edits = QLineEdit("")
-        ballistic_content.addWidget(self.elev_f_label, 7, 3)
-        ballistic_content.addWidget(self.elev_f_edits, 7, 4)
-        self.elev_f_label.setToolTip(self.toolTime('elev_f'))
-
-        self.show_ballistic_waveform_label = QLabel("Show Ballistic Waveform:")
-        self.show_ballistic_waveform_edits = QComboBox()
-        ballistic_content.addWidget(self.show_ballistic_waveform_label, 8, 1, 1, 2)
-        ballistic_content.addWidget(self.show_ballistic_waveform_edits, 8, 3, 1, 2)
-        self.show_ballistic_waveform_edits.addItem("True")
-        self.show_ballistic_waveform_edits.addItem("False")
-        self.show_ballistic_waveform_label.setToolTip(self.toolTime('show_ballistic_waveform'))
+        self.show_ballistic_waveform_label, self.show_ballistic_waveform_edits = self.createComboBoxObj('Show Ballistic Waveform', ballistic_content, 8, items=['True', 'False'], width=2, tool_tip='show_ballistic_waveform')
 
     def initFragmentationTab(self):
         fragmentation = QWidget()
@@ -989,13 +894,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.fragmentation_point_min.clicked.connect(partial(self.changeRows, self.fragmentation_point, -1))
         self.fragmentation_point_min.setToolTip("Remove row")
 
-        self.show_fragmentation_waveform_label = QLabel("Show Fragmentation Waveform:")
-        self.show_fragmentation_waveform_edits = QComboBox()
-        fragmentation_content.addWidget(self.show_fragmentation_waveform_label, 3, 1, 1, 2)
-        fragmentation_content.addWidget(self.show_fragmentation_waveform_edits, 3, 3, 1, 2)
-        self.show_fragmentation_waveform_edits.addItem("True")
-        self.show_fragmentation_waveform_edits.addItem("False")
-        self.show_fragmentation_waveform_label.setToolTip("show_fragmentation_waveform")
+        self.show_fragmentation_waveform_label, self.show_fragmentation_waveform_edits = self.createComboBoxObj("Show Fragmentation Waveform: ", fragmentation_content, 3, width=2, items=['True', 'False'], tool_tip='show_fragmentation_waveform')
 
         self.manual_label = QLabel("Manual Fragmentation Search:")
         fragmentation_content.addWidget(self.manual_label, 4, 1, 1, 4)
@@ -1022,177 +921,45 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         fragmentation_content.addWidget(self.time_frag_edits, 6, 4)
 
     def initRestrictionTab(self):
+
         restriction = QWidget()
         restriction_content = QGridLayout()
         restriction.setLayout(restriction_content)
         self.section_widget.addTab(restriction, "Restriction")
 
-        self.v_fixed_label = QLabel("v_fixed:")
-        self.v_fixed_edits = QLineEdit("")
-        restriction_content.addWidget(self.v_fixed_label, 1, 1, 1, 2)
-        restriction_content.addWidget(self.v_fixed_edits, 1, 3, 1, 2)
-        self.v_fixed_label.setToolTip(self.toolTime('v_fixed'))
+        self.v_fixed_label, self.v_fixed_edits = self.createLabelEditObj('v_fixed:', restriction_content, 1, width=3, tool_tip='v_fixed')
+        self.max_error_label, self.max_error_edits = self.createLabelEditObj('max_error:', restriction_content, 2, width=3, tool_tip='max_error')
 
-        self.max_error_label = QLabel("max_error:")
-        self.max_error_edits = QLineEdit("")
-        restriction_content.addWidget(self.max_error_label, 2, 1, 1, 2)
-        restriction_content.addWidget(self.max_error_edits, 2, 3, 1, 2)
-        self.max_error_label.setToolTip(self.toolTime('max_error'))
-
-        self.restricted_time_label = QLabel("restricted_time:")
-        self.restricted_time_edits = QDateTimeEdit()
         self.restricted_time_check = QCheckBox("Enable Restricted Time: ")
-        restriction_content.addWidget(self.restricted_time_label, 3, 1, 1, 2)
-        restriction_content.addWidget(self.restricted_time_edits, 3, 3, 1, 1)
         restriction_content.addWidget(self.restricted_time_check, 3, 4, 1, 1)
-        self.restricted_time_edits.setCalendarPopup(True)
-        self.restricted_time_label.setToolTip(self.toolTime('restricted_time'))
+        self.restricted_time_label, self.restricted_time_edits = self.createLabelDateEditObj("Restricted Time: ", restriction_content, 3, width=2, tool_tip='restricted_time')
 
-        self.traj_tol_label = QLabel("traj_tol:")
-        self.traj_tol_edits = QLineEdit("")
-        restriction_content.addWidget(self.traj_tol_label, 4, 1, 1, 2)
-        restriction_content.addWidget(self.traj_tol_edits, 4, 3, 1, 2)
-        self.traj_tol_label.setToolTip(self.toolTime('traj_tol'))
+        self.traj_tol_label, self.traj_tol_edits = self.createLabelEditObj('traj_tol:', restriction_content, 4, width=3, tool_tip='traj_tol')
 
-        self.restrict_to_trajectory_label = QLabel("restrict_to_trajectory:")
-        self.restrict_to_trajectory_edits = QComboBox()
-        restriction_content.addWidget(self.restrict_to_trajectory_label, 5, 1, 1, 2)
-        restriction_content.addWidget(self.restrict_to_trajectory_edits, 5, 3, 1, 2)
-        self.restrict_to_trajectory_edits.addItem("True")
-        self.restrict_to_trajectory_edits.addItem("False")
-        self.restrict_to_trajectory_label.setToolTip(self.toolTime('restrict_to_trajectory'))
+        self.restrict_to_trajectory_label, self.restrict_to_trajectory_edits = self.createComboBoxObj('restrict_to_trajectory', restriction_content, 5, items=['True', 'False'], width=2, tool_tip='restrict_to_trajectory')
 
-        self.azimuth_min_label = QLabel("azimuth_min:")
-        self.azimuth_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.azimuth_min_label, 6, 1, 1, 1)
-        restriction_content.addWidget(self.azimuth_min_edits, 6, 2, 1, 1)
-        self.azimuth_min_label.setToolTip(self.toolTime('azimuth_min'))
-
-        self.azimuth_max_label = QLabel("azimuth_max:")
-        self.azimuth_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.azimuth_max_label, 6, 3, 1, 1)
-        restriction_content.addWidget(self.azimuth_max_edits, 6, 4, 1, 1)
-        self.azimuth_max_label.setToolTip(self.toolTime('azimuth_max'))
-
-        self.zangle_min_label = QLabel("zangle_min:")
-        self.zangle_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.zangle_min_label, 7, 1, 1, 1)
-        restriction_content.addWidget(self.zangle_min_edits, 7, 2, 1, 1)
-        self.zangle_min_label.setToolTip(self.toolTime('zenith_min'))
-
-        self.zangle_max_label = QLabel("zangle_max:")
-        self.zangle_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.zangle_max_label, 7, 3, 1, 1)
-        restriction_content.addWidget(self.zangle_max_edits, 7, 4, 1, 1)
-        self.zangle_max_label.setToolTip(self.toolTime('zenith_max'))
-
-        self.x_min_label = QLabel("x_min:")
-        self.x_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.x_min_label, 8, 1, 1, 1)
-        restriction_content.addWidget(self.x_min_edits, 8, 2, 1, 1)
-        self.x_min_label.setToolTip(self.toolTime('x_min'))
-
-        self.x_max_label = QLabel("x_max:")
-        self.x_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.x_max_label, 8, 3, 1, 1)
-        restriction_content.addWidget(self.x_max_edits, 8, 4, 1, 1)
-        self.x_max_label.setToolTip(self.toolTime('x_max'))
-
-        self.y_min_label = QLabel("y_min:")
-        self.y_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.y_min_label, 9, 1, 1, 1)
-        restriction_content.addWidget(self.y_min_edits, 9, 2, 1, 1)
-        self.y_min_label.setToolTip(self.toolTime('y_min'))
-
-        self.y_max_label = QLabel("y_max:")
-        self.y_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.y_max_label, 9, 3, 1, 1)
-        restriction_content.addWidget(self.y_max_edits, 9, 4, 1, 1)
-        self.y_max_label.setToolTip(self.toolTime('y_max'))
-
-        self.t_min_label = QLabel("t_min:")
-        self.t_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.t_min_label, 10, 1, 1, 1)
-        restriction_content.addWidget(self.t_min_edits, 10, 2, 1, 1)
-        self.t_min_label.setToolTip(self.toolTime('t_min'))
-
-        self.t_max_label = QLabel("t_max:")
-        self.t_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.t_max_label, 10, 3, 1, 1)
-        restriction_content.addWidget(self.t_max_edits, 10, 4, 1, 1)
-        self.t_max_label.setToolTip(self.toolTime('t_max'))
-
-        self.v_min_label = QLabel("v_min:")
-        self.v_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.v_min_label, 11, 1, 1, 1)
-        restriction_content.addWidget(self.v_min_edits, 11, 2, 1, 1)
-        self.v_min_label.setToolTip(self.toolTime('v_min'))
-
-        self.v_max_label = QLabel("v_max:")
-        self.v_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.v_max_label, 11, 3, 1, 1)
-        restriction_content.addWidget(self.v_max_edits, 11, 4, 1, 1)
-        self.v_max_label.setToolTip(self.toolTime('v_max'))
-
-        self.weight_distance_min_label = QLabel("weight_distance_min:")
-        self.weight_distance_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.weight_distance_min_label, 12, 1, 1, 1)
-        restriction_content.addWidget(self.weight_distance_min_edits, 12, 2, 1, 1)
-        self.weight_distance_min_label.setToolTip(self.toolTime('weight_distance_min'))
-
-        self.weight_distance_max_label = QLabel("weight_distance_max:")
-        self.weight_distance_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.weight_distance_max_label, 12, 3, 1, 1)
-        restriction_content.addWidget(self.weight_distance_max_edits, 12, 4, 1, 1)
-        self.weight_distance_max_label.setToolTip(self.toolTime('weight_distance_max'))
-
-        self.search_time_min_label = QLabel("search_time_min:")
-        self.search_time_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_time_min_label, 13, 1, 1, 1)
-        restriction_content.addWidget(self.search_time_min_edits, 13, 2, 1, 1)
-        self.search_time_min_label.setToolTip(self.toolTime('min_time'))
-
-        self.search_time_max_label = QLabel("search_time_max:")
-        self.search_time_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_time_max_label, 13, 3, 1, 1)
-        restriction_content.addWidget(self.search_time_max_edits, 13, 4, 1, 1)
-        self.search_time_max_label.setToolTip(self.toolTime('max_time'))
-
-        self.search_lat_min_label = QLabel("search_lat_min:")
-        self.search_lat_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_lat_min_label, 14, 1, 1, 1)
-        restriction_content.addWidget(self.search_lat_min_edits, 14, 2, 1, 1)
-        self.search_lat_min_label.setToolTip(self.toolTime('search_area'))
-
-        self.search_lat_max_label = QLabel("search_lat_max:")
-        self.search_lat_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_lat_max_label, 14, 3, 1, 1)
-        restriction_content.addWidget(self.search_lat_max_edits, 14, 4, 1, 1)
-        self.search_lat_max_label.setToolTip(self.toolTime('search_area'))
-
-        self.search_lon_min_label = QLabel("search_lon_min:")
-        self.search_lon_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_lon_min_label, 15, 1, 1, 1)
-        restriction_content.addWidget(self.search_lon_min_edits, 15, 2, 1, 1)
-        self.search_lon_min_label.setToolTip(self.toolTime('search_area'))
-
-        self.search_lon_max_label = QLabel("search_lon_max:")
-        self.search_lon_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_lon_max_label, 15, 3, 1, 1)
-        restriction_content.addWidget(self.search_lon_max_edits, 15, 4, 1, 1)
-        self.search_lon_max_label.setToolTip(self.toolTime('search_area'))
-
-        self.search_elev_min_label = QLabel("search_elev_min:")
-        self.search_elev_min_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_elev_min_label, 16, 1, 1, 1)
-        restriction_content.addWidget(self.search_elev_min_edits, 16, 2, 1, 1)
-        self.search_elev_min_label.setToolTip(self.toolTime('search_area'))
-
-        self.search_elev_max_label = QLabel("search_elev_max:")
-        self.search_elev_max_edits = QLineEdit("")
-        restriction_content.addWidget(self.search_elev_max_label, 16, 3, 1, 1)
-        restriction_content.addWidget(self.search_elev_max_edits, 16, 4, 1, 1)
-        self.search_elev_max_label.setToolTip(self.toolTime('search_area'))
+        self.azimuth_min_label, self.azimuth_min_edits = self.createLabelEditObj('azimuth_min:', restriction_content, 6, tool_tip='azimuth_min')
+        self.azimuth_max_label, self.azimuth_max_edits = self.createLabelEditObj('azimuth_max:', restriction_content, 6, h_shift=2, tool_tip='azimuth_max')
+        self.zangle_min_label, self.zangle_min_edits = self.createLabelEditObj('zangle_min:', restriction_content, 7, tool_tip='zenith_min')
+        self.zangle_max_label, self.zangle_max_edits = self.createLabelEditObj('zangle_max:', restriction_content, 7, h_shift=2, tool_tip='zenith_max')
+        self.x_min_label, self.x_min_edits = self.createLabelEditObj('x_min:', restriction_content, 8, tool_tip='x_min')
+        self.x_max_label, self.x_max_edits = self.createLabelEditObj('x_max:', restriction_content, 8, h_shift=2, tool_tip='x_max')
+        self.y_min_label, self.y_min_edits = self.createLabelEditObj('y_min:', restriction_content, 9, tool_tip='y_min')
+        self.y_max_label, self.y_max_edits = self.createLabelEditObj('y_max:', restriction_content, 9, h_shift=2, tool_tip='y_max')
+        self.t_min_label, self.t_min_edits = self.createLabelEditObj('t_min:', restriction_content, 10, tool_tip='t_min')
+        self.t_max_label, self.t_max_edits = self.createLabelEditObj('t_max:', restriction_content, 10, h_shift=2, tool_tip='t_max')
+        self.v_min_label, self.v_min_edits = self.createLabelEditObj('v_min:', restriction_content, 11, tool_tip='v_min')
+        self.v_max_label, self.v_max_edits = self.createLabelEditObj('v_max:', restriction_content, 11, h_shift=2, tool_tip='v_max')
+        self.weight_distance_min_label, self.weight_distance_min_edits = self.createLabelEditObj('weight_distance_min', restriction_content, 12, tool_tip='weight_distance_min')
+        self.weight_distance_max_label, self.weight_distance_max_edits = self.createLabelEditObj('weight_distance_max', restriction_content, 12, h_shift=2, tool_tip='weight_distance_max')
+        self.search_time_min_label, self.search_time_min_edits = self.createLabelEditObj('search_time_min', restriction_content, 13, tool_tip='min_time')
+        self.search_time_max_label, self.search_time_max_edits = self.createLabelEditObj('search_time_max', restriction_content, 13, h_shift=2, tool_tip='max_time')
+        self.search_lat_min_label, self.search_lat_min_edits = self.createLabelEditObj('search_lat_min', restriction_content, 14, tool_tip='search_area')
+        self.search_lat_max_label, self.search_lat_max_edits = self.createLabelEditObj('search_lat_max', restriction_content, 14, h_shift=2, tool_tip='search_area')
+        self.search_lon_min_label, self.search_lon_min_edits = self.createLabelEditObj('search_lon_min', restriction_content, 15, tool_tip='search_area')
+        self.search_lon_max_label, self.search_lon_max_edits = self.createLabelEditObj('search_lon_max', restriction_content, 15, h_shift=2, tool_tip='search_area')
+        self.search_elev_min_label, self.search_elev_min_edits = self.createLabelEditObj('search_elev_min', restriction_content, 16, tool_tip='search_area')
+        self.search_elev_max_label, self.search_elev_max_edits = self.createLabelEditObj('search_elev_max', restriction_content, 16, h_shift=2, tool_tip='search_area')
 
     def initAtmosphereTab(self):
 
@@ -1201,30 +968,10 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         atmosphere.setLayout(atmosphere_content)
         self.section_widget.addTab(atmosphere, "Atmosphere")
 
-        self.enable_winds_label = QLabel("Enable Winds:")
-        self.enable_winds_edits = QComboBox()
-        atmosphere_content.addWidget(self.enable_winds_label, 1, 1)
-        atmosphere_content.addWidget(self.enable_winds_edits, 1, 2)
-        self.enable_winds_edits.addItem("True")
-        self.enable_winds_edits.addItem("False")
-        self.enable_winds_label.setToolTip(self.toolTime('enable_winds'))
+        self.enable_winds_label, self.enable_winds_edits = self.createComboBoxObj('Enable Winds: ', atmosphere_content, 1, items=['True', 'False'], tool_tip='enable_winds')
+        self.weather_type_label, self.weather_type_edits = self.createComboBoxObj('Weather Type: ', atmosphere_content, 2, items=['none', 'ecmwf', 'ukmo', 'merra', 'custom'], tool_tip='weather_type')
 
-        self.weather_type_label = QLabel("Weather Type:")
-        self.weather_type_edits = QComboBox()
-        atmosphere_content.addWidget(self.weather_type_label, 2, 1)
-        atmosphere_content.addWidget(self.weather_type_edits, 2, 2)
-        self.weather_type_edits.addItem("none")
-        self.weather_type_edits.addItem("ecmwf")
-        self.weather_type_edits.addItem("ukmo")
-        self.weather_type_edits.addItem("merra")
-        self.weather_type_edits.addItem("custom")
-        self.weather_type_label.setToolTip(self.toolTime('weather_type'))
-
-        self.grid_size_label = QLabel("Grid Size:")
-        self.grid_size_edits = QLineEdit("")
-        atmosphere_content.addWidget(self.grid_size_label, 3, 1)
-        atmosphere_content.addWidget(self.grid_size_edits, 3, 2)
-        self.grid_size_label.setToolTip(self.toolTime('grid_size'))
+        self.grid_size_label, self.grid_size_edits = self.createLabelEditObj('Grid Size', atmosphere_content, 3, tool_tip='grid_size')
 
     def initPerturbationsTab(self):
 
@@ -1233,37 +980,12 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         perturb.setLayout(perturb_content)
         self.section_widget.addTab(perturb, "Perturbations")
 
-        self.perturb_times_label = QLabel("Perturbation Times:")
-        self.perturb_times_edits = QLineEdit("")
-        perturb_content.addWidget(self.perturb_times_label, 1, 1)
-        perturb_content.addWidget(self.perturb_times_edits, 1, 2)
-        self.perturb_times_label.setToolTip(self.toolTime('perturb_times'))
+        self.perturb_times_label, self.perturb_times_edits = self.createLabelEditObj('Perturbation Times', perturb_content, 1, tool_tip='perturb_times')
+        self.frag_no_label, self.frag_no_edits = self.createLabelEditObj('Fragmentation Number', perturb_content, 2, tool_tip='fragno')
 
-        self.frag_no_label = QLabel("Fragmentation Number:")
-        self.frag_no_edits = QLineEdit("")
-        perturb_content.addWidget(self.frag_no_label, 2, 1)
-        perturb_content.addWidget(self.frag_no_edits, 2, 2)
-        self.frag_no_label.setToolTip(self.toolTime('fragno'))
+        self.perturb_label, self.perturb_edits = self.createComboBoxObj('Perturb: ', perturb_content, 3, items=['True', 'False'], tool_tip='perturb')
+        self.perturb_method_label, self.perturb_method_edits = self.createComboBoxObj('Perturb Method', perturb_content, 4, items=['none', 'bmp', 'sppt', 'temporal', 'spread', 'spread_r'], tool_tip='perturb_method')
 
-        self.perturb_label = QLabel("Perturb:")
-        self.perturb_edits = QComboBox()
-        perturb_content.addWidget(self.perturb_label, 3, 1)
-        perturb_content.addWidget(self.perturb_edits, 3, 2)
-        self.perturb_edits.addItem("True")
-        self.perturb_edits.addItem("False")
-        self.perturb_label.setToolTip(self.toolTime('perturb'))
-
-        self.perturb_method_label = QLabel("Perturb Method:")
-        self.perturb_method_edits = QComboBox()
-        perturb_content.addWidget(self.perturb_method_label, 4, 1)
-        perturb_content.addWidget(self.perturb_method_edits, 4, 2)
-        self.perturb_method_edits.addItem("none")
-        self.perturb_method_edits.addItem("bmp")
-        self.perturb_method_edits.addItem("sppt")
-        self.perturb_method_edits.addItem("temporal")
-        self.perturb_method_edits.addItem("spread")
-        self.perturb_method_edits.addItem("spread_r")
-        self.perturb_method_label.setToolTip(self.toolTime('perturb_method'))
 
     def initSpeedTab(self):
 
@@ -1272,43 +994,13 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         speed.setLayout(speed_content)
         self.section_widget.addTab(speed, "Speed")
 
-        self.fast_ballistic_label = QLabel("Fast Ballistic:")
-        self.fast_ballistic_edits = QComboBox()
-        speed_content.addWidget(self.fast_ballistic_label, 1, 1)
-        speed_content.addWidget(self.fast_ballistic_edits, 1, 2)
-        self.fast_ballistic_edits.addItem("True")
-        self.fast_ballistic_edits.addItem("False")
-        self.fast_ballistic_label.setToolTip(self.toolTime('fast_ballistic')) 
+        self.fast_ballistic_label, self.fast_ballistic_edits = self.createComboBoxObj("Fast Ballistic: ", speed_content, 1, items=['True', 'False'], tool_tip='fast_ballistic')
 
-        self.fit_type_label = QLabel("Fit Type:")
-        self.fit_type_edits = QLineEdit("")
-        speed_content.addWidget(self.fit_type_label, 2, 1)
-        speed_content.addWidget(self.fit_type_edits, 2, 2)
-        self.fit_type_label.setToolTip(self.toolTime('fit_type'))
-
-        self.n_theta_label = QLabel("Theta Resolution:")
-        self.n_theta_edits = QLineEdit("")
-        speed_content.addWidget(self.n_theta_label, 3, 1)
-        speed_content.addWidget(self.n_theta_edits, 3, 2)
-        self.n_theta_label.setToolTip(self.toolTime('n_theta'))
-
-        self.n_phi_label = QLabel("Phi Resolution:")
-        self.n_phi_edits = QLineEdit("")
-        speed_content.addWidget(self.n_phi_label, 4, 1)
-        speed_content.addWidget(self.n_phi_edits, 4, 2)
-        self.n_phi_label.setToolTip(self.toolTime('n_phi'))
-
-        self.angle_precision_label = QLabel("Angle Precision:")
-        self.angle_precision_edits = QLineEdit("")
-        speed_content.addWidget(self.angle_precision_label, 5, 1)
-        speed_content.addWidget(self.angle_precision_edits, 5, 2)
-        self.angle_precision_label.setToolTip(self.toolTime('angle_precision'))
-
-        self.angle_error_tol_label = QLabel("Angle Error Tolerance:")
-        self.angle_error_tol_edits = QLineEdit("")
-        speed_content.addWidget(self.angle_error_tol_label, 6, 1)
-        speed_content.addWidget(self.angle_error_tol_edits, 6, 2)
-        self.angle_error_tol_label.setToolTip(self.toolTime('angle_error_tol'))
+        self.fit_type_label, self.fit_type_edits = self.createLabelEditObj('Fit Type:', speed_content, 2, tool_tip='fit_type')
+        self.n_theta_label, self.n_theta_edits = self.createLabelEditObj('Theta Resolution', speed_content, 3, tool_tip='n_theta')
+        self.n_phi_label, self.n_phi_edits = self.createLabelEditObj('Phi Resolution', speed_content, 4, tool_tip='n_phi')
+        self.angle_precision_label, self.angle_precision_edits = self.createLabelEditObj('Angle Precision', speed_content, 5, tool_tip='angle_precision')
+        self.angle_error_tol_label, self.angle_error_tol_edits = self.createLabelEditObj('Angle Error Tolerance', speed_content, 6, tool_tip='angle_error_tol')
 
     def initPSOTab(self):
         pso = QWidget()
@@ -1316,61 +1008,16 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         pso.setLayout(pso_content)
         self.section_widget.addTab(pso, "PSO")
 
-        self.maxiter_label = QLabel("Max Iterations:")
-        self.maxiter_edits = QLineEdit("50")
-        pso_content.addWidget(self.maxiter_label, 1, 1)
-        pso_content.addWidget(self.maxiter_edits, 1, 2)
-        self.maxiter_label.setToolTip(self.toolTime('maxiter'))
+        self.maxiter_label, self.maxiter_edits = self.createLabelEditObj('Max Iterations: ', pso_content, 1, tool_tip='maxiter')
+        self.swarmsize_label, self.swarmsize_edits = self.createLabelEditObj('Swarm Size: ', pso_content, 2, tool_tip='swarmsize')
+        self.run_times_label, self.run_times_edits = self.createLabelEditObj('Run Times:', pso_content, 3, tool_tip='run_times')
+        self.minfunc_label, self.minfunc_edits = self.createLabelEditObj('minfunc:', pso_content, 4, tool_tip='minfunc')
+        self.minstep_label, self.minstep_edits = self.createLabelEditObj('minstep:', pso_content, 5, tool_tip='minstep')
+        self.phip_label, self.phip_edits = self.createLabelEditObj('phip:', pso_content, 6, tool_tip='phip')
+        self.phig_label, self.phig_edits = self.createLabelEditObj('phig:', pso_content, 7, tool_tip='phig')
+        self.omega_label, self.omega_edits = self.createLabelEditObj('omega:', pso_content, 8, tool_tip='omega')
 
-        self.swarmsize_label = QLabel("Swarm Size:")
-        self.swarmsize_edits = QLineEdit("250")
-        pso_content.addWidget(self.swarmsize_label, 2, 1)
-        pso_content.addWidget(self.swarmsize_edits, 2, 2)
-        self.swarmsize_label.setToolTip(self.toolTime('swarmsize'))
-
-        self.run_times_label = QLabel("Run Times:")
-        self.run_times_edits = QLineEdit("1")
-        pso_content.addWidget(self.run_times_label, 3, 1)
-        pso_content.addWidget(self.run_times_edits, 3, 2)
-        self.run_times_label.setToolTip(self.toolTime('run_times'))
-
-        self.minfunc_label = QLabel("minfunc:")
-        self.minfunc_edits = QLineEdit("1e-8")
-        pso_content.addWidget(self.minfunc_label, 4, 1)
-        pso_content.addWidget(self.minfunc_edits, 4, 2)
-        self.minfunc_label.setToolTip(self.toolTime('minfunc'))
-
-        self.minstep_label = QLabel("minstep:")
-        self.minstep_edits = QLineEdit("1e-8")
-        pso_content.addWidget(self.minstep_label, 5, 1)
-        pso_content.addWidget(self.minstep_edits, 5, 2)
-        self.minstep_label.setToolTip(self.toolTime('minstep'))
-
-        self.phip_label = QLabel("phip:")
-        self.phip_edits = QLineEdit("0.5")
-        pso_content.addWidget(self.phip_label, 6, 1)
-        pso_content.addWidget(self.phip_edits, 6, 2)
-        self.phip_label.setToolTip(self.toolTime('phip'))
-
-        self.phig_label = QLabel("phig:")
-        self.phig_edits = QLineEdit("0.5")
-        pso_content.addWidget(self.phig_label, 7, 1)
-        pso_content.addWidget(self.phig_edits, 7, 2)
-        self.phig_label.setToolTip(self.toolTime('phig'))
-
-        self.omega_label = QLabel("omega:")
-        self.omega_edits = QLineEdit("0.5")
-        pso_content.addWidget(self.omega_label, 8, 1)
-        pso_content.addWidget(self.omega_edits, 8, 2)
-        self.omega_label.setToolTip(self.toolTime('omega'))
-
-        self.pso_debug_label = QLabel("PSO Debug:")
-        self.pso_debug_edits = QComboBox()
-        pso_content.addWidget(self.pso_debug_label, 9, 1)
-        pso_content.addWidget(self.pso_debug_edits, 9, 2)
-        self.pso_debug_edits.addItem("True")
-        self.pso_debug_edits.addItem("False")
-        self.pso_debug_label.setToolTip(self.toolTime('pso_debug'))
+        self.pso_debug_label, self.pso_debug_edits = self.createComboBoxObj("PSO Debug: ", pso_content, 9, tool_tip='pso_debug')
 
     def initGraphingTab(self):
 
@@ -1379,57 +1026,15 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         graphing.setLayout(graphing_content)
         self.section_widget.addTab(graphing, "Graphing")
 
-        self.plot_all_stations_label = QLabel("Plot All Stations:")
-        self.plot_all_stations_edits = QComboBox()
-        graphing_content.addWidget(self.plot_all_stations_label, 1, 1)
-        graphing_content.addWidget(self.plot_all_stations_edits, 1, 2)
-        self.plot_all_stations_edits.addItem("True")
-        self.plot_all_stations_edits.addItem("False")
-        self.plot_all_stations_label.setToolTip(self.toolTime('plot_all_stations'))
+        self.plot_all_stations_label, self.plot_all_stations_edits = self.createComboBoxObj("Plot All Stations: ", graphing_content, 1, items=['True', 'False'], tool_tip='plot_all_stations')
+        self.color_toggle_label, self.color_toggle_edits = self.createComboBoxObj("Toggle Color: ", graphing_content, 2, items=['True', 'False'], tool_tip='colortoggle')
 
-        self.color_toggle_label = QLabel("Toggle Color:")
-        self.color_toggle_edits = QComboBox()
-        graphing_content.addWidget(self.color_toggle_label, 2, 1)
-        graphing_content.addWidget(self.color_toggle_edits, 2, 2)
-        self.color_toggle_edits.addItem("True")
-        self.color_toggle_edits.addItem("False")
-        self.color_toggle_label.setToolTip(self.toolTime('colortoggle'))
-
-        self.dot_tol_label = QLabel("Dot Product Tolerance:")
-        self.dot_tol_edits = QLineEdit("")
-        graphing_content.addWidget(self.dot_tol_label, 3, 1)
-        graphing_content.addWidget(self.dot_tol_edits, 3, 2)
-        self.dot_tol_label.setToolTip(self.toolTime('dot_tol'))
-
-        self.contour_res_label = QLabel("Contour Resolution:")
-        self.contour_res_edits = QLineEdit("")
-        graphing_content.addWidget(self.contour_res_label, 4, 1)
-        graphing_content.addWidget(self.contour_res_edits, 4, 2)
-        self.contour_res_label.setToolTip(self.toolTime('contour_res'))
-
-        self.high_f_label = QLabel("Highlight Fragmentation:")
-        self.high_f_edits = QLineEdit("")
-        graphing_content.addWidget(self.high_f_label, 5, 1)
-        graphing_content.addWidget(self.high_f_edits, 5, 2)
-        self.high_f_label.setToolTip(self.toolTime('high_f'))
-
-        self.high_b_label = QLabel("Highlight Ballistic:")
-        self.high_b_edits = QLineEdit("")
-        graphing_content.addWidget(self.high_b_label, 6, 1)
-        graphing_content.addWidget(self.high_b_edits, 6, 2)
-        self.high_b_label.setToolTip(self.toolTime('high_b'))
-
-        self.rm_stat_label = QLabel("Remove Stations:")
-        self.rm_stat_edits = QLineEdit("")
-        graphing_content.addWidget(self.rm_stat_label, 7, 1)
-        graphing_content.addWidget(self.rm_stat_edits, 7, 2)
-        self.rm_stat_label.setToolTip(self.toolTime('rm_stat'))
-
-        self.img_dim_label = QLabel("Image Dimensions:")
-        self.img_dim_edits = QLineEdit("")
-        graphing_content.addWidget(self.img_dim_label, 8, 1)
-        graphing_content.addWidget(self.img_dim_edits, 8, 2)
-        self.img_dim_label.setToolTip(self.toolTime('img_dim'))
+        self.dot_tol_label, self.dot_tol_edits = self.createLabelEditObj('Dot Product Tolerance:', graphing_content, 3, tool_tip='dot_tol')
+        self.contour_res_label, self.contour_res_edits = self.createLabelEditObj('Contour Resolution:', graphing_content, 4, tool_tip='contour_res')
+        self.high_f_label, self.high_f_edits = self.createLabelEditObj('Highlight Fragmentation:', graphing_content, 5, tool_tip='high_f')
+        self.high_b_label, self.high_b_edits = self.createLabelEditObj('Highlight Ballistic:', graphing_content, 6, tool_tip='high_b')
+        self.rm_stat_label, self.rm_stat_edits = self.createLabelEditObj('Remove Stations:', graphing_content, 7, tool_tip='rm_stat')
+        self.img_dim_label, self.img_dim_edits = self.createLabelEditObj('Image Dimensions:', graphing_content, 8, tool_tip='img_dim')
 
         self.reported_points_label = QLabel("Reported Points")
         self.reported_points = QTableWidget(0, 4)
@@ -1638,8 +1243,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         self.atm_view = pg.GraphicsLayoutWidget()
         self.atm_canvas = self.atm_view.addPlot()
-        #self.atm_ax = pg.PlotItem(size=10, title='Atmosphere')
-        #self.atm_canvas.addItem(self.atm_ax)
 
         profile_tab_content_graph.addWidget(self.atm_view)
         self.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
@@ -1656,12 +1259,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         profile_tab_content_graph.addWidget(self.atm_dir_button)
         self.atm_dir_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='d'))
 
-        self.atm_atm_file_label = QLabel("Atmospheric File:")
-        self.atm_atm_file_edits = QLineEdit("")
-        self.atm_atm_file_buton = QPushButton("Browse")
-        profile_tab_content.addWidget(self.atm_atm_file_label, 1, 1)
-        profile_tab_content.addWidget(self.atm_atm_file_edits, 1, 2, 1, 2)
-        profile_tab_content.addWidget(self.atm_atm_file_buton, 1, 4)
+        self.atm_atm_file_label, self.atm_atm_file_edits, self.atm_atm_file_buton = self.createFileSearchObj('Atmospheric File: ', profile_tab_content, 1, width=2, h_shift=0)
         self.atm_atm_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)'], self.atm_atm_file_edits))
 
         self.atm_weather_type_label = QLabel("Weather Type:")
@@ -1674,18 +1272,10 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.atm_weather_type_edits.addItem("merra")
         self.atm_weather_type_edits.addItem("custom")
 
-        self.atm_perturbation_file_label = QLabel("Perturbation File:")
-        self.atm_perturbation_file_edits = QLineEdit("")
-        self.atm_perturbation_file_buton = QPushButton("Browse")
-        profile_tab_content.addWidget(self.atm_perturbation_file_label, 3, 1)
-        profile_tab_content.addWidget(self.atm_perturbation_file_edits, 3, 2, 1, 2)
-        profile_tab_content.addWidget(self.atm_perturbation_file_buton, 3, 4)
+        self.atm_perturbation_file_label, self.atm_perturbation_file_edits, self.atm_perturbation_file_buton = self.createFileSearchObj('Perturbation File: ', profile_tab_content, 3, width=2, h_shift=0)
         self.atm_perturbation_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)'], self.atm_perturbation_file_edits))
 
-        self.atm_perturb_times_label = QLabel("Perturbation Times:")
-        self.atm_perturb_times_edits = QLineEdit("")
-        profile_tab_content.addWidget(self.atm_perturb_times_label, 4, 1)
-        profile_tab_content.addWidget(self.atm_perturb_times_edits, 4, 2, 1, 3)
+        self.atm_perturb_times_label, self.atm_perturb_times_edits = self.createLabelEditObj('Perturbation Times: ', profile_tab_content, 4, width=2)
 
         self.atm_perturb_method_label = QLabel("Perturb Method:")
         self.atm_perturb_method_edits = QComboBox()
@@ -2003,7 +1593,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.pick_group = 0
 
         # Define a list of colors for groups
-        self.pick_group_colors = ['r', 'g', 'm', 'k', 'y']
+        self.pick_group_colors = ['r', 'g', 'm', 'w', 'y']
 
         # Current station map handle
         self.current_station_scat = None
@@ -2263,6 +1853,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         self.make_picks_station_choice.clear()
 
+        self.pick_list = []
+
         self.prev_stat.clicked.connect(self.decrementStation)
         self.next_stat.clicked.connect(self.incrementStation)
 
@@ -2330,212 +1922,13 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
 
         elif event.key() == QtCore.Qt.Key_Minus:
+            
             # Decrement the pick group
 
             if self.pick_group > 0:
                 self.pick_group -= 1
 
             self.updatePlot()
-
-
-    def keyReleaseEvent(self, event):
-
-        if event.key() == QtCore.Qt.Key_Control:
-            self.ctrl_pressed = False
-
-
-
-    def onResize(self, event):
-
-        # Perform tight layout when window is resized
-        plt.tight_layout()
-
-
-
-
-    def addPick(self, pick_group, station_no, pick_time):
-        """ Adds the pick to the list of picks. """
-
-        self.pick_list.append([pick_group, station_no, pick_time])
-
-        self.updatePickList()
-
-
-    def removePick(self, station_no, pick_time_remove):
-        """ Removes the pick from the list of picks with the closest time. """
-
-
-        if len(self.pick_list):
-
-            closest_pick_indx = None
-            min_time_diff = np.inf
-
-            # Go though all stations and find the pick with closest to the given time
-            for i, entry in enumerate(self.pick_list):
-
-                pick_grp, stat_no, pick_time = entry
-
-                # Check if current station
-                if stat_no == self.current_station:
-
-                    time_diff = abs(pick_time - pick_time_remove)
-
-                    # Store the minimum time difference
-                    if time_diff < min_time_diff:
-
-                        min_time_diff = time_diff
-                        closest_pick_indx = i
-
-
-
-            if closest_pick_indx is not None:
-                
-                # Remove pick on the given station closest the given time
-                self.pick_list.pop(closest_pick_indx)
-
-
-                self.updatePickList()
-
-
-
-
-    def updatePickList(self):
-        """ Updates the list of picks on the screen for the given station. """
-
-        stations_with_picks = []
-        all_pick_times = []
-
-        for entry in self.pick_list:
-
-            pick_grp, station_no, pick_time = entry
-
-            stations_with_picks.append(station_no)
-            all_pick_times.append(pick_time)
-
-
-        # Remove old picks on all wavefrom plot
-        if self.all_waves_picks_handle is not None:
-            self.all_waves_picks_handle.remove()
-
-
-        # Get distances of of pick stations
-        dists_with_picks = [self.source_dists[stat_no] for stat_no in stations_with_picks]
-
-        # Mark picks on the all waveform plot
-        self.all_waves_picks_handle = self.ax_all_waves.scatter(dists_with_picks, all_pick_times, \
-            marker='*', s=50, c='r')
-
-        self.updatePlot(draw_waveform=False)
-
-
-    def updatePickTextAndWaveMarker(self):
-        """ Updates the list of picks on the screen. """
-
-
-        current_station_groups = []
-        current_station_picks = []
-
-        for entry in self.pick_list:
-
-            pick_grp, station_no, pick_time = entry
-
-            # Take picks taken on the current station
-            if station_no == self.current_station:
-                current_station_groups.append(pick_grp)
-                current_station_picks.append(pick_time)
-
-        # Remove old pick text
-        if self.pick_text_handle is not None:
-            self.pick_text_handle.remove()
-
-        # Generate the pick string
-        pick_txt_str  = 'Change group: +/-\n'
-        pick_txt_str += 'Add/remove pick: CTRL + left/right click \n'
-        pick_txt_str += '\n'
-        pick_txt_str += 'Current group: {:5d}\n\n'.format(self.pick_group)
-        pick_txt_str += 'Picks: Group, Time\n'
-        pick_txt_str += '------\n'
-        pick_txt_str += "\n".join(["{:5d},   {:.2f}".format(gr, pt) for gr, pt in zip(current_station_groups, \
-            current_station_picks)])
-
-        # Print picks on screen
-        #self.pick_text_handle = self.picks_ax.text(0, 1, pick_txt_str, va='top', fontsize=7)
-
-
-        # Remove old pick markers
-        for handle in self.pick_markers_handles:
-            try:
-                handle.remove()
-            except:
-                pass
-
-
-        self.pick_markers_handles = []
-
-
-        if len(current_station_picks) > 0:
-
-            # Get a list of colors per groups
-            color_list = [self.pick_group_colors[grp%len(self.pick_group_colors)] \
-                for grp in current_station_groups]
-
-
-            # Get the Y coordinate of the pick in the waveform plot
-            if self.current_waveform_processed is not None:
-                pick_y_list = []
-                for pick_time in current_station_picks:
-                    
-                    pick_indx = np.abs(self.current_waveform_time - pick_time).argmin()
-                    pick_y = self.current_waveform_processed[pick_indx]
-                    pick_y_list.append(pick_y)
-
-            else:
-                pick_y_list = [0]*len(current_station_picks)
-
-            # Set pick marker on the current wavefrom
-            scat_handle = self.ax_wave.scatter(current_station_picks, pick_y_list, marker='*', \
-                c=color_list, s=50)
-
-            self.pick_markers_handles.append(scat_handle)
-
-            # Plot group numbers above picks
-            #self.pick_wavefrom_text_handles = []
-            for c, grp, pt in zip(color_list, current_station_groups, current_station_picks):
-                txt_handle = self.ax_wave.text(pt, 0, str(grp), color=c, ha='center', va='bottom')
-
-                self.pick_markers_handles.append(txt_handle)
-
-
-    def onWaveMousePress(self, event):
-
-        # Check if the mouse was pressed within the waveform axis
-        if event.inaxes == self.ax_wave:
-
-            # Check if CTRL is pressed
-            if self.ctrl_pressed:
-
-                pick_time = event.xdata
-
-                # Check if left button was pressed
-                if event.button == 1:
-
-                    # Extract network and station code
-                    net, station_code = self.stn_list[self.current_station].network, self.stn_list[self.current_station].code
-
-                    print('Adding pick on station {:s} at {:.2f}'.format(net + ": " + station_code, \
-                        pick_time))
-
-                    self.addPick(self.pick_group, self.current_station, pick_time)
-
-
-                # Check if right button was pressed
-                elif event.button == 3:
-                    print('Removing pick...')
-
-                    self.removePick(self.current_station, pick_time)
-
-
-
 
 
     def incrementStation(self, event=None):
@@ -2579,22 +1972,17 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         """ Mark the position of the current station on the map. """
 
 
-        # Extract current station
-        stn = self.stn_list[self.current_station]
+        # Init ground map
+        #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
-        if self.current_station_scat is None:
+        for stn in self.stn_list:
+            self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
 
-            # Mark the current station on the map
-            self.current_station_scat = self.m.scatter([stn.position.lat_r], [stn.position.lon_r], s=20, \
-                edgecolors='r', facecolors='none')
+        current_stn = self.stn_list[self.current_station]
+        self.m.scatter(current_stn.position.lat_r, current_stn.position.lon_r, c='r', s=2)
 
-        else:
-
-            # Calculate map coordinates
-            stat_x, stat_y = self.m.m(stn.position.lon, stn.position.lat)
-
-            # Set the new position
-            self.current_station_scat.set_offsets([stat_x, stat_y])
+        self.make_picks_map_graph_canvas.draw()
+        SolutionGUI.update(self)
 
 
     def checkExists(self):
@@ -2629,15 +2017,18 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             return False
 
         return True
-    
+
     def mouseClicked(self, evt):
 
-        mousePoint = self.make_picks_waveform_canvas.vb.mapSceneToView(evt.pos())
+        mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
 
-        self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[mousePoint.y()], pen='r', update=True)
+        self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[0], pen='r', update=True)
 
-        
-        print((mousePoint.x(), mousePoint.y()))
+        pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station)
+        self.pick_list.append(pick)
+
+        if self.setup.debug:
+            print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
 
 
     def drawWaveform(self, waveform_data=None):
@@ -2726,122 +2117,105 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         # Plot the wavefrom
         #self.wave_ax.plot(time_data, waveform_data, color='k', linewidth=0.2, zorder=3)
         self.make_picks_waveform_canvas.plot(x=time_data, y=waveform_data, pen='w')
-        #self.make_picks_waveform_canvas.setXRange(t_arrival, t_arrival, padding=150)
+        self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
         # proxy = pg.SignalProxy(self.make_picks_waveform_canvas.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         #self.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+
+        for pick in self.pick_list:
+            if pick.stn_no == self.current_station:
+                self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen='r', update=True)
 
         SolutionGUI.update(self)
         # Initialize variables
         b_time = 0
 
-        # print('####################')
-        # print("Current Station: {:}".format(stn.name))
-        # print("Channel: {:}".format(stn.channel))
-        # # If manual ballistic search is on
-        # if setup.show_ballistic_waveform:
+        print('####################')
+        print("Current Station: {:}".format(stn.name))
+        print("Channel: {:}".format(stn.channel))
+        # If manual ballistic search is on
+        if setup.show_ballistic_waveform:
 
-        #     # Plot Ballistic Prediction
-        #     b_time = self.arrTimes[0, self.current_station, 0, 0]
+            # Plot Ballistic Prediction
+            b_time = self.arrTimes[0, self.current_station, 0, 0]
             
-        #     # check if nan
-        #     if b_time == b_time:
-        #         self.wave_ax.plot([b_time]*2, [np.min(waveform_data), np.max(waveform_data)], c='b', label='Ballistic', zorder=3)
-                
-        #         print("Ballistic Arrival: {:.3f} s".format(b_time))
-        #     else:
-        #         print("No Ballistic Arrival")
+            # check if nan
+            if b_time == b_time:
+                self.make_picks_waveform_canvas.plot(x=[b_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen='b', label='Ballistic')
+                print("Ballistic Arrival: {:.3f} s".format(b_time))
+            else:
+                print("No Ballistic Arrival")
 
-        #     for i in range(setup.perturb_times):
-        #         if i >= 1:
-        #             try:
-        #                 self.wave_ax.plot([self.arrTimes[i, self.current_station, 0, 0]]*2, \
-        #                  [np.min(waveform_data), np.max(waveform_data)], alpha=0.3, c='b', zorder=3)
-        #             except:
-        #                 pass
-        # # Fragmentation Prediction
+            for i in range(setup.perturb_times):
+                if i >= 1:
+                    try:
+                        self.make_picks_waveform_canvas.plot(x=[self.arrTimes[i, self.current_station, 0, 0]]*2, \
+                         y=[np.min(waveform_data), np.max(waveform_data)], alpha=0.3, pen='b')
+                    except:
+                        pass
+            # Fragmentation Prediction
 
-        # # If manual fragmentation search is on
-        # if setup.show_fragmentation_waveform:
+            # If manual fragmentation search is on
+            if setup.show_fragmentation_waveform:
 
-        #     for i, line in enumerate(setup.fragmentation_point):
+                for i, line in enumerate(setup.fragmentation_point):
 
-        #         f_time = self.arrTimes[0, self.current_station, 1, i]
-        #     #     # check if nan
-        #         if f_time == f_time:
-        #             # Plot Fragmentation Prediction
-        #             self.wave_ax.plot([f_time]*2, [np.min(waveform_data), np.max(waveform_data)], c=self.pick_group_colors[(i+1)%4], label='Fragmentation', zorder=3)
+                    f_time = self.arrTimes[0, self.current_station, 1, i]
+                #     # check if nan
+                    if f_time == f_time:
+                        # Plot Fragmentation Prediction
+                        self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=self.pick_group_colors[(i+1)%4], label='Fragmentation')
+                        
+                        #if len(setup.fragmentation_point) > 1:
+                            #self.ax_wave.text(f_time, np.min(waveform_data), 'Frag{:}'.format(i+1))
+                            #self.wave_ax.text(f_time, np.min(waveform_data) + int(i)/(len(setup.fragmentation_point))*(np.max(waveform_data) - np.min(waveform_data)), '{:.1f} km'.format(line[2]/1000))
                     
-        #             if len(setup.fragmentation_point) > 1:
-        #                 #self.ax_wave.text(f_time, np.min(waveform_data), 'Frag{:}'.format(i+1))
-        #                 self.wave_ax.text(f_time, np.min(waveform_data) + int(i)/(len(setup.fragmentation_point))*(np.max(waveform_data) - np.min(waveform_data)), '{:.1f} km'.format(line[2]/1000))
-                
-        #             print('Fragmentation {:} Arrival: {:.3f} s'.format(i+1, f_time))
+                        print('Fragmentation {:} Arrival: {:.3f} s'.format(i+1, f_time))
 
-        #         else:
-        #             print('No Fragmentation {:} Arrival'.format(i+1))
+                    else:
+                        print('No Fragmentation {:} Arrival'.format(i+1))
 
-        #         for j in range(setup.perturb_times):
-        #             if j >= 1:
-        #                 try:
-        #                     self.wave_ax.plot([self.arrTimes[j, self.current_station, 1, i]]*2, [np.min(waveform_data),\
-        #                          np.max(waveform_data)], alpha=0.3,\
-        #                          c=self.pick_group_colors[(i+1)%4], zorder=3)
-        #                 except:
-        #                     pass
+                    for j in range(setup.perturb_times):
+                        if j >= 1:
+                            try:
+                                self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
+                                     np.max(waveform_data)], alpha=0.3,\
+                                     pen=self.pick_group_colors[(i+1)%4], zorder=3)
+                            except:
+                                pass
 
-        # # Set the time limits to be within the given window
-        # self.wave_ax.set_xlim(time_win_min, time_win_max)
+            # Set the time limits to be within the given window
+            # self.wave_ax.set_xlim(time_win_min, time_win_max)
 
-        # self.wave_ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.5)
+            # self.wave_ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.5)
 
-        # #self.ax_wave.legend()
+            #self.ax_wave.legend()
 
-        # # Add text with station label
-        # if stn.code in setup.high_f:
-        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
-        #         + "(" + stn.channel + ")" +", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='g')
+            # Add text with station label
+            # if stn.code in setup.high_f:
+            #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            #         + "(" + stn.channel + ")" +", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='g')
 
-        # elif stn.code in setup.high_b:
-        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
-        #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='b')
+            # elif stn.code in setup.high_b:
+            #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='b')
 
-        # else:
-        #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
-        #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='k')
+            # else:
+            #     self.wave_ax.text(time_win_min, np.max(waveform_data), stn.network + ": " + stn.code \
+            #         + "(" + stn.channel + ")" + ", {:d} km".format(int(self.source_dists[self.current_station])) , va='top', ha='left', color='k')
 
-        # # self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
-        # # self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(3, 3)))
-        # # self.make_picks_station_graph_canvas = FigureCanvas(fig)
-        # # self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        # # self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
-        # # self.make_picks_station_graph_canvas.draw()
-        # # SolutionGUI.update(self)
+            # self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
+            # self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(3, 3)))
+            # self.make_picks_station_graph_canvas = FigureCanvas(fig)
+            # self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+            # self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
+            # self.make_picks_station_graph_canvas.draw()
+            # SolutionGUI.update(self)
 
     def markStationWaveform(self):
         """ Mark the currently shown waveform in the plot of all waveform. """
-        
-        if self.current_station_all_markers is not None:
-            for marker in self.current_station_all_markers:
-                marker.remove()
 
-
-        # Calculate the position
-        dist = self.source_dists[self.current_station]
-
-        # Calcualte the time of arrival
-        t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
-
-        # Plot the marker
-        marker1 = self.station_ax.scatter(dist, t_arrival - 500, marker='^', s=100, linewidths=3, c='w', 
-            alpha=1, zorder=3)
-
-        marker2 = self.station_ax.scatter(dist, t_arrival + 500, marker='v', s=100, linewidths=3, c='w', 
-            alpha=1, zorder=3)
-
-
-        self.current_station_all_markers = [marker1, marker2]
-
+        pass
 
     def showSpectrogram(self, event=None):
         """ Show the spectrogram of the waveform in the current window. """
@@ -2924,9 +2298,6 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.markStationWaveform()
         self.markCurrentStation()
 
-        # Update the pick list text and plot marker on the waveform
-        self.updatePickTextAndWaveMarker()
-
         # Reset bandpass filter values to default
         # self.make_picks.set_val(self.bandpass_low_default)
         # self.bandpass_high_slider.set_val(self.bandpass_high_default)
@@ -2936,56 +2307,34 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
     def exportCSV(self, event):
         """ Save picks to a CSV file. """
 
+        dlg = QFileDialog.getSaveFileName(self, 'Save File')
+
+
+        if '.csv' not in dlg[0]:
+            file_name = dlg[0] + '.csv'
+        else:
+            file_name = dlg[0]
+
         # Open the output CSV
-        with open(os.path.join(self.dir_path, OUTPUT_CSV), 'w') as f:
+        with open(os.path.join(file_name), 'w') as f:
 
             # Write the header
             f.write('Pick group, Network, Code, Lat, Lon, Elev, Pick JD, Pick time, station_number \n')
 
             # Go through all picks
-            for entry in self.pick_list:
-
-                # Unpack pick data
-                pick_group, station_no, pick_time = entry
-
-                # # Extract current station
-                stn = self.stn_list[station_no]
-
-                # # Unpack the station entry
-                # net, station_code, stat_lat, stat_lon, stat_elev, station_name, channel, mseed_file = stat_entry
-
-                # Get the miniSEED file path
-                mseed_file_path = os.path.join(self.dir_path, stn.file_name)
-
-                try:
-                    
-                    if os.path.isfile(mseed_file_path):
-                        
-                        # Read the miniSEED file
-                        mseed = obspy.read(mseed_file_path)
-
-                    else:
-                        print('File {:s} does not exist!'.format(mseed_file_path))
-                        continue
-
-                except TypeError as e:
-
-                    print('Opening file {:s} failed with error: {:s}'.format(mseed_file_path, e))
-                    continue
-
-                # Find datetime of the beginning of the file
-                start_datetime = mseed[0].stats.starttime.datetime
+            for pick in self.pick_list:
 
                 # Calculate Julian date of the pick time
-                pick_jd = datetime2JD(start_datetime + datetime.timedelta(seconds=pick_time))
+                pick_jd = datetime2JD(self.setup.start_datetime + datetime.timedelta(seconds=pick.time))
 
+                stn = pick.stn
 
                 # Write the CSV entry
-                f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(pick_group, stn.network, \
-                    stn.code, stn.position.lat, stn.position.lon, stn.position.elev, pick_jd, pick_time, station_no))
+                f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(0, stn.network, \
+                    stn.code, stn.position.lat, stn.position.lon, stn.position.elev, pick_jd, pick.time, pick.stn_no))
 
+        self.errorMessage('Output to CSV!', 0, title='Exported!')
 
-        print('CSV written to:', OUTPUT_CSV)
 
     def addMakePicksWidgets(self):
         make_picks_master_tab = QWidget()
@@ -3263,6 +2612,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         for x in range(X):
             stn = table[x]
+
             obj.setItem(x, 0, QTableWidgetItem(str(stn.network)))
             obj.setItem(x, 1, QTableWidgetItem(str(stn.code)))
             obj.setItem(x, 2, QTableWidgetItem(str(stn.position.lat)))
@@ -3310,7 +2660,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         setup.arrival_times_file = self.arrival_times_edits.text()
         setup.sounding_file = self.sounding_file_edits.text()
         setup.perturbation_spread_file = self.perturbation_file_edits.text()
-        setup.station_picks_file = self.station_picks_file_edits.text()
+        setup.station_picks_file = self.station_picks_edits.text()
         setup.replot_points_file = self.points_name_edits.text()
 
         setup.lat_centre = self.tryFloat(self.lat_centre_edits.text())
@@ -3456,7 +2806,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.arrival_times_edits.setText(setup.arrival_times_file)
         self.sounding_file_edits.setText(setup.sounding_file)
         self.perturbation_file_edits.setText(setup.perturbation_spread_file)
-        self.station_picks_file_edits.setText(setup.station_picks_file)
+        self.station_picks_edits.setText(setup.station_picks_file)
         self.points_name_edits.setText(setup.replot_points_file)
 
         self.lat_centre_edits.setText(str(setup.lat_centre))
@@ -3779,3 +3129,4 @@ if __name__ == '__main__':
     gui.show()
 
     app.exec_()
+    #3794

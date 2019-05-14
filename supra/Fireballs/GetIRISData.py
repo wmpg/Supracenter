@@ -1087,7 +1087,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
         min_wave_value = np.min([min_wave_value, np.min(waveform_data)])
 
         if setup.colortoggle:
-            c = plt.cm.inferno(az[idx])
+            c = plt.cm.plasma(az[idx])
         else:
             c = None
             
@@ -1111,7 +1111,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
         
             else:
                 ax.text(np.mean(waveform_data), np.max(time_data), "{:} - {:} \n Az: {:5.1f}".format(stn.network, stn.code, az_n[idx]), \
-                    rotation=270, va='bottom', ha='center', size=7, zorder=2, color="k")
+                    rotation=270, va='bottom', ha='center', size=7, zorder=2, color="w")
 
     toa_line_time = np.linspace(0, max_time, 10)
 
