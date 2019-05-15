@@ -38,6 +38,12 @@ and the Trajectory solution can be run by:
 python -m wmpl.Fireballs.SeismicTrajectory <location of .ini file>
 ```
 
+The GUI for the program, which contains most of the features, can be run by:
+```
+python -m supra.Fireballs.SolutionGUI
+```
+
+
 ## More documentation
 
 You can find more documentation under ```supra/Fireballs/docs``` and ```supra/Fireballs/Supracenter```.
