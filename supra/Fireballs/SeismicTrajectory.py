@@ -644,7 +644,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     # Extract all Julian dates
     jd_list = [entry[6] for entry in station_list]
     pick_time = [float(entry[7]) for entry in station_list]
-    station_no = [int(entry[8]) for entry in station_list]
+    station_no = [int(float(entry[8])) for entry in station_list]
 
     # Calculate the arrival times as the time in seconds from the earliest JD
 

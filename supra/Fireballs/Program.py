@@ -256,7 +256,7 @@ def configRead(ini_file):
 
     setup.debug = tryBool(config.get('General', 'debug'))
     setup.fireball_name = tryStr(config.get('General', 'fireball_name'))
-    setup.run_mode = tryStr(config.get('General', 'run_mode'))
+    setup.run_mode = tryStr(config.get('General', 'run_mode')).lower()
     setup.difference_filter_all = tryBool(config.get('General', 'difference_filter_all'))
     setup.get_data = tryBool(config.get('General', 'get_data'))
 
@@ -640,6 +640,7 @@ def configParse(setup, ini_type):
         #turn coordinates into position objects
         setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
         setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
+        print(setup.traj_f.x, setup.traj_f.y)
     except:
         setup.traj_i = position(0, 0, 0)
         setup.traj_f = position(0, 0, 0)

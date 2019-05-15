@@ -1158,7 +1158,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
                 stn_list[stn].position.pos_loc(ref_pos)
 
                 # Time to travel from trajectory to station
-                b_time[i] = timeOfArrival([stn_list[stn].position.x, stn_list[stn].position.y, stn_list[stn].position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+                b_time[i] = timeOfArrival([stn_list[stn].position.x, stn_list[stn].position.y, stn_list[stn].position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
                                             np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, fast=True)# - setup.t + setup.t0
 
                 # Point on trajectory where wave is released

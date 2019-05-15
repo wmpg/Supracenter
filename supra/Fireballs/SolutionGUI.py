@@ -194,7 +194,7 @@ class SolutionGUI(QMainWindow):
 
             # Go through all picks
             for line in data_set:
-
+                line[-1] = int(line[-1])
                 # Write the CSV entry
                 f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}\n".format(*line))
 
@@ -683,50 +683,11 @@ class SolutionGUI(QMainWindow):
 
         self.tab_widget.addTab(docs_tab, "Documentation")
 
-        self.docTree = QTreeWidget()
+        with open('supra/Fireballs/docs/User Manual 2.txt') as f:
+            content = f.read()
 
-        root = QTreeWidgetItem(self.docTree, ["Documentation"])
-        root.setData(2, Qt.EditRole, '')
-
-        folder1 = QTreeWidgetItem(root, ["Usage"])
-        folder1.setData(2, Qt.EditRole, '')
-
-        folder1_1 = QTreeWidgetItem(folder1, ["INI Builder"])
-        folder1_1.setData(2, Qt.EditRole, '') 
-
-        folder1_1_1 = QTreeWidgetItem(folder1_1, ['''Used to create configuration files for this program. Configurations
-can be loaded or saved through this tab. The other tabs in this program 
-are linked to these ones, and by default, will run off of these 
-configurations, unless specified on the respective tab.'''])
-        folder1_1_1.setData(2, Qt.EditRole, '') 
-
-        folder1_2 = QTreeWidgetItem(folder1, ["Supracenter Manual Search"])
-        folder1_2.setData(2, Qt.EditRole, '') 
-
-        folder1_2_1 = QTreeWidgetItem(folder1_2, ['''Used to search for an individual Supracenter point, and return the 
-residuals from each station. The Supracenter can be adjusted using the edit boxes on the tab.'''])
-        folder1_2_1.setData(2, Qt.EditRole, '') 
-
-
-        folder1_3 = QTreeWidgetItem(folder1, ["Atmospheric Profile"])
-        folder1_3.setData(2, Qt.EditRole, '') 
-
-        folder1_4 = QTreeWidgetItem(folder1, ["Documentation"])
-        folder1_4.setData(2, Qt.EditRole, '') 
-
-
-        folder2 = QTreeWidgetItem(root, ["Extra Stations"])
-        folder2.setData(2, Qt.EditRole, '') 
-
-        folder3 = QTreeWidgetItem(root, ["Output Files"])
-        folder3.setData(2, Qt.EditRole, '') 
-
-        folder4 = QTreeWidgetItem(root, ["Atmospheric"])
-        folder4.setData(2, Qt.EditRole, '') 
-
-        folder5 = QTreeWidgetItem(root, ["Weather Perturbations"])
-        folder5.setData(2, Qt.EditRole, '') 
-
+        self.docTree = QPlainTextEdit(content)
+        self.docTree.setReadOnly(True)
 
         docs_tab_content.addWidget(self.docTree)
 
@@ -1478,13 +1439,13 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
                             setup.traj_f.pos_loc(ref_pos)
 
                             # Time to travel from trajectory to station
-                            b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+                            b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
                                                         np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
-
 
                             bTimes[i] = b_time
                         else:
                             bTimes[i] = np.nan
+
                 else:
                     bTimes = [np.nan]*no_of_frags
 
@@ -1543,7 +1504,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             data_list: [list]
 
         Keyword arguments:
-            waveform_window: [int] Number of seconds for the wavefrom window.
+            waveform_window: [int] Number of seconds for the waveform window.
             difference_filter_all: [bool] If True, the Kalenda et al. (2014) difference filter will be applied
                 on the data plotted in the overview plot of all waveforms.
         """
@@ -1583,8 +1544,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
 
         self.current_station = 0
-        self.current_wavefrom_raw = None
-        self.current_wavefrom_delta = None
+        self.current_waveform_raw = None
+        self.current_waveform_delta = None
         self.current_waveform_processed = None
 
         # List of picks
@@ -1608,8 +1569,8 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         self.pick_text_handle = None
         self.pick_markers_handles = []
 
-        # handle for pick marker on the wavefrom
-        self.pick_wavefrom_handle = None
+        # handle for pick marker on the waveform
+        self.pick_waveform_handle = None
 
 
         # Default bandpass values
@@ -1930,6 +1891,10 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
             self.updatePlot()
 
+    def keyReleaseEvent(self, event):
+
+        if event.key() == QtCore.Qt.Key_Control:
+            self.ctrl_pressed = False
 
     def incrementStation(self, event=None):
         """ Increments the current station index. """
@@ -2020,19 +1985,20 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
     def mouseClicked(self, evt):
 
-        mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+        if self.ctrl_pressed:
+            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
 
-        self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[0], pen='r', update=True)
+            self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[0], pen='r', update=True)
 
-        pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station)
-        self.pick_list.append(pick)
+            pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station)
+            self.pick_list.append(pick)
 
-        if self.setup.debug:
-            print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
+            if self.setup.debug:
+                print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
 
 
     def drawWaveform(self, waveform_data=None):
-        """ Draws the current waveform from the current station in the wavefrom window. Custom wavefrom 
+        """ Draws the current waveform from the current station in the waveform window. Custom waveform 
             can be given an drawn, which is used when bandpass filtering is performed. 
 
         """
@@ -2067,14 +2033,14 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
             waveform_data = mseed[0].data
 
             # Store raw data for bookkeeping on first open
-            self.current_wavefrom_raw = waveform_data
+            self.current_waveform_raw = waveform_data
 
 
         # Convert the beginning and the end time to datetime objects
         start_datetime = start_time.datetime
         end_datetime = end_time.datetime
 
-        self.current_wavefrom_delta = delta
+        self.current_waveform_delta = delta
         self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
             delta)
 
@@ -2111,16 +2077,15 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         #t_arrival = 0
 
         # Calculate the limits of the plot to be within the given window limit
-        time_win_min = t_arrival - self.waveform_window/2
-        time_win_max = t_arrival + self.waveform_window/2
+        # time_win_min = t_arrival - self.waveform_window/2
+        # time_win_max = t_arrival + self.waveform_window/2
 
-        # Plot the wavefrom
+        # Plot the waveform
         #self.wave_ax.plot(time_data, waveform_data, color='k', linewidth=0.2, zorder=3)
         self.make_picks_waveform_canvas.plot(x=time_data, y=waveform_data, pen='w')
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
         # proxy = pg.SignalProxy(self.make_picks_waveform_canvas.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         #self.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
 
         for pick in self.pick_list:
             if pick.stn_no == self.current_station:
@@ -2226,7 +2191,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         # Extract the time and waveform
         #crop_window = (self.current_waveform_time >= x_min) & (self.current_waveform_time <= x_max)
-        wave_arr = self.current_wavefrom_raw#[crop_window]
+        wave_arr = self.current_waveform_raw#[crop_window]
 
 
         ### Show the spectrogram ###
@@ -2234,7 +2199,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
         fig = plt.figure()
         ax_spec = fig.add_subplot(111)
 
-        ax_spec.specgram(wave_arr, Fs=1.0/self.current_wavefrom_delta, cmap=plt.cm.inferno)
+        ax_spec.specgram(wave_arr, Fs=1.0/self.current_waveform_delta, cmap=plt.cm.inferno)
 
         ax_spec.set_xlabel('Time (s)')
         ax_spec.set_ylabel('Frequency (Hz)')
@@ -2253,7 +2218,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
 
         # Limit the high frequency to be lower than the Nyquist frequency
-        max_freq = (1.0/self.current_wavefrom_delta)/2
+        max_freq = (1.0/self.current_waveform_delta)/2
 
         if bandpass_high > max_freq:
             bandpass_high = max_freq - 0.1
@@ -2263,10 +2228,10 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         # Init the butterworth bandpass filter
         butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_wavefrom_delta, order=6)
+            1.0/self.current_waveform_delta, order=6)
 
         # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_wavefrom_raw))
+        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
 
 
         # Plot the updated waveform
@@ -2276,7 +2241,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
     def filterConvolution(self, event=None):
         """ Apply the convolution filter on data as suggested in Kalenda et al. (2014). """
 
-        waveform_data = convolutionDifferenceFilter(self.current_wavefrom_raw)
+        waveform_data = convolutionDifferenceFilter(self.current_waveform_raw)
 
         self.drawWaveform(waveform_data)
 
@@ -2290,7 +2255,7 @@ residuals from each station. The Supracenter can be adjusted using the edit boxe
 
         self.make_picks_station_choice.setCurrentIndex(self.current_station)
 
-        # Plot the wavefrom from the current station
+        # Plot the waveform from the current station
         if draw_waveform:
             self.drawWaveform()
 
