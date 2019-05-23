@@ -3,7 +3,7 @@ Computing fireball fragmentation locations and trajectory from seismic or infras
 
 ## Installation
 
-1) This code depends on the WesternMeteorPyLib library. Make sure to install this library first: [https://github.com/dvida/WesternMeteorPyLib](https://github.com/dvida/WesternMeteorPyLib])
+1) This code depends on the WesternMeteorPyLib library. Make sure to install this library first: [https://github.com/dvida/WesternMeteorPyLib](https://github.com/wmpg/WesternMeteorPyLib)
 
 1) In addition to WesternMeteorPyLib's requirements, you will need to install additional libraries. It is possible to install the libraries using pip, but you will have to manaully compile pyhdf, which is not fun. The easiest way to install everything is through conda:
 
