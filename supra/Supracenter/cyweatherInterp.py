@@ -22,7 +22,7 @@ def nearestPoint2D(points_list, point):
     """
 
     # Initialize grid of points
-    dists = np.zeros((len(points_list[0]), len(points_list[1])))
+    dists = np.empty((len(points_list[0]), len(points_list[1])))
 
     # x-values
     for i in range(len(points_list[0])):
@@ -54,7 +54,7 @@ def divLine(a, b, div, points_x,  points_y):
     dy = (b[1] - a[1])/(div - 1)
 
     # initialize array
-    p = np.array([[0.0, 0.0]])
+    p = [[0.0, 0.0]]
 
     x_opt = 0
     y_opt = 0 
@@ -67,10 +67,10 @@ def divLine(a, b, div, points_x,  points_y):
         x_opt, y_opt = nearestPoint2D([points_x, points_y], [a[0] + i*dx, b[0] + i*dy])
 
         # add points to usable points list
-        p = np.vstack((p, [points_x[x_opt], points_y[y_opt]]))
+        p.append([points_x[x_opt], points_y[y_opt]])
 
     # remove dupes
-    p = np.unique(p, axis=0)
+    p = np.unique(np.array(p), axis=0)
 
     # First row was all zeroes
     p = np.delete(p, 0, 0)
@@ -96,9 +96,9 @@ def interpWeather(s, d, weather_type, dataset):
     merged_list = np.array([0, 0, 0, 0])
 
     # initial points to be used between s and d
-    div = 100
+    div = 10
 
-    # Try 100 points first, duplicates will be removed
+    # Try 10 points first, duplicates will be removed
     points = divLine(s, d, div, dataset[0], dataset[1])
 
     # remove duplicate points, divisions can round to the same point
@@ -198,9 +198,8 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
 
         # Only return interval between heights
         sounding = zInteg(D[2], S[2], dataset)
-        points = []
 
-        return sounding, points
+        return sounding, []
     
     else:
 
@@ -216,8 +215,6 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
 
         # s and d are in lat/lon, S and D are in local
         # interp weather from grid between s and d
-        merged_list, points = interpWeather(s, d, weather_type, dataset)    
-
-        return merged_list, points
+        return interpWeather(s, d, weather_type, dataset)    
 
     

@@ -353,6 +353,7 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
         min_search: [list] min lat, lon and height of the search area
         max_search: [list] max lat, lon and height of the search area
     """
+
     single_point = setup.manual_fragmentation_search
     r = results_arr[0].r
     x_opt = results_arr[0].x_opt
@@ -411,10 +412,11 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
 
     # Get the limits of the plot
 
-    x_min, y_min, _ = min_search[0], min_search[1], min_search[2]
-    x_max, y_max, _ = max_search[0], max_search[1], max_search[2]
+    x_min, y_min = search[0], search[2]
+    x_max, y_max = search[1], search[3]
 
     img_dim = 30
+
     x_data = np.linspace(x_min, x_max, img_dim)
     y_data = np.linspace(y_min, y_max, img_dim)
     xx, yy = np.meshgrid(x_data, y_data)
@@ -430,17 +432,17 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
     # Calculate times of arrival for each point on the reference plane
     for i, plane_coords in enumerate(plane_coordinates):
 
-        plane_coords = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], plane_coords[0], plane_coords[1], plane_coords[2])
-
+        #plane_coords = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], plane_coords[0], plane_coords[1], plane_coords[2])
+        
         # Create interpolated atmospheric profile for use with cyscan
         sounding, points = getWeather(x_opt, plane_coords, setup.weather_type, ref_pos, copy.copy(dataset))
 
         # Use distance and atmospheric data to find path time
         ti, _, _ = cyscan(np.array(x_opt), np.array(plane_coords), sounding, \
                                 wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                precision=setup.angle_precision, tol=setup.angle_error_tol)
-
+                                precision=setup.angle_precision)
         if np.isnan(ti):
+            #Make blank contour
             ti = -1
         times_of_arrival[i] = ti
 

@@ -39,7 +39,7 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
     Returns:
         sotc: calculated time for the current search position signal to hit each station
     """
-
+    
     # number of stations total
     n_stations = len(stns)
 
@@ -51,10 +51,10 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
 
     # Initialize arrays
     # Simulated travel times to each station
-    time3D = np.zeros(n_stations)
+    time3D = np.empty(n_stations)
 
     # Residuals to each station
-    sotc = np.zeros(n_stations)
+    sotc = np.empty(n_stations)
 
     # 0 - custom weather, 1 - MERRA, 2 - ECMWF, 3 - UKMO
     weather_type = tweaks[0]
@@ -63,13 +63,13 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
     if w[j] > 0:
 
         # Create interpolated atmospheric profile for use with cyscan
-        sounding, points = getWeather([x[0],x[1],x[2]], xstn[j, :], weather_type, ref_pos, copy.copy(dataset))
+        sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], weather_type, ref_pos, copy.copy(dataset))
 
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = angle2NDE(sounding[:, 3])
-
+        
         # Use distance and atmospheric data to find path time
-        time3D[j], _, _ = cyscan(np.array([x[0],x[1],x[2]]), np.array(xstn[j, :]), sounding, \
+        time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
                                             wind=tweaks[1], n_theta=tweaks[2], n_phi=tweaks[3], \
                                             precision=tweaks[4])
 
@@ -79,73 +79,11 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
     # If station has no weight
     else:
         sotc[j] = tobs[j]
+        
+
 
     return sotc[j]
 
-# def lineConstraintx(x, *args):
-#     _, _, _, setup, _, _, _ = args
-
-#     # convert angles to radians
-#     ze = np.radians(setup.zangle)
-#     az = np.radians(setup.azim)
-#     t = np.array([np.sin(az)*np.cos(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-#     #t = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-
-#     A = geo2Loc(setup.ref_pos[0], setup.ref_pos[1], setup.ref_pos[2], setup.lat_i, setup.lon_i, setup.elev_i)
-#     A = np.array(A)
-#     A[2] *= 1000
-#     s = (x[0] - A[0]) / t[0]
-
-#     result = s*t[0] + A[0] - x[0]
-
-#     # pso will allow the point if the constraint is >= 0.0
-#     if abs(result) <= setup.traj_tol:
-#         return 1
-#     else:
-#         return -1   
-
-# def lineConstrainty(x, *args):
-#     _, _, _, setup, _, _, _ = args
-
-#     # convert angles to radians
-#     ze = np.radians(setup.zangle)
-#     az = np.radians(setup.azim)
-#     t = np.array([np.sin(az)*np.cos(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-#     #t = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-
-#     A = geo2Loc(setup.ref_pos[0], setup.ref_pos[1], setup.ref_pos[2], setup.lat_i, setup.lon_i, setup.elev_i)
-#     A = np.array(A)
-#     A[2] *= 1000
-#     s = (x[1] - A[1]) / t[1]
-
-#     result = s*t[1] + A[1] - x[1]
-#     # pso will allow the point if the constraint is >= 0.0
-#     if abs(result) <= setup.traj_tol:
-#         return 1
-#     else:
-#         return -1   
-
-
-# def lineConstraintz(x, *args):
-#     _, _, _, setup, _, _, _ = args
-
-#     # convert angles to radians
-#     ze = np.radians(setup.zangle)
-#     az = np.radians(setup.azim)
-
-#     t = np.array([np.sin(az)*np.cos(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-#     A = geo2Loc(setup.ref_pos[0], setup.ref_pos[1], setup.ref_pos[2], setup.lat_i, setup.lon_i, setup.elev_i)
-#     A = np.array(A)
-#     A[2] *= 1000
-#     s = (x[2] - A[2]) / t[2]
-
-#     result = s*t[2] + A[2] - x[2]
-
-#     # pso will allow the point if the constraint is >= 0.0
-#     if abs(result) <= setup.traj_tol:
-#         return 1
-#     else:
-#         return -1  
 
 def lineConstraint(x, *args):
 
@@ -190,24 +128,16 @@ def timeFunction(x, *args):
     Returns:
         err: [float] error in the current position, x, searched
     '''
+
+    
     # Retrieve passed arguments
     stns, w, kotc, setup, ref_pos, dataset, pool = args
 
     # number of stations total
     n_stations = len(stns)
 
-    # Initialize arrays
-    # Simulated travel times to each station
-    time3D = np.zeros(n_stations)
-
-    # Initial azimuthal angles to each station
-    az = np.zeros(n_stations)
-
-    # Initial takeoff angles to each station
-    tf = np.zeros(n_stations)
-
     # Residuals to each station
-    sotc = np.zeros(n_stations)
+    sotc = np.empty(n_stations)
 
     # Initialize variables
     # Weight of each station
@@ -223,14 +153,15 @@ def timeFunction(x, *args):
 
     # Pass data through to multiprocess loop
     iterable = range(n_stations)
-
+    
     # Store functions to be used with multiprocessing
     func = partial(loop, x, stns, w, [setup.weather_type, setup.enable_winds, setup.n_theta, setup.n_phi,\
-                                        setup.angle_precision, setup.angle_error_tol], ref_pos, dataset)
+                                        setup.angle_precision], ref_pos, dataset)
     
     # Compute time of flight residuals for all stations
     sotc = pool.map(func, iterable)
-
+    
+    
     if setup.max_time != 0:
         motc = np.dot(wn, sotc)/sum(wn)
     else:
@@ -265,12 +196,12 @@ def timeFunction(x, *args):
     # to how far outside of the range it is
 
     if motc < setup.min_time or motc > setup.max_time:
-        err = min(abs(motc - setup.min_time), abs(motc - setup.max_time))*setup.max_error + setup.max_error
+        err = abs(motc - (setup.min_time + setup.max_time)/2)*setup.max_error + setup.max_error
 
     # if setup.restrict_to_trajectory:
     #     if d > setup.traj_tol:
     #         err = abs(setup.traj_tol - d)*min(abs(motc - setup.min_time), abs(motc - setup.max_time))*setup.max_error + setup.max_error
-
+    
     # check large error
     if err > setup.max_error:
 
@@ -285,6 +216,8 @@ def timeFunction(x, *args):
         # print out current search location
         print("Supracenter: {:10.2f} m x {:10.2f} m y {:10.2f} m z  Time: {:8.2f} Error: {:25.2f}".format(x[0], x[1], x[2], motc, err))
 
+    
+    
     # variable to be minimized by the particle swarm optimization
     return err
 
@@ -377,8 +310,8 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
         # Boundaries of search volume
         #  [x, y, z] local coordinates
-        lb = [search[0], search[2], search[4]]
-        ub = [search[1], search[3], search[5]]
+        lb = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, search[0], search[2], search[4])
+        ub = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, search[1], search[3], search[5])
 
         # Init pool of workers
         pool = multiprocessing.Pool(multiprocessing.cpu_count())
@@ -430,7 +363,11 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     # Calculate and Set the Occurrence Time into HH:MM:SS
     time_diff = motc + ref_time.microsecond/1e6 + ref_time.second + ref_time.minute*60 + ref_time.hour*3600
 
-    otc = (datetime.datetime.min + datetime.timedelta(seconds=time_diff)).time()
+    try:
+        otc = (datetime.datetime.min + datetime.timedelta(seconds=time_diff)).time()
+    except ValueError:
+        print("ERROR: Something here was np.nan. Line 367 ish of psoSearch")
+        otc = None
 
     global sup
     global errors

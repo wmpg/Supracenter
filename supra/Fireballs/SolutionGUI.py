@@ -1458,8 +1458,12 @@ class SolutionGUI(QMainWindow):
     
     def makePicks(self):
 
-        setup  = self.saveINI(write=False)
-        
+        try:
+            setup = self.saveINI(write=False)
+        except:
+            self.errorMessage("Cannot load station data", 2)
+            return None
+
         if not os.path.exists(setup.working_directory):
             os.makedirs(setup.working_directory)
 
@@ -1632,7 +1636,8 @@ class SolutionGUI(QMainWindow):
                             setup.traj_f.pos_loc(ref_pos)
 
                             # Time to travel from trajectory to station
-                            b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
+                            b_time = timeOfA
+                            rrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
                                                         np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
 
                             bTimes[i] = b_time
@@ -1667,7 +1672,7 @@ class SolutionGUI(QMainWindow):
 
                         # Travel time of the fragmentation wave
                         f_time, _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
+                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision)
 
                         fTimes[i] = f_time + line[3]
 
@@ -1905,6 +1910,7 @@ class SolutionGUI(QMainWindow):
 
                 times_of_arrival[i] = ti + setup.t0
 
+            #Keep this here
             print('')
 
             # if sound never reaches the plane_coord, set to maximum value of the contour
@@ -1944,9 +1950,8 @@ class SolutionGUI(QMainWindow):
         if setup.arrival_times_file != '':
             try:
                 self.arrTimes = np.load(setup.arrival_times_file)
-                print("Reading in arrival times file...")
             except:
-                print("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file))
+                self.errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
                 self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
         else:  
             # Calculate all arrival times
@@ -2124,13 +2129,13 @@ class SolutionGUI(QMainWindow):
         # Init ground map
         #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
-        for stn in self.stn_list:
-            self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
+        # for stn in self.stn_list:
+        #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
 
-        current_stn = self.stn_list[self.current_station]
-        self.m.scatter(current_stn.position.lat_r, current_stn.position.lon_r, c='r', s=2)
+        # current_stn = self.stn_list[self.current_station]
+        # self.m.scatter(current_stn.position.lat_r, current_stn.position.lon_r, c='r', s=2)
 
-        self.make_picks_map_graph_canvas.draw()
+        # self.make_picks_map_graph_canvas.draw()
         SolutionGUI.update(self)
 
 
@@ -2593,7 +2598,8 @@ class SolutionGUI(QMainWindow):
 
         results = psoSearch(s_info, weights, s_name, setup, dataset, consts)
 
-        n_stations = len(s_info)
+        n_stations = len(s_name)
+
         xstn = s_info[0:n_stations, 0:3]
             
         self.scatterPlot(setup, results, n_stations, xstn, s_name, dataset, manual=False)
@@ -2606,11 +2612,16 @@ class SolutionGUI(QMainWindow):
         # set column count
         self.sup_results_table.setColumnCount(5)
 
-        self.sup_results_table.setItem(0, 0, QTableWidgetItem("Station Name"))
-        self.sup_results_table.setItem(0, 1, QTableWidgetItem("Latitude"))
-        self.sup_results_table.setItem(0, 2, QTableWidgetItem("Longitude"))
-        self.sup_results_table.setItem(0, 3, QTableWidgetItem("Elevation"))
-        self.sup_results_table.setItem(0, 4, QTableWidgetItem("Residuals"))
+        self.sup_results_table.setRowCount(n_stations + 1)
+        self.sup_results_table.setHorizontalHeaderLabels(['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
+        header = self.sup_results_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+
+        self.sup_results_table.setItem(0, 0, QTableWidgetItem("Total (Time = ({:}s)".format(results.motc)))
+        self.sup_results_table.setItem(0, 1, QTableWidgetItem(str(results.x_opt[0])))
+        self.sup_results_table.setItem(0, 2, QTableWidgetItem(str(results.x_opt[1])))
+        self.sup_results_table.setItem(0, 3, QTableWidgetItem(str(results.x_opt[2])))
+        self.sup_results_table.setItem(0, 4, QTableWidgetItem(str(results.f_opt)))
 
         for i in range(n_stations):
             self.sup_results_table.setItem(i+1, 0, QTableWidgetItem(s_name[i]))
@@ -2621,6 +2632,7 @@ class SolutionGUI(QMainWindow):
 
     def supraSearch(self):
 
+        #this is the auto one
         setup = self.saveINI(write=False)
 
         supra_pos = [float(self.lat_edit.text()),
@@ -2655,15 +2667,20 @@ class SolutionGUI(QMainWindow):
 
         # set row count
         self.tableWidget.setRowCount(n_stations + 1)
+        self.tableWidget.setHorizontalHeaderLabels(['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
+        header = self.tableWidget.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
 
         # set column count
         self.tableWidget.setColumnCount(5)
 
-        self.tableWidget.setItem(0, 0, QTableWidgetItem("Station Name"))
-        self.tableWidget.setItem(0, 1, QTableWidgetItem("Latitude"))
-        self.tableWidget.setItem(0, 2, QTableWidgetItem("Longitude"))
-        self.tableWidget.setItem(0, 3, QTableWidgetItem("Elevation"))
-        self.tableWidget.setItem(0, 4, QTableWidgetItem("Residuals"))
+        self.tableWidget.setItem(0, 0, QTableWidgetItem("Total"))
+        self.tableWidget.setItem(0, 1, QTableWidgetItem(str(results.x_opt[0])))
+        self.tableWidget.setItem(0, 2, QTableWidgetItem(str(results.x_opt[1])))
+        self.tableWidget.setItem(0, 3, QTableWidgetItem(str(results.x_opt[2])))
+        self.tableWidget.setItem(0, 4, QTableWidgetItem(str(results.f_opt)))
+
+
 
         for i in range(n_stations):
             self.tableWidget.setItem(i+1, 0, QTableWidgetItem(s_name[i]))
@@ -3054,7 +3071,6 @@ class SolutionGUI(QMainWindow):
 
         r = results.r
         x_opt = results.x_opt
-        ref_pos = [setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev]
         sup = results.sup
         errors = results.errors
 
@@ -3069,33 +3085,85 @@ class SolutionGUI(QMainWindow):
         ax.set_xlabel("Latitude (deg N)", linespacing=3.1)
         ax.set_ylabel("Longitude (deg E)", linespacing=3.1)
         ax.set_zlabel('Elevation (m)', linespacing=3.1)
-
+        # print(xstn[3, :])
+        # print(x_opt)
+        # print(sup[12, :])
         # plot station names and residuals
         for h in range(n_stations):
 
             # Convert station locations to geographic
-            xstn[h, 0], xstn[h, 1], xstn[h, 2] = loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], xstn[h, :])
+            xstn[h, 0], xstn[h, 1], xstn[h, 2] = loc2Geo(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, xstn[h, :])
 
             # Add station names
             ax.text(xstn[h, 0], xstn[h, 1], xstn[h, 2],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
 
         # Add stations with color based off of residual
-        res = ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(r), marker='^', cmap='viridis_r', depthshade=False)
+        ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(r), marker='^', cmap='viridis_r', depthshade=False)
 
         # Add point and label
         ax.scatter(x_opt[0], x_opt[1], x_opt[2], c = 'r', marker='*')
         ax.text(x_opt[0], x_opt[1], x_opt[2], '%s' % ('Supracenter'), zorder=1, color='w')
 
         if not manual:
-            #for i in range(len(sup)):
-                #sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], sup[i, :])
+            for i in range(len(sup)):
+                sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, sup[i, :])
             sc = ax.scatter(sup[:, 0], sup[:, 1], sup[:, 2], c=errors, cmap='inferno_r', depthshade=False)
             a = plt.colorbar(sc, ax=ax)
             a.set_label("Error in Supracenter (s)")
 
         # colorbars
-        b = plt.colorbar(res, ax=ax)
-        b.set_label("Station Residuals (s)")
+        # b = plt.colorbar(res, ax=ax)
+        # b.set_label("Station Residuals (s)")
+        search = [float(setup.search_area[0]),float(setup.search_area[1]), float(setup.search_area[2]), float(setup.search_area[3]),\
+                            float(setup.search_height[0]), float(setup.search_height[1])]
+        x_min, y_min = search[0], search[2]
+        x_max, y_max = search[1], search[3]
+
+        img_dim = 30
+
+        x_data = np.linspace(x_min, x_max, img_dim)
+        y_data = np.linspace(y_min, y_max, img_dim)
+        xx, yy = np.meshgrid(x_data, y_data)
+
+        # Make an array of all plane coordinates
+        plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
+
+        times_of_arrival = np.zeros_like(xx.ravel())
+
+        x_opt = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, x_opt[0], x_opt[1], x_opt[2])
+
+        print('Creating contour plot...')
+        # Calculate times of arrival for each point on the reference plane
+        for i, plane_coords in enumerate(plane_coordinates):
+
+            plane_coords = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, plane_coords[0], plane_coords[1], plane_coords[2])
+            
+            # Create interpolated atmospheric profile for use with cyscan
+            sounding, points = getWeather(x_opt, plane_coords, setup.weather_type, \
+                [setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev], copy.copy(dataset))
+
+
+            # Use distance and atmospheric data to find path time
+            ti, _, _ = cyscan(np.array(x_opt), np.array(plane_coords), sounding, \
+                                    wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+                                    precision=setup.angle_precision)
+            if np.isnan(ti):
+                #Make blank contour
+                ti = -1
+            times_of_arrival[i] = ti
+
+        times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
+
+        # Determine range and number of contour levels, so they are always centred around 0
+        toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+        toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+        levels = np.linspace(toa_abs_min, toa_abs_max, 50)
+
+        # Plot colorcoded times of arrival on the surface
+        toa_conture = ax.contourf(xx, yy, times_of_arrival, levels, cmap='inferno', alpha=1.0)
+        # Add a color bar which maps values to colors
+        plt.colorbar(toa_conture, ax=ax)
+        #b.setLabel('Time of arrival (s)')
 
         if manual:
             try:
