@@ -55,219 +55,6 @@ import os
 import sys
 
 import datetime 
-
-
-
-# def configRead(input_name):
-#     ''' Reads .ini files and runs the Supracenter program with the options inside. Information on each of the
-#         parameters can be found in the user manual: /docs/User Manual.txt
-
-#     Arguments:
-#         input_name: [string] name of the .ini file
-
-#     Returns:
-#         setup: [Object] object containing all of the options for the program to run
-#     '''
-
-#     class Config:
-
-#         def __init__(self):
-#             pass
-
-#     setup = Config()
-#     config = configparser.ConfigParser()
-
-#     if not os.path.exists(input_name):
-#         print('The input file: ', input_name, 'does not exist!')
-#         sys.exit()
-
-#     config.read(input_name)
-
-#     try:
-#         setup.fireball_name =           config.get('General', 'fireball_name')
-#         setup.output_folder =           config.get('General', 'output_folder')
-#         setup.plotall =                 config.get('General', 'plotall')
-#         setup.colortoggle =             config.get('General', 'colortoggle')
-#     except:
-#         print("INI ERROR: [General] Error in variables. Required variables: fireball_name, output_folder, plotall, colortoggle.")
-#         sys.exit()
-
-#     try:
-#         setup.dot_tol =                 int(config.get('General', 'dot_tol'))
-#     except:
-#         print('INI WARNING: [General] Unable to parse dot_tol, setting default value to 100')
-#         setup.dot_tol = 100
-
-#     try:
-#         setup.contour_res =             int(config.get('General', 'contour_res'))
-#     except:
-#         print("INI WARNING: [General] Unable to parse contour_res, setting to default value of 100")
-#         setup.contour_res = 100
-
-#     try:
-#         setup.fast_ballistic =            config.get('General', 'fast_ballistic')
-#     except:
-#         print("INI WARNING: [General] Unable to parse fast_ballistic, setting to true")
-#         setup.fast_ballistic = "true"
-
-#     try:
-#         setup.allTimes_file = config.get('General', 'allTimes_file')
-#     except:
-#         setup.allTimes_file = ''
-
-#     if setup.contour_res <= 1:
-#         print("INI WARNING: [General] contour_res is a small value, may not be able to plot contour!")
-#         print("Setting countour resolution to 2.")
-#         setup.contour_res = 2
-
-#     try:
-#         setup.lat_centre =              float(config.get('Search Area', 'lat_centre'))
-#         setup.lon_centre =              float(config.get('Search Area', 'lon_centre'))
-#     except:
-#         print("INI ERROR: [Search Area] lat_centre and lon_centre must both be floats!")
-#         sys.exit()
-
-#     if setup.lat_centre > 90 or setup.lat_centre < -90:
-#         print("INI ERROR: [Search Area] lat_centre must be between -90 and 90 degrees!")
-#         sys.exit()
-
-#     try:
-#         setup.deg_radius =              float(config.get('Station', 'deg_radius'))
-#     except:
-#         print("INI ERROR: [Station] deg_radius must be a float!")
-#         sys.exit()
-
-#     # try:
-#     #     setup.network =                 config.get('Station', 'network')
-#     #     setup.channel =                 config.get('Station', 'channel')
-#     # except:
-#     #     print("INI ERROR: [Station] Error in variables. Required variables: network, channel.")
-#     #     sys.exit()
-
-#     try:
-#         setup.start_datetime =          datetime.datetime.strptime(config.get('Station', 'start_datetime'), "%Y-%m-%d %H:%M:%S.%f")
-#         setup.end_datetime =            datetime.datetime.strptime(config.get('Station', 'end_datetime'), "%Y-%m-%d %H:%M:%S.%f")
-#     except:
-#         print("INI ERROR: [Station] start_time and end_time must both be in the form of: YYYY-mm-dd HH:MM:SS.ffffff")
-#         sys.exit()
-
-#     try:
-#         setup.enable_winds = config.get('Atmospheric', 'enable_winds')
-#         setup.weather_type = config.get('Atmospheric', 'weather_type')
-#         setup.weather_name = config.get('Atmospheric', 'weather_name')
-#     except:
-#         print("INI WARNING: [Atmospheric] could not parse enable_winds or weather_type")
-#         setup.weather_type = 'none'
-
-#     try:
-#         setup.perturb = config.get('Atmospheric', 'perturb')
-#     except:
-#         print("INI WARNING: [Atmospheric] could not parse perturb, setting perturb = False")
-#         setup.perturb = 'false'
-
-#     if setup.perturb.lower() == 'true':
-#         try:
-#             setup.perturb_method = config.get('Atmospheric', 'perturb_method')
-#         except:
-#             print("INI WARNING: [Atmospheric] could not parse perturb_method, setting perturb_method = bmp")
-#             setup.perturb_method = 'bmp'
-
-#         try:
-#             setup.perturb_times = int(config.get('Atmospheric', 'perturb_times'))
-#             #0th perturb is original data. perturb_times is the number of unoriginal perturbs
-#             setup.perturb_times += 1
-#         except:
-#             print("INI WARNING: [Atmospheric] could not parse perturb_times, setting perturb_times = 1")
-#             setup.perturb_times = 1
-#     else:
-#         #no perturbs (0th perturb is the original weather data)
-#         setup.perturb_method = 'none'
-#         setup.perturb_times = 1
-
-#     try:
-#         setup.spread_file = config.get('Atmospheric', 'perturb_spread_file')
-#     except:
-#         print("INI WARNING: [Atmospheric] could not parse the perturb_spread_file, ignore if not using 'spread' perturbations")
-#         setup.spread_file = ''
-   
-#     try:
-#         setup.x0     = float(config.get('Ballistic', 'x0'))
-#         setup.y0     = float(config.get('Ballistic', 'y0'))
-#         setup.t      = float(config.get('Ballistic', 't'))
-#         setup.v      = float(config.get('Ballistic', 'v'))
-#         setup.azim   = float(config.get('Ballistic', 'azim'))
-#         setup.zangle = 90 - float(config.get('Ballistic', 'zangle'))
-#         setup.ballistic = config.get('Ballistic','show_ballistic_waveform')
-#     except:
-#         setup.ballistic = 'false'
-#         print("INI WARNING: [Ballistic] could not parse a variable. Setting ballistic = False")
-
-#     # always assume geomode = true
-#     setup.geomode = 'true'
-
-#     try:
-#         setup.lat_i = float(config.get('Ballistic', 'lat_i'))
-#         setup.lon_i = float(config.get('Ballistic', 'lon_i'))
-#         setup.elev_i = float(config.get('Ballistic', 'elev_i'))
-#     except:
-#         setup.lat_i = 0
-#         setup.lon_i = 0
-#         setup.elev_i = 0
-
-#     try:
-#         l =                  config.get('Fragmentation', 'single_point')
-#         setup.single_point = eval(l)
-#         setup.fragmentation = config.get('Fragmentation','show_fragmentation_waveform')
-#     except:
-#         setup.fragmentation = 'false'
-#         print("INI WARNING: [Fragmentation] could not parse a variable. Setting fragmentation = False")
-
-#     try:
-#         setup.difference_filter_all =   config.get('Station', 'difference_filter_all')
-#         setup.get_data =                config.get('Station', 'get_data')
-#     except:
-#         print("INI ERROR: [Station] Error in variables. Required variables: difference_filter_all, get_data")
-#         sys.exit()
-
-#     try:
-#         setup.v_sound =                 float(config.get('Variables', 'v_sound'))
-#         setup.t0 =                      float(config.get('Variables', 't0'))
-#     except:
-#         print("INI ERROR: [Variables] v_sound and t0 must both be floats!")
-#         sys.exit()
-
-#     try:
-#         l =                     config.get('Highlights', 'high_f')
-#         setup.high_f = eval(l)
-#     except:
-#         print("INI WARNING: [Highlights] could not parse high_f. See docs/example_GetIRISData.ini for example")
-#         setup.high_f = []
-
-#     try:
-#         l =                     config.get('Highlights', 'high_b')
-#         setup.high_b = eval(l)
-#     except:
-#         print("INI WARNING: [Highlights] could not parse high_b. See docs/example_GetIRISData.ini for example")
-#         setup.high_b = []
-
-#     try:
-#         l =                     config.get('Remove', 'rm_stat')
-#         setup.rm_stat = eval(l)
-#     except:
-#         setup.rm_stat = []
-#         print("INI WARNING: [Remove] could not parse rm_stat. See docs/example_GetIRISData.ini for example")
-
-#     try:
-#         l =                     config.get('Extra Stations', 'stations')
-#         setup.stations = eval(l)
-#     except:
-#         setup.stations = []
-#         print("INI WARNING: [Extra Stations] could not parse stations. See docs/example_GetIRISData.ini for example")
-
-#     if setup.v_sound < 0:
-#         print("INI ERROR: [Variables] v_sound must be positive!")
-
-#     return setup
     
 
 def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, network='*', channel='BDF'):
@@ -1006,13 +793,38 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
             print('Opening file {:} failed with error: {:}'.format(mseed_file_path, e))
             continue
 
+        # Find channel with BHZ, HHZ, or BDF
+
+        for i in range(len(mseed)):
+            if mseed[i].stats.channel == 'BDF':
+                stn.channel = 'BDF'
+                stream = i
+
+        for i in range(len(mseed)):
+            if mseed[i].stats.channel == 'BHZ':
+                stn.channel = 'BHZ'
+                stream = i
+
+        for i in range(len(mseed)):
+            if mseed[i].stats.channel == 'HHZ':
+                stn.channel = 'HHZ'
+                stream = i
+
+        for i in range(len(mseed)):
+            if mseed[i].stats.channel == 'EHZ':
+                stn.channel = 'EHZ'
+                stream = i
+
+
         # Unpack miniSEED data
-        delta = mseed[0].stats.delta
-        waveform_data = mseed[0].data
+        delta = mseed[stream].stats.delta
+        waveform_data = mseed[stream].data
 
         # Extract time
-        start_datetime = mseed[0].stats.starttime.datetime
-        end_datetime = mseed[0].stats.endtime.datetime
+        start_datetime = mseed[stream].stats.starttime.datetime
+        end_datetime = mseed[stream].stats.endtime.datetime
+
+        stn.offset = (start_datetime - setup.start_datetime).total_seconds()
 
         # Skip stations with no data
         if len(waveform_data) == 0:
@@ -1048,7 +860,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
 
         # Cut the waveform data length to match the time data
         waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)]
+        time_data = time_data[:len(waveform_data)] + stn.offset
         
         # Detrend the waveform and normalize to fixed width
         waveform_data = waveform_data - np.mean(waveform_data)

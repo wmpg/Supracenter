@@ -131,7 +131,7 @@ def dweight(data, d_min, d_max):
         dists[i] = np.sqrt((data[i, 0] - data[fs, 0])**2 + (data[i, 1] - data[fs, 1])**2)
         
         # after d_max, no weight
-        if dists[i] > d_max:
+        if dists[i] > float(d_max):
             w[i] = 0
 
         # between d_min and d_max
@@ -195,6 +195,9 @@ def convStationDat(station_name, setup=[], d_min=0, d_max=100000):
         data[i, 0], data[i, 1], data[i, 2] = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], data[i,0], data[i,1], data[i,2])       
 
     # weighting scheme
+    if (d_min == None) or (d_max == None):
+        d_max = 0
+
     weights = dweight(data, d_min, d_max)
 
     return data, names, weights, ref_pos

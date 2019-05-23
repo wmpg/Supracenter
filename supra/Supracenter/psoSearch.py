@@ -71,7 +71,7 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
         # Use distance and atmospheric data to find path time
         time3D[j], _, _ = cyscan(np.array([x[0],x[1],x[2]]), np.array(xstn[j, :]), sounding, \
                                             wind=tweaks[1], n_theta=tweaks[2], n_phi=tweaks[3], \
-                                            precision=tweaks[4], tol=tweaks[5])
+                                            precision=tweaks[4])
 
         # Residual time for each station
         sotc[j] = tobs[j] - time3D[j]
@@ -413,9 +413,9 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
                                                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, output_name, s_name, kotc, w)
 
     # Find error for manual searches
-    if len(single_point) != 0:
-
-        f_opt = np.dot(w, np.absolute(sotc - motc)**setup.fit_type)/nwn
+    if (single_point != [None, None, None, None]):
+        print(w)
+        f_opt = np.dot(w, np.absolute(sotc - np.dot(w, sotc)/nwn)**setup.fit_type)/nwn
 
     # x, y distance from Supracenter to each station
     horz_dist = np.zeros(n_stations)

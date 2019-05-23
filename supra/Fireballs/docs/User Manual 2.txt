@@ -77,3 +77,42 @@ Atmosphere Files
 --------------------
 All Times Files
 --------------------
+
+====================
+Setting Up Atmospheric Fetching
+====================
+
+Setting up atmospheric fetching is a one-time setup which will allow data to be downloaded from the Copernicus Climate Change Store automatically.
+
+Follow the instructions given here, with the given exceptions below:
+https://cds.climate.copernicus.eu/api-how-to
+
+Step 1: Needs to be done locally, since the url and key depend on the users login
+
+Step 2: Proceed as normal
+
+Step 3: Does not need to be done, the Fetch Atmosphere tab does this for you, and will request the data, and display it automatically. 
+
+====================
+Errors
+====================
+
+====================
+Extra Stations
+====================
+
+To add a station manually, the station name, location and mseed file must be input into the .ini file. Most seismic waveform databases online will allow for an mseed file to be downloaded. The file must be put in with the rest of the mseed files, which is located in: output_folder/fireball_name
+
+Most data sources also allow for .kml files to be downloaded. It may be useful to compile all seismic stations into a single kml file for use with Google Earth Pro, and using the circle measure tool to find stations within 150 km of an event.
+
+Sites that stations can be downloaded from:
+
+North Carolina - http://service.ncedc.org/fdsnws/dataselect/1/
+South Carolina - https://service.scedc.caltech.edu/fdsnws/dataselect/1/
+Turkey - http://tdvm.afad.gov.tr/
+Europe - http://udim.koeri.boun.edu.tr/mseed/
+Europe - http://eida.gfz-potsdam.de/webdc3/
+IRIS - http://service.iris.edu/fdsnws/dataselect/docs/1/builder/
+
+Others may be found by searching for .mseed files online
+

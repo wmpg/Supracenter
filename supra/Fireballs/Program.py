@@ -49,6 +49,7 @@ class position:
         """
         self.x, self.y, self.z = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, self.lat, self.lon, self.elev)
 
+
 class station:
 
     """
@@ -72,6 +73,7 @@ class station:
         self.channel = channel
         self.file_name = file_name
         self.name = name
+        self.offset = 0
 
 def configWrite(ini_file, setup):
     config = configparser.RawConfigParser()
@@ -640,7 +642,6 @@ def configParse(setup, ini_type):
         #turn coordinates into position objects
         setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
         setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
-        print(setup.traj_f.x, setup.traj_f.y)
     except:
         setup.traj_i = position(0, 0, 0)
         setup.traj_f = position(0, 0, 0)

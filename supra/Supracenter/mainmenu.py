@@ -50,6 +50,7 @@ def main(setup):
     if setup.max_error <= 0:
         print('VARIABLE ERROR: Incorrect max_error, must be a float greater than 0!')
 
+    setup.grid_size = float(setup.grid_size)
     if setup.grid_size <= 0 or setup.grid_size > 10:
         print('VARIABLE ERROR: Incorrect grid_size, must be float greater than 0, and must give enough spaces in the search area!')
         sys.exit()

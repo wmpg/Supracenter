@@ -143,7 +143,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
 
         # ray tracing function
         time3D[j], az[j], tf[j] = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                            precision=setup.angle_precision, tol=setup.angle_error_tol)
+                                            precision=setup.angle_precision)
 
         # find residuals
         sotc[j] = tobs[j] - time3D[j]
