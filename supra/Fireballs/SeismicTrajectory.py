@@ -524,7 +524,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         ######################################################################################################
 
         # Calculate the time of arrival
-        ti = timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=sounding)
+        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding)
 
         # Smooth approximation of l1 (absolute value) loss
         z = (t_obs - ti)**2
@@ -953,8 +953,8 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     print('y0:', y0, 'km')
     print('t0:', t0, 's')
     print('v:', v, 'm/s')
-    print('Azimuth Angle (+E of due N) : ', np.degrees(azim))
-    print('Zenith Angle:', np.degrees(zangle))
+    print('Azimuth Angle (+E of due N) : {:}'.format(np.degrees(azim)))
+    print('Zenith Angle: {:}'.format(np.degrees(zangle)))
     print('Wave release:')
     print(wave_release_points[:, 2])
     print(' - top:', wave_release_points[high_point, 2], 'km')
@@ -975,7 +975,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
         station_name = stat_entry[1] + '-' + stat_entry[2]
 
         res.append(toa_obs - toa_model)
-
         print('{:>10s}: {:+06.2f}s'.format(station_name, toa_obs - toa_model))
 
         sqr_res_acc += (toa_obs - toa_model)**2

@@ -345,8 +345,19 @@ class SolutionGUI(QMainWindow):
         SolutionGUI.update(self)
 
         self.seis_two_lat_canvas.scatterPlot(x=sup[0::10, 0], y=sup[0::10, 1], pen='r', update=True)
-        self.seis_two_time_canvas.scatterPlot(x=sup[0::10, 2], y=sup[0::10, 3], pen='r', update=True)
+        self.seis_two_lat_canvas.setTitle('Position of Geometric Landing Point')
+        self.seis_two_lat_canvas.setLabel('bottom', "x (+ East)", units='m')
+        self.seis_two_lat_canvas.setLabel('left', "y (+ North)", units='m')
+
+        self.seis_two_time_canvas.scatterPlot(x=sup[0::10, 2], y=sup[0::10, 3]*1000, pen='r', update=True)
+        self.seis_two_time_canvas.setTitle('Velocty and Time of Fireball')
+        self.seis_two_time_canvas.setLabel('bottom', "Time after Reference", units='s')
+        self.seis_two_time_canvas.setLabel('left', "Velocity", units='m/s')
+
         self.seis_two_angle_canvas.scatterPlot(x=sup[0::10, 4], y=sup[0::10, 5], pen='r', update=True)
+        self.seis_two_angle_canvas.setTitle('Angles of Trajectory')
+        self.seis_two_angle_canvas.setLabel('bottom', "Azimuth Angle", units='deg')
+        self.seis_two_angle_canvas.setLabel('left', "Zenith Angle", units='deg')
 
         X = [None]*len(sup[:, 0])
         Y = [None]*len(sup[:, 0])
@@ -355,6 +366,9 @@ class SolutionGUI(QMainWindow):
             X[i], Y[i], _ = loc2Geo(setup.lat_centre, setup.lon_centre, 0, [sup[i*10, 0], sup[i*10, 1], 0])
 
         self.seis_two_plot_canvas.scatterPlot(x=X, y=Y, pen='r', update=True)
+        self.seis_two_plot_canvas.setTitle('Position of Geometric Landing Point')
+        self.seis_two_plot_canvas.setLabel('bottom', "Latitude", units='deg N')
+        self.seis_two_plot_canvas.setLabel('left', "Longitiude", units='deg E')
 
         final_pos = results[0]
         t0 = results[2]
