@@ -20,6 +20,8 @@ from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import pyqtgraph.opengl as gl
 import matplotlib.gridspec as gridspec
+import matplotlib.cm as cm
+from matplotlib.colors import Normalize
 
 from functools import partial
 
@@ -27,8 +29,12 @@ from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+import pyximport
+pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+
 from mpl_toolkits.mplot3d import Axes3D
 
+from supra.Supracenter.slowscan import slowscan
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
 from supra.Fireballs.Program import position, configRead, configWrite, station
@@ -93,6 +99,7 @@ class SolutionGUI(QMainWindow):
         self.addSeisTrajWidgets()
         self.addFetchATMWidgets()
         self.addProfileWidgets()
+        self.addRayTracerWidgets()
         self.addDocsWidgets()
 
         self.var_typ = 't'
@@ -122,6 +129,9 @@ class SolutionGUI(QMainWindow):
         self.setStyleSheet(stylesheet)
 
         pg.setConfigOptions(antialias=True)
+        self.ray_pick = pg.ScatterPlotItem()
+        self.ray_pick_point = [0, 0, 0]
+        self.ctrl_pressed = False
 
     def openGit(self):
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
@@ -290,7 +300,11 @@ class SolutionGUI(QMainWindow):
 
         # # input is given as latitude/longitude
         # if setup.geomode:
-        setup.lat_f, setup.lon_f, _ = latLon2Local(lat0, lon0, elev0, np.radians(setup.lat_f), np.radians(setup.lon_f), 0)   
+        try:
+            setup.lat_f, setup.lon_f, _ = latLon2Local(lat0, lon0, elev0, np.radians(setup.lat_f), np.radians(setup.lon_f), 0)   
+        except:
+            self.errorMessage("No Geometric Landing Point Given", 1, info='Using lat_centre and lon_centre', \
+                detail='[Restriction] lat_f, lon_f, elev_f are not set! Since this is function is searching for that point, this may be okay')   
 
         # Set up search parameters
         p0 = [setup.lat_f, setup.lon_f, setup.t0, setup.v, setup.azim, setup.zangle]
@@ -388,6 +402,260 @@ class SolutionGUI(QMainWindow):
         self.seis_resids.setHorizontalHeaderLabels(['Station', 'Residual'])
         header2 = self.seis_resids.horizontalHeader()
         header2.setSectionResizeMode(QHeaderView.Stretch)
+
+    def trajSolver(self):
+
+        setup = self.setup
+        try:
+            A = position(setup.lat_i, setup.lon_i, setup.elev_i*1000)
+            B = position(setup.lat_f, setup.lon_f, setup.elev_f*1000)
+        except:
+            self.errorMessage("I didn't program this one yet!", 2, detail="SolutionGui (trajSolver)")
+
+        A.pos_loc(B)
+        B.pos_loc(B)
+
+        v = np.array([B.x - A.x, B.y - A.y, B.z - A.z])
+
+        n = (self.tryFloat(self.ray_height_edits.text()) - A.z)/v[2]
+
+        P = n*v + np.array([A.x, A.y, A.z])
+
+        pt = position(0, 0, 0)
+        pt.x = P[0]
+        pt.y = P[1]
+        pt.z = P[2]
+        pt.pos_geo(B)
+
+        if setup.debug:
+            print("Solved Point:")
+            print(pt)
+
+        self.ray_lat_edits.setText(str(pt.lat))
+        self.ray_lon_edits.setText(str(pt.lon))
+
+        if self.ray_pick_point != [0, 0, 0]:
+            self.rayTrace()
+
+    def rayTrace(self):
+        
+        try:
+            setup = self.saveINI(write=False)
+        except:
+            self.errorMessage("Cannot load station data", 2)
+            return None
+
+        A = position(float(self.ray_lat_edits.text()), float(self.ray_lon_edits.text()), float(self.ray_height_edits.text()))
+        B = position(self.ray_pick_point[0], self.ray_pick_point[1], self.ray_pick_point[2])
+
+        A.pos_loc(B)
+        B.pos_loc(B)
+
+        consts = Constants()
+        try:
+            dataset = parseWeather(setup, consts)
+        except:
+            self.errorMessage('Error reading weather profile in rayTrace', 2)
+            return None
+
+        if setup.debug:
+            print("Starting and End points of Ray Trace")
+            print(A)
+            print(B)
+
+        z_profile, _ = getWeather(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), \
+                setup.weather_type, np.array([A.x, A.y, A.z]), copy.copy(dataset))
+
+        trace_data, t_arrival = slowscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
+                            wind=True, n_theta=setup.n_theta, n_phi=setup.n_theta, precision=setup.angle_precision, tol=setup.angle_error_tol)
+
+        # if (np.isnan(trace_data)) or (np.isnan(t_arrival)):
+
+        ax = plt.axes(projection='3d')
+        xline = []
+        yline = []
+        zline = []
+        # print("THE TOTAL RUN TIME IS: {:}".format(t1-t0))
+        try:
+            for line in trace_data:
+                #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
+
+                xline.append(line[0])
+                yline.append(line[1])
+                zline.append(line[2])
+        except:            
+            self.errorMessage('Cannot trace rays!', 2)
+            return None
+
+
+        plt.style.use('dark_background')
+        fig = plt.figure(figsize=plt.figaspect(0.5))
+        fig.set_size_inches(5, 5)
+        ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+        ax.plot3D(xline, yline, zline, 'white')
+        ax.scatter(xline, yline, zline, 'black')
+
+        c = np.flipud(z_profile[:, 1])
+        mags = np.flipud(z_profile[:, 2])
+        dirs = np.flipud(z_profile[:, 3])
+
+        # Init the constants
+        consts = Constants()
+
+        #convert speed of sound to temp
+        t = np.square(c)*consts.M_0/consts.GAMMA/consts.R
+
+        #convert to EDN
+        #dirs = np.radians(angle2NDE(np.degrees(dirs)))
+        norm = Normalize()
+        norm.autoscale(t)
+
+        #convert mags and dirs to u and v
+        u = mags*np.sin(dirs)
+        v = mags*np.cos(dirs)
+
+        # x_min = min(A.x, B.x)
+        # x_max = max(A.x, B.x)
+        # y_min = min(A.y, B.y)
+        # y_max = max(A.y, B.y)
+        # z_min = min(A.z, B.z)
+        # z_max = max(A.z, B.z)
+        colormap = cm.inferno
+
+        ax.quiver(xline, yline, zline, u*100, v*100, 0, color=colormap(norm(t)))
+        
+        print('Final point error: {:4.2f} m x {:4.2f} m y {:4.2f} m z'.format(xline[-1], yline[-1], zline[-1]))
+        
+        if setup.debug:
+            F = position(0, 0, 0)
+            
+            F.x = xline[-1]
+            F.y = yline[-1]
+            F.z = zline[-1]
+
+            F.pos_geo(B)
+        
+            print('Final point:')
+            print(F)
+
+        # try:
+        #     self.ray_graphs.removeWidget(self.three_ray)
+        # except:
+        #     pass
+        self.ray_graphs.removeWidget(self.ray_line_canvas)
+        self.ray_line_canvas = FigureCanvas(Figure(figsize=(3, 3)))
+        self.ray_line_canvas = FigureCanvas(fig)
+        self.ray_line_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        # self.three_ray = NavigationToolbar(self.ray_line_canvas, self)
+        self.ray_graphs.addWidget(self.ray_line_canvas)
+        # self.ray_graphs.addWidget(self.three_ray)
+        self.ray_line_canvas.draw()
+
+        ax.mouse_init()
+        SolutionGUI.update(self)
+
+    def loadRayGraph(self):
+        ### Add Stations
+        try:
+            setup = self.saveINI(write=False)
+        except:
+            self.errorMessage("Cannot load station data", 2)
+            return None
+
+        if not os.path.exists(setup.working_directory):
+            os.makedirs(setup.working_directory)
+
+            #Build seismic data path
+        dir_path = os.path.join(setup.working_directory, setup.fireball_name)
+
+        # Load the station and waveform files list
+        data_file_path = os.path.join(dir_path, DATA_FILE)
+        if os.path.isfile(data_file_path):
+            
+            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
+
+        else:
+            print('Station and waveform data file not found! Download the waveform files first!')
+            sys.exit()
+
+
+        if setup.stations is not None:
+            stn_list = stn_list + self.makeStationObj(setup.stations)
+
+
+        for stn in stn_list:
+            text = pg.TextItem(text='{:}-{:}'.format(stn.network, stn.code),\
+             border='w', color=(255, 255, 255), fill=(255, 255, 255, 100))
+            
+            text.setPos(stn.position.lon, stn.position.lat)
+            self.ray_canvas.addItem(text)
+
+        end_point = pg.ScatterPlotItem()
+        end_point.addPoints(x=[setup.lon_f], y=[setup.lat_f], pen=(66, 232, 244), symbol='+')
+        self.ray_canvas.addItem(end_point, update=True)
+
+        x=[setup.lon_i, setup.lon_f]
+        y=[setup.lat_i, setup.lat_f]
+        traj_line = self.ray_canvas.plot(x, y, pen=(66, 232, 244))
+
+        SolutionGUI.update(self)
+
+    def rayMouseClicked(self, evt):
+
+        if self.ctrl_pressed:
+
+            #self.ray_canvas.removeItem(self.ray_pick, update=True)
+
+            mousePoint = self.ray_canvas.vb.mapToView(evt.pos())
+            
+            self.ray_pick.setPoints(x=[mousePoint.x()], y=[mousePoint.y()], pen=(255, 0, 110))
+            self.ray_canvas.addItem(self.ray_pick, update=True)
+            self.ray_pick_point = [mousePoint.y(), mousePoint.x(), 0]
+            self.ray_pick_label.setText("Lat: {:10.4f} Lon: {:10.4f} Elev {:10.2f}".format(*self.ray_pick_point))
+
+
+    def addRayTracerWidgets(self):
+        ray_tab = QWidget()
+
+        self.master_ray = QVBoxLayout()
+        self.ray_graphs = QHBoxLayout()
+        self.ray_control = QGridLayout()
+
+        self.master_ray.addLayout(self.ray_graphs)
+        self.master_ray.addLayout(self.ray_control)
+
+        ray_tab.setLayout(self.master_ray)
+        self.tab_widget.addTab(ray_tab, "Ray Tracer")
+
+        self.ray_view = pg.GraphicsLayoutWidget()
+        self.ray_canvas = self.ray_view.addPlot()
+        self.ray_graphs.addWidget(self.ray_view)
+        self.ray_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+        self.ray_line_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+        self.ray_line_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+        self.ray_graphs.addWidget(self.ray_line_canvas)
+
+        self.ray_label = QLabel('Starting Point')
+        self.ray_control.addWidget(self.ray_label, 1, 0)
+        
+        self.ray_label2 = QLabel('Ending Point')
+        self.ray_control.addWidget(self.ray_label2, 3, 0)
+
+        self.ray_height_label, self.ray_height_edits = self.createLabelEditObj("Height", self.ray_control, 1, width=3)
+        
+        self.ray_button = QPushButton('Solve for Lat/Lon')
+        self.ray_control.addWidget(self.ray_button, 3, 3, 4, 1)
+        self.ray_button.clicked.connect(self.trajSolver)
+
+        self.ray_lat_label, self.ray_lat_edits = self.createLabelEditObj("Lat", self.ray_control, 2)
+        self.ray_lon_label, self.ray_lon_edits = self.createLabelEditObj("Lon", self.ray_control, 2, h_shift=2)
+
+        self.ray_pick_label = QLabel('')
+        self.ray_control.addWidget(self.ray_pick_label, 3, 1)
+
+        self.ray_canvas.scene().sigMouseClicked.connect(self.rayMouseClicked)
 
     def addSeisTrajWidgets(self):
 
@@ -1650,8 +1918,7 @@ class SolutionGUI(QMainWindow):
                             setup.traj_f.pos_loc(ref_pos)
 
                             # Time to travel from trajectory to station
-                            b_time = timeOfA
-                            rrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
+                            b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x/1000, setup.traj_f.y/1000, setup.t0, 1000*setup.v, \
                                                         np.radians(setup.azim), np.radians(setup.zangle), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
 
                             bTimes[i] = b_time
@@ -1681,12 +1948,12 @@ class SolutionGUI(QMainWindow):
                         stn.position.pos_loc(ref_pos)
 
                         # Cut down atmospheric profile to the correct heights, and interp
-                        zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=True)
+                        zProfile, _ = getWeather(np.array([supra.lat, supra.lon, supra.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), setup.weather_type, \
+                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=False)
 
                         # Travel time of the fragmentation wave
                         f_time, _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision)
+                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
 
                         fTimes[i] = f_time + line[3]
 
@@ -1791,7 +2058,7 @@ class SolutionGUI(QMainWindow):
 
         # Flag indicating whether CTRL is pressed or not
         self.ctrl_pressed = False
-
+        self.shift_pressed = False
 
         ### Sort stations by distance from source ###
 
@@ -1836,6 +2103,9 @@ class SolutionGUI(QMainWindow):
         # Init ground map
         self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
+        # Extract coordinates of the reference station
+        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+
         for stn in self.stn_list:
 
             # Plot stations
@@ -1846,6 +2116,10 @@ class SolutionGUI(QMainWindow):
             else:
                 self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
 
+            # Calculate ground distances
+
+            stn.stn_ground_distance(ref_pos)
+
         # Manual Supracenter search
         if setup.show_fragmentation_waveform:
             
@@ -1853,8 +2127,7 @@ class SolutionGUI(QMainWindow):
             for i, line in enumerate(setup.fragmentation_point):
                 self.m.scatter([np.radians(float(line[0]))], [np.radians(float(line[1]))], c=self.pick_group_colors[(i+1)%4], marker='x')
 
-        # Extract coordinates of the reference station
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+
 
         # Plot source location
         self.m.scatter([np.radians(setup.lat_centre)], [np.radians(setup.lon_centre)], marker='*', c='yellow')
@@ -2054,11 +2327,16 @@ class SolutionGUI(QMainWindow):
         # Plot all waveforms
         plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self.station_ax)#, \
             #waveform_window=self.waveform_window, difference_filter_all=setup.difference_filter_all)
-
+        try:
+            self.make_picks_top_graphs.removeWidget(self.stattoolbar)
+        except:
+            pass
         self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
         self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
         self.make_picks_station_graph_canvas = FigureCanvas(fig)
         self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        self.stattoolbar = NavigationToolbar(self.make_picks_station_graph_canvas, self)
+        self.make_picks_top_graphs.addWidget(self.stattoolbar)
         self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
         self.make_picks_station_graph_canvas.draw()
         SolutionGUI.update(self)
@@ -2067,6 +2345,9 @@ class SolutionGUI(QMainWindow):
         
         if event.key() == QtCore.Qt.Key_Control:
             self.ctrl_pressed = True
+
+        if event.key() == QtCore.Qt.Key_Shift:
+            self.shift_pressed = True
 
         elif event.key() == QtCore.Qt.Key_D:
             self.incrementStation()
@@ -2095,6 +2376,9 @@ class SolutionGUI(QMainWindow):
                 pass
 
     def keyReleaseEvent(self, event):
+
+        if event.key() == QtCore.Qt.Key_Control:
+            self.ctrl_pressed = False
 
         if event.key() == QtCore.Qt.Key_Control:
             self.ctrl_pressed = False
@@ -2141,7 +2425,7 @@ class SolutionGUI(QMainWindow):
 
 
         # Init ground map
-        #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
+        # self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # for stn in self.stn_list:
         #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
@@ -2187,6 +2471,13 @@ class SolutionGUI(QMainWindow):
         return True
 
     def mouseClicked(self, evt):
+        # class Pick:
+        #     def __init__(self, time, stn, stn_no, channel):
+        #         self.time = time
+        #         self.stn = stn
+        #         self.stn_no = stn_no
+        #         self.channel = channel
+
 
         if self.ctrl_pressed:
             mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
@@ -2198,6 +2489,17 @@ class SolutionGUI(QMainWindow):
 
             if self.setup.debug:
                 print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
+
+        elif self.shift_pressed:
+
+            self.make_picks_waveform_canvas.clear()
+            for ii, pick in enumerate(self.pick_list):
+                if pick.stn_no == self.current_station:
+                    self.pick_list.pop(ii)
+                    print('Pick removed!')
+
+                self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen='r', update=True)
+            self.drawWaveform()
 
     def drawWaveform(self, channel_changed=0, waveform_data=None):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 
@@ -2282,8 +2584,10 @@ class SolutionGUI(QMainWindow):
         b_time = 0
 
         print('####################')
-        print("Current Station: {:}".format(stn.name))
+        print("Current Station: {:}-{:}".format(stn.network, stn.code))
         print("Channel: {:}".format(stn.channel))
+        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+
         # If manual ballistic search is on
         if setup.show_ballistic_waveform:
 
@@ -2313,18 +2617,28 @@ class SolutionGUI(QMainWindow):
 
                     f_time = self.arrTimes[0, self.current_station, 1, i]
                 #     # check if nan
+                    print('##################')
+                    print('Fragmentation {:} ({:} m)'.format(i+1, line[2]))
                     if f_time == f_time:
                         # Plot Fragmentation Prediction
                         self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=self.pick_group_colors[(i+1)%4], label='Fragmentation')
-                                           
-                        print('Fragmentation {:} Arrival: {:.3f} s'.format(i+1, f_time))
+                        stn.stn_distance(position(line[0], line[1], line[2]))
+                        print("Range: {:7.3f} km".format(stn.distance/1000))                   
+                        print('Arrival: {:.3f} s'.format(f_time))
+
+                        # if abs(f_time-395.3038374383332) <= 4:
+                        #     print('Fragmentation {:} Arrival: {:.3f}s'.format(i+1, f_time-395.3038374383332))
 
                     else:
-                        print('No Fragmentation {:} Arrival'.format(i+1))
+                        pass
+                        print('No Fragmentation {:} ({:} m) Arrival'.format(i+1, line[2]))
 
                     for j in range(setup.perturb_times):
                         if j >= 1:
                             try:
+                                if j == 1:
+                                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(self.arrTimes[:, self.current_station, 1, i]), \
+                                        np.nanmax(self.arrTimes[:, self.current_station, 1, i])))
                                 self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
                                      np.max(waveform_data)], alpha=0.3,\
                                      pen=self.pick_group_colors[(i+1)%4], zorder=3)
@@ -2545,6 +2859,9 @@ class SolutionGUI(QMainWindow):
 
         self.export_to_csv = QPushButton('Export to CSV')
         pick_group_layout.addWidget(self.export_to_csv)
+
+        self.export_to_all_times = QPushButton('Export All Times')
+        pick_group_layout.addWidget(self.export_to_all_times)
 
         self.tab_widget.addTab(make_picks_master_tab, 'Make Picks')         
 
@@ -3052,6 +3369,10 @@ class SolutionGUI(QMainWindow):
         self.toTable(self.reported_points, setup.reported_points)
 
         self.toTableFromStn(self.extra_point, setup.stations)
+
+        self.setup = setup
+
+        self.loadRayGraph()
 
     def createGrad(self, resid):
 

@@ -291,7 +291,8 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #print(dataset.variables)
 
     lon_index = int(np.around((lon%360)*4))
-    lat_index = int(np.around(-(lat+90)*4))# - 90*4
+    lat_index = int(np.around(-(lat+90)*4) - 1)# - 90*4
+
 
     longitude = np.array(dataset.variables['longitude'][lon_index-20:lon_index+21])
     latitude = np.array(dataset.variables['latitude'][lat_index-20:lat_index+21])
@@ -306,8 +307,10 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     
     # time, (number), level, lat, lon
     temperature = np.array(dataset.variables['t'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
-    x_wind = -np.array(dataset.variables['u'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
-    y_wind = -np.array(dataset.variables['v'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
+
+    # Keep these positive
+    x_wind = np.array(dataset.variables['u'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
+    y_wind = np.array(dataset.variables['v'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
 
     # Transform Temperature to Speed of Sound (m/s)
     temps = (consts.GAMMA*consts.R/consts.M_0*temperature[:])**0.5
@@ -320,7 +323,8 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #                                               o--> +u
     #https://confluence.ecmwf.int/pages/viewpage.action?pageId=111155337
     # Direction the winds are coming from, angle in radians from North due East
-
+    # The correct way of this
+    #dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
     dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
     dirs = supra.Supracenter.angleConv.angle2NDE(np.degrees(dirs))
     
@@ -483,3 +487,9 @@ def storeNetCDFUKMO(file_name, area, consts):
 
     return store_data
 
+#   wwwwww
+#  | ==== |
+#  | . \. | 
+#  |   /  |
+#  w  \_/ w 
+#   wwwwww

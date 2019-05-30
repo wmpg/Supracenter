@@ -19,7 +19,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
 
     Arguments:
         w: [ndarray] Wind Magnitude for each level in the atmosphere
-        wd: [ndarray] Wind direction (angle). Direction (from the north) the wind is blowing to
+        wd: [ndarray] Wind direction (angle). Direction (from the north) the wind is blowing to (Radians)
         phi: [ndarray] Azimuthal angles (NDE)
 
     Returns:

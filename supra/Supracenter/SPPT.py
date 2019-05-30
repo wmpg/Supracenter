@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import matplotlib.pyplot as plt
 from netCDF4 import Dataset
@@ -273,6 +275,8 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
 
     elif method == 'spread':
         r = rGen(mode='spread')
+        if setup.debug:
+            print("Perturbation Variable: {:}".format(r))
         spread_t, spread_u, spread_v = readSpreadFile(setup, lat, lon, spread_file, line)
         T = spread(t, spread_t, r)
         U = spread(u, spread_u, r)
@@ -300,7 +304,10 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
 
     #pack sounding
     sounding_p = [np.array(lats), np.array(lons), np.array(TEMPS), np.array(MAGS), np.array(DIRS), np.array(level)]
-
+    try:
+        np.save(os.path.join(setup.working_directory, setup.fireball_name, 'Perturbation_ID{:}'.format(r)), np.array(sounding_p))
+    except:
+        print('WARNING: Unable to save perturbed weather data!')
     return sounding_p
 
 if __name__ == '__main__':

@@ -130,12 +130,12 @@ Once all of the user picks have been made on the waveforms, the "Export CSV" but
 ---------------------
 Supracenter Manual Search
 ---------------------
-Functional, but not fully tested, use at your own risk!
+Chose the 4-D fragmentation point, and input the station data and picks, created by the Make Picks window, and hit search. The program will return the error in that point, as well as the residuals to each station, based off of the difference in arrival times from the manual Supracenter to the expected pick arrival time.
 
 ---------------------
 Supracenter PSO Search
 ---------------------
-Functional, but not fully tested, use at your own risk! 
+Chose a 4-D bounding box to search in, giving the 3-D spatial barrier and a 1-D temporal barrier. Give the station picks file, created by the Make Picks window. The program will search for the optimal Supracenter within the 3-D bounding box, and try to optimize the for the best solution with the lowest residuals. The residuals are calculated by the difference between the expected arrival time of a trial point, and the arrival time given in the picks file.
 
 ---------------------
 Seismic Trajectory

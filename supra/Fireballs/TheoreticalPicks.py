@@ -107,8 +107,8 @@ def calcAllTimes(stn_list, setup, sounding):
         [perturbation, station, 0 - ballistic/ 1 - fragmentation, frag number (0 for ballistic)]
         """
 
-        zenith_list = [5, 25, 45, 65, 85]
-        velocity_list = [11, 16, 21, 26, 31]
+        zenith_list = [5, 45, 85]
+        velocity_list = [11, 21, 31]
         ze_array = [0]*len(zenith_list)
         ze_array_dist = [0]*len(zenith_list)
         v_array = [0]*len(velocity_list)

@@ -132,6 +132,7 @@ def parseWeather(setup, consts, time=0):
         # GetIRISData/MakeIRISPicks
 
         try:
+
             #Get closest hour
             start_time = (setup.start_datetime.hour + np.round(setup.start_datetime.minute/60) + time)%24
             sounding = storeNetCDFECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, consts, start_time=start_time)
@@ -514,7 +515,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     except:
         pass
 
-
+    lat0, lon0, elev0 = setup.lat_centre, setup.lon_centre, 0
     cost_value = 0
 
     # Go through all arrival times
@@ -524,7 +525,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         ######################################################################################################
 
         # Calculate the time of arrival
-        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding)
+        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
 
         # Smooth approximation of l1 (absolute value) loss
         z = (t_obs - ti)**2

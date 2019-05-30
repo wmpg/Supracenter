@@ -16,7 +16,7 @@ except:
     # Python 3
     import configparser
 
-from supra.Supracenter.angleConv import angle2NDE, loc2Geo, geo2Loc, strToBool
+from supra.Supracenter.angleConv import loc2Geo, geo2Loc, strToBool
 #from supra.Fireballs.MakeIRISPicks import trajCalc
 # from supra.Fireballs.GetIRISData import getAllWaveformFiles, readStationAndWaveformsListFile, plotStationMap, plotAllWaveforms
 # from supra.Fireballs.MakeIRISPicks import WaveformPicker
@@ -37,7 +37,10 @@ class position:
         self.lon  = lon
         self.elev = elev
         self.lat_r = np.radians(lat)
-        self.lon_r = np.radians(lon) 
+        self.lon_r = np.radians(lon)
+
+    def __str__(self):
+        return "Lat: {:8.4f} deg N, Lon: {:8.4f} deg E, Elev: {:10.2f} m".format(self.lat, self.lon, self.elev)
     
     def pos_loc(self, ref_pos):
         """
@@ -49,6 +52,26 @@ class position:
         """
         self.x, self.y, self.z = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, self.lat, self.lon, self.elev)
 
+    def pos_geo(self, ref_pos):
+        """ Converts a position object to geometric coordinates
+        """
+
+        self.lat, self.lon, self.elev = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, [self.x, self.y, self.z])
+
+
+    def pos_distance(self, other):
+
+        self.pos_loc(self)
+        other.pos_loc(self)
+
+        return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2)
+
+    def ground_distance(self, other):
+        
+        self.pos_loc(self)
+        other.pos_loc(self)
+
+        return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
 
 class station:
 
@@ -74,6 +97,13 @@ class station:
         self.file_name = file_name
         self.name = name
         self.offset = 0
+
+    def stn_distance(self, ref_pos):
+        self.distance = self.position.pos_distance(ref_pos)
+
+    def stn_ground_distance(self, ref_pos):
+        self.ground_distance = self.position.ground_distance(ref_pos)
+
 
 def configWrite(ini_file, setup):
     config = configparser.RawConfigParser()

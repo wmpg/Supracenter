@@ -990,91 +990,91 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
             else:
                 b_dist[i], b_time[i], rb_dist[i] = np.nan, np.nan, np.nan
             
-    # Plot Ballistic Prediction
-    #if ptb_n == 0:
-    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, label='Ballistic', zorder=3)
-    #else:
-    #    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, alpha=0.3, zorder=3)
+    # # Plot Ballistic Prediction
+    # # if ptb_n == 0:
+    # ax.scatter(b_dist, b_time, c='b', marker='_', s=100, label='Ballistic', zorder=3)
+    # # else:
+    # #    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, alpha=0.3, zorder=3)
 
-    # Fragmentation Prediction
-    f_time = [0]*len(stn_list)
-    f_dist = [0]*len(stn_list)
-    rf_dist = [0]*len(stn_list)
+    # # Fragmentation Prediction
+    # f_time = [0]*len(stn_list)
+    # f_dist = [0]*len(stn_list)
+    # rf_dist = [0]*len(stn_list)
 
-    # Manual search for fragmentation waves
-    if setup.show_fragmentation_waveform:
+    # # Manual search for fragmentation waves
+    # if setup.show_fragmentation_waveform:
 
-        if len(setup.fragmentation_point) == 0:
-            print("ERROR: Cannot plot fragmentation if there is no fragmentation point. Set show_fragmentation_waveform = False if not using.")
-            exit()
+    #     if len(setup.fragmentation_point) == 0:
+    #         print("ERROR: Cannot plot fragmentation if there is no fragmentation point. Set show_fragmentation_waveform = False if not using.")
+    #         exit()
 
-        for j, line in enumerate(setup.fragmentation_point):
-            # Supracenter location in local coordinates
-            supra = position(float(line[0]), float(line[1]), float(line[2]))
+    #     for j, line in enumerate(setup.fragmentation_point):
+    #         # Supracenter location in local coordinates
+    #         supra = position(float(line[0]), float(line[1]), float(line[2]))
 
-            supra.pos_loc(ref_pos)
+    #         supra.pos_loc(ref_pos)
 
-            for i, stn in enumerate(stn_list):
+    #         for i, stn in enumerate(stn_list):
 
-                if stn.code.strip() not in setup.rm_stat:
-                    if stn in bad_stats:
-                        f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
-                    # Station location in local coordinates
+    #             if stn.code.strip() not in setup.rm_stat:
+    #                 if stn in bad_stats:
+    #                     f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
+    #                 # Station location in local coordinates
 
-                    stn.position.pos_loc(ref_pos)
+    #                 stn.position.pos_loc(ref_pos)
 
-                    ###### DIFFERENT WEATHERS HERE ######
-                    if setup.weather_type == 'none':
-                        zProfile = np.array([[0, setup.v_sound, 0, 0], [10000, setup.v_sound, 0, 0]])
+    #                 ###### DIFFERENT WEATHERS HERE ######
+    #                 if setup.weather_type == 'none':
+    #                     zProfile = np.array([[0, setup.v_sound, 0, 0], [10000, setup.v_sound, 0, 0]])
 
-                    else:   
-                    # Cut down atmospheric profile to the correct heights, and interp
-                        zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
-                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], sounding_p, convert=True)
+    #                 else:   
+    #                 # Cut down atmospheric profile to the correct heights, and interp
+    #                     zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
+    #                         [ref_pos.lat, ref_pos.lon, ref_pos.elev], sounding_p, convert=True)
 
-                    # Time to travel from Supracenter to station 
-                    f_time[i], _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True)
+    #                 # Time to travel from Supracenter to station 
+    #                 f_time[i], _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True)
                     
-                    # Add reference time
-                    f_time[i] += float(line[3])
+    #                 # Add reference time
+    #                 f_time[i] += float(line[3])
                     
-                    # Distance from source center to station
-                    f_dist[i] = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
+    #                 # Distance from source center to station
+    #                 f_dist[i] = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
 
-                    # Distance from Supracenter to station
-                    rf_dist[i] = ((stn.position.x - supra.x)**2 + (stn.position.y - supra.y)**2 + (stn.position.z - supra.z)**2)**0.5
+    #                 # Distance from Supracenter to station
+    #                 rf_dist[i] = ((stn.position.x - supra.x)**2 + (stn.position.y - supra.y)**2 + (stn.position.z - supra.z)**2)**0.5
 
-                    # Convert to km
-                    f_dist[i] /= 1000
-                    rf_dist[i] /= 1000
+    #                 # Convert to km
+    #                 f_dist[i] /= 1000
+    #                 rf_dist[i] /= 1000
 
-                else:
-                    f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
-                    # Plot Fragmentation Prediction
-            # if ptb_n == 0:
-            ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, label='Fragmentation {:}'.format(j+1), zorder=3)
-            # else:
-                # ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, alpha=0.3, zorder=3)
-            #ax.scatter(f_dist[i], f_time[i], c=C[(j+1)%4], marker='_', s=100, label='Fragmentation', zorder=3)
+    #             else:
+    #                 f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
+    #                 # Plot Fragmentation Prediction
+    #         # if ptb_n == 0:
+    #         #ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, label='Fragmentation {:}'.format(j+1), zorder=3)
+    #         else:
+    #             ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, alpha=0.3, zorder=3)
+    #         ax.scatter(f_dist[i], f_time[i], c=C[(j+1)%4], marker='_', s=100, label='Fragmentation', zorder=3)
 
 
         
-    ax.set_xlabel('Distance (km)')
-    ax.set_ylabel('Time (s)')
+    # ax.set_xlabel('Distance (km)')
+    # ax.set_ylabel('Time (s)')
 
-    #ax.set_ylim(min_time - 200, max_time + 500)
-    ax.set_xlim(0, max_wave_value)
+    # #ax.set_ylim(min_time - 200, max_time + 500)
+    # ax.set_xlim(0, max_wave_value)
 
-    ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.7)
+    # ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.7)
 
-    # Export station distance file
-    with open(os.path.join(dir_path, 'output.txt'), 'w') as f:
+    # # Export station distance file
+    # with open(os.path.join(dir_path, 'output.txt'), 'w') as f:
 
-        f.write('Station Lat(deg N) Lon(deg E) Elev(m) Az(+E dN) Ball_d(km) Ball_t(s) Frag_d(km) Frag_t(s)\n')
-        for i, stn in enumerate(stn_list):
-            f.write('{:8}, {:8.4f}, {:8.4f}, {:7.2f}, {:8.3f},  {:7.2f},  {:7.2f},  {:7.2f},  {:7.2f}\n'\
-             .format(str(stn.network) + '-' + str(stn.code), stn.position.lat, stn.position.lon, \
-                    stn.position.elev, az_n[i], rb_dist[i], b_time[i], rf_dist[i], f_time[i]))
+    #     f.write('Station Lat(deg N) Lon(deg E) Elev(m) Az(+E dN) Ball_d(km) Ball_t(s) Frag_d(km) Frag_t(s)\n')
+    #     for i, stn in enumerate(stn_list):
+    #         f.write('{:8}, {:8.4f}, {:8.4f}, {:7.2f}, {:8.3f},  {:7.2f},  {:7.2f},  {:7.2f},  {:7.2f}\n'\
+    #          .format(str(stn.network) + '-' + str(stn.code), stn.position.lat, stn.position.lon, \
+    #                 stn.position.elev, az_n[i], rb_dist[i], b_time[i], rf_dist[i], f_time[i]))
 
 
 

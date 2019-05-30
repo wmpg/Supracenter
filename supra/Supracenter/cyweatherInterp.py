@@ -165,6 +165,8 @@ def interpWeather(s, d, weather_type, dataset):
     # remove duplicate rows
     merged_list = np.delete(merged_list, tuple(a), 0)   
 
+    merged_list[:, 3] = np.radians(merged_list[:, 3])
+
     return merged_list, points
 
 
