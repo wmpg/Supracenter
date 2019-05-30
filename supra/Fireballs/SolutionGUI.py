@@ -405,7 +405,23 @@ class SolutionGUI(QMainWindow):
 
     def trajSolver(self):
 
-        setup = self.setup
+        try:
+            setup = self.saveINI(write=False)
+        except:
+            self.errorMessage("Cannot load station data", 2)
+            return None
+
+        setup.n_theta = self.tryInt(self.ray_theta_edits.text())
+        setup.n_phi = self.tryInt(self.ray_phi_edits.text())
+        setup.angle_precision = self.tryFloat(self.ray_pres_edits.text())
+        setup.angle_error_tol = self.tryFloat(self.ray_err_edits.text())
+
+        self.n_theta_edits.setText(str(setup.n_theta))
+        self.n_phi_edits.setText(str(setup.n_phi))
+        self.angle_precision_edits.setText(str(setup.angle_precision))
+        self.angle_error_tol_edits.setText(str(setup.angle_error_tol))
+
+
         try:
             A = position(setup.lat_i, setup.lon_i, setup.elev_i*1000)
             B = position(setup.lat_f, setup.lon_f, setup.elev_f*1000)
@@ -453,7 +469,7 @@ class SolutionGUI(QMainWindow):
 
         consts = Constants()
         try:
-            dataset = parseWeather(setup, consts)
+            sounding = parseWeather(setup, consts)
         except:
             self.errorMessage('Error reading weather profile in rayTrace', 2)
             return None
@@ -463,12 +479,31 @@ class SolutionGUI(QMainWindow):
             print(A)
             print(B)
 
-        z_profile, _ = getWeather(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), \
-                setup.weather_type, np.array([A.x, A.y, A.z]), copy.copy(dataset))
+        trace_data = [None]*setup.perturb_times
+        t_arrival = [None]*setup.perturb_times
+        err = [None]*setup.perturb_times
 
-        trace_data, t_arrival = slowscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
-                            wind=True, n_theta=setup.n_theta, n_phi=setup.n_theta, precision=setup.angle_precision, tol=setup.angle_error_tol)
+        for ptb_n in range(setup.perturb_times):
 
+            if ptb_n > 0 and self.ray_enable_perts.isChecked():
+                
+                if setup.debug:
+                    print("STATUS: Perturbation {:}".format(ptb_n))
+
+                # generate a perturbed sounding profile
+                sounding_p = perturb(setup, sounding, setup.perturb_method, \
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+            else:
+
+                # if not using perturbations on this current step, then return the original sounding profile
+                sounding_p = sounding
+
+
+            z_profile, _ = getWeather(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), \
+                    setup.weather_type, np.array([A.x, A.y, A.z]), copy.copy(sounding_p))
+
+            trace_data[ptb_n], t_arrival[ptb_n], err[ptb_n] = slowscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
+                                wind=True, n_theta=100, n_phi=100, precision=setup.angle_precision, tol=setup.angle_error_tol)
         # if (np.isnan(trace_data)) or (np.isnan(t_arrival)):
 
         ax = plt.axes(projection='3d')
@@ -477,15 +512,16 @@ class SolutionGUI(QMainWindow):
         zline = []
         # print("THE TOTAL RUN TIME IS: {:}".format(t1-t0))
         try:
-            for line in trace_data:
+            for line in trace_data[0]:
                 #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
 
                 xline.append(line[0])
                 yline.append(line[1])
                 zline.append(line[2])
         except:            
-            self.errorMessage('Cannot trace rays!', 2)
-            return None
+            if not perturb:
+                self.errorMessage('Cannot trace rays!', 2)
+                return None
 
 
         plt.style.use('dark_background')
@@ -496,48 +532,114 @@ class SolutionGUI(QMainWindow):
         ax.plot3D(xline, yline, zline, 'white')
         ax.scatter(xline, yline, zline, 'black')
 
-        c = np.flipud(z_profile[:, 1])
-        mags = np.flipud(z_profile[:, 2])
-        dirs = np.flipud(z_profile[:, 3])
+        if self.ray_enable_perts.isChecked():
+            for ptb_n in range(setup.perturb_times):
+                xline = []
+                yline = []
+                zline = []
+                if ptb_n > 0:
+                    try:
+                        for line in trace_data[ptb_n]:
+                            #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
 
-        # Init the constants
-        consts = Constants()
+                            xline.append(line[0])
+                            yline.append(line[1])
+                            zline.append(line[2])
+                    except:            
+                        pass
+                    ax.plot3D(xline, yline, zline, '#15ff00')
+                    #ax.scatter(xline, yline, zline, 'black')
 
-        #convert speed of sound to temp
-        t = np.square(c)*consts.M_0/consts.GAMMA/consts.R
+        if self.ray_enable_windfield.isChecked():
+            c = np.flipud(z_profile[:, 1])
+            mags = np.flipud(z_profile[:, 2])
+            dirs = np.flipud(z_profile[:, 3])
 
-        #convert to EDN
-        #dirs = np.radians(angle2NDE(np.degrees(dirs)))
-        norm = Normalize()
-        norm.autoscale(t)
+            # Init the constants
+            consts = Constants()
 
-        #convert mags and dirs to u and v
-        u = mags*np.sin(dirs)
-        v = mags*np.cos(dirs)
+            #convert speed of sound to temp
+            t = np.square(c)*consts.M_0/consts.GAMMA/consts.R
 
-        # x_min = min(A.x, B.x)
-        # x_max = max(A.x, B.x)
-        # y_min = min(A.y, B.y)
-        # y_max = max(A.y, B.y)
-        # z_min = min(A.z, B.z)
-        # z_max = max(A.z, B.z)
-        colormap = cm.inferno
+            #convert to EDN
+            #dirs = np.radians(angle2NDE(np.degrees(dirs)))
+            norm = Normalize()
+            norm.autoscale(t)
 
-        ax.quiver(xline, yline, zline, u*100, v*100, 0, color=colormap(norm(t)))
-        
-        print('Final point error: {:4.2f} m x {:4.2f} m y {:4.2f} m z'.format(xline[-1], yline[-1], zline[-1]))
-        
-        if setup.debug:
-            F = position(0, 0, 0)
+            #convert mags and dirs to u and v
+            u = mags*np.sin(dirs)
+            v = mags*np.cos(dirs)
+
+            # x_min = min(A.x, B.x)
+            # x_max = max(A.x, B.x)
+            # y_min = min(A.y, B.y)
+            # y_max = max(A.y, B.y)
+            # z_min = min(A.z, B.z)
+            # z_max = max(A.z, B.z)
+            c = t[:-1]
+            c = (c.ravel() - c.min()) / c.ptp()
+            c = np.concatenate((c, np.repeat(c, 2)))
+            c = plt.cm.seismic(c)
+
+            xline = []
+            yline = []
+            zline = []
+
+            max_mag = np.nanmax(mags)/2500
+
+            try:
+                for line in trace_data[0]:
+                    #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
+
+                    xline.append(line[0])
+                    yline.append(line[1])
+                    zline.append(line[2])
+
+
+                ax.quiver(xline, yline, zline, u[:-1]/max_mag, v[:-1]/max_mag, 0, color=c)
+            except:
+                self.errorMessage("Cannot trace rays!", 1)
+
+        try:
+
+            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2} s'.format(err[0], xline[-1], yline[-1], t_arrival[0]))
+
+            if setup.debug:
+                F = position(0, 0, 0)
+                
+                F.x = xline[-1]
+                F.y = yline[-1]
+                F.z = zline[-1]
+
+                F.pos_geo(B)
             
-            F.x = xline[-1]
-            F.y = yline[-1]
-            F.z = zline[-1]
+                print('Final point:')
+                print(F)
 
-            F.pos_geo(B)
-        
-            print('Final point:')
-            print(F)
+        except:
+            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y'.format(err[0], np.nan, np.nan))
+
+
+        if setup.perturb and self.ray_enable_perts.isChecked():
+            ptb = np.nanargmin(err)
+
+            xline = []
+            yline = []
+            zline = []
+            try:
+                for line in trace_data[ptb]:
+                    #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
+
+                    xline.append(line[0])
+                    yline.append(line[1])
+                    zline.append(line[2])
+            except:            
+                if not perturb:
+                    self.errorMessage('Cannot trace rays!', 2)
+                    return None
+            print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2} s'.format(ptb, err[ptb], xline[-1], yline[-1], t_arrival[ptb]))
+
+
 
         # try:
         #     self.ray_graphs.removeWidget(self.three_ray)
@@ -641,19 +743,32 @@ class SolutionGUI(QMainWindow):
         self.ray_control.addWidget(self.ray_label, 1, 0)
         
         self.ray_label2 = QLabel('Ending Point')
-        self.ray_control.addWidget(self.ray_label2, 3, 0)
+        self.ray_control.addWidget(self.ray_label2, 3, 0, 1, 1)
 
         self.ray_height_label, self.ray_height_edits = self.createLabelEditObj("Height", self.ray_control, 1, width=3)
         
         self.ray_button = QPushButton('Solve for Lat/Lon')
-        self.ray_control.addWidget(self.ray_button, 3, 3, 4, 1)
+        self.ray_control.addWidget(self.ray_button, 7, 3, 4, 1)
         self.ray_button.clicked.connect(self.trajSolver)
 
         self.ray_lat_label, self.ray_lat_edits = self.createLabelEditObj("Lat", self.ray_control, 2)
         self.ray_lon_label, self.ray_lon_edits = self.createLabelEditObj("Lon", self.ray_control, 2, h_shift=2)
 
         self.ray_pick_label = QLabel('')
-        self.ray_control.addWidget(self.ray_pick_label, 3, 1)
+        self.ray_control.addWidget(self.ray_pick_label, 3, 1, 1, 5)
+
+        self.ray_enable_windfield = QCheckBox('Enable Wind Field')
+        self.ray_control.addWidget(self.ray_enable_windfield, 1, 5)
+        self.ray_enable_windfield.stateChanged.connect(self.trajSolver)
+
+        self.ray_enable_perts = QCheckBox('Enable Perturbations')
+        self.ray_control.addWidget(self.ray_enable_perts, 2, 5)
+        self.ray_enable_perts.stateChanged.connect(self.trajSolver)
+
+        self.ray_theta_label, self.ray_theta_edits = self.createLabelEditObj("Theta Resolution", self.ray_control, 5)
+        self.ray_pres_label, self.ray_pres_edits = self.createLabelEditObj("Angle Precision", self.ray_control, 5, h_shift=2)
+        self.ray_phi_label, self.ray_phi_edits = self.createLabelEditObj("Phi Resolution", self.ray_control, 6)
+        self.ray_err_label, self.ray_err_edits = self.createLabelEditObj("Spatial Error", self.ray_control, 6, h_shift=2)
 
         self.ray_canvas.scene().sigMouseClicked.connect(self.rayMouseClicked)
 
@@ -3631,6 +3746,12 @@ class SolutionGUI(QMainWindow):
         self.sup_max_time_edits.setText(str(setup.max_time))
         self.sup_picks_file_edit.setText(os.path.join(setup.working_directory, setup.fireball_name, setup.station_picks_file))
         self.sup_ref_time_edits.setDateTime(setup.start_datetime)
+
+        self.ray_theta_edits.setText(str(setup.n_theta))
+        self.ray_phi_edits.setText(str(setup.n_phi))
+        self.ray_pres_edits.setText(str(setup.angle_precision))
+        self.ray_err_edits.setText(str(setup.angle_error_tol))
+
 
 if __name__ == '__main__':
 

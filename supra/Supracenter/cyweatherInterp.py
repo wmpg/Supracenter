@@ -167,6 +167,8 @@ def interpWeather(s, d, weather_type, dataset):
 
     merged_list[:, 3] = np.radians(merged_list[:, 3])
 
+    merged_list[:, ]
+
     return merged_list, points
 
 

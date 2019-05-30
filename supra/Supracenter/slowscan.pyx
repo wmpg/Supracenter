@@ -46,6 +46,7 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
     if not wind:
         z_profile[:, 2] = 0
 
+
     ### Initialize variables ###
     # Boolean found
     found = 0
@@ -124,8 +125,8 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
     counter = 0
     ### Scan Loop ###
     while found == 0:
+        trace = []
         counter += 1
-        trace = [[supra_pos[0], supra_pos[1], supra_pos[2]]]
         for i in range(n_layers - 1):
 
             # Winds Enabled
@@ -157,7 +158,7 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
                 x = supra_pos[0] + np.cos(Phi)*X
                 y = supra_pos[1] + np.sin(Phi)*X
 
-            trace.append([x[k, l], y[k, l], z_profile[n_layers - 2 - i, 0]])
+            trace.append([x[k, l], y[k, l], z[i + 1]])
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((x - detec_pos[0])**2 + (y - detec_pos[1])**2)) 
@@ -172,19 +173,57 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
         if k.shape == (0, ):
             
             # As handled in original Supracenter
-            return np.nan, np.nan
+            return np.nan, np.nan, np.nan
 
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):
             k, l = k[len(k)//2], l[len(l)//2]
         
         if counter == 100:
-            return np.nan, np.nan
-        print(E[k, l], tol)
+            return trace, np.nan, E[k, l]
+
         # If the error is within tolerance
         if E[k, l] <= tol:
-            
-            # pass on the azimuth & ray parameter information for use in traveltime calculation
+            X = np.zeros((n_theta, n_phi))
+            Y = np.zeros((n_theta, n_phi))
+            error = E[k, l]
+            p = s[n_layers-1]*np.sin(Theta)/(1 + u0*np.sin(Theta)*s[n_layers-1])
+            trace = []
+            for i in range(n_layers - 1):
+
+                # Winds Enabled
+                if wind:
+
+                    # Wind transformation variables
+                    U = np.tile(u[i, :], (n_theta, 1))
+                    V = np.tile(v[i, :], (n_theta, 1))
+
+                    # Equation (10)
+                    X += (p/(1 - p*U) + s[i]**2*U)*(z[i + 1] - z[i])/(np.sqrt(s[i]**2 - (p/(1 - p*U))**2))
+
+                    # Equation (11)
+                    Y += s[i]**2*V*(z[i + 1] - z[i])/(np.sqrt(s[i]**2 - (p/(1 - p*U))**2))
+
+                    # Calculate true destination positions (transform back)
+                    x = supra_pos[0] + np.cos(Phi)*X + np.cos(Phi + M_PI_2)*Y
+                    y = supra_pos[1] + np.sin(Phi)*X + np.sin(Phi + M_PI_2)*Y
+
+                    
+
+                # Winds Disabled
+                else:
+
+                    # Equation (3)
+                    X += p*(z[i + 1] - z[i])/(np.sqrt(s[i]**2 - p**2))
+
+                    # Calculate true destination positions (transform back)
+                    x = supra_pos[0] + np.cos(Phi)*X
+                    y = supra_pos[1] + np.sin(Phi)*X
+
+                trace.append([x[k, l], y[k, l], z[i + 1]])
+            #trace.append([supra_pos[0], supra_pos[1], supra_pos[2]])
+                # print([x[k, l], y[k, l], z_profile[i, 0]])
+                # pass on the azimuth & ray parameter information for use in traveltime calculation
             found = 1
 
         else:
@@ -267,4 +306,4 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
         t_arrival += (s[i]**2/np.sqrt(s[i]**2 - (p[k, l])**2/(1 - p[k, l]*u[i, l])**2))*(z[i + 1] - z[i])
 
     ##########################
-    return np.array(trace), t_arrival
+    return np.array(trace), t_arrival, error

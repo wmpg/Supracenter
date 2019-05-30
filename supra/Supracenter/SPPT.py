@@ -173,7 +173,7 @@ def expandSounding(sounding):
     t = np.square(temps)*consts.M_0/consts.GAMMA/consts.R
 
     #convert to EDN
-    dirs = np.radians(angle2NDE(np.degrees(dirs)))
+    dirs = np.radians(angle2NDE(dirs))
 
     #convert mags and dirs to u and v
     u = mags*np.cos(dirs)
@@ -278,6 +278,7 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
         if setup.debug:
             print("Perturbation Variable: {:}".format(r))
         spread_t, spread_u, spread_v = readSpreadFile(setup, lat, lon, spread_file, line)
+        
         T = spread(t, spread_t, r)
         U = spread(u, spread_u, r)
         V = spread(v, spread_v, r)
@@ -304,10 +305,10 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
 
     #pack sounding
     sounding_p = [np.array(lats), np.array(lons), np.array(TEMPS), np.array(MAGS), np.array(DIRS), np.array(level)]
-    try:
-        np.save(os.path.join(setup.working_directory, setup.fireball_name, 'Perturbation_ID{:}'.format(r)), np.array(sounding_p))
-    except:
-        print('WARNING: Unable to save perturbed weather data!')
+    # try:
+    #     np.save(os.path.join(setup.working_directory, setup.fireball_name, 'Perturbation_ID{:.3f}'.format(r)), np.array(sounding_p))
+    # except:
+    #     print('WARNING: Unable to save perturbed weather data!')
     return sounding_p
 
 if __name__ == '__main__':
