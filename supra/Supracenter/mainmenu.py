@@ -55,17 +55,17 @@ def main(setup):
         print('VARIABLE ERROR: Incorrect grid_size, must be float greater than 0, and must give enough spaces in the search area!')
         sys.exit()
 
-    if setup.weather_type == 'merra' and setup.start_datetime.year < 1980 and setup.get_data == True:
+    if setup.weather_type == 'merra' and setup.fireball_datetime.year < 1980 and setup.get_data == True:
         a = input('WARNING: MERRA-2 data unavailable earlier than 1980! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()
 
-    if setup.weather_type == 'ecmwf' and setup.start_datetime.year < 2008 and setup.get_data == True:
+    if setup.weather_type == 'ecmwf' and setup.fireball_datetime.year < 2008 and setup.get_data == True:
         a = input('WARNING: ECMWF data unavailable earlier than 2008! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()
 
-    if setup.weather_type == 'ukmo' and setup.start_datetime.year < 1991 and setup.get_data == True:
+    if setup.weather_type == 'ukmo' and setup.fireball_datetime.year < 1991 and setup.get_data == True:
         a = input('WARNING: UKMO data unavailable earlier than 1991! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()

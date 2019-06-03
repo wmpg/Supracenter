@@ -28,8 +28,9 @@ ctypedef np.float64_t FLOAT_TYPE_t
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, 
+cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, 
     np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=45, int n_phi=90, float precision=1e-25, float tol=1):
+    # switched positions (Jun 2019)
 
     # This function should be called for every station
     # Original Author: Wayne Edwards

@@ -18,7 +18,7 @@ ctypedef np.float64_t FLOAT_TYPE_t
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, precision=1e-25, tol=1):
+def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, precision=1e-25, tol=1):
 
     # This function should be called for every station
     # Original Author: Wayne Edwards

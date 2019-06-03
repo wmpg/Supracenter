@@ -134,7 +134,7 @@ def parseWeather(setup, consts, time=0):
         try:
 
             #Get closest hour
-            start_time = (setup.start_datetime.hour + np.round(setup.start_datetime.minute/60) + time)%24
+            start_time = (setup.fireball_datetime.hour + np.round(setup.fireball_datetime.minute/60) + time)%24
             sounding = storeNetCDFECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, consts, start_time=start_time)
 
         # SeismicTrajectory

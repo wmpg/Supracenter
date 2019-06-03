@@ -127,8 +127,7 @@ def configWrite(ini_file, setup):
     config.set('Parameters', 'lat_centre', str(setup.lat_centre))
     config.set('Parameters', 'lon_centre', str(setup.lon_centre))
     config.set('Parameters', 'deg_radius', str(setup.deg_radius))
-    config.set('Parameters', 'start_datetime', str(setup.start_datetime))
-    config.set('Parameters', 'end_datetime', str(setup.end_datetime))                    
+    config.set('Parameters', 'fireball_datetime', str(setup.fireball_datetime))                
     config.set('Parameters', 'v_sound', str(setup.v_sound))    
 
     config.add_section('Ballistic')
@@ -305,8 +304,7 @@ def configRead(ini_file):
     setup.lat_centre = tryFloat(config.get('Parameters', 'lat_centre'))
     setup.lon_centre = tryFloat(config.get('Parameters', 'lon_centre'))
     setup.deg_radius = tryFloat(config.get('Parameters', 'deg_radius'))
-    setup.start_datetime = tryDateTime(config.get('Parameters', 'start_datetime'))
-    setup.end_datetime = tryDateTime(config.get('Parameters', 'end_datetime'))
+    setup.fireball_datetime = tryDateTime(config.get('Parameters', 'fireball_datetime'))
     setup.v_sound = tryFloat(config.get('Parameters', 'v_sound'))
 
     ### [Ballistic] ###
@@ -453,8 +451,7 @@ def configParse(setup, ini_type):
             working_directory
             lat_centre
             lon_centre
-            start_datetime
-            end_datetime
+            fireball_datetime
             """
 
         if setup.lat_centre == '':
@@ -467,16 +464,10 @@ def configParse(setup, ini_type):
             print("Unable to parse lon_centre")
             exit()
 
-        if setup.start_datetime == '':
+        if setup.fireball_datetime == '':
             print(error_message)
-            print("Unable to parse start_datetime")
+            print("Unable to parse fireball_datetime")
             exit()
-
-        if setup.end_datetime == '':
-            print(error_message)
-            print("Unable to parse end_datetime")
-            exit()
-
 
     elif ini_type == "supracenter":
 
@@ -489,7 +480,7 @@ def configParse(setup, ini_type):
             ini_type
             working_directory
             station_picks_file
-            start_datetime
+            fireball_datetime
             search_area
             """
 
@@ -498,7 +489,7 @@ def configParse(setup, ini_type):
             print("Unable to parse station_picks_file")
             exit()
 
-        if setup.start_datetime == '':
+        if setup.fireball_datetime == '':
             print(error_message)
             print("Unable to parse start_datetime")
             exit()
@@ -519,7 +510,7 @@ def configParse(setup, ini_type):
             ini_type
             working_directory
             station_picks_file
-            start_datetime
+            fireball_datetime
             lat_centre
             lon_centre
             """
@@ -529,9 +520,9 @@ def configParse(setup, ini_type):
             print("Unable to parse station_picks_file")
             exit()
 
-        if setup.start_datetime == '':
+        if setup.fireball_datetime == '':
             print(error_message)
-            print("Unable to parse start_datetime")
+            print("Unable to parse fireball_datetime")
             exit()
 
         if setup.lat_centre == '':

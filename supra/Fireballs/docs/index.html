@@ -1,0 +1,188 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Western Meteor Physics Group Seismic and Infrasonic Meteor Program User Manual &#8212; Supracenter  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="About" href="docs/About.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="western-meteor-physics-group-seismic-and-infrasonic-meteor-program-user-manual">
+<h1>Western Meteor Physics Group Seismic and Infrasonic Meteor Program User Manual<a class="headerlink" href="#western-meteor-physics-group-seismic-and-infrasonic-meteor-program-user-manual" title="Permalink to this headline">¶</a></h1>
+<div class="figure align-center">
+<img alt="_images/wmpl.png" src="_images/wmpl.png" />
+</div>
+<div class="section" id="supracenter-manual-search">
+<h2>Supracenter Manual Search<a class="headerlink" href="#supracenter-manual-search" title="Permalink to this headline">¶</a></h2>
+<p>Chose the 4-D fragmentation point, and input the station data and picks, created by the Make Picks window, and hit search. The program will return the error in that point, as well as the residuals to each station, based off of the difference in arrival times from the manual Supracenter to the expected pick arrival time.</p>
+</div>
+<div class="section" id="supracenter-pso-search">
+<h2>Supracenter PSO Search<a class="headerlink" href="#supracenter-pso-search" title="Permalink to this headline">¶</a></h2>
+<p>Chose a 4-D bounding box to search in, giving the 3-D spatial barrier and a 1-D temporal barrier. Give the station picks file, created by the Make Picks window. The program will search for the optimal Supracenter within the 3-D bounding box, and try to optimize the for the best solution with the lowest residuals. The residuals are calculated by the difference between the expected arrival time of a trial point, and the arrival time given in the picks file.</p>
+</div>
+<div class="section" id="seismic-trajectory">
+<h2>Seismic Trajectory<a class="headerlink" href="#seismic-trajectory" title="Permalink to this headline">¶</a></h2>
+<p>Functional, but not thouroughly tested, use at your own risk!</p>
+<div class="section" id="files">
+<h3>Files<a class="headerlink" href="#files" title="Permalink to this headline">¶</a></h3>
+</div>
+</div>
+<div class="section" id="ini-files">
+<h2>INI Files<a class="headerlink" href="#ini-files" title="Permalink to this headline">¶</a></h2>
+<p>ini files contain the information for a given fireball event. These are loaded into each part of the program with the parameters of the fireball. For most parts of the program, not all of the variables in the ini files need to be set. For example, in the Supracenter solver, the ballistic search parameters do not need to be filled out.</p>
+<p>If the terminal returns an “INI ERROR” while running the code, try setting [General] debug = True, which will print out what variables are being detected by the program.</p>
+</div>
+<div class="section" id="station-picks">
+<h2>Station Picks<a class="headerlink" href="#station-picks" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="atmosphere-files">
+<h2>Atmosphere Files<a class="headerlink" href="#atmosphere-files" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="all-times-files">
+<h2>All Times Files<a class="headerlink" href="#all-times-files" title="Permalink to this headline">¶</a></h2>
+<p>These files contain the estimated arrival times for each perturbation at each station for all fragmentation and ballistic arrivals. This .npy file is used to quickly save and load data and prevent long loading times. The data can be called from a numpy array with the data loaded in as follows:</p>
+<p>[perturbation #, station #, 0 - ballistic/ 1 - fragmentation, frag number (0 if using ballistic)]</p>
+<p>The intended use of this is to save estimates for arrival times that take a long time to load, such as perturbation calculations. It is recommended that each .npy file which contains perturbations is saved in a proper place so that it may be reused.</p>
+<div class="section" id="errors">
+<h3>Errors<a class="headerlink" href="#errors" title="Permalink to this headline">¶</a></h3>
+<p>There definitely are a bunch, but this section is a WIP</p>
+</div>
+<div class="section" id="extra-stations">
+<h3>Extra Stations<a class="headerlink" href="#extra-stations" title="Permalink to this headline">¶</a></h3>
+<p>To add a station manually, the station name, location and mseed file must be input into the .ini file. Most seismic waveform databases online will allow for an mseed file to be downloaded. The file must be put in with the rest of the mseed files, which is located in: output_folder/fireball_name</p>
+<p>Most data sources also allow for .kml files to be downloaded. It may be useful to compile all seismic stations into a single kml file for use with Google Earth Pro, and using the circle measure tool to find stations within 150 km of an event.</p>
+<p>Sites that stations can be downloaded from:</p>
+<p>North Carolina - <a class="reference external" href="http://service.ncedc.org/fdsnws/dataselect/1/">http://service.ncedc.org/fdsnws/dataselect/1/</a>
+South Carolina - <a class="reference external" href="https://service.scedc.caltech.edu/fdsnws/dataselect/1/">https://service.scedc.caltech.edu/fdsnws/dataselect/1/</a>
+Turkey - <a class="reference external" href="http://tdvm.afad.gov.tr/">http://tdvm.afad.gov.tr/</a>
+Europe - <a class="reference external" href="http://udim.koeri.boun.edu.tr/mseed/">http://udim.koeri.boun.edu.tr/mseed/</a>
+Europe - <a class="reference external" href="http://eida.gfz-potsdam.de/webdc3/">http://eida.gfz-potsdam.de/webdc3/</a>
+IRIS - <a class="reference external" href="http://service.iris.edu/fdsnws/dataselect/docs/1/builder/">http://service.iris.edu/fdsnws/dataselect/docs/1/builder/</a></p>
+<p>Others may be found by searching for .mseed files online</p>
+</div>
+<div class="section" id="references">
+<h3>References<a class="headerlink" href="#references" title="Permalink to this headline">¶</a></h3>
+<p>some text</p>
+<div class="toctree-wrapper compound">
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="docs/About.html">About</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Usage.html">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/inibuilder.html">INI Builder</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html">Make Picks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/fetchatmosphere.html">Fetch Atmosphere</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/atmosphereviewer.html">Atmosphere Viewer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/pickviewer.html">Pick Viewer</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Supracenter</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="docs/About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Usage.html">Usage</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+      <li>Next: <a href="docs/About.html" title="next chapter">About</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Luke McFadden, Denis Vida, Peter Brown.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

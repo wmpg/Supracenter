@@ -108,7 +108,7 @@ def calcAllTimes(stn_list, setup, sounding):
         """
 
         zenith_list = [5, 45, 85]
-        velocity_list = [11, 21, 31]
+        velocity_list = [11, 15, 19, 23, 27, 31]
         ze_array = [0]*len(zenith_list)
         ze_array_dist = [0]*len(zenith_list)
         v_array = [0]*len(velocity_list)
@@ -273,18 +273,16 @@ if __name__ == "__main__":
     if not os.path.exists(setup.working_directory):
         os.makedirs(setup.working_directory)
 
-        #Build seismic data path
-    dir_path = os.path.join(setup.working_directory, setup.fireball_name)
+    picks_name = setup.station_picks_file
+    
+    stn_list = []
 
-    # Load the station and waveform files list
-    data_file_path = os.path.join(dir_path, DATA_FILE)
-    if os.path.isfile(data_file_path):
-        
-        stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
-
-    else:
-        print('Station and waveform data file not found! Download the waveform files first!')
-        sys.exit()
+    with open(picks_name) as f:
+        for ii, line in enumerate(f):
+            if ii > 0:
+                line = line.split(',')
+                stn = station(line[1], line[2], position(float(line[3]), float(line[4]), float(line[5])), '...', '...', '...')
+                stn_list.append(stn)
 
     # Remove duplicate lines recieved from different sources
     # stn_list = set(tuple(element) for element in stn_list)

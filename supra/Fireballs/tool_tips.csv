@@ -12,8 +12,7 @@ points_name: [string] file name of the data points produced by SeismicTrajectory
 lat_centre: [float] Geo coordinates of the wave release centre, referred to as the source location,
 lon_centre: [float] Geo coordinates of the wave release centre, referred to as the source location,
 deg_radius: [float] Search radius to consider when looking for stations (in degrees),
-start_datetime: [datetime object] Time range of waveform retrieval (cant be more than 2 hours),
-end_datetime: [datetime object] Time range of waveform retrieval (cant be more than 2 hours),
+fireball_datetime: [datetime object] Time of the fireball ground point
 v_sound: [float] speed of sound, used in calculating mach angle, and as the constant speed of sound if no weather data is used,
 t0: [float] time variable of the ballistic trajectory,
 v: [float] velocity variable of the ballistic trajectory,

@@ -100,7 +100,7 @@ class SolutionGUI(QMainWindow):
         self.addFetchATMWidgets()
         self.addProfileWidgets()
         self.addRayTracerWidgets()
-        self.addDocsWidgets()
+        #self.addDocsWidgets()
 
         self.var_typ = 't'
 
@@ -120,6 +120,10 @@ class SolutionGUI(QMainWindow):
         about_github.triggered.connect(self.openGit)
         about_menu.addAction(about_github)
 
+        about_docs = QAction("Documentation", self)
+        about_docs.triggered.connect(self.openDocs)
+        about_menu.addAction(about_docs)
+
         stylesheet = """ 
         QTabWidget>QWidget>QWidget{background: gray;}
         QLabel{color: white;}
@@ -130,11 +134,15 @@ class SolutionGUI(QMainWindow):
 
         pg.setConfigOptions(antialias=True)
         self.ray_pick = pg.ScatterPlotItem()
+        self.ray_pick_traj = pg.ScatterPlotItem()
         self.ray_pick_point = [0, 0, 0]
         self.ctrl_pressed = False
 
     def openGit(self):
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
+
+    def openDocs(self):
+        webbrowser.open_new_tab("supra/Fireballs/docs/index.html")
 
     def addPicksReadWidgets(self):
         picks_read_tab = QWidget()
@@ -254,7 +262,7 @@ class SolutionGUI(QMainWindow):
 
         self.sounding_file_edits.setText(self.atmospheric_file_edit.text())
         self.station_picks_edits.setText(self.picks_file_edit.text())
-        self.start_datetime_edits.setDateTime(self.ref_edit.dateTime().toPyDateTime())
+        self.fireball_datetime_edits.setDateTime(self.ref_edit.dateTime().toPyDateTime())
         self.lat_frag_edits.setText(str(self.lat_edit.text()))
         self.lon_frag_edits.setText(str(self.lon_edit.text()))
         self.elev_frag_edits.setText(str(self.elev_edit.text()))
@@ -350,7 +358,7 @@ class SolutionGUI(QMainWindow):
         
         fig.set_facecolor("none")
         self.seis_tab_output.removeWidget(self.seis_three_canvas)
-        self.seis_three_canvas = FigureCanvas(Figure(figsize=(10, 10)))
+        self.seis_three_canvas = FigureCanvas(Figure(figsize=(15, 15)))
         self.seis_three_canvas = FigureCanvas(fig)
         self.seis_three_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         self.seis_tab_output.addWidget(self.seis_three_canvas)    
@@ -450,11 +458,13 @@ class SolutionGUI(QMainWindow):
         self.ray_lat_edits.setText(str(pt.lat))
         self.ray_lon_edits.setText(str(pt.lon))
 
+        self.ray_pick_traj.setPoints(x=[pt.lon], y=[pt.lat], pen=(255, 0, 110))
+        self.ray_canvas.addItem(self.ray_pick_traj, update=True)
+
         if self.ray_pick_point != [0, 0, 0]:
             self.rayTrace()
 
     def rayTrace(self):
-        
         try:
             setup = self.saveINI(write=False)
         except:
@@ -532,6 +542,14 @@ class SolutionGUI(QMainWindow):
         ax.plot3D(xline, yline, zline, 'white')
         ax.scatter(xline, yline, zline, 'black')
 
+        x_pts = [None]*len(xline)
+        y_pts = [None]*len(xline)
+        for i in range(len(xline)):
+            
+            x_pts[i], y_pts[i], _ = loc2Geo(B.lat, B.lon, B.elev, [xline[i], yline[i], zline[i]])
+
+        self.ray_canvas.plot(y_pts, x_pts, pen=(255, 255, 255), update=True)
+
         if self.ray_enable_perts.isChecked():
             for ptb_n in range(setup.perturb_times):
                 xline = []
@@ -547,7 +565,14 @@ class SolutionGUI(QMainWindow):
                             zline.append(line[2])
                     except:            
                         pass
+
                     ax.plot3D(xline, yline, zline, '#15ff00')
+                    x_pts = [None]*len(xline)
+                    y_pts = [None]*len(xline)
+                    for i in range(len(xline)):
+                        
+                        x_pts[i], y_pts[i], _ = loc2Geo(B.lat, B.lon, B.elev, [xline[i], yline[i], zline[i]])
+                    self.ray_canvas.plot(y_pts, x_pts, pen=(21, 255, 0), update=True)
                     #ax.scatter(xline, yline, zline, 'black')
 
         if self.ray_enable_windfield.isChecked():
@@ -602,7 +627,7 @@ class SolutionGUI(QMainWindow):
 
         try:
 
-            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2} s'.format(err[0], xline[-1], yline[-1], t_arrival[0]))
+            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(err[0], xline[-1]-A.x, yline[-1]-A.y, t_arrival[0]))
 
             if setup.debug:
                 F = position(0, 0, 0)
@@ -637,7 +662,7 @@ class SolutionGUI(QMainWindow):
                 if not perturb:
                     self.errorMessage('Cannot trace rays!', 2)
                     return None
-            print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2} s'.format(ptb, err[ptb], xline[-1], yline[-1], t_arrival[ptb]))
+            print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(ptb, err[ptb], xline[-1]-A.x, yline[-1]-A.y, t_arrival[ptb]))
 
 
 
@@ -699,7 +724,7 @@ class SolutionGUI(QMainWindow):
 
         x=[setup.lon_i, setup.lon_f]
         y=[setup.lat_i, setup.lat_f]
-        traj_line = self.ray_canvas.plot(x, y, pen=(66, 232, 244))
+        self.ray_canvas.plot(x, y, pen=(66, 232, 244))
 
         SolutionGUI.update(self)
 
@@ -813,7 +838,7 @@ class SolutionGUI(QMainWindow):
         self.seis_resids = QTableWidget()
         table_group.addWidget(self.seis_resids, 2, 1, 1, 4)
 
-        self.seis_three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+        self.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
         self.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.seis_tab_output.addWidget(self.seis_three_canvas)
 
@@ -1394,8 +1419,8 @@ class SolutionGUI(QMainWindow):
         self.lon_centre_label, self.lon_centre_edits = self.createLabelEditObj('Longitude Center:', params_content, 2, tool_tip='lon_centre')
         self.deg_radius_label, self.deg_radius_edits = self.createLabelEditObj('Degrees in Search Radius:', params_content, 3, tool_tip='deg_radius')
 
-        self.start_datetime_label, self.start_datetime_edits = self.createLabelDateEditObj("Start Datetime", params_content, 4, tool_tip='start_datetime')
-        self.end_datetime_label, self.end_datetime_edits = self.createLabelDateEditObj("End Datetime", params_content, 5, tool_tip='end_datetime')
+        self.fireball_datetime_label, self.fireball_datetime_edits = self.createLabelDateEditObj("Fireball Datetime", params_content, 4, tool_tip='fireball_datetime')
+        #self.end_datetime_label, self.end_datetime_edits = self.createLabelDateEditObj("End Datetime", params_content, 5, tool_tip='end_datetime')
 
         self.v_sound_label, self.v_sound_edits = self.createLabelEditObj('Average Speed of Sound:', params_content, 6, tool_tip='v_sound')
 
@@ -2426,6 +2451,7 @@ class SolutionGUI(QMainWindow):
         self.filter_combo_box.currentTextChanged.connect(partial(self.chooseFilter, self.filter_combo_box))
 
         self.export_to_csv.clicked.connect(self.exportCSV)
+        self.export_to_all_times.clicked.connect(self.exportToAllTimes)
 
         for stn in self.stn_list:
             self.make_picks_station_choice.addItem("{:}-{:}".format(stn.network, stn.code))
@@ -2443,15 +2469,16 @@ class SolutionGUI(QMainWindow):
         plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self.station_ax)#, \
             #waveform_window=self.waveform_window, difference_filter_all=setup.difference_filter_all)
         try:
-            self.make_picks_top_graphs.removeWidget(self.stattoolbar)
+            pass
+        #    self.make_picks_top_graphs.removeWidget(self.stattoolbar)
         except:
             pass
         self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
         self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
         self.make_picks_station_graph_canvas = FigureCanvas(fig)
         self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        self.stattoolbar = NavigationToolbar(self.make_picks_station_graph_canvas, self)
-        self.make_picks_top_graphs.addWidget(self.stattoolbar)
+        #self.stattoolbar = NavigationToolbar(self.make_picks_station_graph_canvas, self)
+        #self.make_picks_top_graphs.addWidget(self.stattoolbar)
         self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
         self.make_picks_station_graph_canvas.draw()
         SolutionGUI.update(self)
@@ -2660,7 +2687,7 @@ class SolutionGUI(QMainWindow):
         start_datetime = mseed[current_channel].stats.starttime.datetime
         end_datetime = mseed[current_channel].stats.endtime.datetime
 
-        stn.offset = (start_datetime - setup.start_datetime).total_seconds()
+        stn.offset = (start_datetime - setup.fireball_datetime).total_seconds()
 
         # Check if the waveform data is already given or not
         if waveform_data is None or channel_changed != 2:
@@ -2726,39 +2753,39 @@ class SolutionGUI(QMainWindow):
             # Fragmentation Prediction
 
             # If manual fragmentation search is on
-            if setup.show_fragmentation_waveform:
+        if setup.show_fragmentation_waveform:
 
-                for i, line in enumerate(setup.fragmentation_point):
+            for i, line in enumerate(setup.fragmentation_point):
 
-                    f_time = self.arrTimes[0, self.current_station, 1, i]
-                #     # check if nan
-                    print('##################')
-                    print('Fragmentation {:} ({:} m)'.format(i+1, line[2]))
-                    if f_time == f_time:
-                        # Plot Fragmentation Prediction
-                        self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=self.pick_group_colors[(i+1)%4], label='Fragmentation')
-                        stn.stn_distance(position(line[0], line[1], line[2]))
-                        print("Range: {:7.3f} km".format(stn.distance/1000))                   
-                        print('Arrival: {:.3f} s'.format(f_time))
+                f_time = self.arrTimes[0, self.current_station, 1, i]
+            #     # check if nan
+                print('##################')
+                print('Fragmentation {:} ({:} m)'.format(i+1, line[2]))
+                if f_time == f_time:
+                    # Plot Fragmentation Prediction
+                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=self.pick_group_colors[(i+1)%4], label='Fragmentation')
+                    stn.stn_distance(position(line[0], line[1], line[2]))
+                    print("Range: {:7.3f} km".format(stn.distance/1000))                   
+                    print('Arrival: {:.3f} s'.format(f_time))
 
-                        # if abs(f_time-395.3038374383332) <= 4:
-                        #     print('Fragmentation {:} Arrival: {:.3f}s'.format(i+1, f_time-395.3038374383332))
+                    #if abs(f_time-395.3038374383332) <= 4:
+                    #print('Fragmentation {:} Arrival: {:.3f}s / {:.3f}s'.format(i+1, f_time-282, f_time-290.5))
 
-                    else:
-                        pass
-                        print('No Fragmentation {:} ({:} m) Arrival'.format(i+1, line[2]))
+                else:
+                    pass
+                    print('No Fragmentation {:} ({:} m) Arrival'.format(i+1, line[2]))
 
-                    for j in range(setup.perturb_times):
-                        if j >= 1:
-                            try:
-                                if j == 1:
-                                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(self.arrTimes[:, self.current_station, 1, i]), \
-                                        np.nanmax(self.arrTimes[:, self.current_station, 1, i])))
-                                self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
-                                     np.max(waveform_data)], alpha=0.3,\
-                                     pen=self.pick_group_colors[(i+1)%4], zorder=3)
-                            except:
-                                pass
+                for j in range(setup.perturb_times):
+                    if j >= 1:
+                        try:
+                            if j == 1:
+                                print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(self.arrTimes[:, self.current_station, 1, i]), \
+                                    np.nanmax(self.arrTimes[:, self.current_station, 1, i])))
+                            self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
+                                 np.max(waveform_data)], alpha=0.3,\
+                                 pen=self.pick_group_colors[(i+1)%4], zorder=3)
+                        except:
+                            pass
 
 
     def markStationWaveform(self):
@@ -2874,7 +2901,7 @@ class SolutionGUI(QMainWindow):
             for pick in self.pick_list:
 
                 # Calculate Julian date of the pick time
-                pick_jd = datetime2JD(self.setup.start_datetime + datetime.timedelta(seconds=pick.time))
+                pick_jd = datetime2JD(self.setup.fireball_datetime + datetime.timedelta(seconds=pick.time))
 
                 stn = pick.stn
 
@@ -2884,6 +2911,26 @@ class SolutionGUI(QMainWindow):
 
         self.errorMessage('Output to CSV!', 0, title='Exported!')
 
+    def exportToAllTimes(self):
+        setup = self.setup
+
+        if setup.arrival_times_file != '':
+            try:
+                self.arrTimes = np.load(setup.arrival_times_file)
+            except:
+                self.errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
+                self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+        else:  
+            # Calculate all arrival times
+            self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+        
+        dlg = QFileDialog.getSaveFileName(self, 'Save File')
+
+        file_name = dlg[0]
+
+        np.save(file_name, self.arrTimes)
+
+        self.errorMessage("Saved Output File", 0)
 
     def addMakePicksWidgets(self):
         make_picks_master_tab = QWidget()
@@ -3030,7 +3077,7 @@ class SolutionGUI(QMainWindow):
                         float(self.sup_height_max_edits.text())]
         setup.min_time = float(self.sup_min_time_edits.text())
         setup.max_time = float(self.sup_max_time_edits.text())
-        setup.start_datetime = self.sup_ref_time_edits.dateTime().toPyDateTime()
+        setup.fireball_datetime = self.sup_ref_time_edits.dateTime().toPyDateTime()
         setup.station_picks_file = self.sup_picks_file_edit.text()
 
         s_info, s_name, weights, ref_pos = convStationDat(setup.station_picks_file)
@@ -3100,7 +3147,7 @@ class SolutionGUI(QMainWindow):
 
         setup.manual_fragmentation_search = supra_pos
         setup.ref_pos = ref_pos
-        setup.start_datetime = self.ref_edit.dateTime().toPyDateTime()
+        setup.fireball_datetime = self.ref_edit.dateTime().toPyDateTime()
 
         results = psoSearch(s_info, weights, s_name, setup, dataset, consts)
         print("Error Function: {:}".format(results.f_opt))
@@ -3236,8 +3283,8 @@ class SolutionGUI(QMainWindow):
         setup.lon_centre = self.tryFloat(self.lon_centre_edits.text())
         setup.deg_radius = self.tryFloat(self.deg_radius_edits.text())
 
-        setup.start_datetime = self.start_datetime_edits.dateTime().toPyDateTime()
-        setup.end_datetime = self.end_datetime_edits.dateTime().toPyDateTime()
+        setup.fireball_datetime = self.fireball_datetime_edits.dateTime().toPyDateTime()
+        #setup.end_datetime = self.end_datetime_edits.dateTime().toPyDateTime()
         
         setup.v_sound = self.tryFloat(self.v_sound_edits.text())
 
@@ -3386,8 +3433,8 @@ class SolutionGUI(QMainWindow):
         self.lat_centre_edits.setText(str(setup.lat_centre))
         self.lon_centre_edits.setText(str(setup.lon_centre))
         self.deg_radius_edits.setText(str(setup.deg_radius))
-        self.start_datetime_edits.setDateTime(setup.start_datetime)
-        self.end_datetime_edits.setDateTime(setup.end_datetime)
+        self.fireball_datetime_edits.setDateTime(setup.fireball_datetime)
+        #self.end_datetime_edits.setDateTime(setup.end_datetime)
         self.v_sound_edits.setText(str(setup.v_sound))
 
         self.t0_edits.setText(str(setup.t0))
@@ -3724,7 +3771,7 @@ class SolutionGUI(QMainWindow):
         self.lon_edit.setText(str(setup.manual_fragmentation_search[1]))
         self.elev_edit.setText(str(setup.manual_fragmentation_search[2]))
         self.time_edit.setText(str(setup.manual_fragmentation_search[3]))
-        self.ref_edit.setDateTime(setup.start_datetime)
+        self.ref_edit.setDateTime(setup.fireball_datetime)
         self.picks_file_edit.setText(os.path.join(setup.working_directory, setup.fireball_name, setup.station_picks_file))
         self.atmospheric_file_edit.setText(os.path.join(setup.working_directory, setup.fireball_name, setup.sounding_file))
 
@@ -3745,7 +3792,7 @@ class SolutionGUI(QMainWindow):
         self.sup_min_time_edits.setText(str(setup.min_time))
         self.sup_max_time_edits.setText(str(setup.max_time))
         self.sup_picks_file_edit.setText(os.path.join(setup.working_directory, setup.fireball_name, setup.station_picks_file))
-        self.sup_ref_time_edits.setDateTime(setup.start_datetime)
+        self.sup_ref_time_edits.setDateTime(setup.fireball_datetime)
 
         self.ray_theta_edits.setText(str(setup.n_theta))
         self.ray_phi_edits.setText(str(setup.n_phi))
@@ -3754,7 +3801,14 @@ class SolutionGUI(QMainWindow):
 
 
 if __name__ == '__main__':
-
+    print('#########################################')
+    print('# Western Meteor Python Library         #')
+    print('# Seismic and Infrasonic Meteor Program #')
+    print('# Luke McFadden,                        #')
+    print('# Denis Vida,                           #') 
+    print('# Peter Brown                           #')
+    print('# 2019                                  #')
+    print('#########################################')
     app = QApplication(sys.argv)
 
     gui = SolutionGUI()

@@ -1,0 +1,27 @@
+.. Supracenter documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 11:53:56 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+=====================
+About
+=====================
+
+Denis Vida, Peter Brown, Luke McFadden
+(Manual Last Changed May 23, 2019)
+
+Supracenter updated from Wayne Edwards (2003)
+Thanks to Gunter Stober for advice on atmospheric profiles
+
+Made by the Western Meteor Physics Group 
+
+
+.. toctree::
+   :maxdepth: 2
+
+   
+
+
+
+
+

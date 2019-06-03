@@ -205,7 +205,7 @@ def readSpreadFile(setup, lat, lon, spread_file, line):
     time = np.array(dataset.variables['time'])
     #not known
 
-    start_time = int((setup.start_datetime.hour + np.round(setup.start_datetime.minute/60))%24)//3
+    start_time = int((setup.fireball_datetime.hour + np.round(setup.fireball_datetime.minute/60))%24)//3
 
     if line:
         # time, (number), level, lat, lon

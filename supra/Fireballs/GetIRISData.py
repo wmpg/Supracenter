@@ -31,7 +31,7 @@ from wmpl.Utils.Math import subsampleAverage
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, parseWeather, Constants
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, waveReleasePointWinds, parseWeather, Constants
 from supra.Fireballs.Program import configRead, configParse, position, station
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
@@ -158,7 +158,7 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
     return station_list
 
 
-def getIRISWaveformFiles(network, station_code, start_datetime, end_datetime, dir_path='.', channel='BDF'):
+def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.', channel='BDF'):
     """ Download weaveform files from the IRIS site. 
     
     Arguments:
@@ -179,22 +179,16 @@ def getIRISWaveformFiles(network, station_code, start_datetime, end_datetime, di
     """
 
     # Make strings from datetime objects
-    sd = start_datetime
+    sd = fireball_datetime - datetime.timedelta(minutes=5)
     start_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(sd.year, sd.month, sd.day, \
         sd.hour, sd.minute, sd.second, sd.microsecond//1000)
 
-    ed = end_datetime
+    ed = fireball_datetime + datetime.timedelta(minutes=55)
     end_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(ed.year, ed.month, ed.day, \
         ed.hour, ed.minute, ed.second, ed.microsecond//1000)
 
     #start_time = "2010-02-27T06:30:00.000"
     #end_time = "2010-02-27T10:30:00.000"
-
-    # Check that no more then 2 hours of data is requested
-    if (end_datetime - start_datetime).total_seconds() > 2*3600:
-        print('No more than 2 hours of waveform data can be requested!')
-        return None
-
 
     # Use the European ORFEUS data access site if specified
     try:
@@ -315,7 +309,7 @@ def readStationAndWaveformsListFile(file_path, rm_stat=[]):
         return []
 
 
-def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, start_datetime, end_datetime, network='*', \
+def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, fireball_datetime, network='*', \
     channel='BDF', dir_path='.'):
     """ Retrieves and saves waveforms as miniSEED files of all seismic stations from the IRIS web service in 
         a radius around given geographical position and for the given range of times.
@@ -339,7 +333,7 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, start_datetime, end_
 
 
     # Station activity date range
-    sd = start_datetime
+    sd = fireball_datetime
     start_date = "{:04d}-{:02d}-{:02d}".format(sd.year, sd.month, sd.day)
     ed = sd + datetime.timedelta(days=1)
     end_date = "{:04d}-{:02d}-{:02d}".format(ed.year, ed.month, ed.day)
@@ -358,6 +352,12 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, start_datetime, end_
 
     station_listHHZ = getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, \
         network=network, channel='HHZ')
+
+    station_listSHZ = getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, \
+        network=network, channel='SHZ')
+
+    station_listEHZ = getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, \
+        network=network, channel='EHZ')
 
     print('DOWNLOADED STATIONS:')
     print('BDF')
@@ -378,8 +378,20 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, start_datetime, end_
     for i in range(len(station_listHHZ)):
         print('{:2}-{:6} Lat: {:7.6} Lon: {:7.6} Elev: {:7.6} Loc: {:}'.format(*station_listHHZ[i]))
 
+    print('SHZ')
+    if len(station_listHHZ) == 0:
+        print("No Stations in SHZ")
+    for i in range(len(station_listSHZ)):
+        print('{:2}-{:6} Lat: {:7.6} Lon: {:7.6} Elev: {:7.6} Loc: {:}'.format(*station_listSHZ[i]))
+
+    print('EHZ')
+    if len(station_listEHZ) == 0:
+        print("No Stations in EHZ")
+    for i in range(len(station_listEHZ)):
+        print('{:2}-{:6} Lat: {:7.6} Lon: {:7.6} Elev: {:7.6} Loc: {:}'.format(*station_listEHZ[i]))
+
     #Combine into one list of all stations
-    station_list = station_listBDF + station_listBHZ + station_listHHZ
+    station_list = station_listBDF + station_listBHZ + station_listHHZ + station_listEHZ + station_listSHZ
 
     # A list of station data and waveform files
     data_list = []
@@ -397,17 +409,25 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, start_datetime, end_
         
         if station_data in station_listBDF:
             # Retreive the waveform of the given station
-            mseed_file = getIRISWaveformFiles(network, station_code, start_datetime, end_datetime, \
+            mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='BDF', dir_path=dir_path)
             station_data.append('BDF')
         elif station_data in station_listHHZ:
-            mseed_file = getIRISWaveformFiles(network, station_code, start_datetime, end_datetime, \
+            mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='HHZ', dir_path=dir_path)
             station_data.append('HHZ')
         elif station_data in station_listBHZ:
-            mseed_file = getIRISWaveformFiles(network, station_code, start_datetime, end_datetime, \
+            mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='BHZ', dir_path=dir_path)
             station_data.append('BHZ')
+        elif station_data in station_listEHZ:
+            mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
+                channel='EHZ', dir_path=dir_path)
+            station_data.append('EHZ')
+        elif station_data in station_listSHZ:
+            mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
+                channel='SHZ', dir_path=dir_path)
+            station_data.append('SHZ')
         else:
             print("WARNING: Cannot find station {:}".format(station_code))
 
@@ -634,27 +654,30 @@ def plotStationMap(dir_path, data_list, lat_centre, lon_centre, setup, sounding,
                     time.sleep(0.001)
 
                 setup.traj_f.pos_loc(ref_pos)
-
+  
                 # Point on the trajectory where the plane coordinate arrival came from
-                p = waveReleasePoint(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, np.radians(setup.azim), \
+                try:
+                    p = waveReleasePointWinds(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, np.radians(setup.azim), \
+                                            np.radians(setup.zangle), setup, sounding, [ref_pos.lat_r, ref_pos.lon_r, ref_pos.elev])
+                except:
+                    p = waveReleasePoint(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, np.radians(setup.azim), \
                                             np.radians(setup.zangle), setup.v_sound)
-
                 # Coordinate transformation (rotate 90 deg CCW)
-                #p[0], p[1] = -p[1], p[0]
+                # p[0], p[1] = -p[1], p[0]
 
-                # vector between the wave release point and the plane coordinate
-                d_vect = plane_coords - p
+                # # vector between the wave release point and the plane coordinate
+                # d_vect = plane_coords - p
 
-                # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
-                # of the vectors are small. This may not hold true for weather?
-                #print(np.dot(d_vect, traj_vect))
-                #if np.dot(d_vect, traj_vect) < setup.dot_tol:
+                # # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
+                # # of the vectors are small. This may not hold true for weather?
+                # #print(np.dot(d_vect, traj_vect))
+                # if np.dot(d_vect, traj_vect) < setup.dot_tol:
 
                 ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, np.radians(setup.azim), \
                                                 np.radians(setup.zangle), setup, sounding=sounding, ref_loc=[ref_pos.lat_r, ref_pos.lon_r, ref_pos.elev], travel=True, fast=True)
 
-                # escape value for when there is no arrival
-                #else:
+                #escape value for when there is no arrival
+                # else:
                 #    ti = np.nan
 
 
@@ -815,6 +838,12 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
                 stn.channel = 'EHZ'
                 stream = i
 
+        for i in range(len(mseed)):
+            if mseed[i].stats.channel == 'SHZ':
+                stn.channel = 'SHZ'
+                stream = i
+
+
 
         # Unpack miniSEED data
         delta = mseed[stream].stats.delta
@@ -824,7 +853,7 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
         start_datetime = mseed[stream].stats.starttime.datetime
         end_datetime = mseed[stream].stats.endtime.datetime
 
-        stn.offset = (start_datetime - setup.start_datetime).total_seconds()
+        stn.offset = (start_datetime - setup.fireball_datetime - datetime.timedelta(minutes=5)).total_seconds()
 
         # Skip stations with no data
         if len(waveform_data) == 0:
@@ -990,91 +1019,91 @@ def plotAllWaveforms(dir_path, stn_list, setup, sounding, ax=None, waveform_wind
             else:
                 b_dist[i], b_time[i], rb_dist[i] = np.nan, np.nan, np.nan
             
-    # # Plot Ballistic Prediction
-    # # if ptb_n == 0:
-    # ax.scatter(b_dist, b_time, c='b', marker='_', s=100, label='Ballistic', zorder=3)
-    # # else:
-    # #    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, alpha=0.3, zorder=3)
+    # Plot Ballistic Prediction
+    # if ptb_n == 0:
+    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, label='Ballistic', zorder=3)
+    # else:
+    #    ax.scatter(b_dist, b_time, c='b', marker='_', s=100, alpha=0.3, zorder=3)
 
-    # # Fragmentation Prediction
-    # f_time = [0]*len(stn_list)
-    # f_dist = [0]*len(stn_list)
-    # rf_dist = [0]*len(stn_list)
+    # Fragmentation Prediction
+    f_time = [0]*len(stn_list)
+    f_dist = [0]*len(stn_list)
+    rf_dist = [0]*len(stn_list)
 
-    # # Manual search for fragmentation waves
-    # if setup.show_fragmentation_waveform:
+    # Manual search for fragmentation waves
+    if setup.show_fragmentation_waveform:
 
-    #     if len(setup.fragmentation_point) == 0:
-    #         print("ERROR: Cannot plot fragmentation if there is no fragmentation point. Set show_fragmentation_waveform = False if not using.")
-    #         exit()
+        if len(setup.fragmentation_point) == 0:
+            print("ERROR: Cannot plot fragmentation if there is no fragmentation point. Set show_fragmentation_waveform = False if not using.")
+            exit()
 
-    #     for j, line in enumerate(setup.fragmentation_point):
-    #         # Supracenter location in local coordinates
-    #         supra = position(float(line[0]), float(line[1]), float(line[2]))
+        for j, line in enumerate(setup.fragmentation_point):
+            # Supracenter location in local coordinates
+            supra = position(float(line[0]), float(line[1]), float(line[2]))
 
-    #         supra.pos_loc(ref_pos)
+            supra.pos_loc(ref_pos)
 
-    #         for i, stn in enumerate(stn_list):
+            for i, stn in enumerate(stn_list):
 
-    #             if stn.code.strip() not in setup.rm_stat:
-    #                 if stn in bad_stats:
-    #                     f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
-    #                 # Station location in local coordinates
+                if stn.code.strip() not in setup.rm_stat:
+                    if stn in bad_stats:
+                        f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
+                    # Station location in local coordinates
 
-    #                 stn.position.pos_loc(ref_pos)
+                    stn.position.pos_loc(ref_pos)
 
-    #                 ###### DIFFERENT WEATHERS HERE ######
-    #                 if setup.weather_type == 'none':
-    #                     zProfile = np.array([[0, setup.v_sound, 0, 0], [10000, setup.v_sound, 0, 0]])
+                    ###### DIFFERENT WEATHERS HERE ######
+                    if setup.weather_type == 'none':
+                        zProfile = np.array([[0, setup.v_sound, 0, 0], [10000, setup.v_sound, 0, 0]])
 
-    #                 else:   
-    #                 # Cut down atmospheric profile to the correct heights, and interp
-    #                     zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
-    #                         [ref_pos.lat, ref_pos.lon, ref_pos.elev], sounding_p, convert=True)
+                    else:   
+                    # Cut down atmospheric profile to the correct heights, and interp
+                        zProfile, _ = getWeather(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), setup.weather_type, \
+                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], sounding_p, convert=True)
 
-    #                 # Time to travel from Supracenter to station 
-    #                 f_time[i], _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True)
+                    # Time to travel from Supracenter to station 
+                    f_time[i], _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True)
                     
-    #                 # Add reference time
-    #                 f_time[i] += float(line[3])
+                    # Add reference time
+                    f_time[i] += float(line[3])
                     
-    #                 # Distance from source center to station
-    #                 f_dist[i] = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
+                    # Distance from source center to station
+                    f_dist[i] = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
 
-    #                 # Distance from Supracenter to station
-    #                 rf_dist[i] = ((stn.position.x - supra.x)**2 + (stn.position.y - supra.y)**2 + (stn.position.z - supra.z)**2)**0.5
+                    # Distance from Supracenter to station
+                    rf_dist[i] = ((stn.position.x - supra.x)**2 + (stn.position.y - supra.y)**2 + (stn.position.z - supra.z)**2)**0.5
 
-    #                 # Convert to km
-    #                 f_dist[i] /= 1000
-    #                 rf_dist[i] /= 1000
+                    # Convert to km
+                    f_dist[i] /= 1000
+                    rf_dist[i] /= 1000
 
-    #             else:
-    #                 f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
-    #                 # Plot Fragmentation Prediction
-    #         # if ptb_n == 0:
-    #         #ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, label='Fragmentation {:}'.format(j+1), zorder=3)
-    #         else:
-    #             ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, alpha=0.3, zorder=3)
-    #         ax.scatter(f_dist[i], f_time[i], c=C[(j+1)%4], marker='_', s=100, label='Fragmentation', zorder=3)
+                else:
+                    f_dist[i], f_time[i], rf_dist[i] = np.nan, np.nan, np.nan
+                    # Plot Fragmentation Prediction
+            # if ptb_n == 0:
+            #ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, label='Fragmentation {:}'.format(j+1), zorder=3)
+            else:
+                ax.scatter(f_dist, f_time, c=C[(j+1)%4], marker='_', s=100, alpha=0.3, zorder=3)
+            ax.scatter(f_dist[i], f_time[i], c=C[(j+1)%4], marker='_', s=100, label='Fragmentation', zorder=3)
 
 
         
-    # ax.set_xlabel('Distance (km)')
-    # ax.set_ylabel('Time (s)')
+    ax.set_xlabel('Distance (km)')
+    ax.set_ylabel('Time (s)')
 
-    # #ax.set_ylim(min_time - 200, max_time + 500)
-    # ax.set_xlim(0, max_wave_value)
+    #ax.set_ylim(min_time - 200, max_time + 500)
+    ax.set_xlim(0, max_wave_value)
 
-    # ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.7)
+    ax.grid(color='#ADD8E6', linestyle='dashed', linewidth=0.5, alpha=0.7)
 
-    # # Export station distance file
-    # with open(os.path.join(dir_path, 'output.txt'), 'w') as f:
+    # Export station distance file
+    with open(os.path.join(dir_path, 'output.txt'), 'w') as f:
 
-    #     f.write('Station Lat(deg N) Lon(deg E) Elev(m) Az(+E dN) Ball_d(km) Ball_t(s) Frag_d(km) Frag_t(s)\n')
-    #     for i, stn in enumerate(stn_list):
-    #         f.write('{:8}, {:8.4f}, {:8.4f}, {:7.2f}, {:8.3f},  {:7.2f},  {:7.2f},  {:7.2f},  {:7.2f}\n'\
-    #          .format(str(stn.network) + '-' + str(stn.code), stn.position.lat, stn.position.lon, \
-    #                 stn.position.elev, az_n[i], rb_dist[i], b_time[i], rf_dist[i], f_time[i]))
+        f.write('Station Lat(deg N) Lon(deg E) Elev(m) Az(+E dN) Ball_d(km) Ball_t(s) Frag_d(km) Frag_t(s)\n')
+        for i, stn in enumerate(stn_list):
+            f.write('{:8}, {:8.4f}, {:8.4f}, {:7.2f}, {:8.3f},  {:7.2f},  {:7.2f},  {:7.2f},  {:7.2f}\n'\
+             .format(str(stn.network) + '-' + str(stn.code), stn.position.lat, stn.position.lon, \
+                    stn.position.elev, az_n[i], rb_dist[i], b_time[i], rf_dist[i], f_time[i]))
 
 
 
@@ -1119,8 +1148,8 @@ if __name__ == "__main__":
     if setup.get_data:
         ### Download all waveform files which are within the given geographical and temporal range ###
         ##########################################################################################################
-        getAllWaveformFiles(setup.lat_centre, setup.lon_centre, setup.deg_radius, setup.start_datetime, \
-            setup.end_datetime, network='*', channel='all', dir_path=dir_path)
+        getAllWaveformFiles(setup.lat_centre, setup.lon_centre, setup.deg_radius, setup.fireball_datetime, \
+             network='*', channel='all', dir_path=dir_path)
         ##########################################################################################################
 
     data_file_path = os.path.join(dir_path, DATA_FILE)
@@ -1157,7 +1186,7 @@ if __name__ == "__main__":
 
     #plt.legend(loc='upper left')
     plt.savefig(os.path.join(dir_path, "all_channels_{:s}_stations.png".format( \
-        str(setup.start_datetime).replace(':', '.'))), dpi=300)
+        str(setup.fireball_datetime).replace(':', '.'))), dpi=300)
 
     plt.show()
 
@@ -1169,10 +1198,10 @@ if __name__ == "__main__":
     plotAllWaveforms(dir_path, stn_list, setup, sounding, difference_filter_all=setup.difference_filter_all)
 
     plt.title('Source location: {:.6f}, {:.6f}, Reference time: {:s} UTC, channel: {:s}'.format(setup.lat_centre, \
-        setup.lon_centre, str(setup.start_datetime), '*'), fontsize=7)
+        setup.lon_centre, str(setup.fireball_datetime), '*'), fontsize=7)
     plt.legend(loc='lower right')
 
-    plt.savefig(os.path.join(dir_path, "{:s}_waveforms.png".format(str(setup.start_datetime).replace(':', '.'))), dpi=300)
+    plt.savefig(os.path.join(dir_path, "{:s}_waveforms.png".format(str(setup.fireball_datetime).replace(':', '.'))), dpi=300)
 
 
     plt.show()
