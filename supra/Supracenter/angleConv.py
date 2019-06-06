@@ -1,6 +1,7 @@
 """Various coordinate conversions and utility functions for use with Supracenter"""
 
 import numpy as np
+from scipy.special import erfc
 
 from wmpl.Utils.Math import rotateVector
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
@@ -245,20 +246,43 @@ def strToBool(my_str):
 
     return (my_str.lower() == 'true')
 
+def chauvenet(data):
+    try:
+        indexes = ~np.isnan(data)
+        data = data[indexes]
+    except:
+        pass
+    N = len(data)
+    std = np.std(data)
+    mean = np.mean(data)
+
+    remove = []
+    a = []
+    
+    for ii, element in enumerate(data):
+        D = abs(element - mean)/std
+        chance = erfc(D**0.5)
+        if chance*N < 0.5:
+            a.append(ii)
+            remove.append(element)
+
+    data = np.delete(data, a)
+
+    return data, remove
 
 if __name__ == "__main__":
+    pass
+    # # convert 90 east due north to north due east
+    # print("angle", 90)
+    # print("angle2NDE", angle2NDE(90))
+    # # calling again will convert it back
+    # print("angle2EDN", angle2NDE(angle2NDE(90)))
 
-    # convert 90 east due north to north due east
-    print("angle", 90)
-    print("angle2NDE", angle2NDE(90))
-    # calling again will convert it back
-    print("angle2EDN", angle2NDE(angle2NDE(90)))
+    # # convert lat/lon/elev 49.7/-83.3/500m from geographic coordinates to local coordinates, using a reference 
+    # # coordinate of 50/-83/0m
+    # print("Geographic", 49.7, -83.3, 500)
+    # print("Local", geo2Loc(50, -83, 0, 49.7, -83.3, 500))
+    # print("Geographic", loc2Geo(50, -83, 0, geo2Loc(50, -83, 0, 49.7, -83.3, 500))) 
 
-    # convert lat/lon/elev 49.7/-83.3/500m from geographic coordinates to local coordinates, using a reference 
-    # coordinate of 50/-83/0m
-    print("Geographic", 49.7, -83.3, 500)
-    print("Local", geo2Loc(50, -83, 0, 49.7, -83.3, 500))
-    print("Geographic", loc2Geo(50, -83, 0, geo2Loc(50, -83, 0, 49.7, -83.3, 500))) 
-
-    # round 0.78 to the nearest multiple of 0.25
-    print("round_to_nearest", roundToNearest(0.78, 0.25))
+    # # round 0.78 to the nearest multiple of 0.25
+    # print("round_to_nearest", roundToNearest(0.78, 0.25))

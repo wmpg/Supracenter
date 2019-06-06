@@ -25,6 +25,29 @@ from supra.Supracenter.angleConv import loc2Geo, geo2Loc, strToBool
 
 DATA_FILE = 'data.txt'
 
+
+
+class Angle:
+
+    def __init__(self, deg):
+        self.deg = deg
+        self.rad = np.radians(deg)
+
+    def __add__(self, other):
+        return (self.deg + other.deg)%360
+
+    def __sub__(self, other):
+        return (self.deg - other.deg)%360
+
+    def invert(self):
+        # Rotate coordinate system 90 degrees CCW
+        angle = (self.deg - 90)%360
+
+        # Flip coordinate system horizontally
+        angle = (360 - angle)%360
+
+        self.deg = angle
+
 class position:
     """ A latitude/longitude/elevation object describing a position in 3D space
     Give lat [-90, 90], lon [-180, 180] in degrees

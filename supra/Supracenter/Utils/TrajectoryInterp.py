@@ -71,11 +71,15 @@ if __name__ == "__main__":
 	# start = [48.2299, 13.0848, 31847.68]
 	# end = [48.2357, 13.0840, 30014.72]
 
+	# start = [48.2355, 13.0840, 30072.00]
+	# end = [48.2655, 13.0798, 20620.80]
+	start = [48.2164, 13.0867, 36086.4]
+	end = [48.2219, 13.0859, 34368.0]
 
 	az = 354.67
 	ze = 19.69
 
-	points = trajInterp(start, end, div=100)
+	points = trajInterp(start, end, div=4)
 	#points_angle = trajInterpAngle(start, az, ze, div=300)
 
 	# for i in range(len(points)):

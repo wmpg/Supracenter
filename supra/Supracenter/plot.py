@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.slowscan import slowscan
 
 def pointsList(sounding, points):
     """ Helper function: Divides list sounding into 'length of points' divisions and expands each point into 
@@ -91,6 +92,8 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
     #difference in theoretical and simulated travel times
     r = np.zeros_like(tobs)
 
+    trace = []
+
     # Find parameters of optimal location
     print('Exporting weather profiles...')
     for j in range(n_stations):
@@ -142,19 +145,22 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
                             .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
 
         # ray tracing function
-        time3D[j], az[j], tf[j] = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+        temp_trace, _, _ = slowscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
                                             precision=setup.angle_precision)
-
+        time3D[j], _, _ = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+                                           precision=setup.angle_precision)
+        trace.append(temp_trace)
         # find residuals
         sotc[j] = tobs[j] - time3D[j]
 
-        if time3D[j] == np.nan:
-            print('ERROR: Cannot find optimal solution!')
-            exit()
+    for ii, element in enumerate(time3D):
+        if np.isnan(element):
+            w[ii] = 0
 
     # User defined occurrence time
     if kotc != None:
         motc = kotc
+        index = []
 
 
     # elif setup.manual_fragmentation_search != '' and len(setup.manual_fragmentation_search) > 0:
@@ -162,13 +168,16 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
 
     # Unknown occurrence time
     else:
+        index = np.isnan(sotc)
+        sotc[index] = 0
         motc = np.dot(w, sotc)/sum(w)
 
     # Station residuals (from average)
 
     r = sotc - motc
+    r[index] = np.nan
 
-    return time3D, az, tf, r, motc, sotc
+    return time3D, az, tf, r, motc, sotc, trace
 
 
 def outputText(min_search, max_search, setup, results_arr, n_stations, s_name, xstn, tstn, w):

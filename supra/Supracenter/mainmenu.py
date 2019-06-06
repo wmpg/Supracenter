@@ -236,7 +236,7 @@ def main(setup):
         if i != 0:
             if setup.perturb:
                 for j in range(len(station_no)):
-                    s_info[j, 4] = allTimes[i-1, int(station_no[j]), 1, setup.fragno-1]
+                    s_info[j, 4] = allTimes[i-1, int(station_no[j]), 1, setup.observe_frag_no-1]
 
         #if setup.search_type == 'pso':
         results_arr[i] = psoSearch(s_info, weights, s_name, setup, dataset, consts)

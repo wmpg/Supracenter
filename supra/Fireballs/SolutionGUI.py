@@ -34,13 +34,14 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from mpl_toolkits.mplot3d import Axes3D
 
+from supra.Supracenter.Utils.Formatting import *
 from supra.Supracenter.slowscan import slowscan
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
 from supra.Fireballs.Program import position, configRead, configWrite, station
-from supra.Fireballs.SeismicTrajectory import Constants, parseWeather, waveReleasePoint, timeOfArrival, getStationList, \
+from supra.Fireballs.SeismicTrajectory import Constants, parseWeather, waveReleasePointWinds, timeOfArrival, getStationList, \
 estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
-from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE, local2LatLon, latLon2Local
+from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE, local2LatLon, latLon2Local, chauvenet
 from supra.Supracenter.netCDFconv import findECMWFSound
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.fetchCopernicus import copernicusAPI
@@ -491,7 +492,11 @@ class SolutionGUI(QMainWindow):
 
         trace_data = [None]*setup.perturb_times
         t_arrival = [None]*setup.perturb_times
+        t_arrival_cy = [None]*setup.perturb_times
         err = [None]*setup.perturb_times
+
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
 
         for ptb_n in range(setup.perturb_times):
 
@@ -502,7 +507,7 @@ class SolutionGUI(QMainWindow):
 
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
-                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
             else:
 
                 # if not using perturbations on this current step, then return the original sounding profile
@@ -513,7 +518,16 @@ class SolutionGUI(QMainWindow):
                     setup.weather_type, np.array([A.x, A.y, A.z]), copy.copy(sounding_p))
 
             trace_data[ptb_n], t_arrival[ptb_n], err[ptb_n] = slowscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
-                                wind=True, n_theta=100, n_phi=100, precision=setup.angle_precision, tol=setup.angle_error_tol)
+                                wind=True, n_theta=setup.n_theta, n_phi=setup.n_theta, precision=setup.angle_precision, tol=setup.angle_error_tol)
+            t_arrival_cy[ptb_n], _, _ = cyscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
+                                wind=True, n_theta=setup.n_theta, n_phi=setup.n_theta, precision=setup.angle_precision, tol=setup.angle_error_tol)
+
+        if setup.debug:
+            error_list = []
+            for ii in range(setup.perturb_times):
+                error_list.append(abs(t_arrival[ptb_n] - t_arrival_cy[ptb_n]))
+            avg_error = np.mean(error_list)
+            print("Mean error in computation from loss in speed: {:5.2f}".format(avg_error))
         # if (np.isnan(trace_data)) or (np.isnan(t_arrival)):
 
         ax = plt.axes(projection='3d')
@@ -576,9 +590,9 @@ class SolutionGUI(QMainWindow):
                     #ax.scatter(xline, yline, zline, 'black')
 
         if self.ray_enable_windfield.isChecked():
-            c = np.flipud(z_profile[:, 1])
-            mags = np.flipud(z_profile[:, 2])
-            dirs = np.flipud(z_profile[:, 3])
+            c = (z_profile[:, 1])
+            mags = (z_profile[:, 2])
+            dirs = (z_profile[:, 3])
 
             # Init the constants
             consts = Constants()
@@ -595,12 +609,6 @@ class SolutionGUI(QMainWindow):
             u = mags*np.sin(dirs)
             v = mags*np.cos(dirs)
 
-            # x_min = min(A.x, B.x)
-            # x_max = max(A.x, B.x)
-            # y_min = min(A.y, B.y)
-            # y_max = max(A.y, B.y)
-            # z_min = min(A.z, B.z)
-            # z_max = max(A.z, B.z)
             c = t[:-1]
             c = (c.ravel() - c.min()) / c.ptp()
             c = np.concatenate((c, np.repeat(c, 2)))
@@ -627,7 +635,7 @@ class SolutionGUI(QMainWindow):
 
         try:
 
-            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(err[0], xline[-1]-A.x, yline[-1]-A.y, t_arrival[0]))
+            print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(err[0], xline[-1], yline[-1], t_arrival[0]))
 
             if setup.debug:
                 F = position(0, 0, 0)
@@ -662,7 +670,7 @@ class SolutionGUI(QMainWindow):
                 if not perturb:
                     self.errorMessage('Cannot trace rays!', 2)
                     return None
-            print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(ptb, err[ptb], xline[-1]-A.x, yline[-1]-A.y, t_arrival[ptb]))
+            print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(ptb, err[ptb], xline[-1], yline[-1], t_arrival[ptb]))
 
 
 
@@ -700,7 +708,7 @@ class SolutionGUI(QMainWindow):
         data_file_path = os.path.join(dir_path, DATA_FILE)
         if os.path.isfile(data_file_path):
             
-            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
+            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat, debug=setup.debug)
 
         else:
             print('Station and waveform data file not found! Download the waveform files first!')
@@ -759,6 +767,8 @@ class SolutionGUI(QMainWindow):
         self.ray_canvas = self.ray_view.addPlot()
         self.ray_graphs.addWidget(self.ray_view)
         self.ray_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        self.ray_canvas.setLabel('bottom', "Longitude", units='deg E')
+        self.ray_canvas.setLabel('left', "Latitude", units='deg N')
 
         self.ray_line_canvas = FigureCanvas(Figure(figsize=(0, 0)))
         self.ray_line_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
@@ -1560,7 +1570,7 @@ class SolutionGUI(QMainWindow):
         self.frag_no_label, self.frag_no_edits = self.createLabelEditObj('Fragmentation Number', perturb_content, 2, tool_tip='fragno')
 
         self.perturb_label, self.perturb_edits = self.createComboBoxObj('Perturb: ', perturb_content, 3, items=['True', 'False'], tool_tip='perturb')
-        self.perturb_method_label, self.perturb_method_edits = self.createComboBoxObj('Perturb Method', perturb_content, 4, items=['none', 'bmp', 'sppt', 'temporal', 'spread', 'spread_r'], tool_tip='perturb_method')
+        self.perturb_method_label, self.perturb_method_edits = self.createComboBoxObj('Perturb Method', perturb_content, 4, items=['none', 'bmp', 'sppt', 'temporal', 'spread', 'spread_r', 'ensemble'], tool_tip='perturb_method')
 
 
     def initSpeedTab(self):
@@ -1748,6 +1758,9 @@ class SolutionGUI(QMainWindow):
             sounding_u = []
             sounding_l = []
 
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+
         if setup.perturb_method != 'none':
             for ptb_n in range(setup.perturb_times):
 
@@ -1759,7 +1772,7 @@ class SolutionGUI(QMainWindow):
                     # generate a perturbed sounding profile
                     sounding_p = perturbation_method(setup, dataset, setup.perturb_method, \
                         sounding_u=sounding_u, sounding_l=sounding_l, \
-                        spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+                        spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
                     sounding_p = findECMWFSound(lat, lon, sounding_p)
                     
                     if self.var_typ == 't':
@@ -1863,6 +1876,7 @@ class SolutionGUI(QMainWindow):
         self.atm_perturb_method_edits.addItem("temporal")
         self.atm_perturb_method_edits.addItem("spread")
         self.atm_perturb_method_edits.addItem("spread_r")
+        self.atm_perturb_method_edits.addItem("ensemble")
 
         self.tab_widget.addTab(profile_tab, "Atmospheric Profile")
 
@@ -2017,6 +2031,9 @@ class SolutionGUI(QMainWindow):
             sounding_u = []
             sounding_l = []
 
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+
         d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
         count = 0
 
@@ -2031,7 +2048,7 @@ class SolutionGUI(QMainWindow):
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
                     sounding_u=sounding_u, sounding_l=sounding_l, \
-                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
             else:
 
                 # if not using perturbations on this current step, then return the original sounding profile
@@ -2048,9 +2065,9 @@ class SolutionGUI(QMainWindow):
                     bTimes = [0]*no_of_frags
                     for i in range(no_of_frags):
                         count += 1
-                        sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
-                        sys.stdout.flush()
-                        time.sleep(0.001)
+                        loadingBar('Calculating all times:', count, d_time)
+                        # sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
+                        # sys.stdout.flush()
                         #need filler values to make this a numpy array with fragmentation
                         if i == 0:
                             
@@ -2076,7 +2093,7 @@ class SolutionGUI(QMainWindow):
                     fTimes = [0]*no_of_frags
                     for i, line in enumerate(setup.fragmentation_point):
                         count += 1
-                        sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
+                        loadingBar('Calculating all times:', count, d_time)
 
                         # location of supracenter
                         supra = position(float(line[0]), float(line[1]), float(line[2]))
@@ -2232,147 +2249,148 @@ class SolutionGUI(QMainWindow):
         self.initPlot(setup, sounding)
 
         # Extract the list of station locations
-        self.lat_list = [stn.position.lat_r for stn in stn_list]
-        self.lon_list = [stn.position.lon_r for stn in stn_list]
+        # self.lat_list = [stn.position.lat_r for stn in stn_list]
+        # self.lon_list = [stn.position.lon_r for stn in stn_list]
 
-        plt.style.use('dark_background')
-        fig = plt.figure(figsize=plt.figaspect(0.5))
-        fig.set_size_inches(8, 5)
-        self.map_ax = fig.add_subplot(1, 1, 1)
+        # plt.style.use('dark_background')
+        # fig = plt.figure(figsize=plt.figaspect(0.5))
+        # fig.set_size_inches(8, 5)
+        # self.map_ax = fig.add_subplot(1, 1, 1)
 
         # Init ground map
-        self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
+        #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # Extract coordinates of the reference station
         ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
+        self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
-        for stn in self.stn_list:
+        for ii, stn in enumerate(self.stn_list):
 
-            # Plot stations
-            if stn.code in setup.high_f:
-                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='g', s=2)
-            elif stn.code in setup.high_b:
-                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='b', s=2)
-            else:
-                self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
-
-            # Calculate ground distances
-
-            stn.stn_ground_distance(ref_pos)
-
+            self.station_marker[ii].setPoints(x=[stn.position.lon], y=[stn.position.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='t')
+            self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
+            # # Plot stations
+            # if stn.code in setup.high_f:
+            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='g', s=2)
+            # elif stn.code in setup.high_b:
+            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='b', s=2)
+            # else:
+            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
+        
         # Manual Supracenter search
         if setup.show_fragmentation_waveform:
             
             # Fragmentation plot
             for i, line in enumerate(setup.fragmentation_point):
-                self.m.scatter([np.radians(float(line[0]))], [np.radians(float(line[1]))], c=self.pick_group_colors[(i+1)%4], marker='x')
+                self.make_picks_map_graph_canvas.scatterPlot(x=[float(line[1])], y=[float(line[0])],\
+                    pen=(0 + i*255/len(setup.fragmentation_point), 255 - i*255/len(setup.fragmentation_point), 0), symbol='+')
 
 
 
         # Plot source location
-        self.m.scatter([np.radians(setup.lat_centre)], [np.radians(setup.lon_centre)], marker='*', c='yellow')
+        self.make_picks_map_graph_canvas.scatterPlot(x=[setup.lon_centre], y=[setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
         # Manual trajectory search
         if setup.show_ballistic_waveform:
 
             # Plot the trajectory with the bottom point known
-            self.m.plot([setup.traj_i.lat_r, setup.traj_f.lat_r], [setup.traj_i.lon_r, setup.traj_f.lon_r], c='b')
+            self.make_picks_map_graph_canvas.plot([setup.traj_i.lon, setup.traj_f.lon], [setup.traj_i.lat, setup.traj_f.lat],\
+                             pen=(0, 0, 255))
             # Plot intersection with the ground
-            self.m.scatter(setup.traj_f.lat_r, setup.traj_f.lon_r, s=10, marker='x', c='b')
+            self.make_picks_map_graph_canvas.scatterPlot(x=[setup.traj_f.lon], y=[setup.traj_f.lat], symbol='+', pen=(0, 0, 255))
 
-            ### CONTOUR ###
+            # ### CONTOUR ###
 
-            # Get the limits of the plot
-            x_min = setup.lat_f - 100000*setup.deg_radius
-            x_max = setup.lat_f + 100000*setup.deg_radius
-            y_min = setup.lon_f - 100000*setup.deg_radius
-            y_max = setup.lon_f + 100000*setup.deg_radius
+            # # Get the limits of the plot
+            # x_min = setup.lat_f - 100000*setup.deg_radius
+            # x_max = setup.lat_f + 100000*setup.deg_radius
+            # y_min = setup.lon_f - 100000*setup.deg_radius
+            # y_max = setup.lon_f + 100000*setup.deg_radius
 
-            img_dim = int(setup.contour_res)
-            x_data = np.linspace(x_min, x_max, img_dim)
-            y_data = np.linspace(y_min, y_max, img_dim)
-            xx, yy = np.meshgrid(x_data, y_data)
+            # img_dim = int(setup.contour_res)
+            # x_data = np.linspace(x_min, x_max, img_dim)
+            # y_data = np.linspace(y_min, y_max, img_dim)
+            # xx, yy = np.meshgrid(x_data, y_data)
 
 
-            # # Make an array of all plane coordinates
-            plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
+            # # # Make an array of all plane coordinates
+            # plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
 
-            times_of_arrival = np.zeros_like(xx.ravel())
+            # times_of_arrival = np.zeros_like(xx.ravel())
 
-            az = np.radians(setup.azim)
-            ze = np.radians(setup.zangle)
+            # az = np.radians(setup.azim)
+            # ze = np.radians(setup.zangle)
 
-            # vector of the trajectory of the fireball
-            traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
+            # # vector of the trajectory of the fireball
+            # traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
 
-            for i, plane_coords in enumerate(plane_coordinates):
+            # for i, plane_coords in enumerate(plane_coordinates):
 
-                # Print out percentage complete
-                if (i + 1) % 10 == 0:
-                    sys.stdout.write("\rDrawing Contour: {:.2f} %".format(100*(i + 1)/img_dim**2))
-                    sys.stdout.flush()
-                    time.sleep(0.001)
+            #     # Print out percentage complete
+            #     if (i + 1) % 10 == 0:
 
-                setup.traj_f.pos_loc(ref_pos)
-                # Point on the trajectory where the sound wave that will hit the plane_coord originated from
+            #         loadingBar('Drawing Contour:', (i + 1), img_dim**2)
 
-                p = waveReleasePoint(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
-                                          ze, setup.v_sound)
+            #     setup.traj_f.pos_loc(ref_pos)
+            #     # Point on the trajectory where the sound wave that will hit the plane_coord originated from
 
-                # # vector between the wave release point and the plane coordinate
-                d_vect = plane_coords - p
+            #     p = waveReleasePointWinds(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
+            #                               ze, setup, sounding, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
 
-                # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
-                # of the vectors are small.
+            #     # # vector between the wave release point and the plane coordinate
+            #     d_vect = plane_coords - p
 
-                if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
+            #     # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
+            #     # of the vectors are small.
 
-                    # time of arrival from the trajectory
-                    ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
-                                       az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=True)# - setup.t + setup.t0
+            #     if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
 
-                # escape value for if sound never reaches the plane_coord
-                else:
-                   ti = np.nan
+            #         # time of arrival from the trajectory
+            #         ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+            #                            az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=False)# - setup.t + setup.t0
 
-                times_of_arrival[i] = ti + setup.t0
+            #     # escape value for if sound never reaches the plane_coord
+            #     else:
+            #        ti = np.nan
 
-            #Keep this here
-            print('')
+            #     times_of_arrival[i] = ti + setup.t0
 
-            # if sound never reaches the plane_coord, set to maximum value of the contour
-            max_time = np.nanmax(times_of_arrival)
-            for i in range(len(times_of_arrival)):
-                if np.isnan(times_of_arrival[i]):
-                    times_of_arrival[i] = max_time
+            # #Keep this here
+            # print('')
 
-            times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
+            # # if sound never reaches the plane_coord, set to maximum value of the contour
+            # max_time = np.nanmax(times_of_arrival)
+            # for i in range(len(times_of_arrival)):
+            #     if np.isnan(times_of_arrival[i]):
+            #         times_of_arrival[i] = max_time
 
-            # Determine range and number of contour levels, so they are always centred around 0
-            toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-            #  toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-            levels = np.linspace(0, toa_abs_max, 25)
+            # times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
 
-            # Convert contour local coordinated to geo coordinates
-            lat_cont = []
-            lon_cont = []
+            # # Determine range and number of contour levels, so they are always centred around 0
+            # toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+            # #  toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+            # levels = np.linspace(0, toa_abs_max, 25)
 
-            for x_cont, y_cont in zip(xx.ravel(), yy.ravel()):
+            # # Convert contour local coordinated to geo coordinates
+            # lat_cont = []
+            # lon_cont = []
+
+            # for x_cont, y_cont in zip(xx.ravel(), yy.ravel()):
                 
-                lat_c, lon_c, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, np.array([x_cont, y_cont, 0]))
+            #     lat_c, lon_c, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, np.array([x_cont, y_cont, 0]))
 
-                lat_cont.append(lat_c)
-                lon_cont.append(lon_c)
+            #     lat_cont.append(lat_c)
+            #     lon_cont.append(lon_c)
 
-            lat_cont = np.array(lat_cont).reshape(img_dim, img_dim)
-            lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
+            # lat_cont = np.array(lat_cont).reshape(img_dim, img_dim)
+            # lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
 
-            # Plot the time of arrival contours
-            toa_conture = self.m.m.contourf(lon_cont, lat_cont, times_of_arrival, levels, zorder=3, \
-                latlon=True, cmap='viridis_r', alpha=0.5)
+            # # Plot the time of arrival contours
+            # toa_conture = self.m.m.contourf(lon_cont, lat_cont, times_of_arrival, levels, zorder=3, \
+            #     latlon=True, cmap='viridis_r', alpha=0.5)
 
             # # Add a color bar which maps values to colors
-            self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
+            #self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
 
         if setup.arrival_times_file != '':
             try:
@@ -2385,12 +2403,12 @@ class SolutionGUI(QMainWindow):
             self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
         
 
-        self.make_picks_top_graphs.removeWidget(self.make_picks_map_graph_canvas)
-        self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
-        self.make_picks_map_graph_canvas = FigureCanvas(fig)
-        self.make_picks_map_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)    
-        self.make_picks_map_graph_canvas.draw()
+        # self.make_picks_top_graphs.removeWidget(self.make_picks_map_graph_canvas)
+        # self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
+        # self.make_picks_map_graph_canvas = FigureCanvas(fig)
+        # self.make_picks_map_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        # self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)    
+        # self.make_picks_map_graph_canvas.draw()
         SolutionGUI.update(self)
 
         self.updatePlot(setup)
@@ -2453,8 +2471,12 @@ class SolutionGUI(QMainWindow):
         self.export_to_csv.clicked.connect(self.exportCSV)
         self.export_to_all_times.clicked.connect(self.exportToAllTimes)
 
+        self.station_marker = []
+        self.station_waveform = []
         for stn in self.stn_list:
             self.make_picks_station_choice.addItem("{:}-{:}".format(stn.network, stn.code))
+            self.station_marker.append(pg.ScatterPlotItem())
+            self.station_waveform.append(pg.PlotCurveItem())
 
         self.make_picks_station_choice.currentTextChanged.connect(self.navStats)
 
@@ -2466,21 +2488,174 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.scene().sigMouseClicked.connect(self.mouseClicked)
         pg.QtGui.QApplication.processEvents()
         # Plot all waveforms
-        plotAllWaveforms(self.dir_path, list(self.stn_list), setup, sounding, ax=self.station_ax)#, \
-            #waveform_window=self.waveform_window, difference_filter_all=setup.difference_filter_all)
-        try:
-            pass
-        #    self.make_picks_top_graphs.removeWidget(self.stattoolbar)
-        except:
-            pass
-        self.make_picks_top_graphs.removeWidget(self.make_picks_station_graph_canvas)
-        self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
-        self.make_picks_station_graph_canvas = FigureCanvas(fig)
-        self.make_picks_station_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        #self.stattoolbar = NavigationToolbar(self.make_picks_station_graph_canvas, self)
-        #self.make_picks_top_graphs.addWidget(self.stattoolbar)
-        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)    
-        self.make_picks_station_graph_canvas.draw()
+        ######################################################################################3
+
+        max_wave_value = 0
+        min_wave_value = np.inf
+        min_time = np.inf
+        max_time = 0
+
+        lats = []
+        lons = []
+        for i in range(len(self.stn_list)):
+            lats.append(self.stn_list[i].position.lat)
+            lons.append(self.stn_list[i].position.lon)
+
+
+        # Go though all stations and waveforms
+        bad_stats = []
+
+        for idx, stn in enumerate(self.stn_list):
+
+            sys.stdout.write('\rPlotting: {:} {:}              '.format(stn.network, stn.code))
+            sys.stdout.flush()
+            time.sleep(0.001)
+
+            mseed_file_path = os.path.join(self.dir_path, stn.file_name)
+
+            try:
+                
+                # Read the miniSEED file
+                if os.path.isfile(mseed_file_path):
+
+                    mseed = obspy.read(mseed_file_path)
+
+                else:
+                    bad_stats.append(idx)
+                    print('File {:s} does not exist!'.format(mseed_file_path))
+                    continue
+
+
+            except TypeError as e:
+                bad_stats.append(idx)
+                print('Opening file {:} failed with error: {:}'.format(mseed_file_path, e))
+                continue
+
+            # Find channel with BHZ, HHZ, or BDF
+
+            for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'BDF':
+                    stn.channel = 'BDF'
+                    stream = i
+
+            for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'BHZ':
+                    stn.channel = 'BHZ'
+                    stream = i
+
+            for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'HHZ':
+                    stn.channel = 'HHZ'
+                    stream = i
+
+            for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'EHZ':
+                    stn.channel = 'EHZ'
+                    stream = i
+
+            for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'SHZ':
+                    stn.channel = 'SHZ'
+                    stream = i
+
+            # Unpack miniSEED data
+            delta = mseed[stream].stats.delta
+            waveform_data = mseed[stream].data
+
+            # Extract time
+            start_datetime = mseed[stream].stats.starttime.datetime
+            end_datetime = mseed[stream].stats.endtime.datetime
+
+            stn.offset = (start_datetime - setup.fireball_datetime - datetime.timedelta(minutes=5)).total_seconds()
+
+            # Skip stations with no data
+            if len(waveform_data) == 0:
+                continue
+
+            # Apply the Kalenda et al. (2014) difference filter instead of Butterworth
+            if setup.difference_filter_all:
+
+                waveform_data = convolutionDifferenceFilter(waveform_data)
+
+            else:
+
+                ### BANDPASS FILTERING ###
+
+                # Init the butterworth bandpass filter
+                butter_b, butter_a = butterworthBandpassFilter(0.8, 5.0, 1.0/delta, order=6)
+
+                # Filter the data
+                waveform_data = scipy.signal.filtfilt(butter_b, butter_a, waveform_data)
+
+                # Average and subsample the array for quicker plotting (reduces 40Hz to 10Hz)
+                waveform_data = subsampleAverage(waveform_data, 4)
+                delta *= 4
+
+                ##########################
+
+
+            # Calculate the distance from the source point to this station (kilometers)
+            station_dist = greatCircleDistance(np.radians(setup.lat_centre), np.radians(setup.lon_centre), stn.position.lat_r, stn.position.lon_r)
+
+            # Construct time array, 0 is at start_datetime
+            time_data = np.arange(0, (end_datetime - start_datetime).total_seconds(), delta)
+
+            # Cut the waveform data length to match the time data
+            waveform_data = waveform_data[:len(time_data)]
+            time_data = time_data[:len(waveform_data)] + stn.offset
+            
+            # Detrend the waveform and normalize to fixed width
+            waveform_data = waveform_data - np.mean(waveform_data)
+
+            #waveform_data = waveform_data/np.percentile(waveform_data, 99)*2
+            waveform_data = waveform_data/np.max(waveform_data)*10
+
+            # Add the distance to the waveform
+            waveform_data += station_dist
+
+
+            # Cut the waveforms around the time of arrival, if the window for cutting was given.
+            if self.waveform_window is not None:
+
+                # Time of arrival
+                toa = station_dist/(setup.v_sound/1000) + setup.t0
+
+                # Cut the waveform around the time of arrival
+                crop_indices = (time_data >= toa - self.waveform_window/2 - 300) & (time_data <= toa + self.waveform_window/2 - 300)
+                time_data = time_data[crop_indices] + 300 #HARD CODED we start 5 min before!
+                waveform_data = waveform_data[crop_indices]
+                
+
+                # Skip plotting if array empty
+                if len(time_data) == 0:
+                    continue
+
+            # Replace all NaNs with 0s
+            waveform_data = np.nan_to_num(waveform_data, 0)
+            
+            max_time = np.max([max_time, np.max(time_data)])
+            min_time = np.min([min_time, np.min(time_data)])
+
+            # Keep track of minimum and maximum waveform values (used for plotting)
+            max_wave_value = np.max([max_wave_value, np.max(waveform_data)])
+            min_wave_value = np.min([min_wave_value, np.min(waveform_data)])
+            #if data_list[idx][1].strip() not in setup.rm_stat: 
+                
+            # Plot the waveform on the the time vs. distance graph
+            self.station_waveform[idx].setData(waveform_data*1000, time_data, pen=(255, 255, 255))
+            self.make_picks_station_graph_canvas.addItem(self.station_waveform[idx])
+
+
+        toa_line_time = np.linspace(0, max_time, 10)
+
+        # Plot the constant sound speed line (assumption is that the release happened at t = 0)
+        self.make_picks_station_graph_canvas.plot((toa_line_time)*setup.v_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
+
+        print('')
+        
+        self.make_picks_station_graph_canvas.setLabel('bottom', "Distance", units='m')
+        self.make_picks_station_graph_canvas.setLabel('left', "Time", units='s')
+
         SolutionGUI.update(self)
 
     def keyPressEvent(self, event):
@@ -2650,6 +2825,8 @@ class SolutionGUI(QMainWindow):
         """
         setup = self.setup
 
+        consts = Constants()
+
         # Clear waveform axis
         self.make_picks_waveform_canvas.clear()
 
@@ -2716,6 +2893,8 @@ class SolutionGUI(QMainWindow):
         # Plot the waveform
         self.make_picks_waveform_canvas.plot(x=time_data, y=waveform_data, pen='w')
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
+        self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
+        self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
 
         for pick in self.pick_list:
             if pick.stn_no == self.current_station:
@@ -2725,6 +2904,12 @@ class SolutionGUI(QMainWindow):
         # Initialize variables
         b_time = 0
 
+        # Extract coordinates of the reference station
+        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+
+        # Calculate ground distances
+        stn.stn_ground_distance(ref_pos)
+
         print('####################')
         print("Current Station: {:}-{:}".format(stn.network, stn.code))
         print("Channel: {:}".format(stn.channel))
@@ -2733,21 +2918,32 @@ class SolutionGUI(QMainWindow):
         # If manual ballistic search is on
         if setup.show_ballistic_waveform:
 
+            # az = np.radians(setup.azim)
+            # ze = np.radians(setup.zangle)
             # Plot Ballistic Prediction
             b_time = self.arrTimes[0, self.current_station, 0, 0]
-            
+            # sounding = parseWeather(setup, consts)
+            # p = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
+            #                 ze, setup, sounding, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
             # check if nan
             if b_time == b_time:
-                self.make_picks_waveform_canvas.plot(x=[b_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen='b', label='Ballistic')
+                self.make_picks_waveform_canvas.plot(x=[b_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), width=2) , label='Ballistic')
                 print("Ballistic Arrival: {:.3f} s".format(b_time))
             else:
                 print("No Ballistic Arrival")
 
             for i in range(setup.perturb_times):
                 if i >= 1:
+                    if i == 1:
+                        data, remove = chauvenet(self.arrTimes[:, self.current_station, 0, 0])
+                        try:
+                            print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                            print('Removed points {:}'.format(remove))
+                        except ValueError:
+                            print('No Perturbation Arrivals')
                     try:
                         self.make_picks_waveform_canvas.plot(x=[self.arrTimes[i, self.current_station, 0, 0]]*2, \
-                         y=[np.min(waveform_data), np.max(waveform_data)], alpha=0.3, pen='b')
+                         y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), style=QtCore.Qt.DotLine) )
                     except:
                         pass
             # Fragmentation Prediction
@@ -2759,11 +2955,12 @@ class SolutionGUI(QMainWindow):
 
                 f_time = self.arrTimes[0, self.current_station, 1, i]
             #     # check if nan
-                print('##################')
-                print('Fragmentation {:} ({:} m)'.format(i+1, line[2]))
+
+                print('++++++++++++++++')
+                print('Fragmentation {:} ({:6.2f} km)'.format(i+1, line[2]/1000))
                 if f_time == f_time:
                     # Plot Fragmentation Prediction
-                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=self.pick_group_colors[(i+1)%4], label='Fragmentation')
+                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
                     stn.stn_distance(position(line[0], line[1], line[2]))
                     print("Range: {:7.3f} km".format(stn.distance/1000))                   
                     print('Arrival: {:.3f} s'.format(f_time))
@@ -2773,19 +2970,23 @@ class SolutionGUI(QMainWindow):
 
                 else:
                     pass
-                    print('No Fragmentation {:} ({:} m) Arrival'.format(i+1, line[2]))
+                    print('No Fragmentation {:} ({:6.2f} m) Arrival'.format(i+1, line[2]))
 
                 for j in range(setup.perturb_times):
                     if j >= 1:
-                        try:
+                        #try:
                             if j == 1:
-                                print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(self.arrTimes[:, self.current_station, 1, i]), \
-                                    np.nanmax(self.arrTimes[:, self.current_station, 1, i])))
+                                data, remove = chauvenet(self.arrTimes[:, self.current_station, 1, i])
+                                try:
+                                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                                    print('Removed points {:}'.format(remove))
+                                except ValueError:
+                                    print('No Perturbation Arrivals')
                             self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
-                                 np.max(waveform_data)], alpha=0.3,\
-                                 pen=self.pick_group_colors[(i+1)%4], zorder=3)
-                        except:
-                            pass
+                                np.max(waveform_data)], alpha=0.3,\
+                                pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], style=QtCore.Qt.DotLine), zorder=3)
+                        #except:
+                        #    pass
 
 
     def markStationWaveform(self):
@@ -2866,6 +3067,25 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_station_choice.setCurrentIndex(self.current_station)
 
+        for stn_mk in self.station_marker:
+            if stn_mk != self.station_marker[self.current_station]:
+                stn_mk.setPen((255, 255, 255))
+                stn_mk.setBrush((255, 255, 255))
+                stn_mk.setZValue(0)
+            else:
+                stn_mk.setPen((255, 0, 0))
+                stn_mk.setBrush((255, 0, 0))
+                stn_mk.setZValue(1)
+
+        for stn_mk in self.station_waveform:
+            if stn_mk != self.station_waveform[self.current_station]:
+                stn_mk.setPen((255, 255, 255))
+                stn_mk.setZValue(0)
+            else:
+                stn_mk.setPen((255, 0, 0))
+                stn_mk.setZValue(1)
+
+
         # Plot the waveform from the current station
         if draw_waveform:
             self.drawWaveform()
@@ -2942,11 +3162,15 @@ class SolutionGUI(QMainWindow):
         make_picks_master.addLayout(self.make_picks_top_graphs)
         make_picks_master.addLayout(self.make_picks_bottom_graphs)
 
-        self.make_picks_station_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
-        self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
-        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_canvas)
-        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)
+        self.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
+        self.make_picks_station_graph_canvas = self.make_picks_station_graph_view.addPlot()
+        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_view)
+        self.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+        self.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
+        self.make_picks_map_graph_canvas = self.make_picks_map_graph_view.addPlot()
+        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_view)
+        self.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
         self.make_picks_waveform_view = pg.GraphicsLayoutWidget()
         self.make_picks_waveform_canvas = self.make_picks_waveform_view.addPlot()
@@ -3570,7 +3794,8 @@ class SolutionGUI(QMainWindow):
             max_search: [list] max lat, lon and height of the search area
         """
 
-
+        trace = results.trace
+        w = results.w
         r = results.r
         x_opt = results.x_opt
         sup = results.sup
@@ -3599,11 +3824,30 @@ class SolutionGUI(QMainWindow):
             # Add station names
             ax.text(xstn[h, 0], xstn[h, 1], xstn[h, 2],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
 
+            if not np.isnan(r[h]):
+                xline = []
+                yline = []
+                zline = []
+                try:
+                    for line in trace[h]:
+                        line[0], line[1], line[2] = loc2Geo(xstn[h, 0], xstn[h, 1], xstn[h, 2], [line[0], line[1], line[2]])
+
+                        xline.append(line[0])
+                        yline.append(line[1])
+                        zline.append(line[2])
+                except:            
+                    if not perturb:
+                        self.errorMessage('Cannot trace rays!', 2)
+                        return None
+
+                ax.plot3D(xline, yline, zline, 'white')
+
         # Add stations with color based off of residual
         ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(r), marker='^', cmap='viridis_r', depthshade=False)
 
         # Add point and label
         ax.scatter(x_opt[0], x_opt[1], x_opt[2], c = 'r', marker='*')
+
         ax.text(x_opt[0], x_opt[1], x_opt[2], '%s' % ('Supracenter'), zorder=1, color='w')
 
         if not manual:
@@ -3620,6 +3864,7 @@ class SolutionGUI(QMainWindow):
                             float(setup.search_height[0]), float(setup.search_height[1])]
         x_min, y_min = search[0], search[2]
         x_max, y_max = search[1], search[3]
+
 
         img_dim = 30
 
@@ -3666,7 +3911,7 @@ class SolutionGUI(QMainWindow):
         # Add a color bar which maps values to colors
         plt.colorbar(toa_conture, ax=ax)
         #b.setLabel('Time of arrival (s)')
-
+        plt.autoscale()
         if manual:
             try:
                 self.plots.removeWidget(self.threelbar)
@@ -3710,6 +3955,7 @@ class SolutionGUI(QMainWindow):
         
         x_opt = results_arr.x_opt
         resid = results_arr.r
+        trace = results_arr.trace
 
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
@@ -3721,6 +3967,27 @@ class SolutionGUI(QMainWindow):
 
             # Add station names
             ax.text(xstn[h, 0], xstn[h, 1],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
+
+            if not np.isnan(resid[h]):
+                
+                xline = []
+                yline = []
+                zline = []
+                try:
+                    for line in trace[h]:
+
+                        #line[0], line[1], line[2] = loc2Geo(xstn[h, 0], xstn[h, 1], xstn[h, 2], [line[0], line[1], line[2]])
+
+                        xline.append(line[0])
+                        yline.append(line[1])
+                        zline.append(line[2])
+
+                    ax.plot(xline, yline, c='w')
+                except:            
+                    if not perturb:
+                        self.errorMessage('Cannot trace rays!', 2)
+                        return None
+                             
 
         # Add point and label
         ax.scatter(x_opt[0], x_opt[1], c = 'r', marker='*', s=21)

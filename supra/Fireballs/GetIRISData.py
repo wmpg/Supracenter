@@ -273,7 +273,7 @@ def writeStationAndWaveformsListFile(data_list, file_path):
 
 
 
-def readStationAndWaveformsListFile(file_path, rm_stat=[]):
+def readStationAndWaveformsListFile(file_path, rm_stat=[], debug=False):
     """ Reads the list of stations and miniSEED file names to disk. """
 
     if os.path.isfile(file_path):
@@ -301,7 +301,10 @@ def readStationAndWaveformsListFile(file_path, rm_stat=[]):
                 if station_code not in rm_stat:
                     stn_list.append(stn)
                 else:
-                    print('Excluding station: {:}'.format(network + '-' + station_code))
+                    if debug:
+                        sys.stdout.write('\rExcluding station: {:}   '.format(network + '-' + station_code))
+                        sys.stdout.flush()
+            print('')
 
             return stn_list
 

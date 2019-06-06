@@ -33,6 +33,7 @@ from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterw
 from supra.Fireballs.SeismicTrajectory import latLon2Local, local2LatLon, timeOfArrival, waveReleasePoint, waveReleasePointWinds, \
     parseWeather, Constants
 from supra.Fireballs.Program import configRead, configParse, position, station
+from supra.Supracenter.Utils.Formatting import loadingBar
 from supra.Supracenter.angleConv import geo2Loc, loc2Geo
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
@@ -69,7 +70,7 @@ def trajCalc(setup):
     traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
 
     # backwards propegate the trajectory until it reaches 100000 m up
-    n = 100000/traj[2]
+    n = 85920/traj[2]
 
     # B is the intersection between the trajectory vector and the ground
     A = n*traj
@@ -78,9 +79,9 @@ def trajCalc(setup):
     B = np.array(loc2Geo(setup.lat_centre, setup.lon_centre, 0, B))
     A = np.array(loc2Geo(setup.lat_centre, setup.lon_centre, 0, A))
 
-    print("Created Trajectory between A and B:")
-    print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
-    print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
+    # print("Created Trajectory between A and B:")
+    # print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
+    # print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
 
     A[2] /= 1000
     B[2] /= 1000
@@ -156,7 +157,10 @@ def calcAllTimes(stn_list, setup, sounding):
             sounding_u = []
             sounding_l = []
 
-        d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
+        if setup.show_ballistic_waveform and setup.show_fragmentation_waveform:
+            d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
+        else:
+            d_time = (setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
         count = 0
 
         #number of perturbations
@@ -190,9 +194,8 @@ def calcAllTimes(stn_list, setup, sounding):
                             bDist = [0]*no_of_frags
                             for i in range(no_of_frags):
                                 count += 1
-                                sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
-                                sys.stdout.flush()
-                                time.sleep(0.001)
+                                loadingBar("Calculating All Times", count, d_time)
+
                                 #need filler values to make this a numpy array with fragmentation
                                 if i == 0:
 
@@ -207,17 +210,21 @@ def calcAllTimes(stn_list, setup, sounding):
                                     # Station location in local coordinates
                                     # xx, yy, zz  = geo2Loc(lat0, lon0, elev0, \
                                     #                             stat_lat, stat_lon, stat_elev)
-
                                     #xx, yy, zz = rotateVector(np.array([xx, yy, zz]), np.array([0, 0, 1]), -np.pi/2)
 
                                     # Time to travel from trajectory to station
                                     b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
-                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
+                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding=sounding_p, travel=False, fast=True, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev], theo=True)# + setup.t 
                                     S = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
-                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding_p, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
+                                                               np.radians(setup.azim), np.radians(ZE), setup, sounding_p, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
+                                    
+                                    print(S)
+                                    # S = waveReleasePoint([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
+                                    #                             np.radians(setup.azim), np.radians(ZE), 310)
                                     # Distance from the source location to the station
                                     #b_dist = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
-                                    bDist[i] = ((S[0] - stn.position.x)**2 + (S[1] - stn.position.y)**2 + (S[2] - stn.position.z)**2)**0.5
+                                    #bDist[i] = ((S[0] - stn.position.x)**2 + (S[1] - stn.position.y)**2 + (S[2] - stn.position.z)**2)**0.5
+                                    bDist[i] = S[2]
                                     bTimes[i] = b_time
                                 else:
                                     bDist[i] = np.nan

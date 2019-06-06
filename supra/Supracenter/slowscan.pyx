@@ -18,7 +18,7 @@ ctypedef np.float64_t FLOAT_TYPE_t
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, precision=1e-25, tol=1):
+def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, precision=1e-25, tol=1):
 
     # This function should be called for every station
     # Original Author: Wayne Edwards
@@ -45,7 +45,6 @@ def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
     # Switch to turn off winds
     if not wind:
         z_profile[:, 2] = 0
-
 
     ### Initialize variables ###
     # Boolean found
@@ -158,7 +157,7 @@ def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
                 x = supra_pos[0] + np.cos(Phi)*X
                 y = supra_pos[1] + np.sin(Phi)*X
 
-            trace.append([x[k, l], y[k, l], z[i + 1]])
+            trace.append([x[k, l] - detec_pos[0], y[k, l] - detec_pos[1], z[n_layers - i - 1]])
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((x - detec_pos[0])**2 + (y - detec_pos[1])**2)) 
@@ -220,7 +219,7 @@ def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
                     x = supra_pos[0] + np.cos(Phi)*X
                     y = supra_pos[1] + np.sin(Phi)*X
 
-                trace.append([x[k, l], y[k, l], z[i + 1]])
+                trace.append([x[k, l] - detec_pos[0], y[k, l] - detec_pos[1], z[n_layers - i - 1]])
             #trace.append([supra_pos[0], supra_pos[1], supra_pos[2]])
                 # print([x[k, l], y[k, l], z_profile[i, 0]])
                 # pass on the azimuth & ray parameter information for use in traveltime calculation
@@ -231,7 +230,7 @@ def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
             # reduce evenly in both directions
             n_phi = n_theta
 
-            # General Case: central take off angle is between 0 & 90 degrees
+            # General Case: central take off angle is between 90 & 180 degrees
             if ((theta[k] != np.pi/2) and (theta[k] != np.pi)):
 
                 # Respace net around best value
@@ -247,18 +246,18 @@ def slowscan(detec_pos, supra_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
                
 
             # Case: central takeoff angle is at 180 degrees (vertical)
-            elif (theta[k] == M_PI):
+            elif (abs(theta[k] - np.pi) > tol):
                 
                 # Respace net around best value
                 # Higher accuracy in n_phi helps here
-                phi = np.linspace(0, 2*M_PI - dphi, n_phi) 
+                phi = np.linspace(0, 2*np.pi - dphi, n_phi) 
                 dphi = dphi/n_phi
                 
                 theta = np.linspace(theta[k] - dtheta, theta[k], n_theta)                      
                 dtheta = dtheta/n_theta
 
             # Case: central takeoff angle is at 90 degrees (horizontal)
-            elif (theta[k] == M_PI_2):
+            elif (abs(theta[k] - np.pi/2) > tol):
 
                 # Respace net around best value
                 phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)         

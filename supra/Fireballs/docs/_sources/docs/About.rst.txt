@@ -8,7 +8,7 @@ About
 =====================
 
 Denis Vida, Peter Brown, Luke McFadden
-(Manual Last Changed May 23, 2019)
+(Manual Last Changed June 6, 2019)
 
 Supracenter updated from Wayne Edwards (2003)
 Thanks to Gunter Stober for advice on atmospheric profiles

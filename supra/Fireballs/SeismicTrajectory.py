@@ -9,6 +9,7 @@ from __future__ import print_function, division, absolute_import
 import sys
 import os
 import multiprocessing
+import traceback
 
 import copy
 import numpy as np
@@ -145,6 +146,7 @@ def parseWeather(setup, consts, time=0):
                 sounding = storeNetCDFECMWF(setup.sounding_file, setup.x0, setup.y0, consts, start_time=start_time)
             except:
                 print("ERROR: Unable to use weather file, or setup.start_datetime/setup.atm_hour is set up incorrectly. Try checking if sounding_file exists")
+                print(traceback.format_exc())
                 exit()
 
         
@@ -242,7 +244,7 @@ def wrapRaDec(ra, dec):
 
 
 
-def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], ref_loc=[0, 0, 0], travel=False, fast=False):
+def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], ref_loc=[0, 0, 0], travel=False, fast=False, theo=False):
     """ Calculate the time of arrival at given coordinates in the local coordinate system for the given
         parameters of the fireball.
 
@@ -288,8 +290,13 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
             # travel from trajectory only
             ti = (dp*np.cos(beta))/setup.v_sound
         else:
-            # Calculate the time of arrival
-            ti = t0 - dt/v + (dp*np.cos(beta))/setup.v_sound
+            if theo:
+                # Calculate the time of arrival
+                ti = t0 + dt/v + (dp*np.cos(beta))/setup.v_sound
+            else:
+                # Calculate the time of arrival
+                ti = t0 - dt/v + (dp*np.cos(beta))/setup.v_sound   
+
 
     # Winds
     else:
@@ -301,34 +308,41 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
             print("CODE WARNING: setup.fast_ballistic not found, setting to false")
             setup.fast_ballistic = False
 
-        if fast:
-            # Faster, no-winds solution
-            S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
-        else:
-            if setup.fast_ballistic:
-                S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
-            else:
-                # Slow, winds solution
-                S = waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding, ref_loc)
+        # if fast:
+        #     # Faster, no-winds solution
+        #     S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
+        # else:
+        #     if setup.fast_ballistic:
+        #         S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
+        #     else:
+        #         # Slow, winds solution
+        S = waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding, ref_loc)
 
         # Detector location
         D = stat_coord
 
-        # Cut down atmospheric profile to the correct heights, and interp
-        zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, setup.weather_type, \
-                         [ref_loc[0], ref_loc[1], ref_loc[2]], copy.copy(sounding), convert=True)
+        try:
+            # Cut down atmospheric profile to the correct heights, and interp
+            zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, setup.weather_type, \
+                             [ref_loc[0], ref_loc[1], ref_loc[2]], copy.copy(sounding), convert=True)
 
-        # Time of arrival between the points with atmospheric profile
-        T, _, _ = cyscan(np.array(S), np.array(D), zProfile, wind=setup.enable_winds)
+            # Time of arrival between the points with atmospheric profile
+            T, _, _ = cyscan(np.array(S), np.array(D), zProfile, wind=setup.enable_winds)
 
-        if travel:
-            # travel from trajectory only
-            ti = T*np.cos(beta)
+            if travel:
+                # travel from trajectory only
+                ti = T*np.cos(beta)
 
-        else:
-            # Calculate time of arrival
-            ti = t0 -dt/v + T*np.cos(beta)
+            else:
+                if theo:
+                    # Calculate time of arrival
+                    ti = t0 +dt/v + T*np.cos(beta)
+                else:
+                    # Calculate time of arrival
+                    ti = t0 -dt/v + T*np.cos(beta)
 
+        except:
+            return np.nan
     return ti
 
 # methods for finding angle between two vectors
@@ -347,7 +361,7 @@ def loop(D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf,
 
     # Cut down atmospheric profile to the correct heights, and interp
     zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, weather_type, \
-                     [np.degrees(ref_loc[0]), np.degrees(ref_loc[1]), ref_loc[2]], sounding, convert=True)
+                     [np.degrees(ref_loc[0]), np.degrees(ref_loc[1]), ref_loc[2]], copy.copy(sounding), convert=True)
 
     # Time of arrival between the points with atmospheric profile
     T[i], az[i], tf[i] = cyscan(np.array(S), np.array(D), zProfile, wind=enable_winds)
@@ -357,9 +371,10 @@ def loop(D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf,
     tf[i] = np.radians(tf[i])
 
     #v = np.array([-np.cos(az[i])*np.sin(tf[i]), np.sin(az[i])*np.sin(tf[i]), -np.cos(tf[i])])
-    v = np.array([np.sin(az[i])*np.sin(tf[i]), np.cos(az[i])*np.sin(tf[i]), -np.cos(tf[i])])
+    v = np.array([np.sin(az[i])*np.sin(tf[i]), np.cos(az[i])*np.sin(tf[i]), np.cos(tf[i])])
 
     prop_mag[i] = np.dot(u, v)
+
 
     return prop_mag[i]
 
@@ -367,6 +382,7 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
     GRID_SPACE = 100
+    ANGLE_TOL = 0.5 #deg
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count()) 
 
@@ -387,7 +403,9 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     # define line top boundary
     top_point = ground_point - scale*u
 
-    ds = scale / GRID_SPACE
+
+    ds = scale / (GRID_SPACE)
+
     points = []
 
     for i in range(GRID_SPACE + 1):
@@ -419,12 +437,21 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
 
     # Minimize angle to 90 degrees from trajectory
     prop_mag = np.absolute(prop_mag)
+    prop_mag2 = copy.copy(prop_mag)
+
+    for ii, element in enumerate(prop_mag):
+        if element > np.sin(np.radians(ANGLE_TOL)):
+            prop_mag[ii] = np.nan
+
     try:
         best_indx = np.nanargmin(prop_mag)
+        #best_indx = np.nanargmax(diff)
     except:
-        print('not good')
-        best_indx = 0
-
+        return np.array([np.nan, np.nan, np.nan])
+    # for ii in range(len(prop_mag2)):
+    #     plt.scatter((top_point + ii*ds*u)[2], prop_mag2[ii])
+    # plt.show()
+    print((top_point + best_indx*ds*u)[2])
     # Return point
     return (top_point + best_indx*ds*u)
 

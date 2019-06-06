@@ -97,6 +97,9 @@ def SPPT(x, h, r):
 
     return X
 
+def Gaussian():
+    pass
+
 def temporal(x, x_l, x_u, r):
     """ Returns a variable x, randomly distrubuted between its temporal neighbours
         r = [-0.5, 0.5]
@@ -181,6 +184,66 @@ def expandSounding(sounding):
 
     return lats, lons, t, u, v, level
 
+def readEnsembleFile(setup, lat, lon, ensemble_file, ensemble_no, line=False):
+    """ reads a ensemble spread file from ECMWF
+    """
+    # Read the file
+
+    dataset = Dataset(ensemble_file, "r+", format="NETCDF4")
+
+    lat = roundToNearest(lat, 0.5)
+    lon = roundToNearest(lon, 0.5)
+
+    longitude = np.array(dataset.variables['longitude'])
+    latitude = np.array(dataset.variables['latitude'])
+
+    lon_index = int(np.where(longitude==lon)[0])
+    lat_index = int(np.where(latitude==lat)[0])
+
+    longitude = np.array(dataset.variables['longitude'][lon_index-10:lon_index+11])
+    latitude = np.array(dataset.variables['latitude'][lat_index-10:lat_index+11])
+
+    level = np.array(dataset.variables['level'])
+    #pressure 1 - 1000 hPa , non-linear
+    
+    time = np.array(dataset.variables['time'])
+    #not known
+
+    start_time = int((setup.fireball_datetime.hour + np.round(setup.fireball_datetime.minute/60))%24)//3
+
+    if line:
+        # time, (number), level, lat, lon
+        temperature = np.array(dataset.variables['t'][start_time, ensemble_no, :, lat_index, lon_index])
+        x_wind = np.array(dataset.variables['u'][start_time, ensemble_no, :, lat_index, lon_index])
+        y_wind = np.array(dataset.variables['v'][start_time, ensemble_no, :, lat_index, lon_index])
+    else:
+        # time, (number), level, lat, lon
+        temperature = np.array(dataset.variables['t'][start_time, ensemble_no, :, lat_index-10:lat_index+11, lon_index-10:lon_index+11])
+        x_wind = np.array(dataset.variables['u'][start_time, ensemble_no, :, lat_index-10:lat_index+11, lon_index-10:lon_index+11])
+        y_wind = np.array(dataset.variables['v'][start_time, ensemble_no, :, lat_index-10:lat_index+11, lon_index-10:lon_index+11])
+    
+        # Repeat axis since spread has a resolution of 0.5 while the base data has a resolution of 0.25
+        temperature = np.repeat(temperature, 2, axis=1)
+        temperature = np.repeat(temperature, 2, axis=2)
+        temperature = temperature[:, 0:-1, 0:-1]
+
+        x_wind = np.repeat(x_wind, 2, axis=1)
+        x_wind = np.repeat(x_wind, 2, axis=2)
+        x_wind = x_wind[:, 0:-1, 0:-1]
+
+        y_wind = np.repeat(y_wind, 2, axis=1)
+        y_wind = np.repeat(y_wind, 2, axis=2)
+        y_wind = y_wind[:, 0:-1, 0:-1]
+
+    temperature = np.flip(temperature, axis=0)
+    x_wind = np.flip(x_wind, axis=0)
+    y_wind = np.flip(y_wind, axis=0)
+
+    dataset.close()
+
+    return temperature, x_wind, y_wind
+
+
 def readSpreadFile(setup, lat, lon, spread_file, line):
     """ reads a ensemble spread file from ECMWF
     """
@@ -239,7 +302,7 @@ def readSpreadFile(setup, lat, lon, spread_file, line):
 
     return temperature, x_wind, y_wind
 
-def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='', lat=0, lon=0, line=False):
+def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='', lat=0, lon=0, line=False, ensemble_file='', ensemble_no=0):
     ''' Takes in a sounding profile, and a method, and returns a perturbed sounding profile using that method
 
       inputs:
@@ -289,6 +352,11 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
         U = spread_r(u, spread_u)
         V = spread_r(v, spread_v)
 
+    elif method == 'ensemble':
+        T, U, V = readEnsembleFile(setup, lat, lon, ensemble_file, ensemble_no)
+        T = np.flipud(T)
+        U = np.flipud(U)
+        V = np.flipud(V)
     else:
         #print('WARNING: Unrecognized perturbation type, using SPPT')
         return None

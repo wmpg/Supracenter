@@ -12,6 +12,7 @@
     <script type="text/javascript" src="../_static/underscore.js"></script>
     <script type="text/javascript" src="../_static/doctools.js"></script>
     <script type="text/javascript" src="../_static/language_data.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Usage" href="Usage.html" />
@@ -34,6 +35,22 @@
             
   <div class="section" id="atmosphere">
 <h1>Atmosphere<a class="headerlink" href="#atmosphere" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="effect-of-weather-on-rays">
+<h2>Effect of Weather on Rays<a class="headerlink" href="#effect-of-weather-on-rays" title="Permalink to this headline">¶</a></h2>
+<div class="math notranslate nohighlight">
+\[c_s = \sqrt{\frac{\gamma R T}{M_0}}\]</div>
+<div class="math notranslate nohighlight">
+\[c_{eff} = c_s + \hat{n} \cdot \vec{w}\]</div>
+</div>
+<div class="section" id="atmospheric-data-instructions">
+<h2>Atmospheric Data Instructions<a class="headerlink" href="#atmospheric-data-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required. See netCDFconv.py for more details.</p>
+</div>
+<p>Reading the wrong file may cause the program to freeze, such as trying to read UKMO .nc file as an ECMWF .nc file. Killing the program while it is reading the data may corrupt the file (while the message ‘Converting weather data. This may take a while…’ is in the terminal).</p>
+<p>Constants used in converting weather values can be changed in supra/Fireballs/SeismicTrajectory.ini</p>
+</div>
 <div class="section" id="setting-up-atmospheric-fetching">
 <h2>Setting Up Atmospheric Fetching<a class="headerlink" href="#setting-up-atmospheric-fetching" title="Permalink to this headline">¶</a></h2>
 <p>Setting up atmospheric fetching is a one-time setup which will allow data to be downloaded from the Copernicus Climate Change Store automatically.</p>
@@ -42,6 +59,87 @@
 <p>Step 1: Needs to be done locally, since the url and key depend on the users login</p>
 <p>Step 2: Proceed as normal</p>
 <p>Step 3: Does not need to be done, the Fetch Atmosphere tab does this for you, and will request the data, and display it automatically.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Cancelling the program while it is using the weather data may corrupt it! Since these files are so large to download (usually between 1 and 6 GB), it is recommended to keep a copy of the weather file on your computer, just in case!</p>
+</div>
+</div>
+<div class="section" id="ukmo-instructions-manual-download">
+<h2>UKMO Instructions - Manual Download<a class="headerlink" href="#ukmo-instructions-manual-download" title="Permalink to this headline">¶</a></h2>
+<p>Downloadable files can be found here:
+<a class="reference external" href="http://data.ceda.ac.uk/badc/ukmo-assim/">http://data.ceda.ac.uk/badc/ukmo-assim/</a></p>
+<p>An account will need to be created in order to access files</p>
+<p>UKMO data is found as a .pp file on the CEDA site</p>
+<p>Supracenter only handles .nc files, so the file needs to be converted.</p>
+<p>—CONVERT .PP TO .NC————————————————-
+Download xConv1.94 &lt;replace 1.94 with the current version number&gt;
+<a class="reference external" href="http://cms.ncas.ac.uk/documents/xconv/">http://cms.ncas.ac.uk/documents/xconv/</a>
+and extract xconv1.94 and convsh1.94. Create a symbolic link to convsh:</p>
+<p>Terminal:
+ln -s xconv1.94 convsh1.94</p>
+<p>In the folder with xconv and convsh, add conv2nc.tcl and runXconv.bat from the xconv_scripts file. Other
+example scripts can be found here: <a class="reference external" href="http://cms.ncas.ac.uk/documents/xconv/">http://cms.ncas.ac.uk/documents/xconv/</a></p>
+<p>After this setup, .pp files in the folder can be converted to .nc files with the command:
+(Navigate to the folder)</p>
+<p>Terminal:
+./convsh1.94 ./conv2nc.tcl -i &lt;input file.pp&gt; -o &lt;output file.nc&gt;
+———————————————————————-</p>
+<p>Indicate in the .ini where the .nc file is, and the UKMO data can now be read by Supracenter</p>
+<p>Note: killing the program while reading a .nc file WILL corrupt the file</p>
+<p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
+</div>
+<div class="section" id="ecmwf-instructions-script-download">
+<h2>ECMWF Instructions - Script Download<a class="headerlink" href="#ecmwf-instructions-script-download" title="Permalink to this headline">¶</a></h2>
+<p>Create an account with ECMWF</p>
+<p>Follow the instructions given:
+<a class="reference external" href="https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI">https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI</a></p>
+<p>Follow the instructions given up to before making the script, the script is in mainmenu.py:
+<a class="reference external" href="https://software.ecmwf.int/wiki/display/CKB/How+to+download+ERA5+data+via+the+ECMWF+Web+API">https://software.ecmwf.int/wiki/display/CKB/How+to+download+ERA5+data+via+the+ECMWF+Web+API</a></p>
+<p>Change the ECMWF script in mainmenu.py as needed, indicate the hour of the weather profile needed
+atm_hour is the hour that will be downloaded, if it is available.
+grid_size specifies the spatial resolution of the weather data from ECMWF</p>
+<p>Note: Automatic data retrival may not work for older files</p>
+</div>
+<div class="section" id="merra-2-instructions-script-download">
+<h2>MERRA-2 Instructions - Script Download<a class="headerlink" href="#merra-2-instructions-script-download" title="Permalink to this headline">¶</a></h2>
+<p>Create an account:
+<a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
+<p>Link the database with your account:
+<a class="reference external" href="https://disc.gsfc.nasa.gov/earthdata-login">https://disc.gsfc.nasa.gov/earthdata-login</a></p>
+<p>Enter your username and password into fetchMERRA.py</p>
+<p>Specify in the .ini where the file is and the name of the file, indicate the hour of the weather profile needed.
+atm_hour is the hour that will be downloaded, if it is available.</p>
+<p>Note: Automatic data retrival may not work for older files</p>
+</div>
+<div class="section" id="merra-2-instructions-manual-download">
+<h2>MERRA-2 Instructions - Manual Download<a class="headerlink" href="#merra-2-instructions-manual-download" title="Permalink to this headline">¶</a></h2>
+<p>Create an account:
+<a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
+<p>Link the database with your accout:
+<a class="reference external" href="https://disc.gsfc.nasa.gov/earthdata-login">https://disc.gsfc.nasa.gov/earthdata-login</a></p>
+<p>Download the data from the site:
+<a class="reference external" href="https://disc.gsfc.nasa.gov/datasets/M2I3NVASM_V5.12.4/summary?keywords=%22MERRA-2%22">https://disc.gsfc.nasa.gov/datasets/M2I3NVASM_V5.12.4/summary?keywords=%22MERRA-2%22</a></p>
+<p>Go to “subset/get data” and specify what area data is needed. Make sure the file type is HDF
+and the variables contain at least “air_temperature”, “northward_wind”, “eastward_wind”, and “mid_layer_heights”</p>
+<p>Specify in the .ini where the file is and the name of the file</p>
+<p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
+</div>
+<div class="section" id="custom-atmospheric-data">
+<h2>Custom Atmospheric Data<a class="headerlink" href="#custom-atmospheric-data" title="Permalink to this headline">¶</a></h2>
+<p>Create a custom .txt file containing the data, separated by spaces.</p>
+<p>There must be at least two rows for the program to be able to run.</p>
+<div class="section" id="the-format-of-the-txt-file-should-be">
+<h3>The format of the .txt file should be:<a class="headerlink" href="#the-format-of-the-txt-file-should-be" title="Permalink to this headline">¶</a></h3>
+<p>header
+elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north due east)
+————————————–</p>
+<p>Specify in the .ini where the file is.</p>
+</div>
+</div>
+<div class="section" id="isotropic-atmospheric-data">
+<h2>Isotropic Atmospheric Data<a class="headerlink" href="#isotropic-atmospheric-data" title="Permalink to this headline">¶</a></h2>
+<p>No file is required for an isotropic profile.</p>
+<p>The speed_of_sound variable must be set, and the program will make a custom atmospheric dataset using the given speed of sound.</p>
 <div class="toctree-wrapper compound">
 </div>
 </div>
@@ -69,10 +167,22 @@
 <li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Atmosphere</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#atmospheric-data-instructions">Atmospheric Data Instructions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ukmo-instructions-manual-download">UKMO Instructions - Manual Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#ecmwf-instructions-script-download">ECMWF Instructions - Script Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#merra-2-instructions-script-download">MERRA-2 Instructions - Script Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#merra-2-instructions-manual-download">MERRA-2 Instructions - Manual Download</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-atmospheric-data">Custom Atmospheric Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
 </ul>
 
 <div class="relations">

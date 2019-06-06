@@ -244,16 +244,18 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
 
     search = [float(setup.search_area[0]),float(setup.search_area[1]), float(setup.search_area[2]), float(setup.search_area[3]),\
                             float(setup.search_height[0]), float(setup.search_height[1])]
+
     ref_pos = setup.ref_pos
     output_name = setup.working_directory
     single_point = setup.manual_fragmentation_search
-    ref_time = setup.start_datetime
+    ref_time = setup.fireball_datetime
 
     # try:
     #     setup.restricted_time = setup.restricted_time.hour*3600 + setup.restricted_time.minute*60 \
     #                 + setup.restricted_time.second + setup.restricted_time.microsecond/1e6
     # except:
     #     pass
+
     if setup.enable_restricted_time:
         kotc = setup.restricted_time
     else:
@@ -342,12 +344,17 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
         x_opt = np.asarray(geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, single_point[0], single_point[1], single_point[2]))
 
     # Get results for current Supracenter
-    time3D, az, tf, r, motc, sotc = outputWeather(n_stations, x_opt, stns, setup, consts, \
+    time3D, az, tf, r, motc, sotc, trace = outputWeather(n_stations, x_opt, stns, setup, consts, \
                                                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, output_name, s_name, kotc, w)
+
+    for ii, element in enumerate(time3D):
+        if np.isnan(element):
+            w[ii] = 0
+            sotc[ii] = 0
 
     # Find error for manual searches
     if (single_point != [None, None, None, None]):
-        print(w)
+
         f_opt = np.dot(w, np.absolute(sotc - np.dot(w, sotc)/nwn)**setup.fit_type)/nwn
 
     # x, y distance from Supracenter to each station
@@ -405,6 +412,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     results = Results()
 
     results.r = r
+    results.w = w
     results.x_opt = x_opt
     results.f_opt = f_opt
     results.sup = sup
@@ -417,6 +425,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     results.sotc = sotc
     results.kotc = kotc
     results.otc = otc
+    results.trace = trace
 
     return results
 

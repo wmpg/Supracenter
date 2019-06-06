@@ -17,6 +17,7 @@ def readAllTimes(file_name, dists_name=[], typ=4, stn_list=[]):
     # titles = ['lat: 49.5 lon: 10.0', 'lat: 50.5 lon: 10.0', 'lat: 49.0 lon: 10.0', 'lat: 49.5 lon: 9.5', 'lat: 49.5 lon: 10.5']
     c = ['r', 'y', 'b', 'g', 'k']
     allTimes = np.load(file_name)
+    allDists = np.load(dists_name)
     #print(allTimes.shape)
     if typ == 6:
         plt.style.use('dark_background')
@@ -31,7 +32,7 @@ def readAllTimes(file_name, dists_name=[], typ=4, stn_list=[]):
                 for j in range(len(velocity_list)):
                     print("V = {:} km/s".format(velocity_list[j]))
                     print(allTimes[0, ii, 0, ze_i, j])
-                    #print(allDists[0, ii, 0, ze_i, j])
+                    print(allDists[0, ii, 0, ze_i, j])
                 plt.plot(velocity_list, allTimes[0, ii, 0, ze_i, :] - (allTimes[0, ii, 0, ze_i, 2] + allTimes[0, ii, 0, ze_i, 3])/2, label='Zenith: {:}'.format(ze))
                 plt.plot([11, 31], [0, 0], 'w--')
             ax.set_xlabel('Average Velocity (km/s)')
