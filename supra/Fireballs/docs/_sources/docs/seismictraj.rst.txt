@@ -5,7 +5,7 @@
 
 
 Seismic Trajectory
-******************
+------------------
 
 Functional, but not thouroughly tested, use at your own risk!
     

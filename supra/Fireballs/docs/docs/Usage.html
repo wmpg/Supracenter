@@ -1,37 +1,179 @@
 
-<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta charset="utf-8" />
-    <title>Usage &#8212; Supracenter  documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Usage &mdash; Western Meteor Physics Group Seismic and Infrasonic Meteor Program  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="INI Builder" href="inibuilder.html" />
-    <link rel="prev" title="Atmosphere" href="Atmosphere.html" />
+    <link rel="prev" title="Atmosphere" href="Atmosphere.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
    
-  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
-
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
           
 
-          <div class="body" role="main">
+          
+            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Seismic and Infrasonic Meteor Program
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#main-program">Main Program</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="inibuilder.html">INI Builder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="makepicks.html">Make Picks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="fetchatmosphere.html">Fetch Atmosphere</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atmosphereviewer.html">Atmosphere Viewer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pickviewer.html">Pick Viewer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="supracentersearch.html">Supracenter PSO Search</a></li>
+<li class="toctree-l3"><a class="reference internal" href="supracentermanual.html">Supracenter Manual Search</a></li>
+<li class="toctree-l3"><a class="reference internal" href="seismictraj.html">Seismic Trajectory</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#other-functions">Other Functions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#trajectoryinterp-py">TrajectoryInterp.py</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#theoreticalpicks-py">TheoreticalPicks.py</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Western Meteor Physics Group Seismic and Infrasonic Meteor Program</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Usage</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/docs/Usage.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="usage">
 <h1>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h1>
@@ -41,13 +183,6 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">supra</span><span class="o">.</span><span class="n">Fireballs</span><span class="o">.</span><span class="n">SolutionGUI</span>
 </pre></div>
 </div>
-</div>
-<div class="section" id="other-functions">
-<h2>Other Functions<a class="headerlink" href="#other-functions" title="Permalink to this headline">¶</a></h2>
-<p>These functions may be used independently of the program, but do not have an interface.</p>
-<div class="section" id="trajectoryinterp-py">
-<h3>TrajectoryInterp.py<a class="headerlink" href="#trajectoryinterp-py" title="Permalink to this headline">¶</a></h3>
-<p>Will find <strong>N</strong> points along a trajectory from either a start and end point, or a start point and the azimuth and zenith angle.</p>
 <div class="toctree-wrapper compound">
 <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
@@ -88,87 +223,67 @@
 </ul>
 </div>
 </div>
+<div class="section" id="other-functions">
+<h2>Other Functions<a class="headerlink" href="#other-functions" title="Permalink to this headline">¶</a></h2>
+<p>These functions may be used independently of the program, but do not have an interface.</p>
+<div class="section" id="trajectoryinterp-py">
+<h3>TrajectoryInterp.py<a class="headerlink" href="#trajectoryinterp-py" title="Permalink to this headline">¶</a></h3>
+<p>Will find <em>N</em> points along a trajectory from either a start and end point, or a start point and the azimuth and zenith angle.</p>
+</div>
+<div class="section" id="theoreticalpicks-py">
+<h3>TheoreticalPicks.py<a class="headerlink" href="#theoreticalpicks-py" title="Permalink to this headline">¶</a></h3>
+<p>Used in combination with allTimesRead.py, can model theoretical ballistic arrivals of meteors with different velocity and zenith angles.</p>
+</div>
 </div>
 </div>
 
 
+           </div>
+           
           </div>
-          
-        </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../index.html">Supracenter</a></h1>
-
-
-
-
-
-
-
-
-<h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#main-program">Main Program</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#other-functions">Other Functions</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
-</ul>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="Atmosphere.html" title="previous chapter">Atmosphere</a></li>
-      <li>Next: <a href="inibuilder.html" title="next chapter">INI Builder</a></li>
-  </ul></li>
-</ul>
-</div>
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
-    </form>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="inibuilder.html" class="btn btn-neutral float-right" title="INI Builder" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Atmosphere.html" class="btn btn-neutral float-left" title="Atmosphere" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
     </div>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+  
 
+  <hr/>
 
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Luke McFadden, Denis Vida, Peter Brown
 
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
-
-
-
+</footer>
 
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2019, Luke McFadden, Denis Vida, Peter Brown.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
-      
-      |
-      <a href="../_sources/docs/Usage.rst.txt"
-          rel="nofollow">Page source</a>
-    </div>
 
-    
+    </section>
 
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
     
-  </body>
+   
+
+</body>
 </html>

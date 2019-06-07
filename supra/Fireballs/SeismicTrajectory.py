@@ -40,7 +40,7 @@ import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
-from supra.Supracenter.angleConv import loc2Geo, latLon2Local, local2LatLon
+from supra.Supracenter.angleConv import loc2Geo, latLon2Local, local2LatLon, angle2NDE
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
 from supra.Fireballs.Program import configParse, configRead, position
@@ -366,12 +366,12 @@ def loop(D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf,
     # Time of arrival between the points with atmospheric profile
     T[i], az[i], tf[i] = cyscan(np.array(S), np.array(D), zProfile, wind=enable_winds)
 
-    #az[i] = angle2NDE(az[i])
+    az[i] = angle2NDE(az[i])
     az[i] = np.radians(az[i])
-    tf[i] = np.radians(tf[i])
+    tf[i] = np.radians(90 - (tf[i] - 90))
 
     #v = np.array([-np.cos(az[i])*np.sin(tf[i]), np.sin(az[i])*np.sin(tf[i]), -np.cos(tf[i])])
-    v = np.array([np.sin(az[i])*np.sin(tf[i]), np.cos(az[i])*np.sin(tf[i]), np.cos(tf[i])])
+    v = np.array([np.sin(az[i])*np.sin(tf[i]), np.cos(az[i])*np.sin(tf[i]), -np.cos(tf[i])])
 
     prop_mag[i] = np.dot(u, v)
 
@@ -381,8 +381,10 @@ def loop(D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf,
 def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding, ref_loc):
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
-    GRID_SPACE = 100
-    ANGLE_TOL = 0.5 #deg
+    GRID_SPACE = 200
+    ANGLE_TOL = 30 #deg
+    MIN_HEIGHT = 17000
+    MAX_HEIGHT = 45000
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count()) 
 
@@ -403,7 +405,6 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     # define line top boundary
     top_point = ground_point - scale*u
 
-
     ds = scale / (GRID_SPACE)
 
     points = []
@@ -413,15 +414,20 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
 
     points = np.array(points)
 
+    offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
+    bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
+
+    points = np.array(points[offset:(bottom_offset+1)])
+
     D = stat_coord
 
-    T = [0]*(GRID_SPACE + 1)
-    az = [0]*(GRID_SPACE + 1)
-    tf = [0]*(GRID_SPACE + 1)
-    prop_mag = [0]*(GRID_SPACE + 1)
+    T = [0]*(len(points))
+    az = [0]*(len(points))
+    tf = [0]*(len(points))
+    prop_mag = [0]*(len(points))
 
     # Pass data through to multiprocess loop
-    iterable = range(GRID_SPACE + 1)
+    iterable = range(len(points))
 
     weather_type = setup.weather_type
     enable_winds = setup.enable_winds
@@ -436,9 +442,10 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     pool.join()
 
     # Minimize angle to 90 degrees from trajectory
-    prop_mag = np.absolute(prop_mag)
-    prop_mag2 = copy.copy(prop_mag)
 
+    # plt.plot(points[:, 2], np.degrees(np.arccos(prop_mag)))
+    # plt.show()
+    prop_mag = np.absolute(prop_mag)
     for ii, element in enumerate(prop_mag):
         if element > np.sin(np.radians(ANGLE_TOL)):
             prop_mag[ii] = np.nan
@@ -448,12 +455,9 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
         #best_indx = np.nanargmax(diff)
     except:
         return np.array([np.nan, np.nan, np.nan])
-    # for ii in range(len(prop_mag2)):
-    #     plt.scatter((top_point + ii*ds*u)[2], prop_mag2[ii])
-    # plt.show()
-    print((top_point + best_indx*ds*u)[2])
+
     # Return point
-    return (top_point + best_indx*ds*u)
+    return (top_point + (best_indx + offset)*ds*u)
 
 
 def waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, v_sound):
@@ -552,7 +556,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         ######################################################################################################
 
         # Calculate the time of arrival
-        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
+        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding, ref_loc=[lat0, lon0, elev0], theo=True)
 
         # Smooth approximation of l1 (absolute value) loss
         z = (t_obs - ti)**2
@@ -1102,7 +1106,7 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
             y_beg_p = y_p[i]/1000 - traj_len*u_p[i][1]
             z_beg_p = -traj_len*u_p[i][2]
 
-            ax.plot([x_p[i]/1000, x_beg_p], [y_p[i]/1000, y_beg_p], [0, z_beg_p], c='b', alpha=0.4)
+            ax.plot([x_p[i]/1000, x_beg_p], [y_p[i]/1000, y_beg_p], [0, z_beg_p], c='b')#, alpha=0.4)
 
     # Plot wave release trajectory segment
     ax.plot([wrph_x, wrpl_x], [wrph_y, wrpl_y], [wrph_z, wrpl_z], color='red', linewidth=2)

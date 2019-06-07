@@ -33,6 +33,9 @@ def readAllTimes(file_name, dists_name=[], typ=4, stn_list=[]):
                     print("V = {:} km/s".format(velocity_list[j]))
                     print(allTimes[0, ii, 0, ze_i, j])
                     print(allDists[0, ii, 0, ze_i, j])
+                    for ptb in range(10):
+                        plt.plot(velocity_list, allTimes[ptb, ii, 0, ze_i, :] - (allTimes[ptb, ii, 0, ze_i, 2] + allTimes[ptb, ii, 0, ze_i, 3])/2, alpha=0.4)
+
                 plt.plot(velocity_list, allTimes[0, ii, 0, ze_i, :] - (allTimes[0, ii, 0, ze_i, 2] + allTimes[0, ii, 0, ze_i, 3])/2, label='Zenith: {:}'.format(ze))
                 plt.plot([11, 31], [0, 0], 'w--')
             ax.set_xlabel('Average Velocity (km/s)')

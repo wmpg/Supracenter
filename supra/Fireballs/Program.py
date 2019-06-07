@@ -387,7 +387,7 @@ def configRead(ini_file):
     setup.grid_size = tryFloat(config.get('Atmosphere', 'grid_size'))
 
     ### [Perturbations] ### 
-
+    
     setup.perturb = tryBool(config.get('Perturbations', 'perturb'))
     setup.perturb_method = tryStr(config.get('Perturbations', 'perturb_method')).lower()
     setup.perturb_times = tryInt(config.get('Perturbations', 'perturb_times'))

@@ -5,7 +5,7 @@
 
 
 Atmosphere Files
-****************
+----------------
  
 some text
   

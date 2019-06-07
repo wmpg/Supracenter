@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Fetch Atmosphere
-****************
+----------------
 
 This window allows the user to choose a time and the weather data will be downloaded for that time. The variables used are Temperature, U-Component of Wind (wind from West to East), and V-Component of Wind (wind from South to North). Once opened, a weather profile can be made at a specific latitude and longitude for analysis.
 

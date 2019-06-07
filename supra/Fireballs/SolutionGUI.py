@@ -38,7 +38,7 @@ from supra.Supracenter.Utils.Formatting import *
 from supra.Supracenter.slowscan import slowscan
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
-from supra.Fireballs.Program import position, configRead, configWrite, station
+from supra.Fireballs.Program import position, configRead, configWrite, station, tryBool
 from supra.Fireballs.SeismicTrajectory import Constants, parseWeather, waveReleasePointWinds, timeOfArrival, getStationList, \
 estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
 from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE, local2LatLon, latLon2Local, chauvenet
@@ -277,6 +277,7 @@ class SolutionGUI(QMainWindow):
         setup = self.saveINI(write=False)
         #configParse(setup, 'trajectory')
 
+
         # Read station file
         station_list = getStationList(os.path.join(setup.working_directory, setup.fireball_name, setup.station_picks_file))
 
@@ -320,9 +321,11 @@ class SolutionGUI(QMainWindow):
 
         # Set up perturbed array
         if setup.perturb == True:
+
+
             try:
 
-                allTimes = readTimes(setup.arrival_times_file)
+                allTimes = np.load(setup.arrival_times_file)
                 print("Status: Loaded picks from perturbations")
 
 
@@ -497,6 +500,8 @@ class SolutionGUI(QMainWindow):
 
         if setup.perturb_method == 'ensemble':
             ensemble_file = setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
 
         for ptb_n in range(setup.perturb_times):
 
@@ -1760,6 +1765,8 @@ class SolutionGUI(QMainWindow):
 
         if setup.perturb_method == 'ensemble':
             ensemble_file = setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
 
         if setup.perturb_method != 'none':
             for ptb_n in range(setup.perturb_times):
@@ -2033,8 +2040,13 @@ class SolutionGUI(QMainWindow):
 
         if setup.perturb_method == 'ensemble':
             ensemble_file = setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
 
-        d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
+        if setup.show_fragmentation_waveform and setup.show_ballistic_waveform:
+            d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
+        else:
+            d_time = (setup.perturb_times*len(stn_list)*no_of_frags)
         count = 0
 
         #number of perturbations
@@ -2042,8 +2054,8 @@ class SolutionGUI(QMainWindow):
 
             if ptb_n > 0:
                 
-                if setup.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
+                # if setup.debug:
+                #     print("STATUS: Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
@@ -2500,6 +2512,9 @@ class SolutionGUI(QMainWindow):
         for i in range(len(self.stn_list)):
             lats.append(self.stn_list[i].position.lat)
             lons.append(self.stn_list[i].position.lon)
+        
+        self.ballistic_idx = []
+        self.fragmentation_idx = []
 
 
         # Go though all stations and waveforms
@@ -2644,6 +2659,11 @@ class SolutionGUI(QMainWindow):
             # Plot the waveform on the the time vs. distance graph
             self.station_waveform[idx].setData(waveform_data*1000, time_data, pen=(255, 255, 255))
             self.make_picks_station_graph_canvas.addItem(self.station_waveform[idx])
+
+            if stn.code in setup.high_f:
+                self.fragmentation_idx.append(idx)
+            if stn.code in setup.high_b:
+                self.ballistic_idx.append(idx)
 
 
         toa_line_time = np.linspace(0, max_time, 10)
@@ -3072,6 +3092,14 @@ class SolutionGUI(QMainWindow):
                 stn_mk.setPen((255, 255, 255))
                 stn_mk.setBrush((255, 255, 255))
                 stn_mk.setZValue(0)
+            elif stn_mk in [self.station_marker[i] for i in self.ballistic_idx]:
+                stn_mk.setPen((0, 0, 255))
+                stn_mk.setBrush((0, 0, 255))
+                stn_mk.setZValue(0)
+            elif stn_mk in [self.station_marker[i] for i in self.fragmentation_idx]:
+                stn_mk.setPen((0, 255, 0))
+                stn_mk.setBrush((0, 255, 0))
+                stn_mk.setZValue(0)
             else:
                 stn_mk.setPen((255, 0, 0))
                 stn_mk.setBrush((255, 0, 0))
@@ -3491,10 +3519,10 @@ class SolutionGUI(QMainWindow):
         setup = Config()
 
         setup.fireball_name = self.fireball_name_edits.text()
-        setup.difference_filter_all = self.difference_filter_edits.currentText()
-        setup.get_data = self.get_data_edits.currentText()
+        setup.difference_filter_all = tryBool(self.difference_filter_edits.currentText())
+        setup.get_data = tryBool(self.get_data_edits.currentText())
         setup.run_mode = self.run_mode_edits.currentText()
-        setup.debug = self.debug_edits.currentText()
+        setup.debug = tryBool(self.debug_edits.currentText())
 
         setup.working_directory = self.working_directory_edits.text()
         setup.arrival_times_file = self.arrival_times_edits.text()
@@ -3523,11 +3551,11 @@ class SolutionGUI(QMainWindow):
         setup.lon_f = self.tryFloat(self.lon_f_edits.text())
         setup.elev_f = self.tryFloat(self.elev_f_edits.text())
 
-        setup.show_ballistic_waveform = self.show_ballistic_waveform_edits.currentText()
+        setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
         setup.manual_fragmentation_search = []
         setup.fragmentation_point = self.fromTable(self.fragmentation_point)
-        setup.show_fragmentation_waveform = self.show_fragmentation_waveform_edits.currentText()
+        setup.show_fragmentation_waveform = tryBool(self.show_fragmentation_waveform_edits.currentText())
 
         setup.manual_fragmentation_search.append(self.tryFloat(self.lat_frag_edits.text()))
         setup.manual_fragmentation_search.append(self.tryFloat(self.lon_frag_edits.text()))
@@ -3566,17 +3594,17 @@ class SolutionGUI(QMainWindow):
         setup.search_height.append(self.tryFloat(self.search_elev_min_edits.text()))
         setup.search_height.append(self.tryFloat(self.search_elev_max_edits.text()))
 
-        setup.enable_winds = self.enable_winds_edits.currentText()
+        setup.enable_winds = tryBool(self.enable_winds_edits.currentText())
         setup.weather_type = self.weather_type_edits.currentText()
         setup.grid_size = self.tryFloat(self.grid_size_edits.text())
 
         setup.perturb_times = self.tryInt(self.perturb_times_edits.text())
 
         setup.observe_frag_no = self.tryInt(self.frag_no_edits.text())
-        setup.perturb = self.perturb_edits.currentText()
+        setup.perturb = tryBool(self.perturb_edits.currentText())
         setup.perturb_method = self.perturb_method_edits.currentText()
 
-        setup.fast_ballistic = self.fast_ballistic_edits.currentText()
+        setup.fast_ballistic = tryBool(self.fast_ballistic_edits.currentText())
         setup.fit_type = self.tryInt(self.fit_type_edits.text())
         setup.n_theta = self.tryInt(self.n_theta_edits.text())
         setup.n_phi = self.tryInt(self.n_phi_edits.text())
@@ -3591,9 +3619,9 @@ class SolutionGUI(QMainWindow):
         setup.phip = self.tryFloat(self.phip_edits.text())
         setup.phig = self.tryFloat(self.phig_edits.text())
         setup.omega = self.tryFloat(self.omega_edits.text())
-        setup.pso_debug = self.pso_debug_edits.currentText()
+        setup.pso_debug = tryBool(self.pso_debug_edits.currentText())
 
-        setup.plot_all_stations = self.plot_all_stations_edits.currentText()
+        setup.plot_all_stations = tryBool(self.plot_all_stations_edits.currentText())
         setup.colortoggle = self.color_toggle_edits.currentText()
         setup.dot_tol = self.tryInt(self.dot_tol_edits.text())
         setup.contour_res = self.tryInt(self.contour_res_edits.text())
@@ -3617,9 +3645,9 @@ class SolutionGUI(QMainWindow):
             else:
                 configWrite(dlg[0], setup)
 
-        setup.restrict_to_trajectory = (setup.restrict_to_trajectory.lower() == 'true')
-        setup.show_ballistic_waveform = (setup.show_ballistic_waveform.lower() == 'true')
-        setup.show_fragmentation_waveform = (setup.show_fragmentation_waveform.lower() == 'true')    
+        # setup.restrict_to_trajectory = (setup.restrict_to_trajectory.lower() == 'true')
+        # setup.show_ballistic_waveform = (setup.show_ballistic_waveform.lower() == 'true')
+        # setup.show_fragmentation_waveform = (setup.show_fragmentation_waveform.lower() == 'true')    
 
         return setup
 

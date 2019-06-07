@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Atmosphere Viewer
-*****************
+-----------------
 Usable
 
 .. toctree::

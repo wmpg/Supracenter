@@ -2,22 +2,40 @@
    sphinx-quickstart on Mon Jun  3 11:53:56 2019.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
-
+   
+##########
 Atmosphere
-**********
+##########
 
-=========================
+*************************
 Effect of Weather on Rays
-=========================
+*************************
+
+The temperature changes the speed of sound in air like so:
 
 .. math::
 	c_s = \sqrt{\frac{\gamma R T}{M_0}}
+
+And a wind vector creates an effective sound speed of:
+
 .. math::
 	c_{eff} = c_s + \hat{n} \cdot \vec{w}
 
-=============================
+Where the values of the constants are:
+
+**Ideal gas constant**
+.. math::
+R = 8.31432 J/K mol
+
+**Heat capacity ratio**
+\gamma = 1.40
+
+# Molar mass of the air
+self.M_0 = 0.0289644 #kg/mol
+
+*****************************
 Atmospheric Data Instructions 
-=============================
+*****************************
 
 .. note::
  	Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required. See netCDFconv.py for more details. 
@@ -27,9 +45,9 @@ Reading the wrong file may cause the program to freeze, such as trying to read U
 Constants used in converting weather values can be changed in supra/Fireballs/SeismicTrajectory.ini
 
 
-===============================
+*******************************
 Setting Up Atmospheric Fetching
-===============================
+*******************************
 
 Setting up atmospheric fetching is a one-time setup which will allow data to be downloaded from the Copernicus Climate Change Store automatically.
 
@@ -47,7 +65,7 @@ Step 3: Does not need to be done, the Fetch Atmosphere tab does this for you, an
 
 
 
-===================================
+
 UKMO Instructions - Manual Download
 ===================================
 Downloadable files can be found here:
@@ -75,7 +93,7 @@ After this setup, .pp files in the folder can be converted to .nc files with the
 
 Terminal:
 ./convsh1.94 ./conv2nc.tcl -i <input file.pp> -o <output file.nc>
-----------------------------------------------------------------------
+
 
 Indicate in the .ini where the .nc file is, and the UKMO data can now be read by Supracenter
 
@@ -83,7 +101,7 @@ Note: killing the program while reading a .nc file WILL corrupt the file
 
 Note: Data conversion may not work for older files, and may need to be read with a script
 
-====================================
+
 ECMWF Instructions - Script Download
 ====================================
 Create an account with ECMWF
@@ -100,7 +118,7 @@ grid_size specifies the spatial resolution of the weather data from ECMWF
 
 Note: Automatic data retrival may not work for older files
 
-======================================
+
 MERRA-2 Instructions - Script Download
 ======================================
 Create an account: 
@@ -116,7 +134,7 @@ atm_hour is the hour that will be downloaded, if it is available.
 
 Note: Automatic data retrival may not work for older files
 
-======================================
+
 MERRA-2 Instructions - Manual Download
 ======================================
 Create an account:
@@ -135,24 +153,24 @@ Specify in the .ini where the file is and the name of the file
 
 Note: Data conversion may not work for older files, and may need to be read with a script
 
-==================================
+
 Custom Atmospheric Data
-==================================
+=======================
 Create a custom .txt file containing the data, separated by spaces.
 
 There must be at least two rows for the program to be able to run.
 
 The format of the .txt file should be:
---------------------------------------
+
 header
 elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north due east)
---------------------------------------
+
 
 Specify in the .ini where the file is.
 
-==================================
+
 Isotropic Atmospheric Data
-==================================
+==========================
 No file is required for an isotropic profile.
 
 The speed_of_sound variable must be set, and the program will make a custom atmospheric dataset using the given speed of sound.

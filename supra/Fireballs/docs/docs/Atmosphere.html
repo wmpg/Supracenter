@@ -1,46 +1,195 @@
 
-<!DOCTYPE html>
 
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <meta charset="utf-8" />
-    <title>Atmosphere &#8212; Supracenter  documentation</title>
-    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
-    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-    <script type="text/javascript" src="../_static/jquery.js"></script>
-    <script type="text/javascript" src="../_static/underscore.js"></script>
-    <script type="text/javascript" src="../_static/doctools.js"></script>
-    <script type="text/javascript" src="../_static/language_data.js"></script>
-    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Atmosphere &mdash; Western Meteor Physics Group Seismic and Infrasonic Meteor Program  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Usage" href="Usage.html" />
-    <link rel="prev" title="Requirements" href="Installation.html" />
+    <link rel="prev" title="Requirements" href="Installation.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
    
-  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
-
-  </head><body>
-  
-
-    <div class="document">
-      <div class="documentwrapper">
-        <div class="bodywrapper">
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
           
 
-          <div class="body" role="main">
+          
+            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Seismic and Infrasonic Meteor Program
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Atmosphere</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#atmospheric-data-instructions">Atmospheric Data Instructions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#ukmo-instructions-manual-download">UKMO Instructions - Manual Download</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ecmwf-instructions-script-download">ECMWF Instructions - Script Download</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#merra-2-instructions-script-download">MERRA-2 Instructions - Script Download</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#merra-2-instructions-manual-download">MERRA-2 Instructions - Manual Download</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#custom-atmospheric-data">Custom Atmospheric Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Western Meteor Physics Group Seismic and Infrasonic Meteor Program</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Atmosphere</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/docs/Atmosphere.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
             
   <div class="section" id="atmosphere">
 <h1>Atmosphere<a class="headerlink" href="#atmosphere" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="effect-of-weather-on-rays">
 <h2>Effect of Weather on Rays<a class="headerlink" href="#effect-of-weather-on-rays" title="Permalink to this headline">¶</a></h2>
+<p>The temperature changes the speed of sound in air like so:</p>
 <div class="math notranslate nohighlight">
 \[c_s = \sqrt{\frac{\gamma R T}{M_0}}\]</div>
+<p>And a wind vector creates an effective sound speed of:</p>
 <div class="math notranslate nohighlight">
 \[c_{eff} = c_s + \hat{n} \cdot \vec{w}\]</div>
+<p>Where the values of the constants are:</p>
+<p><strong>Ideal gas constant</strong>
+.. math::
+R = 8.31432 J/K mol</p>
+<p><strong>Heat capacity ratio</strong>
+gamma = 1.40</p>
+<p># Molar mass of the air
+self.M_0 = 0.0289644 #kg/mol</p>
 </div>
 <div class="section" id="atmospheric-data-instructions">
 <h2>Atmospheric Data Instructions<a class="headerlink" href="#atmospheric-data-instructions" title="Permalink to this headline">¶</a></h2>
@@ -63,9 +212,8 @@
 <p class="admonition-title">Warning</p>
 <p>Cancelling the program while it is using the weather data may corrupt it! Since these files are so large to download (usually between 1 and 6 GB), it is recommended to keep a copy of the weather file on your computer, just in case!</p>
 </div>
-</div>
 <div class="section" id="ukmo-instructions-manual-download">
-<h2>UKMO Instructions - Manual Download<a class="headerlink" href="#ukmo-instructions-manual-download" title="Permalink to this headline">¶</a></h2>
+<h3>UKMO Instructions - Manual Download<a class="headerlink" href="#ukmo-instructions-manual-download" title="Permalink to this headline">¶</a></h3>
 <p>Downloadable files can be found here:
 <a class="reference external" href="http://data.ceda.ac.uk/badc/ukmo-assim/">http://data.ceda.ac.uk/badc/ukmo-assim/</a></p>
 <p>An account will need to be created in order to access files</p>
@@ -82,14 +230,13 @@ example scripts can be found here: <a class="reference external" href="http://cm
 <p>After this setup, .pp files in the folder can be converted to .nc files with the command:
 (Navigate to the folder)</p>
 <p>Terminal:
-./convsh1.94 ./conv2nc.tcl -i &lt;input file.pp&gt; -o &lt;output file.nc&gt;
-———————————————————————-</p>
+./convsh1.94 ./conv2nc.tcl -i &lt;input file.pp&gt; -o &lt;output file.nc&gt;</p>
 <p>Indicate in the .ini where the .nc file is, and the UKMO data can now be read by Supracenter</p>
 <p>Note: killing the program while reading a .nc file WILL corrupt the file</p>
 <p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
 </div>
 <div class="section" id="ecmwf-instructions-script-download">
-<h2>ECMWF Instructions - Script Download<a class="headerlink" href="#ecmwf-instructions-script-download" title="Permalink to this headline">¶</a></h2>
+<h3>ECMWF Instructions - Script Download<a class="headerlink" href="#ecmwf-instructions-script-download" title="Permalink to this headline">¶</a></h3>
 <p>Create an account with ECMWF</p>
 <p>Follow the instructions given:
 <a class="reference external" href="https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI">https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI</a></p>
@@ -101,7 +248,7 @@ grid_size specifies the spatial resolution of the weather data from ECMWF</p>
 <p>Note: Automatic data retrival may not work for older files</p>
 </div>
 <div class="section" id="merra-2-instructions-script-download">
-<h2>MERRA-2 Instructions - Script Download<a class="headerlink" href="#merra-2-instructions-script-download" title="Permalink to this headline">¶</a></h2>
+<h3>MERRA-2 Instructions - Script Download<a class="headerlink" href="#merra-2-instructions-script-download" title="Permalink to this headline">¶</a></h3>
 <p>Create an account:
 <a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
 <p>Link the database with your account:
@@ -112,7 +259,7 @@ atm_hour is the hour that will be downloaded, if it is available.</p>
 <p>Note: Automatic data retrival may not work for older files</p>
 </div>
 <div class="section" id="merra-2-instructions-manual-download">
-<h2>MERRA-2 Instructions - Manual Download<a class="headerlink" href="#merra-2-instructions-manual-download" title="Permalink to this headline">¶</a></h2>
+<h3>MERRA-2 Instructions - Manual Download<a class="headerlink" href="#merra-2-instructions-manual-download" title="Permalink to this headline">¶</a></h3>
 <p>Create an account:
 <a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
 <p>Link the database with your accout:
@@ -125,111 +272,71 @@ and the variables contain at least “air_temperature”, “northward_wind”, 
 <p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
 </div>
 <div class="section" id="custom-atmospheric-data">
-<h2>Custom Atmospheric Data<a class="headerlink" href="#custom-atmospheric-data" title="Permalink to this headline">¶</a></h2>
+<h3>Custom Atmospheric Data<a class="headerlink" href="#custom-atmospheric-data" title="Permalink to this headline">¶</a></h3>
 <p>Create a custom .txt file containing the data, separated by spaces.</p>
 <p>There must be at least two rows for the program to be able to run.</p>
-<div class="section" id="the-format-of-the-txt-file-should-be">
-<h3>The format of the .txt file should be:<a class="headerlink" href="#the-format-of-the-txt-file-should-be" title="Permalink to this headline">¶</a></h3>
+<p>The format of the .txt file should be:</p>
 <p>header
-elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north due east)
-————————————–</p>
+elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north due east)</p>
 <p>Specify in the .ini where the file is.</p>
 </div>
-</div>
 <div class="section" id="isotropic-atmospheric-data">
-<h2>Isotropic Atmospheric Data<a class="headerlink" href="#isotropic-atmospheric-data" title="Permalink to this headline">¶</a></h2>
+<h3>Isotropic Atmospheric Data<a class="headerlink" href="#isotropic-atmospheric-data" title="Permalink to this headline">¶</a></h3>
 <p>No file is required for an isotropic profile.</p>
 <p>The speed_of_sound variable must be set, and the program will make a custom atmospheric dataset using the given speed of sound.</p>
 <div class="toctree-wrapper compound">
 </div>
 </div>
 </div>
+</div>
 
 
+           </div>
+           
           </div>
-          
-        </div>
-      </div>
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="../index.html">Supracenter</a></h1>
-
-
-
-
-
-
-
-
-<h3>Navigation</h3>
-<p class="caption"><span class="caption-text">Contents:</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Atmosphere</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#atmospheric-data-instructions">Atmospheric Data Instructions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ukmo-instructions-manual-download">UKMO Instructions - Manual Download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#ecmwf-instructions-script-download">ECMWF Instructions - Script Download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#merra-2-instructions-script-download">MERRA-2 Instructions - Script Download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#merra-2-instructions-manual-download">MERRA-2 Instructions - Manual Download</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#custom-atmospheric-data">Custom Atmospheric Data</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
-</ul>
-
-<div class="relations">
-<h3>Related Topics</h3>
-<ul>
-  <li><a href="../index.html">Documentation overview</a><ul>
-      <li>Previous: <a href="Installation.html" title="previous chapter">Requirements</a></li>
-      <li>Next: <a href="Usage.html" title="next chapter">Usage</a></li>
-  </ul></li>
-</ul>
-</div>
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="../search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" />
-      <input type="submit" value="Go" />
-    </form>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="Usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Installation.html" class="btn btn-neutral float-left" title="Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
     </div>
-</div>
-<script type="text/javascript">$('#searchbox').show(0);</script>
+  
 
+  <hr/>
 
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Luke McFadden, Denis Vida, Peter Brown
 
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
-
-
-
+</footer>
 
         </div>
       </div>
-      <div class="clearer"></div>
-    </div>
-    <div class="footer">
-      &copy;2019, Luke McFadden, Denis Vida, Peter Brown.
-      
-      |
-      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.0</a>
-      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
-      
-      |
-      <a href="../_sources/docs/Atmosphere.rst.txt"
-          rel="nofollow">Page source</a>
-    </div>
 
-    
+    </section>
 
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
     
-  </body>
+   
+
+</body>
 </html>

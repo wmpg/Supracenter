@@ -5,7 +5,7 @@
 
 
 INI Files
-*********
+---------
 
 ini files contain the information for a given fireball event. These are loaded into each part of the program with the parameters of the fireball. For most parts of the program, not all of the variables in the ini files need to be set. For example, in the Supracenter solver, the ballistic search parameters do not need to be filled out.
 
@@ -14,7 +14,7 @@ If the terminal returns an "INI ERROR" while running the code, try setting [Gene
 .. toctree::
    :maxdepth: 2
 
-   
+   variables
 
 
 

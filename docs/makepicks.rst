@@ -5,17 +5,17 @@
 
 
 Make Picks
-**********
+----------
 
 The make picks window allows the user to analyze the waveforms at each station. The intended purpose of this screen is to have the user identify where each pick is on the waveform and export the station picks file (.csv) for use in other parts of the program. This allows the user to search for fragmentation and ballistic solutions with the picks that they have created.
 
 Usage
-_____
+^^^^^
 
 Once an .ini file has been loaded into the INI Builder, navigate to the Make Picks tab and click "Load Station Data". If the .mseed station data can be read in properly, then three figures should appear on screen.
 
 Shortcuts
-_________
+^^^^^^^^^
 
 * Make Pick: Ctrl + M1
 * Delete Pick: *Not yet implemented*
@@ -26,35 +26,30 @@ _________
 * Convolution Filter of Current Waveform: C
 
 Station Navigation
-__________________
+^^^^^^^^^^^^^^^^^^
 
 The stations can be navigated most easily by "A" and "D" to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.
 
 Bandpass Filter
-_______________
-
+^^^^^^^^^^^^^^^
 
 Spectrogram View
-________________
-
+^^^^^^^^^^^^^^^^
 
 Convolution Filter
-__________________
-
+^^^^^^^^^^^^^^^^^^
 
 Waveform Window
-_______________
-
+^^^^^^^^^^^^^^^
 
 Map Window
-__________
-
+^^^^^^^^^^
 
 All Station Waveforms Window
-____________________________
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Exporting Picks
-_______________
+^^^^^^^^^^^^^^^
 
 Once all of the user picks have been made on the waveforms, the "Export CSV" button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.
 

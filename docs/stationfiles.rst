@@ -5,8 +5,9 @@
 
 
 Station Picks
-*************
-sometext
+-------------
+
+Station pick files are .csv files that contain all of the information and the time after the reference time that a pick was made in the Make Picks window. These must be exported from the Make Picks window after all of the required picks have been made.
 
 .. toctree::
    :maxdepth: 2

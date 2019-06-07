@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 INI Builder
-***********
+-----------
 
 The INI builder is the tool used to specify the parameters of a fileball. Each fireball to be analyzed should have a separate file describing their parameters. The INI Builder allows for fireballs to be loaded and saved from the computer. When any event is run anywhere in this program, it will use data from the text edit boxes in the INI Builder, but will be overwritten by any text edit box in the tab that is being run. The text edit boxes in other tabs are linked to the INI Builder tabs, but the INI Builder text edits cannot be changed by other tabs unless "Copy To INI Builder" is clicked. 
 

@@ -157,10 +157,10 @@ def calcAllTimes(stn_list, setup, sounding):
             sounding_u = []
             sounding_l = []
 
-        if setup.show_ballistic_waveform and setup.show_fragmentation_waveform:
-            d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
-        else:
-            d_time = (setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+
+        d_time = (setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
         count = 0
 
         #number of perturbations
@@ -174,7 +174,7 @@ def calcAllTimes(stn_list, setup, sounding):
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
                     sounding_u=sounding_u, sounding_l=sounding_l, \
-                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
             else:
 
                 # if not using perturbations on this current step, then return the original sounding profile
@@ -217,8 +217,7 @@ def calcAllTimes(stn_list, setup, sounding):
                                                                 np.radians(setup.azim), np.radians(ZE), setup, sounding=sounding_p, travel=False, fast=True, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev], theo=True)# + setup.t 
                                     S = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding_p, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
-                                    
-                                    print(S)
+                                   
                                     # S = waveReleasePoint([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
                                     #                             np.radians(setup.azim), np.radians(ZE), 310)
                                     # Distance from the source location to the station

@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 Pick Viewer
-***********
+-----------
 
 Pick viewer allows the user to edit station pick files created by Make Picks. Station pick files are CSV files with information about the station that was picked, and the time of the pick. The pick viewer allows the user to load in a station pick file, and edit the values inside. The CSV file may then be saved to a file for further use with other parts of the program.
 

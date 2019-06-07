@@ -4,9 +4,9 @@
    contain the root `toctree` directive.
 
 
-====================
+######
 Errors
-====================
+######
 
 There definitely are a bunch, but this section is a WIP
 

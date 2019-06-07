@@ -3,9 +3,9 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-
+##############
 Extra Stations
-**************
+##############
 
 To add a station manually, the station name, location and mseed file must be input into the .ini file. Most seismic waveform databases online will allow for an mseed file to be downloaded. The file must be put in with the rest of the mseed files, which is located in: output_folder/fireball_name
 
