@@ -9,6 +9,7 @@ import copy
 import obspy
 import scipy.signal
 import webbrowser
+from pprint import pprint
 
 from netCDF4 import Dataset
 
@@ -2313,7 +2314,7 @@ class SolutionGUI(QMainWindow):
 
             # ### CONTOUR ###
 
-            # # Get the limits of the plot
+            # # # Get the limits of the plot
             # x_min = setup.lat_f - 100000*setup.deg_radius
             # x_max = setup.lat_f + 100000*setup.deg_radius
             # y_min = setup.lon_f - 100000*setup.deg_radius
@@ -2333,8 +2334,8 @@ class SolutionGUI(QMainWindow):
             # az = np.radians(setup.azim)
             # ze = np.radians(setup.zangle)
 
-            # # vector of the trajectory of the fireball
-            # traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
+            # # # vector of the trajectory of the fireball
+            # # traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
 
             # for i, plane_coords in enumerate(plane_coordinates):
 
@@ -2355,22 +2356,21 @@ class SolutionGUI(QMainWindow):
             #     # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
             #     # of the vectors are small.
 
-            #     if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
+            #     #if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
 
             #         # time of arrival from the trajectory
-            #         ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
+            #     ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
             #                            az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=False)# - setup.t + setup.t0
 
             #     # escape value for if sound never reaches the plane_coord
-            #     else:
-            #        ti = np.nan
+
 
             #     times_of_arrival[i] = ti + setup.t0
 
-            # #Keep this here
+            # # #Keep this here
             # print('')
 
-            # # if sound never reaches the plane_coord, set to maximum value of the contour
+            # # # if sound never reaches the plane_coord, set to maximum value of the contour
             # max_time = np.nanmax(times_of_arrival)
             # for i in range(len(times_of_arrival)):
             #     if np.isnan(times_of_arrival[i]):
@@ -2398,11 +2398,13 @@ class SolutionGUI(QMainWindow):
             # lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
 
             # # Plot the time of arrival contours
-            # toa_conture = self.m.m.contourf(lon_cont, lat_cont, times_of_arrival, levels, zorder=3, \
-            #     latlon=True, cmap='viridis_r', alpha=0.5)
+            # max_time = np.max(times_of_arrival)
+            # min_time = np.min(times_of_arrival)
 
-            # # Add a color bar which maps values to colors
-            #self.m.m.colorbar(toa_conture, label='Time of arrival (s)')
+            # times_of_arrival = (times_of_arrival - min_time)/max_time
+
+
+            # self.make_picks_map_graph_canvas.scatterPlot(x=lon_cont, y=lat_cont, c=times_of_arrival, update=True)
 
         if setup.arrival_times_file != '':
             try:
@@ -3008,7 +3010,6 @@ class SolutionGUI(QMainWindow):
                         #except:
                         #    pass
 
-
     def markStationWaveform(self):
         """ Mark the currently shown waveform in the plot of all waveform. """
 
@@ -3346,6 +3347,52 @@ class SolutionGUI(QMainWindow):
         n_stations = len(s_name)
 
         xstn = s_info[0:n_stations, 0:3]
+
+        if setup.perturb_method == 'temporal':
+
+            # sounding data one hour later
+            sounding_u = parseWeather(setup, consts, time= 1)
+
+            # sounding data one hour earlier
+            sounding_l = parseWeather(setup, consts, time=-1)
+
+        else:
+            sounding_u = []
+            sounding_l = []
+
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
+
+        if setup.perturb_times == 0: setup.perturb_times = 1
+
+        results = [None]*setup.perturb_times
+
+        if setup.perturb_method != 'none':
+            for ptb_n in range(setup.perturb_times):
+
+                if ptb_n > 0:
+                    
+                    if setup.debug:
+                        print("STATUS: Perturbation {:}".format(ptb_n))
+
+                    # generate a perturbed sounding profile
+                    sounding_p = perturbation_method(setup, dataset, setup.perturb_method, \
+                        sounding_u=sounding_u, sounding_l=sounding_l, \
+                        spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
+                    #sounding_p = findECMWFSound(lat, lon, sounding_p)
+                else:
+                    sounding_p = dataset
+
+                setup.ref_pos = ref_pos
+                setup.fireball_datetime = self.ref_edit.dateTime().toPyDateTime()
+
+                results[ptb_n] = psoSearch(s_info, weights, s_name, setup, sounding_p, consts)
+                print(results[ptb_n].r)
+                print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
+                n_stations = len(s_info)
+                xstn = s_info[0:n_stations, 0:3]
             
         self.scatterPlot(setup, results, n_stations, xstn, s_name, dataset, manual=False)
 
@@ -3377,7 +3424,7 @@ class SolutionGUI(QMainWindow):
 
     def supraSearch(self):
 
-        #this is the auto one
+
         setup = self.saveINI(write=False)
 
         supra_pos = [float(self.lat_edit.text()),
@@ -3395,16 +3442,51 @@ class SolutionGUI(QMainWindow):
         consts = Constants()      
         dataset = parseWeather(setup, consts)
         #dataset = findECMWFSound(lat, lon, sounding)
+        if setup.perturb_method == 'temporal':
 
+            # sounding data one hour later
+            sounding_u = parseWeather(setup, consts, time= 1)
 
-        setup.manual_fragmentation_search = supra_pos
-        setup.ref_pos = ref_pos
-        setup.fireball_datetime = self.ref_edit.dateTime().toPyDateTime()
+            # sounding data one hour earlier
+            sounding_l = parseWeather(setup, consts, time=-1)
 
-        results = psoSearch(s_info, weights, s_name, setup, dataset, consts)
-        print("Error Function: {:}".format(results.f_opt))
-        n_stations = len(s_info)
-        xstn = s_info[0:n_stations, 0:3]
+        else:
+            sounding_u = []
+            sounding_l = []
+
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
+
+        if setup.perturb_times == 0: setup.perturb_times = 1
+
+        results = [None]*setup.perturb_times
+
+        if setup.perturb_method != 'none':
+            for ptb_n in range(setup.perturb_times):
+
+                if ptb_n > 0:
+                    
+                    if setup.debug:
+                        print("STATUS: Perturbation {:}".format(ptb_n))
+
+                    # generate a perturbed sounding profile
+                    sounding_p = perturbation_method(setup, dataset, setup.perturb_method, \
+                        sounding_u=sounding_u, sounding_l=sounding_l, \
+                        spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
+                    #sounding_p = findECMWFSound(lat, lon, sounding_p)
+                else:
+                    sounding_p = dataset
+
+                setup.manual_fragmentation_search = supra_pos
+                setup.ref_pos = ref_pos
+                setup.fireball_datetime = self.ref_edit.dateTime().toPyDateTime()
+
+                results[ptb_n] = psoSearch(s_info, weights, s_name, setup, sounding_p, consts)
+                print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
+                n_stations = len(s_info)
+                xstn = s_info[0:n_stations, 0:3]
             
         self.scatterPlot(setup, results, n_stations, xstn, s_name, dataset)
 
@@ -3420,10 +3502,10 @@ class SolutionGUI(QMainWindow):
         self.tableWidget.setColumnCount(5)
 
         self.tableWidget.setItem(0, 0, QTableWidgetItem("Total"))
-        self.tableWidget.setItem(0, 1, QTableWidgetItem(str(results.x_opt[0])))
-        self.tableWidget.setItem(0, 2, QTableWidgetItem(str(results.x_opt[1])))
-        self.tableWidget.setItem(0, 3, QTableWidgetItem(str(results.x_opt[2])))
-        self.tableWidget.setItem(0, 4, QTableWidgetItem(str(results.f_opt)))
+        self.tableWidget.setItem(0, 1, QTableWidgetItem(str(results[0].x_opt[0])))
+        self.tableWidget.setItem(0, 2, QTableWidgetItem(str(results[0].x_opt[1])))
+        self.tableWidget.setItem(0, 3, QTableWidgetItem(str(results[0].x_opt[2])))
+        self.tableWidget.setItem(0, 4, QTableWidgetItem(str(results[0].f_opt)))
 
 
 
@@ -3432,7 +3514,7 @@ class SolutionGUI(QMainWindow):
             self.tableWidget.setItem(i+1, 1, QTableWidgetItem(str(xstn[i][0])))
             self.tableWidget.setItem(i+1, 2, QTableWidgetItem(str(xstn[i][1])))
             self.tableWidget.setItem(i+1, 3, QTableWidgetItem(str(xstn[i][2])))
-            self.tableWidget.setItem(i+1, 4, QTableWidgetItem(str(results.r[i])))
+            self.tableWidget.setItem(i+1, 4, QTableWidgetItem(str(results[0].r[i])))
 
     def comboSet(self, obj, text):
         
@@ -3796,6 +3878,8 @@ class SolutionGUI(QMainWindow):
         error_range = max_error - min_error 
 
         resid = (resid - min_error)/error_range
+        if np.isnan(resid):
+            resid = max_error
 
         return resid
 
@@ -3822,13 +3906,6 @@ class SolutionGUI(QMainWindow):
             max_search: [list] max lat, lon and height of the search area
         """
 
-        trace = results.trace
-        w = results.w
-        r = results.r
-        x_opt = results.x_opt
-        sup = results.sup
-        errors = results.errors
-
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
         fig.set_size_inches(20.9, 11.7)
@@ -3852,12 +3929,14 @@ class SolutionGUI(QMainWindow):
             # Add station names
             ax.text(xstn[h, 0], xstn[h, 1], xstn[h, 2],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
 
-            if not np.isnan(r[h]):
+        for ptb in range(setup.perturb_times):
+            for h in range(n_stations):
+
                 xline = []
                 yline = []
                 zline = []
                 try:
-                    for line in trace[h]:
+                    for line in results[ptb].trace[h]:
                         line[0], line[1], line[2] = loc2Geo(xstn[h, 0], xstn[h, 1], xstn[h, 2], [line[0], line[1], line[2]])
 
                         xline.append(line[0])
@@ -3867,11 +3946,19 @@ class SolutionGUI(QMainWindow):
                     if not perturb:
                         self.errorMessage('Cannot trace rays!', 2)
                         return None
+                if ptb == 0:
+                    ax.plot3D(xline, yline, zline, 'white')
+                else:
+                    ax.plot3D(xline, yline, zline, 'green')
 
-                ax.plot3D(xline, yline, zline, 'white')
+        r = results[0].r
+        x_opt = results[0].x_opt
+        errors = results[0].errors
+        sup = results[0].sup
 
+        c = np.nan_to_num(r)
         # Add stations with color based off of residual
-        ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(r), marker='^', cmap='viridis_r', depthshade=False)
+        ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
 
         # Add point and label
         ax.scatter(x_opt[0], x_opt[1], x_opt[2], c = 'r', marker='*')
@@ -3885,61 +3972,61 @@ class SolutionGUI(QMainWindow):
             a = plt.colorbar(sc, ax=ax)
             a.set_label("Error in Supracenter (s)")
 
-        # colorbars
-        # b = plt.colorbar(res, ax=ax)
-        # b.set_label("Station Residuals (s)")
-        search = [float(setup.search_area[0]),float(setup.search_area[1]), float(setup.search_area[2]), float(setup.search_area[3]),\
-                            float(setup.search_height[0]), float(setup.search_height[1])]
-        x_min, y_min = search[0], search[2]
-        x_max, y_max = search[1], search[3]
+        # # colorbars
+        # # b = plt.colorbar(res, ax=ax)
+        # # b.set_label("Station Residuals (s)")
+        # search = [float(setup.search_area[0]),float(setup.search_area[1]), float(setup.search_area[2]), float(setup.search_area[3]),\
+        #                     float(setup.search_height[0]), float(setup.search_height[1])]
+        # x_min, y_min = search[0], search[2]
+        # x_max, y_max = search[1], search[3]
 
 
-        img_dim = 30
+        # img_dim = 30
 
-        x_data = np.linspace(x_min, x_max, img_dim)
-        y_data = np.linspace(y_min, y_max, img_dim)
-        xx, yy = np.meshgrid(x_data, y_data)
+        # x_data = np.linspace(x_min, x_max, img_dim)
+        # y_data = np.linspace(y_min, y_max, img_dim)
+        # xx, yy = np.meshgrid(x_data, y_data)
 
-        # Make an array of all plane coordinates
-        plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
+        # # Make an array of all plane coordinates
+        # plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
 
-        times_of_arrival = np.zeros_like(xx.ravel())
+        # times_of_arrival = np.zeros_like(xx.ravel())
 
-        x_opt = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, x_opt[0], x_opt[1], x_opt[2])
+        # x_opt = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, x_opt[0], x_opt[1], x_opt[2])
 
-        print('Creating contour plot...')
-        # Calculate times of arrival for each point on the reference plane
-        for i, plane_coords in enumerate(plane_coordinates):
+        # print('Creating contour plot...')
+        # # Calculate times of arrival for each point on the reference plane
+        # for i, plane_coords in enumerate(plane_coordinates):
 
-            plane_coords = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, plane_coords[0], plane_coords[1], plane_coords[2])
+        #     plane_coords = geo2Loc(setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev, plane_coords[0], plane_coords[1], plane_coords[2])
             
-            # Create interpolated atmospheric profile for use with cyscan
-            sounding, points = getWeather(x_opt, plane_coords, setup.weather_type, \
-                [setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev], copy.copy(dataset))
+        #     # Create interpolated atmospheric profile for use with cyscan
+        #     sounding, points = getWeather(x_opt, plane_coords, setup.weather_type, \
+        #         [setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev], copy.copy(dataset))
 
 
-            # Use distance and atmospheric data to find path time
-            ti, _, _ = cyscan(np.array(x_opt), np.array(plane_coords), sounding, \
-                                    wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                    precision=setup.angle_precision)
-            if np.isnan(ti):
-                #Make blank contour
-                ti = -1
-            times_of_arrival[i] = ti
+        #     # Use distance and atmospheric data to find path time
+        #     ti, _, _ = cyscan(np.array(x_opt), np.array(plane_coords), sounding, \
+        #                             wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+        #                             precision=setup.angle_precision)
+        #     if np.isnan(ti):
+        #         #Make blank contour
+        #         ti = -1
+        #     times_of_arrival[i] = ti
 
-        times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
+        # times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
 
-        # Determine range and number of contour levels, so they are always centred around 0
-        toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-        toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-        levels = np.linspace(toa_abs_min, toa_abs_max, 50)
+        # # Determine range and number of contour levels, so they are always centred around 0
+        # toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+        # toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
+        # levels = np.linspace(toa_abs_min, toa_abs_max, 50)
 
-        # Plot colorcoded times of arrival on the surface
-        toa_conture = ax.contourf(xx, yy, times_of_arrival, levels, cmap='inferno', alpha=1.0)
-        # Add a color bar which maps values to colors
-        plt.colorbar(toa_conture, ax=ax)
-        #b.setLabel('Time of arrival (s)')
-        plt.autoscale()
+        # # Plot colorcoded times of arrival on the surface
+        # toa_conture = ax.contourf(xx, yy, times_of_arrival, levels, cmap='inferno', alpha=1.0)
+        # # Add a color bar which maps values to colors
+        # plt.colorbar(toa_conture, ax=ax)
+        # #b.setLabel('Time of arrival (s)')
+        # plt.autoscale()
         if manual:
             try:
                 self.plots.removeWidget(self.threelbar)
@@ -3981,9 +4068,9 @@ class SolutionGUI(QMainWindow):
             n_stations: [int] number of stations
         """
         
-        x_opt = results_arr.x_opt
-        resid = results_arr.r
-        trace = results_arr.trace
+        x_opt = results_arr[0].x_opt
+        resid = results_arr[0].r
+        trace = results_arr[0].trace
 
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))

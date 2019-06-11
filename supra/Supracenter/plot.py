@@ -102,7 +102,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
         sounding, points = getWeather(np.array(x_opt), np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
 
         # Rotate winds to match with coordinate system
-        sounding[:, 3] = angle2NDE(sounding[:, 3])
+        #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
 
         # If weather interp was used
         if len(points) != 0:
@@ -146,16 +146,16 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
 
         # ray tracing function
         temp_trace, _, _ = slowscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                            precision=setup.angle_precision)
+                                            precision=setup.angle_precision, tol=setup.angle_error_tol)
         time3D[j], _, _ = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                           precision=setup.angle_precision)
+                                           precision=setup.angle_precision, tol=setup.angle_error_tol)
         trace.append(temp_trace)
         # find residuals
         sotc[j] = tobs[j] - time3D[j]
 
-    for ii, element in enumerate(time3D):
-        if np.isnan(element):
-            w[ii] = 0
+    # for ii, element in enumerate(time3D):
+    #     if np.isnan(element):
+    #         w[ii] = 0
 
     # User defined occurrence time
     if kotc != None:

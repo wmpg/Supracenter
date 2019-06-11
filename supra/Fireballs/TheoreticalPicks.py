@@ -164,7 +164,7 @@ def calcAllTimes(stn_list, setup, sounding):
         count = 0
 
         #number of perturbations
-        for ptb_n in range(setup.perturb_times):
+        for ptb_n in range(setup.perturb_times-1):
 
             if ptb_n > 0:
                 

@@ -1,0 +1,31 @@
+.. Supracenter documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 11:53:56 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+######
+Theory
+######
+
+********
+Overview
+********
+
+Infrasonics is the study of sound waves, infrasound, with a frequency below the range of human hearing, from 20 Hz down to the order of :math: 10^{-3}. This is analogous to how infrared is light with a frequency below the wavelength visible to humans. Low-frequency waves can be  produced by volcanoes, earthquakes, avalanches, meteors, nuclear explosions, and from some large animals, such as whales, and are able to propagate far away from the source before dissipation, often further than audible sounds. Because of their long-range, infrasound can provide some information about its source that may be otherwise unobtainable.\par
+When a meteor falls, it travels much faster than the speed of sound, and interacting with the atmosphere, creates a Mach cone. At speeds ranging from Mach 35 to Mach 240, the Mach cone will have a small angle, and can be effectively approximated as a line source. In this picture, the blast produces a cylindrical shock wave moving radially outward, which decays at long distances to infrasound.
+
+Additionally, a meteor may also fragment during its flight releasing a quasi-spherical shock wave independent of the Mach cone. The optically luminous part of the meteor flight, termed the fireball, is the section of interest for this study. This lasts for a time on the order of seconds. Normally, the meteoroid does not reach the ground, unless the mass is sufficiently large and speed sufficiently low. Since the meteor is luminous for such a short time, and travels at hypersonic speeds, external forces such as gravity and winds, can be ignored and the trajectory can be approximated as a straight line.
+
+The low-frequency sounds representing the shock wave decaying at long distances from the trajectory can be measured as infrasound on seismographs and infrasonic microphones, provided the amplitude of the waves is sufficient to be detected.
+
+In previous works, the time of arrivals of a shock wave at infrasound and seismic stations was used to find fragmentation points, as well as the ballistic (or cylindrical) arrival. These are verified by other methods of observing the meteor, such as by optical instruments. Infrasound provides another way to observe bolides and may be used to estimate the fireball trajectory, fragmentation points, and energy deposition profile.
+
+.. toctree::
+   :maxdepth: 2
+
+   
+
+
+
+
+

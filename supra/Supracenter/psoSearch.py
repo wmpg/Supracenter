@@ -72,7 +72,7 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
         time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
                                             wind=tweaks[1], n_theta=tweaks[2], n_phi=tweaks[3], \
                                             precision=tweaks[4])
-
+        print(time3D[j])
         # Residual time for each station
         sotc[j] = tobs[j] - time3D[j]
 
@@ -153,7 +153,7 @@ def timeFunction(x, *args):
 
     # Pass data through to multiprocess loop
     iterable = range(n_stations)
-    
+    print(w)
     # Store functions to be used with multiprocessing
     func = partial(loop, x, stns, w, [setup.weather_type, setup.enable_winds, setup.n_theta, setup.n_phi,\
                                         setup.angle_precision], ref_pos, dataset)

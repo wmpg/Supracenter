@@ -8,9 +8,10 @@ About
 #####
 
 Denis Vida, Peter Brown, Luke McFadden
-(Manual Last Changed June 6, 2019)
+(Manual Last Changed June 7, 2019)
 
 Supracenter updated from Wayne Edwards (2003)
+Ballistic Trajectory taken from the Western Meteor Python Library (2018)
 Thanks to Gunter Stober for advice on atmospheric profiles
 
 Made by the Western Meteor Physics Group 

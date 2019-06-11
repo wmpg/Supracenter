@@ -85,9 +85,12 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
 <li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
 <li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
@@ -162,6 +165,29 @@
   <div class="section" id="code">
 <h1>Code<a class="headerlink" href="#code" title="Permalink to this headline">¶</a></h1>
 <p>W.I.P. Documentation of functions in the code</p>
+<dl class="function">
+<dt>
+<code class="sig-name descname">cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=45, n_phi=90, precision=1e-25, tol=1):</code></dt>
+<dd><p>Calculates time of arrival between two points in 3-D space with an atmosphere.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>supra_pos</strong> (<em>ndarray</em>) – Local coordinates of the higher point (supracenter)</p></li>
+<li><p><strong>detec_pos</strong> (<em>ndarray</em>) – Local coordinates of the lower point (detector)</p></li>
+<li><p><strong>z_profile</strong> (<em>ndarray</em>) – 2-D slice of the atmosphere between supra_pos and detec_pos</p></li>
+<li><p><strong>wind</strong> (<em>Boolean</em>) – Switch to enable winds in z_profile.</p></li>
+<li><p><strong>n_theta</strong> (<em>int</em>) – Angle grid spacing of the zenith angle</p></li>
+<li><p><strong>n_phi</strong> (<em>int</em>) – Angle grid spacing of the azimuth angle</p></li>
+<li><p><strong>precision</strong> (<em>float</em>) – Angular resolution of the solution</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – Allowed error in final ray-tracing position (m)</p></li>
+</ul>
+</dd>
+<dt class="field-even">Return type</dt>
+<dd class="field-even"><p>array (time of arrival, initial azimuth angle, initial takeoff angle)</p>
+</dd>
+</dl>
+</dd></dl>
+
 <div class="toctree-wrapper compound">
 </div>
 </div>

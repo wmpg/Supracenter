@@ -8,7 +8,7 @@
 Western Meteor Physics Group Seismic and Infrasonic Meteor Program
 ******************************************************************
 
-.. figure::  wmpl.png
+.. figure::  docs/wmpl.png
    :align:   center
 
 Welcome to the Western Meteor Physics Group (WMPG) Seismic and Infrasonic Meteor Program User Manual.
@@ -18,13 +18,15 @@ Welcome to the Western Meteor Physics Group (WMPG) Seismic and Infrasonic Meteor
    :caption: Contents:
 
    docs/About
+   docs/Features
+   docs/Theory
+   docs/Methods
    docs/Installation
-   docs/Atmosphere
    docs/Usage
+   docs/Atmosphere
    docs/References
    docs/ExtraStations
    docs/Errors
    docs/Files
    docs/Code
-
 
