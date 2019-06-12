@@ -4,7 +4,7 @@ import numpy as np
 import sys
 sys.path.insert(0,'..')
 
-from supra.Supracenter.angleConv import geo2Loc
+from supra.Utils.AngleConv import geo2Loc
 # from wmpl.Utils.TrajConversions import date2JD
 # from supra.Fireballs.Program import position
 

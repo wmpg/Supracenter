@@ -40,10 +40,10 @@ import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
-from supra.Supracenter.angleConv import loc2Geo, latLon2Local, local2LatLon, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, angle2NDE
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
-from supra.Fireballs.Program import configParse, configRead, position
+from supra.Utils.Classes import Position
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
 from wmpl.Utils.Math import vectMag, vectNorm, rotateVector, meanAngle

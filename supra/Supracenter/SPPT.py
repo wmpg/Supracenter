@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from netCDF4 import Dataset
 
 from supra.Fireballs.SeismicTrajectory import Constants
-from supra.Supracenter.angleConv import angle2NDE, roundToNearest
+from supra.Utils.AngleConv import angle2NDE, roundToNearest
 
 def rGen(mode='normal'):
     """ 

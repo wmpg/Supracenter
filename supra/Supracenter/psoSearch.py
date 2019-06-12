@@ -16,7 +16,7 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan import cyscan
-from supra.Supracenter.angleConv import loc2Geo, geo2Loc, trajRestriction, point2LineDist3D, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, geo2Loc, trajRestriction, point2LineDist3D, angle2NDE
 from supra.Supracenter.plot import residPlot, scatterPlot, outputText, outputWeather
 
 sup = [0, 0, 0]
@@ -270,10 +270,7 @@ def psoSearch(stns, w, s_name, setup, dataset, consts):
     if kotc != None:
     
         kotc = (kotc - ref_time).total_seconds()
-        # kotc.hour        -= ref_time.hour
-        # kotc.minute      -= ref_time.minute
-        # kotc.second      -= ref_time.second
-        # kotc.microsecond -= ref_time.microsecond
+
     # number of stations total
     n_stations = len(stns)
 

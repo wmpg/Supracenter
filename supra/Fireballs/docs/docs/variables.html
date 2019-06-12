@@ -100,7 +100,19 @@
 <li class="toctree-l2"><a class="reference internal" href="stationfiles.html">Station Picks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="alltimesfiles.html">All Times Files</a></li>
 <li class="toctree-l2 current"><a class="reference internal" href="inifiles.html">INI Files</a><ul class="current">
-<li class="toctree-l3 current"><a class="current reference internal" href="#">Variables</a><ul class="simple">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Variables</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#general">General</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#files">Files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#parameters">Parameters</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ballistic">Ballistic</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fragmentation">Fragmentation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#restrictions">Restrictions</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#atmosphere">Atmosphere</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#perturbations">Perturbations</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#speed">Speed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#pso">PSO</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#graphing">Graphing</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#extra-stations">Extra Stations</a></li>
 </ul>
 </li>
 </ul>
@@ -178,94 +190,311 @@
             
   <div class="section" id="variables">
 <h1>Variables<a class="headerlink" href="#variables" title="Permalink to this headline">¶</a></h1>
-<ul class="simple">
-<li><p>fireball_name: [string] Name of the fireball, which will be the folder name of the working_directory. Intended to be used to distinguish between multiple fireballs in folders</p></li>
-<li><p>difference_filter: [boolean] Apply the Kalenda et al. (2014) difference filter to the plot of all waveforms,</p></li>
-<li><p>get_data: [boolean] switch to retrive station waveform data from IRIS and ORFEUS,</p></li>
-<li><p>run_mode: [string] mode to run program in. search - pso search solution. replot - plots data from “points_name”. Used after a search. manual - plots solution with given x0, y0, t0, v, azim, zangle</p></li>
-<li><p>debug: [boolean] switch to include output messages in the user about what the program is doing. Intended for finding out why the program may not be running as it should,</p></li>
-<li><p>working_directory: [string] directory of all the files below,</p></li>
-<li><p>arrival_times_file: [string] file name of the arrival times file produced by MakeIRISPicks.py. Intended to replot past results,</p></li>
-<li><p>sounding_file: [string] atmospheric file containing winds and temperatures,</p></li>
-<li><p>perturbation_spread_file: [string] ensemble spread file from Copernicus,</p></li>
-<li><p>station_picks_file: [string] file name of the station picks file created by MakeIRISPicks.py.,</p></li>
-<li><p>points_name: [string] file name of the data points produced by SeismicTrajectory.py. Intended to replot past results,</p></li>
-<li><p>lat_centre: [float] Geo coordinates of the wave release centre, referred to as the source location,</p></li>
-<li><p>lon_centre: [float] Geo coordinates of the wave release centre, referred to as the source location,</p></li>
-<li><p>deg_radius: [float] Search radius to consider when looking for stations (in degrees),</p></li>
-<li><p>fireball_datetime: [datetime object] Time of the fireball ground point</p></li>
-<li><p>v_sound: [float] speed of sound, used in calculating mach angle, and as the constant speed of sound if no weather data is used,</p></li>
-<li><p>t0: [float] time variable of the ballistic trajectory,</p></li>
-<li><p>v: [float] velocity variable of the ballistic trajectory,</p></li>
-<li><p>azim: [float] azimuth variable of the ballistic trajectory, measured from North +E, in degrees,</p></li>
-<li><p>zangle: [float] zenith variable of the ballistic trajectory, measured from the vertical, in degrees,</p></li>
-<li><p>lat_i: [float] latitude (deg N) of the tail of the fireball,</p></li>
-<li><p>lon_i: [float] longitude (deg E) of the tail of the fireball,</p></li>
-<li><p>elev_i: [float] elevation (m) of the tail of the fireball,</p></li>
-<li><p>lat_f: [float] latitude (deg N) of the head of the fireball,</p></li>
-<li><p>lon_f: [float] longitude (deg E) of the head of the fireball,</p></li>
-<li><p>elev_f: [float] elevation (m) of the head of the fireball,</p></li>
-<li><p>show_ballistic_waveform: [Boolean] switch to show expected ballistic solution,</p></li>
-<li><p>fragmentation_point: [list] form [lat, lon, elev, t0], guess in the positions and time of fragmentations of the fireball for use with manual searches. ,</p></li>
-<li><p>show_fragmentation_waveform: [boolean] switch to show expected fragmentation solution,</p></li>
-<li><p>manual_fragmentation_search: [list] format lat, lon, height (in decimal degrees and meters) to findresiduals of a single point, does not run a search algorithm if on.,</p></li>
-<li><p>v_fixed: [float] value to restrict the speed of the meteor to,</p></li>
-<li><p>azimuth_min: [float] minimum allowed azimuth angle, in degrees (+E of due N),</p></li>
-<li><p>azimuth_max: [float] maximum allowed azimuth angle, in degrees (+E of due N),</p></li>
-<li><p>zenith_min: [float] minimum allowed zenith angle, in degrees (from vertical),</p></li>
-<li><p>zenith_max: [float] maximum allowed zenith angle, in degrees (from vertical),</p></li>
-<li><p>x_min: [float] minimum allowed position in x, in kilometres, (+ South),</p></li>
-<li><p>x_max: [float] maximum allowed position in x, in kilometres, (+ South),</p></li>
-<li><p>y_min: [float] minimum allowed position in y, in kilometres, (+ East),</p></li>
-<li><p>y_max: [float] maximum allowed position in y, in kilometres, (+ East),</p></li>
-<li><p>t_min: [float] minimum allowed time, in seconds,</p></li>
-<li><p>t_max: [float] maximum allowed time, in seconds,</p></li>
-<li><p>v_min: [float] minimum allowed velocity of the fireball, in kilometres/second,</p></li>
-<li><p>v_max: [float] maximum allowed velocity of the fireball, in kilometres/second,</p></li>
-<li><p>max_error: [float] maximum tolerance in error. Helps the search algorithm to deal with sound waves not reaching a station, or very high errors. Assigns bad points to a value so that they can be plotted, default - 1000,</p></li>
-<li><p>restricted_time: [datetime object] Restrict time of fragmentation.,</p></li>
-<li><p>max_time: [float] latest possible time in seconds after the reference time that will be used in the search. Sets any found value after that to the max_error.,</p></li>
-<li><p>min_time: [float] latest possible time in seconds after the reference time thatwill be used in the search. Sets any found value after that to the max_error.,</p></li>
-<li><p>traj_tol: [float] how many meters away from the trajectory the Supracenter is allowed to be,</p></li>
-<li><p>restrict_to_trajectory: [boolean] if the Supracenter solution is bound to a trajectory solution in [Ballistic],</p></li>
-<li><p>weight_distance_min: [float] the distance from the first signal-receiving station where all stations before are full weight.,</p></li>
-<li><p>weight_distance_max: [float] the distance from the first signal-receiving station where all stations after are given no weight. Stations between these values are given a cosine taper</p></li>
-<li><p>search_area: [list] format lat_min, lat_max, lon_min, lon_max (in decimal degrees) Search area to run the algorithm inside, and what weather data to use.</p></li>
-<li><p>search_height: [list] format height_min, height_max (in meters), gives a height range to run the algorithm inside,</p></li>
-<li><p>enable_winds: [Boolean] switch to enable winds in the calculation</p></li>
-<li><p>weather_type: [string] weather source to use: none - no weather file (isotropic). custom - custom file (no interp). merra - MERRA (with interp) (~one month behind). ecmwf - ECMWF (with interp) (~four months behind). ukmo - UKMO (with interp) (~one day behind),</p></li>
-<li><p>grid_size: [float] grid size resolution of the weather profile. If unknown, leave blank,</p></li>
-<li><p>perturb: [Boolean] switch to enable perturbations,</p></li>
-<li><p>perturb_method: [string] perturbation method to use: X is perturbed variable, x is original variable. bmp - BMP method: X = (1 + r)*x, r is a normally distributed random number r = [-0.5, 0.5]. sppt - SPPT method: X = (1 + r*u)*x, r is a random number from a Gaussian distribution with a standard deviation of 0.5/3 (for now), u is a scaling factor, u = [0, 1], u is 0 near the surface and the stratosphere, and smoothly transitions to 1 in between. temporal - uses times around the current atmosphere to guess range. spread - uses ranges from ECMWF. spread_r - used ranges from ECMWF but random numbers are generated per level,</p></li>
-<li><p>perturb_times: [int] number of times to perturb the weather, in addition to the original sounding. A value of 1 will show the original weather, and one perturbation.,</p></li>
-<li><p>fragno: [int] which fragmentation is to be looked at in Supracenter, if more than one was used in generating the arrival_times_file.npy in MakeIRISPicks.py,</p></li>
-<li><p>fast_ballistic: [boolean] switch to calculate the ballistic wave release points quickly (if true) or accurately (if false). True will not consider the winds, and the wave release point will be the intersection between the trajectory and a perpendicular line to the station. False will be the point on the trajectory which leaves the trajectory perpendicular, and with winds arrives at the station.</p></li>
-<li><p>fit_type: [int] Fit type for the error cost function in Supracenter. 1 - Evaluates the error as the absolute difference. 2 - Evaluates the error as the square of the difference.</p></li>
-<li><p>n_theta: [int] Azimuth grid spacing for ray tracing algorithm,</p></li>
-<li><p>n_phi: [int] Zenith grid spacing for the ray tracing algorithm,</p></li>
-<li><p>angle_precision: [float] ray tracing algorithm angle precision. Minimum resolution between two angles,</p></li>
-<li><p>angle_error_tol: [float] ray tracing algorithm angle error tolerance. How far off the angle can be from the “true” angle,</p></li>
-<li><p>maxiter: [int] maximum number of iterations allowed for the particle swarm optimization search</p></li>
-<li><p>swarmsize: [int] number of particles to search with in the particle swarm optimization search</p></li>
-<li><p>run_times: [int] number of times to run the particle swarm optimization search, the best answer is taken from all searches,</p></li>
-<li><p>phip: [float] Scaling factor to search away from the best known position of each particle, each iteration, default - 0.5,</p></li>
-<li><p>phig: [float] Scaling factor to search away from the best known position of the swarm, each iteration, default - 0.5,</p></li>
-<li><p>omega: [float] Particle velocity scaling factor, default - 0.5,</p></li>
-<li><p>pso_debug: [boolean] Enable/disable debug mode in particle swarm optimization,</p></li>
-<li><p>minfunc: [float] minimum change in error in pso search befire stopping, default - 1e-8,</p></li>
-<li><p>minstep: [float] minimum tolerance in pso stepsize before stopping, default - 1e-8,</p></li>
-<li><p>plot_all_stations: [boolean] plots stations in [Extra Stations],</p></li>
-<li><p>colortoggle: [boolean] true - uses inferno colormap for waveform data. false - uses random colors for waveform data (useful if  data overlaps),</p></li>
-<li><p>dot_tol: [float] tolerance in finding the boundaries of the cylindrical arrival times for MakeIRISPicks contour. Higher values mean a larger area of travel times. Code takes dot product of trajectory vector and from the wave release point to a ground position. The wave will only reach the ground if these are perpendicular. dot_tol is the tolerance around 0that the dot product of the two vectors can be to be considered at a right angle.</p></li>
-<li><p>contour_res: [int] Resolution of the contour plot. eg. 100 would make both x and y spacing 100, giving a 10000 square grid. Default is 100, but can be set lower to reduce computational time with weather. The size of the contour plot can be changed with deg_radius.</p></li>
-<li><p>high_f: [list] a list of station codes. Marks those stations green, as a fragmentation arrival.</p></li>
-<li><p>high_b: [list] a list of station codes. Marks those stations blue, as a ballistic arrival.,</p></li>
-<li><p>rm_stat: [list] a list of station codes. Removes those stations from display.,</p></li>
-<li><p>img_dim: [int] resolution of contour graphs. High values with winds take a long time to compute,</p></li>
-<li><p>reported_points: [list] points plotted along with the results of the search used for reference, such as points found by research.,</p></li>
-<li><p>stations: [list] location and seed file of extra stations to be used.</p></li>
-</ul>
+<p>This is the official list of supported variable names that are functional in the code, and that may be freely edited.</p>
+<div class="section" id="general">
+<h2>General<a class="headerlink" href="#general" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>fireball_name</strong> - <em>string</em></dt>
+<dd class="field-odd"><p>Name of the fireball, which will be the folder name of the working_directory. Intended to be used to distinguish between multiple fireballs in folders</p>
+</dd>
+<dt class="field-even"><strong>get_data</strong> - <em>boolean</em></dt>
+<dd class="field-even"><p>switch to retrive station waveform data from IRIS and ORFEUS,</p>
+</dd>
+<dt class="field-odd"><strong>run_mode</strong> - <em>string</em></dt>
+<dd class="field-odd"><p>mode to run program in. search - pso search solution. replot - plots data from “points_name”. Used after a search. manual - plots solution with given x0, y0, t0, v, azim, zangle</p>
+</dd>
+<dt class="field-even"><strong>debug</strong> - <em>boolean</em></dt>
+<dd class="field-even"><p>switch to include output messages in the user about what the program is doing. Intended for finding out why the program may not be running as it should</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="files">
+<h2>Files<a class="headerlink" href="#files" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>working_directory</strong> - <em>string</em></dt>
+<dd class="field-odd"><p>directory of all the files below,</p>
+</dd>
+<dt class="field-even"><strong>arrival_times_file</strong> - <em>string</em></dt>
+<dd class="field-even"><p>file name of the arrival times file produced by MakeIRISPicks.py. Intended to replot past results,</p>
+</dd>
+<dt class="field-odd"><strong>sounding_file</strong> - <em>string</em></dt>
+<dd class="field-odd"><p>atmospheric file containing winds and temperatures,</p>
+</dd>
+<dt class="field-even"><strong>perturbation_spread_file</strong> - <em>string</em></dt>
+<dd class="field-even"><p>ensemble spread file from Copernicus,</p>
+</dd>
+<dt class="field-odd"><strong>station_picks_file</strong> - <em>string</em></dt>
+<dd class="field-odd"><p>file name of the station picks file created by MakeIRISPicks.py.,</p>
+</dd>
+<dt class="field-even"><strong>points_name</strong> - <em>string</em></dt>
+<dd class="field-even"><p>file name of the data points produced by SeismicTrajectory.py. Intended to replot past results,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>lat_centre</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>Geo coordinates of the wave release centre, referred to as the source location,</p>
+</dd>
+<dt class="field-even"><strong>lon_centre</strong> - <em>float</em></dt>
+<dd class="field-even"><p>Geo coordinates of the wave release centre, referred to as the source location,</p>
+</dd>
+<dt class="field-odd"><strong>deg_radius</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>Search radius to consider when looking for stations (in degrees),</p>
+</dd>
+<dt class="field-even"><strong>fireball_datetime</strong> - <em>datetime object</em></dt>
+<dd class="field-even"><p>Time of the fireball ground point</p>
+</dd>
+<dt class="field-odd"><strong>v_sound</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>speed of sound, used in calculating mach angle, and as the constant speed of sound if no weather data is used,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="ballistic">
+<h2>Ballistic<a class="headerlink" href="#ballistic" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>t0</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>time variable of the ballistic trajectory,</p>
+</dd>
+<dt class="field-even"><strong>v</strong> - <em>float</em></dt>
+<dd class="field-even"><p>velocity variable of the ballistic trajectory,</p>
+</dd>
+<dt class="field-odd"><strong>azim</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>azimuth variable of the ballistic trajectory, measured from North +E, in degrees,</p>
+</dd>
+<dt class="field-even"><strong>zangle</strong> - <em>float</em></dt>
+<dd class="field-even"><p>zenith variable of the ballistic trajectory, measured from the vertical, in degrees,</p>
+</dd>
+<dt class="field-odd"><strong>lat_i</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>latitude (deg N) of the tail of the fireball,</p>
+</dd>
+<dt class="field-even"><strong>lon_i</strong> - <em>float</em></dt>
+<dd class="field-even"><p>longitude (deg E) of the tail of the fireball,</p>
+</dd>
+<dt class="field-odd"><strong>elev_i</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>elevation (m) of the tail of the fireball,</p>
+</dd>
+<dt class="field-even"><strong>lat_f</strong> - <em>float</em></dt>
+<dd class="field-even"><p>latitude (deg N) of the head of the fireball,</p>
+</dd>
+<dt class="field-odd"><strong>lon_f</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>longitude (deg E) of the head of the fireball,</p>
+</dd>
+<dt class="field-even"><strong>elev_f</strong> - <em>float</em></dt>
+<dd class="field-even"><p>elevation (m) of the head of the fireball,</p>
+</dd>
+<dt class="field-odd"><strong>show_ballistic_waveform</strong> - <em>Boolean</em></dt>
+<dd class="field-odd"><p>switch to show expected ballistic solution,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="fragmentation">
+<h2>Fragmentation<a class="headerlink" href="#fragmentation" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>fragmentation_point</strong> - <em>list</em></dt>
+<dd class="field-odd"><p>form <em>lat, lon, elev, t0</em>:, guess in the positions and time of fragmentations of the fireball for use with manual searches. ,</p>
+</dd>
+<dt class="field-even"><strong>show_fragmentation_waveform</strong> - <em>boolean</em></dt>
+<dd class="field-even"><p>switch to show expected fragmentation solution,</p>
+</dd>
+<dt class="field-odd"><strong>manual_fragmentation_search</strong> - <em>list</em></dt>
+<dd class="field-odd"><p>format lat, lon, height (in decimal degrees and meters) to findresiduals of a single point, does not run a search algorithm if on.,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="restrictions">
+<h2>Restrictions<a class="headerlink" href="#restrictions" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>v_fixed</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>value to restrict the speed of the meteor to,</p>
+</dd>
+<dt class="field-even"><strong>azimuth_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed azimuth angle, in degrees (+E of due N),</p>
+</dd>
+<dt class="field-odd"><strong>azimuth_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed azimuth angle, in degrees (+E of due N),</p>
+</dd>
+<dt class="field-even"><strong>zenith_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed zenith angle, in degrees (from vertical),</p>
+</dd>
+<dt class="field-odd"><strong>zenith_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed zenith angle, in degrees (from vertical),</p>
+</dd>
+<dt class="field-even"><strong>x_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed position in x, in kilometres, (+ South),</p>
+</dd>
+<dt class="field-odd"><strong>x_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed position in x, in kilometres, (+ South),</p>
+</dd>
+<dt class="field-even"><strong>y_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed position in y, in kilometres, (+ East),</p>
+</dd>
+<dt class="field-odd"><strong>y_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed position in y, in kilometres, (+ East),</p>
+</dd>
+<dt class="field-even"><strong>z_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed position in z, in kilometres, up</p>
+</dd>
+<dt class="field-odd"><strong>z_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed position in z, in kilometres, up</p>
+</dd>
+<dt class="field-even"><strong>t_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed time, in seconds,</p>
+</dd>
+<dt class="field-odd"><strong>t_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed time, in seconds,</p>
+</dd>
+<dt class="field-even"><strong>v_min</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum allowed velocity of the fireball, in kilometres/second,</p>
+</dd>
+<dt class="field-odd"><strong>v_max</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>maximum allowed velocity of the fireball, in kilometres/second,</p>
+</dd>
+<dt class="field-even"><strong>max_error</strong> - <em>float</em></dt>
+<dd class="field-even"><p>maximum tolerance in error. Helps the search algorithm to deal with sound waves not reaching a station, or very high errors. Assigns bad points to a value so that they can be plotted, default - 1000,</p>
+</dd>
+<dt class="field-odd"><strong>restricted_time</strong> - <em>datetime object</em></dt>
+<dd class="field-odd"><p>Restrict time of fragmentation.,</p>
+</dd>
+<dt class="field-even"><strong>enable_restricted_time</strong> - <em>boolean</em></dt>
+<dd class="field-even"><p>Switch to enable restricted_time</p>
+</dd>
+<dt class="field-odd"><strong>weight_distance_min</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>the distance from the first signal-receiving station where all stations before are full weight.,</p>
+</dd>
+<dt class="field-even"><strong>weight_distance_max</strong> - <em>float</em></dt>
+<dd class="field-even"><p>the distance from the first signal-receiving station where all stations after are given no weight. Stations between these values are given a cosine taper</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="atmosphere">
+<h2>Atmosphere<a class="headerlink" href="#atmosphere" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>enable_winds</strong> - <em>Boolean</em></dt>
+<dd class="field-odd"><p>switch to enable winds in the calculation</p>
+</dd>
+<dt class="field-even"><strong>weather_type</strong> - <em>string</em></dt>
+<dd class="field-even"><p>weather source to use: none - no weather file (isotropic). custom - custom file (no interp). merra - MERRA (with interp) (~one month behind). ecmwf - ECMWF (with interp) (~four months behind). ukmo - UKMO (with interp) (~one day behind),</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="perturbations">
+<h2>Perturbations<a class="headerlink" href="#perturbations" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>perturb</strong> - <em>Boolean</em></dt>
+<dd class="field-odd"><p>switch to enable perturbations,</p>
+</dd>
+<dt class="field-even"><strong>perturb_method</strong> - <em>string</em></dt>
+<dd class="field-even"><p>perturbation method to use: X is perturbed variable, x is original variable. bmp - BMP method: X = (1 + r)*x, r is a normally distributed random number r = <em>-0.5, 0.5</em>:. sppt - SPPT method: X = (1 + r*u)*x, r is a random number from a Gaussian distribution with a standard deviation of 0.5/3 (for now), u is a scaling factor, u = <em>0, 1</em>:, u is 0 near the surface and the stratosphere, and smoothly transitions to 1 in between. temporal - uses times around the current atmosphere to guess range. spread - uses ranges from ECMWF. spread_r - used ranges from ECMWF but random numbers are generated per level,</p>
+</dd>
+<dt class="field-odd"><strong>perturb_times</strong> - <em>int</em></dt>
+<dd class="field-odd"><p>number of times to perturb the weather, in addition to the original sounding. A value of 1 will show the original weather, and one perturbation.,</p>
+</dd>
+<dt class="field-even"><strong>observation_frag_no</strong> - <em>int</em></dt>
+<dd class="field-even"><p>which fragmentation is to be looked at in Supracenter, if more than one was used in generating the arrival_times_file.npy in MakeIRISPicks.py,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="speed">
+<h2>Speed<a class="headerlink" href="#speed" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>n_theta</strong> - <em>int</em></dt>
+<dd class="field-odd"><p>Azimuth grid spacing for ray tracing algorithm,</p>
+</dd>
+<dt class="field-even"><strong>n_phi</strong> - <em>int</em></dt>
+<dd class="field-even"><p>Zenith grid spacing for the ray tracing algorithm,</p>
+</dd>
+<dt class="field-odd"><strong>angle_precision</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>ray tracing algorithm angle precision. Minimum resolution between two angles,</p>
+</dd>
+<dt class="field-even"><strong>angle_error_tol</strong> - <em>float</em></dt>
+<dd class="field-even"><p>ray tracing algorithm angle error tolerance. How far off the angle can be from the “true” angle,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="pso">
+<h2>PSO<a class="headerlink" href="#pso" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>maxiter</strong> - <em>int</em></dt>
+<dd class="field-odd"><p>maximum number of iterations allowed for the particle swarm optimization search</p>
+</dd>
+<dt class="field-even"><strong>swarmsize</strong> - <em>int</em></dt>
+<dd class="field-even"><p>number of particles to search with in the particle swarm optimization search</p>
+</dd>
+<dt class="field-odd"><strong>run_times</strong> - <em>int</em></dt>
+<dd class="field-odd"><p>number of times to run the particle swarm optimization search, the best answer is taken from all searches,</p>
+</dd>
+<dt class="field-even"><strong>phip</strong> - <em>float</em></dt>
+<dd class="field-even"><p>Scaling factor to search away from the best known position of each particle, each iteration, default - 0.5,</p>
+</dd>
+<dt class="field-odd"><strong>phig</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>Scaling factor to search away from the best known position of the swarm, each iteration, default - 0.5,</p>
+</dd>
+<dt class="field-even"><strong>omega</strong> - <em>float</em></dt>
+<dd class="field-even"><p>Particle velocity scaling factor, default - 0.5,</p>
+</dd>
+<dt class="field-odd"><strong>pso_debug</strong> - <em>boolean</em></dt>
+<dd class="field-odd"><p>Enable/disable debug mode in particle swarm optimization,</p>
+</dd>
+<dt class="field-even"><strong>minfunc</strong> - <em>float</em></dt>
+<dd class="field-even"><p>minimum change in error in pso search befire stopping, default - 1e-8,</p>
+</dd>
+<dt class="field-odd"><strong>minstep</strong> - <em>float</em></dt>
+<dd class="field-odd"><p>minimum tolerance in pso stepsize before stopping, default - 1e-8,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="graphing">
+<h2>Graphing<a class="headerlink" href="#graphing" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>contour_res</strong> - <em>int</em></dt>
+<dd class="field-odd"><p>Resolution of the contour plot. eg. 100 would make both x and y spacing 100, giving a 10000 square grid. Default is 100, but can be set lower to reduce computational time with weather. The size of the contour plot can be changed with deg_radius.</p>
+</dd>
+<dt class="field-even"><strong>high_f</strong> - <em>list</em></dt>
+<dd class="field-even"><p>a list of station codes. Marks those stations green, as a fragmentation arrival.</p>
+</dd>
+<dt class="field-odd"><strong>high_b</strong> - <em>list</em></dt>
+<dd class="field-odd"><p>a list of station codes. Marks those stations blue, as a ballistic arrival.,</p>
+</dd>
+<dt class="field-even"><strong>rm_stat</strong> - <em>list</em></dt>
+<dd class="field-even"><p>a list of station codes. Removes those stations from display.,</p>
+</dd>
+</dl>
+</div></blockquote>
+</div>
+<div class="section" id="extra-stations">
+<h2>Extra Stations<a class="headerlink" href="#extra-stations" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><dl class="field-list simple">
+<dt class="field-odd"><strong>stations</strong> - <em>list</em></dt>
+<dd class="field-odd"><p>location and seed file of extra stations to be used.</p>
+</dd>
+</dl>
+</div></blockquote>
 <div class="toctree-wrapper compound">
+</div>
 </div>
 </div>
 

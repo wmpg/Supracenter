@@ -1,28 +1,23 @@
 
 import os
-import matplotlib
-import matplotlib.pyplot as plt
-import numpy as np
 import time
 import datetime
 import copy
-import obspy
-import scipy.signal
 import webbrowser
-from pprint import pprint
+import pickle
 
 from netCDF4 import Dataset
-
 from PyQt5.QtWidgets import *
 import sys
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
-import pyqtgraph.opengl as gl
-import matplotlib.gridspec as gridspec
-import matplotlib.cm as cm
 from matplotlib.colors import Normalize
+import matplotlib.pyplot as plt
+import numpy as np
+import obspy
+import scipy.signal
 
 from functools import partial
 
@@ -33,42 +28,34 @@ from matplotlib.figure import Figure
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from mpl_toolkits.mplot3d import Axes3D
+from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter
+from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
 
-from supra.Supracenter.Utils.Formatting import *
 from supra.Supracenter.slowscan import slowscan
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
-from supra.Fireballs.Program import position, configRead, configWrite, station, tryBool
-from supra.Fireballs.SeismicTrajectory import Constants, parseWeather, waveReleasePointWinds, timeOfArrival, getStationList, \
-estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
-from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE, local2LatLon, latLon2Local, chauvenet
 from supra.Supracenter.netCDFconv import findECMWFSound
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.fetchCopernicus import copernicusAPI
-from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, plotAllWaveforms, \
-butterworthBandpassFilter, convolutionDifferenceFilter
-from wmpl.Utils.Earth import greatCircleDistance
-from wmpl.Utils.PlotMap import GroundMap
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
+
+from supra.GUI.GUITools import *
+
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
+from wmpl.Utils.Earth import greatCircleDistance
+
+from supra.Utils.Formatting import *
+from supra.Utils.Classes import Position, Station, Config 
+from supra.Utils.TryObj import tryBool, tryFloat, tryInt, tryPosition, trySupracenter, tryAngle, tryTrajectory
 
 global arrTimes 
 global sounding
 
 DATA_FILE = 'data.txt'
 OUTPUT_CSV = 'data_picks.csv'
-
-class Pick:
-    def __init__(self, time, stn, stn_no, channel):
-        self.time = time
-        self.stn = stn
-        self.stn_no = stn_no
-        self.channel = channel
-
-             
+  
 class SolutionGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -102,7 +89,6 @@ class SolutionGUI(QMainWindow):
         self.addFetchATMWidgets()
         self.addProfileWidgets()
         self.addRayTracerWidgets()
-        #self.addDocsWidgets()
 
         self.var_typ = 't'
 
@@ -221,41 +207,8 @@ class SolutionGUI(QMainWindow):
                 # Write the CSV entry
                 f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}\n".format(*line))
 
-        self.errorMessage('Output to CSV!', 0, title='Exported!')
+        errorMessage('Output to CSV!', 0, title='Exported!')
 
-
-    def toolTime(self, var):
-
-        tool_time_dict = {}
-
-        with open('supra/Fireballs/tool_tips.csv') as f:
-            for line in f:
-                line = line.split(':')
-                tool_time_dict[line[0]] = line[1]
-
-        return tool_time_dict[var]
-
-    def errorMessage(self, message, level, info='', title='Yikes!', detail=''):
-        """
-        """
-        msg = QMessageBox()
-
-        if level == 0:
-            msg.setIcon(QMessageBox.Information)
-        elif level == 1:
-            msg.setIcon(QMessageBox.Warning)
-        else:
-            msg.setIcon(QMessageBox.Critical)
-
-        msg.setText(message)
-        
-        msg.setInformativeText(info)
-        msg.setWindowTitle(title)
-        msg.setDetailedText(detail)
-
-        msg.setStandardButtons(QMessageBox.Ok)
-
-        msg.exec_()
 
     def supSaveChanges(self):
         pass
@@ -270,7 +223,7 @@ class SolutionGUI(QMainWindow):
         self.elev_frag_edits.setText(str(self.elev_edit.text()))
         self.time_frag_edits.setText(str(self.time_edit.text()))
 
-        self.errorMessage('File Copied!', 0, title='Ini Information Copied')
+        errorMessage('File Copied!', 0, title='Ini Information Copied')
    
     def seisSearch(self):
 
@@ -292,7 +245,7 @@ class SolutionGUI(QMainWindow):
             _, _, _, lat0, lon0, elev0, ref_time, pick_time, station_no = station_list[ref_indx]
 
         except:
-            self.errorMessage("Old data_picks.csv file detected!", 2, detail='data_picks.csv files created previous to Jan. 8, 2019 are lacking a channel tag added. Redownloading the waveform files will likely fix this')
+            errorMessage("Old data_picks.csv file detected!", 2, detail='data_picks.csv files created previous to Jan. 8, 2019 are lacking a channel tag added. Redownloading the waveform files will likely fix this')
 
         # Date for weather
         ref_time = jd2Date(jd_ref)
@@ -314,7 +267,7 @@ class SolutionGUI(QMainWindow):
         try:
             setup.lat_f, setup.lon_f, _ = latLon2Local(lat0, lon0, elev0, np.radians(setup.lat_f), np.radians(setup.lon_f), 0)   
         except:
-            self.errorMessage("No Geometric Landing Point Given", 1, info='Using lat_centre and lon_centre', \
+            errorMessage("No Geometric Landing Point Given", 1, info='Using lat_centre and lon_centre', \
                 detail='[Restriction] lat_f, lon_f, elev_f are not set! Since this is function is searching for that point, this may be okay')   
 
         # Set up search parameters
@@ -331,7 +284,7 @@ class SolutionGUI(QMainWindow):
 
 
             except:
-                self.errorMessage("Unable to find perturbed times file", 2, detail='Place a file "all_pick_times.npy" generated by MakeIRISPicks into the file_name indicated in the SeismicTrajectory.ini file')
+                errorMessage("Unable to find perturbed times file", 2, detail='Place a file "all_pick_times.npy" generated by MakeIRISPicks into the file_name indicated in the SeismicTrajectory.ini file')
         else:
             allTimes = []
 
@@ -358,7 +311,7 @@ class SolutionGUI(QMainWindow):
             plotStationsAndTrajectory(station_list, p0, setup, sounding)
 
         else:
-            self.errorMessage('Invalid mode! Use search, replot, or manual', 2)
+            errorMessage('Invalid mode! Use search, replot, or manual', 2)
             return None
         
         fig.set_facecolor("none")
@@ -421,7 +374,7 @@ class SolutionGUI(QMainWindow):
         try:
             setup = self.saveINI(write=False)
         except:
-            self.errorMessage("Cannot load station data", 2)
+            errorMessage("Cannot load station data", 2)
             return None
 
         setup.n_theta = self.tryInt(self.ray_theta_edits.text())
@@ -436,10 +389,10 @@ class SolutionGUI(QMainWindow):
 
 
         try:
-            A = position(setup.lat_i, setup.lon_i, setup.elev_i*1000)
-            B = position(setup.lat_f, setup.lon_f, setup.elev_f*1000)
+            A = Position(setup.lat_i, setup.lon_i, setup.elev_i*1000)
+            B = Position(setup.lat_f, setup.lon_f, setup.elev_f*1000)
         except:
-            self.errorMessage("I didn't program this one yet!", 2, detail="SolutionGui (trajSolver)")
+            errorMessage("I didn't program this one yet!", 2, detail="SolutionGui (trajSolver)")
 
         A.pos_loc(B)
         B.pos_loc(B)
@@ -450,7 +403,7 @@ class SolutionGUI(QMainWindow):
 
         P = n*v + np.array([A.x, A.y, A.z])
 
-        pt = position(0, 0, 0)
+        pt = Position(0, 0, 0)
         pt.x = P[0]
         pt.y = P[1]
         pt.z = P[2]
@@ -473,11 +426,11 @@ class SolutionGUI(QMainWindow):
         try:
             setup = self.saveINI(write=False)
         except:
-            self.errorMessage("Cannot load station data", 2)
+            errorMessage("Cannot load station data", 2)
             return None
 
-        A = position(float(self.ray_lat_edits.text()), float(self.ray_lon_edits.text()), float(self.ray_height_edits.text()))
-        B = position(self.ray_pick_point[0], self.ray_pick_point[1], self.ray_pick_point[2])
+        A = Position(float(self.ray_lat_edits.text()), float(self.ray_lon_edits.text()), float(self.ray_height_edits.text()))
+        B = Position(self.ray_pick_point[0], self.ray_pick_point[1], self.ray_pick_point[2])
 
         A.pos_loc(B)
         B.pos_loc(B)
@@ -486,7 +439,7 @@ class SolutionGUI(QMainWindow):
         try:
             sounding = parseWeather(setup, consts)
         except:
-            self.errorMessage('Error reading weather profile in rayTrace', 2)
+            errorMessage('Error reading weather profile in rayTrace', 2)
             return None
 
         if setup.debug:
@@ -550,7 +503,7 @@ class SolutionGUI(QMainWindow):
                 zline.append(line[2])
         except:            
             if not perturb:
-                self.errorMessage('Cannot trace rays!', 2)
+                errorMessage('Cannot trace rays!', 2)
                 return None
 
 
@@ -637,14 +590,14 @@ class SolutionGUI(QMainWindow):
 
                 ax.quiver(xline, yline, zline, u[:-1]/max_mag, v[:-1]/max_mag, 0, color=c)
             except:
-                self.errorMessage("Cannot trace rays!", 1)
+                errorMessage("Cannot trace rays!", 1)
 
         try:
 
             print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(err[0], xline[-1], yline[-1], t_arrival[0]))
 
             if setup.debug:
-                F = position(0, 0, 0)
+                F = Position(0, 0, 0)
                 
                 F.x = xline[-1]
                 F.y = yline[-1]
@@ -674,7 +627,7 @@ class SolutionGUI(QMainWindow):
                     zline.append(line[2])
             except:            
                 if not perturb:
-                    self.errorMessage('Cannot trace rays!', 2)
+                    errorMessage('Cannot trace rays!', 2)
                     return None
             print('Best perturbation {:}: error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(ptb, err[ptb], xline[-1], yline[-1], t_arrival[ptb]))
 
@@ -699,22 +652,26 @@ class SolutionGUI(QMainWindow):
     def loadRayGraph(self):
         ### Add Stations
         try:
-            setup = self.saveINI(write=False)
+            self.saveINI(write=False)
         except:
-            self.errorMessage("Cannot load station data", 2)
+            errorMessage("Cannot load station data", 2)
             return None
 
-        if not os.path.exists(setup.working_directory):
-            os.makedirs(setup.working_directory)
+        try:
+            if not os.path.exists(self.setup.working_directory):
+                os.makedirs(self.setup.working_directory)
+        except FileNotFoundError:
+            errorMessage("No such file or directory: '{:}'".format(self.setup.working_directory), 2)
+            return None
 
             #Build seismic data path
-        dir_path = os.path.join(setup.working_directory, setup.fireball_name)
+        dir_path = os.path.join(self.setup.working_directory, self.setup.fireball_name)
 
         # Load the station and waveform files list
         data_file_path = os.path.join(dir_path, DATA_FILE)
         if os.path.isfile(data_file_path):
             
-            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat, debug=setup.debug)
+            stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=self.setup.rm_stat, debug=self.setup.debug)
 
         else:
             print('Station and waveform data file not found! Download the waveform files first!')
@@ -722,7 +679,7 @@ class SolutionGUI(QMainWindow):
 
 
         if setup.stations is not None:
-            stn_list = stn_list + self.makeStationObj(setup.stations)
+            stn_list = stn_list + self.makeStationObj(self.setup.stations)
 
 
         for stn in stn_list:
@@ -733,11 +690,11 @@ class SolutionGUI(QMainWindow):
             self.ray_canvas.addItem(text)
 
         end_point = pg.ScatterPlotItem()
-        end_point.addPoints(x=[setup.lon_f], y=[setup.lat_f], pen=(66, 232, 244), symbol='+')
+        end_point.addPoints(x=[self.setup.lon_f], y=[self.setup.lat_f], pen=(66, 232, 244), symbol='+')
         self.ray_canvas.addItem(end_point, update=True)
 
-        x=[setup.lon_i, setup.lon_f]
-        y=[setup.lat_i, setup.lat_f]
+        x=[self.setup.lon_i, self.setup.lon_f]
+        y=[self.setup.lat_i, self.setup.lat_f]
         self.ray_canvas.plot(x, y, pen=(66, 232, 244))
 
         SolutionGUI.update(self)
@@ -786,14 +743,14 @@ class SolutionGUI(QMainWindow):
         self.ray_label2 = QLabel('Ending Point')
         self.ray_control.addWidget(self.ray_label2, 3, 0, 1, 1)
 
-        self.ray_height_label, self.ray_height_edits = self.createLabelEditObj("Height", self.ray_control, 1, width=3)
+        self.ray_height_label, self.ray_height_edits = createLabelEditObj("Height", self.ray_control, 1, width=3)
         
         self.ray_button = QPushButton('Solve for Lat/Lon')
         self.ray_control.addWidget(self.ray_button, 7, 3, 4, 1)
         self.ray_button.clicked.connect(self.trajSolver)
 
-        self.ray_lat_label, self.ray_lat_edits = self.createLabelEditObj("Lat", self.ray_control, 2)
-        self.ray_lon_label, self.ray_lon_edits = self.createLabelEditObj("Lon", self.ray_control, 2, h_shift=2)
+        self.ray_lat_label, self.ray_lat_edits = createLabelEditObj("Lat", self.ray_control, 2)
+        self.ray_lon_label, self.ray_lon_edits = createLabelEditObj("Lon", self.ray_control, 2, h_shift=2)
 
         self.ray_pick_label = QLabel('')
         self.ray_control.addWidget(self.ray_pick_label, 3, 1, 1, 5)
@@ -806,10 +763,10 @@ class SolutionGUI(QMainWindow):
         self.ray_control.addWidget(self.ray_enable_perts, 2, 5)
         self.ray_enable_perts.stateChanged.connect(self.trajSolver)
 
-        self.ray_theta_label, self.ray_theta_edits = self.createLabelEditObj("Theta Resolution", self.ray_control, 5)
-        self.ray_pres_label, self.ray_pres_edits = self.createLabelEditObj("Angle Precision", self.ray_control, 5, h_shift=2)
-        self.ray_phi_label, self.ray_phi_edits = self.createLabelEditObj("Phi Resolution", self.ray_control, 6)
-        self.ray_err_label, self.ray_err_edits = self.createLabelEditObj("Spatial Error", self.ray_control, 6, h_shift=2)
+        self.ray_theta_label, self.ray_theta_edits = createLabelEditObj("Theta Resolution", self.ray_control, 5)
+        self.ray_pres_label, self.ray_pres_edits = createLabelEditObj("Angle Precision", self.ray_control, 5, h_shift=2)
+        self.ray_phi_label, self.ray_phi_edits = createLabelEditObj("Phi Resolution", self.ray_control, 6)
+        self.ray_err_label, self.ray_err_edits = createLabelEditObj("Spatial Error", self.ray_control, 6, h_shift=2)
 
         self.ray_canvas.scene().sigMouseClicked.connect(self.rayMouseClicked)
 
@@ -1018,10 +975,10 @@ class SolutionGUI(QMainWindow):
         self.supra_tab_content.addWidget(self.search_button, 11, 3, 1, 3)
         self.search_button.clicked.connect(self.supraSearch)
 
-        self.lat_label, self.lat_edit = self.createLabelEditObj("Latitude: ", self.supra_tab_content, 1, h_shift=2, width=2)
-        self.lon_label, self.lon_edit = self.createLabelEditObj("Longitude: ", self.supra_tab_content, 2, h_shift=2, width=2)
-        self.elev_label, self.elev_edit = self.createLabelEditObj("Elevation: ", self.supra_tab_content, 3, h_shift=2, width=2)
-        self.time_label, self.time_edit = self.createLabelEditObj("Time: ", self.supra_tab_content, 4, h_shift=2, width=2)
+        self.lat_label, self.lat_edit = createLabelEditObj("Latitude: ", self.supra_tab_content, 1, h_shift=2, width=2)
+        self.lon_label, self.lon_edit = createLabelEditObj("Longitude: ", self.supra_tab_content, 2, h_shift=2, width=2)
+        self.elev_label, self.elev_edit = createLabelEditObj("Elevation: ", self.supra_tab_content, 3, h_shift=2, width=2)
+        self.time_label, self.time_edit = createLabelEditObj("Time: ", self.supra_tab_content, 4, h_shift=2, width=2)
 
         self.supra_save_changes_button = QPushButton('Copy to INI Builder')
         self.supra_tab_content.addWidget(self.supra_save_changes_button, 8, 3, 1, 1)
@@ -1039,10 +996,10 @@ class SolutionGUI(QMainWindow):
         self.supra_tab_content.addWidget(self.ref_edit, 5, 4, 1, 2)
         self.ref_edit.setCalendarPopup(True)
         
-        self.picks_file_label, self.picks_file_edit, self.picks_file_buton = self.createFileSearchObj("Picks File: ", self.supra_tab_content, 6, h_shift=2)
+        self.picks_file_label, self.picks_file_edit, self.picks_file_buton = createFileSearchObj("Picks File: ", self.supra_tab_content, 6, h_shift=2)
         self.picks_file_buton.clicked.connect(partial(self.fileSearch, ["CSV Picks File (*.csv)"], self.picks_file_edit))
 
-        self.atmospheric_file_label, self.atmospheric_file_edit, self.atmospheric_file_buton = self.createFileSearchObj("Atmospheric File: ", self.supra_tab_content, 7, h_shift=2)
+        self.atmospheric_file_label, self.atmospheric_file_edit, self.atmospheric_file_buton = createFileSearchObj("Atmospheric File: ", self.supra_tab_content, 7, h_shift=2)
         self.atmospheric_file_buton.clicked.connect(partial(self.fileSearch, ["NetCDF (*.nc)"], self.atmospheric_file_edit))
         
         self.master_supra.addLayout(self.supra_tab_content)
@@ -1065,7 +1022,7 @@ class SolutionGUI(QMainWindow):
             dataset = parseWeather(setup, consts)
             sounding = findECMWFSound(setup.lat_centre, setup.lon_centre, dataset)
         except:
-            self.errorMessage('Error reading weather profile in fatmPlotProfile', 2)
+            errorMessage('Error reading weather profile in fatmPlotProfile', 2)
             return None
 
         self.atm_canvas.setLabel('left', "Height", units='m')
@@ -1092,7 +1049,7 @@ class SolutionGUI(QMainWindow):
             X = mags*np.sin(np.radians(dirs))
             Y = sounding[:, 0]
         else:
-            self.errorMessage('Error reading fatmPlotProfile combo box', 2, detail=self.fatm_variable_combo.currentText())
+            errorMessage('Error reading fatmPlotProfile combo box', 2, detail=self.fatm_variable_combo.currentText())
             X = []
             Y = []
 
@@ -1128,7 +1085,7 @@ class SolutionGUI(QMainWindow):
         loc = self.fatm_name_edits.text()
 
         if download:
-            self.errorMessage('Please wait until your file has downloaded...', 0)
+            errorMessage('Please wait until your file has downloaded...', 0)
             copernicusAPI(variables, year, month, day, time_of, loc)
             return None
         else:
@@ -1141,7 +1098,7 @@ class SolutionGUI(QMainWindow):
         elif obj == self.fatm_lon_label:
             obj.setText('Longitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         else:
-            self.errorMessage('Bad atm slider pass in fatmValueChange', 2)
+            errorMessage('Bad atm slider pass in fatmValueChange', 2)
 
         #self.atmPlotProfile(self.atm_lat_slide.value(), self.atm_lon_slide.value(), self.var_typ)
     
@@ -1151,7 +1108,7 @@ class SolutionGUI(QMainWindow):
         # Read the file
             dataset = Dataset(file_name, "r+", format="NETCDF4")
         except:
-            self.errorMessage("Unable to read weather file: {:}".format(file_name), 2)
+            errorMessage("Unable to read weather file: {:}".format(file_name), 2)
             return None
 
         lon_index = int(np.around((lon%360)*4))
@@ -1225,7 +1182,7 @@ class SolutionGUI(QMainWindow):
                         info = info + str(element) + ','
                 f.write(info)
 
-        self.errorMessage('Printed out sounding data', 0, title="Print Done")
+        errorMessage('Printed out sounding data', 0, title="Print Done")
 
     def addFetchATMWidgets(self):
         fetch = QWidget()
@@ -1246,7 +1203,7 @@ class SolutionGUI(QMainWindow):
         fetch_plots.addWidget(self.fatm_variable_combo)
         self.fatm_variable_combo.currentTextChanged.connect(self.fatmPlot)
 
-        self.fatm_name_label, self.fatm_name_edits = self.createLabelEditObj('Name:', fetch_content, 1)
+        self.fatm_name_label, self.fatm_name_edits = createLabelEditObj('Name:', fetch_content, 1)
 
         self.fatm_button = QPushButton('Browse')
         fetch_content.addWidget(self.fatm_button, 1, 3)
@@ -1323,70 +1280,6 @@ class SolutionGUI(QMainWindow):
         docs_tab_content.addWidget(self.docTree)
 
 
-    def createLabelEditObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip=''):
-        """ Creates a label and line edit object beside each other
-
-        Arguments:
-        label_name [String]: string to be displayed in the label
-        parent [obj]: the object to hold this item. Must be in QGridLayout
-        row [int]: the row the object will sit on
-        
-        Keyword Arguments:
-        width [int]: width of the lineedit box
-        h_shift [int]: horizontal position to place the combination
-        tool_tip [String]: identifier name in tool_tips.csv that the tool tip is under
-
-        Returns:
-        label_obj, edits_obj [obj]: the label and lineedit objects
-        """
-
-        label_obj = QLabel(label_name)
-        edits_obj = QLineEdit('')
-        parent.addWidget(label_obj, row, 1 + h_shift)
-        parent.addWidget(edits_obj, row, 2 + h_shift, 1, width)
-
-        if tool_tip != '':
-            label_obj.setToolTip(self.toolTime(tool_tip))
-
-        return label_obj, edits_obj
-
-    def createFileSearchObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip=''):
-
-        label_obj, edits_obj = self.createLabelEditObj(label_name, parent, row, width=width, h_shift=h_shift, tool_tip=tool_tip)
-
-        buton_obj = QPushButton('Browse')
-        parent.addWidget(buton_obj, row, 3 + h_shift)
-
-        return label_obj, edits_obj, buton_obj
-
-    def createComboBoxObj(self, label_name, parent, row, items=[], width=1, h_shift=0, tool_tip=''):
-
-        label_obj = QLabel(label_name)
-        combo_obj = QComboBox()
-        parent.addWidget(label_obj, row, 1 + h_shift)
-        parent.addWidget(combo_obj, row, 2 + h_shift, 1, width)
-
-        for item in items: combo_obj.addItem(item)
-
-        if tool_tip != '':
-            label_obj.setToolTip(self.toolTime(tool_tip))
-
-        return label_obj, combo_obj
-
-    def createLabelDateEditObj(self, label_name, parent, row, width=1, h_shift=0, tool_tip='', popup=True):
-        
-        label_obj = QLabel(label_name)
-        dedit_obj = QDateTimeEdit()
-        parent.addWidget(label_obj, row, 1 + h_shift)
-        parent.addWidget(dedit_obj, row, 2 + h_shift, 1, width)
-        dedit_obj.setCalendarPopup(popup)
-
-        if tool_tip != '':
-            label_obj.setToolTip(self.toolTime(tool_tip))
-
-        return label_obj, dedit_obj
-
-
     def initGeneralTab(self):
 
         general = QWidget()
@@ -1394,12 +1287,10 @@ class SolutionGUI(QMainWindow):
         general.setLayout(general_content)
         self.section_widget.addTab(general, "General")
 
-        self.fireball_name_label, self.fireball_name_edits = self.createLabelEditObj('Fireball Name:', general_content, 1, tool_tip='fireball_name')
-
-        self.difference_filter_label, self.difference_filter_edits = self.createComboBoxObj('Difference Filter:', general_content, 2, items=['True', 'False'], tool_tip='difference_filter')
-        self.get_data_label, self.get_data_edits = self.createComboBoxObj('Get Data: ', general_content, 3, items=['True', 'False'], tool_tip='get_data')
-        self.run_mode_label, self.run_mode_edits = self.createComboBoxObj('Run Mode: ', general_content, 4, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
-        self.debug_label, self.debug_edits = self.createComboBoxObj('Debug: ', general_content, 5, items=['True', 'False'], tool_tip='debug')
+        self.fireball_name_label, self.fireball_name_edits = createLabelEditObj('Fireball Name:', general_content, 1, tool_tip='fireball_name')
+        self.get_data_label, self.get_data_edits = createComboBoxObj('Get Data: ', general_content, 3, items=['True', 'False'], tool_tip='get_data')
+        self.run_mode_label, self.run_mode_edits = createComboBoxObj('Run Mode: ', general_content, 4, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
+        self.debug_label, self.debug_edits = createComboBoxObj('Debug: ', general_content, 5, items=['True', 'False'], tool_tip='debug')
 
     def initFilesTab(self):
         files = QWidget()
@@ -1407,22 +1298,22 @@ class SolutionGUI(QMainWindow):
         files.setLayout(files_content)
         self.section_widget.addTab(files, "Files")
 
-        self.working_directory_label, self.working_directory_edits, self.working_directory_buton = self.createFileSearchObj('Working Directory: ', files_content, 1, width=1, h_shift=0, tool_tip='working_directory')
+        self.working_directory_label, self.working_directory_edits, self.working_directory_buton = createFileSearchObj('Working Directory: ', files_content, 1, width=1, h_shift=0, tool_tip='working_directory')
         self.working_directory_buton.clicked.connect(partial(self.folderSearch, self.working_directory_edits))
 
-        self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = self.createFileSearchObj('Arrival Times:', files_content, 2, width=1, h_shift=0, tool_tip='arrival_times_file')
+        self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = createFileSearchObj('Arrival Times:', files_content, 2, width=1, h_shift=0, tool_tip='arrival_times_file')
         self.arrival_times_buton.clicked.connect(partial(self.fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
 
-        self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = self.createFileSearchObj('Sounding File:', files_content, 3, width=1, h_shift=0, tool_tip='sounding_file')
+        self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = createFileSearchObj('Sounding File:', files_content, 3, width=1, h_shift=0, tool_tip='sounding_file')
         self.sounding_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)'], self.sounding_file_edits))
 
-        self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = self.createFileSearchObj('Perturbation', files_content, 4, width=1, h_shift=0, tool_tip='perturbation_spread_file')
+        self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = createFileSearchObj('Perturbation', files_content, 4, width=1, h_shift=0, tool_tip='perturbation_spread_file')
         self.perturbation_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
 
-        self.station_picks_label, self.station_picks_edits, self.station_picks_buton = self.createFileSearchObj('Station Picks File: ', files_content, 5, width=1, h_shift=0, tool_tip='station_picks_file')
+        self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', files_content, 5, width=1, h_shift=0, tool_tip='station_picks_file')
         self.station_picks_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
 
-        self.points_name_label, self.points_name_edits, self.points_name_buton = self.createFileSearchObj('Replot Points File: ', files_content, 6, width=1, h_shift=0, tool_tip='points_name')
+        self.points_name_label, self.points_name_edits, self.points_name_buton = createFileSearchObj('Replot Points File: ', files_content, 6, width=1, h_shift=0, tool_tip='points_name')
         self.points_name_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)'], self.points_name_edits))
 
     def initParametersTab(self):
@@ -1431,14 +1322,13 @@ class SolutionGUI(QMainWindow):
         params.setLayout(params_content)
         self.section_widget.addTab(params, "Parameters")
 
-        self.lat_centre_label, self.lat_centre_edits = self.createLabelEditObj('Latitude Center:', params_content, 1, tool_tip='lat_centre')
-        self.lon_centre_label, self.lon_centre_edits = self.createLabelEditObj('Longitude Center:', params_content, 2, tool_tip='lon_centre')
-        self.deg_radius_label, self.deg_radius_edits = self.createLabelEditObj('Degrees in Search Radius:', params_content, 3, tool_tip='deg_radius')
+        self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', params_content, 1, tool_tip='lat_centre')
+        self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', params_content, 2, tool_tip='lon_centre')
+        self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', params_content, 3, tool_tip='deg_radius')
 
-        self.fireball_datetime_label, self.fireball_datetime_edits = self.createLabelDateEditObj("Fireball Datetime", params_content, 4, tool_tip='fireball_datetime')
-        #self.end_datetime_label, self.end_datetime_edits = self.createLabelDateEditObj("End Datetime", params_content, 5, tool_tip='end_datetime')
+        self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", params_content, 4, tool_tip='fireball_datetime')
 
-        self.v_sound_label, self.v_sound_edits = self.createLabelEditObj('Average Speed of Sound:', params_content, 6, tool_tip='v_sound')
+        self.v_sound_label, self.v_sound_edits = createLabelEditObj('Average Speed of Sound:', params_content, 6, tool_tip='v_sound')
 
     def initBallisticTab(self):
 
@@ -1447,20 +1337,21 @@ class SolutionGUI(QMainWindow):
         ballistic.setLayout(ballistic_content)
         self.section_widget.addTab(ballistic, "Ballistic")
 
-        self.t0_label, self.t0_edits = self.createLabelEditObj('t0:', ballistic_content, 1, width=3, tool_tip='t0')
-        self.v_label, self.v_edits = self.createLabelEditObj('v:', ballistic_content, 2, width=3, tool_tip='v')
-        self.azim_label, self.azim_edits = self.createLabelEditObj('azim:', ballistic_content, 3, width=3, tool_tip='azim')
-        self.zangle_label, self.zangle_edits = self.createLabelEditObj('zangle:', ballistic_content, 4, width=3, tool_tip='zangle')
-        self.lat_i_label, self.lat_i_edits = self.createLabelEditObj('lat_i:', ballistic_content, 5, tool_tip='lat_i')
-        self.lon_i_label, self.lon_i_edits = self.createLabelEditObj('lon_i:', ballistic_content, 6, tool_tip='lon_i')
-        self.elev_i_label, self.elev_i_edits = self.createLabelEditObj('elev_i:', ballistic_content, 7, tool_tip='elev_i')
-        self.lat_f_label, self.lat_f_edits = self.createLabelEditObj('lat_f:', ballistic_content, 5, h_shift=2, tool_tip='lat_f')
-        self.lon_f_label, self.lon_f_edits = self.createLabelEditObj('lon_f:', ballistic_content, 6, h_shift=2, tool_tip='lon_f')
-        self.elev_f_label, self.elev_f_edits = self.createLabelEditObj('elev_f:', ballistic_content, 7, h_shift=2, tool_tip='elev_f')
+        self.t0_label, self.t0_edits = createLabelEditObj('t0:', ballistic_content, 1, width=3, tool_tip='t0')
+        self.v_label, self.v_edits = createLabelEditObj('v:', ballistic_content, 2, width=3, tool_tip='v')
+        self.azim_label, self.azim_edits = createLabelEditObj('azim:', ballistic_content, 3, width=3, tool_tip='azim')
+        self.zangle_label, self.zangle_edits = createLabelEditObj('zangle:', ballistic_content, 4, width=3, tool_tip='zangle')
+        self.lat_i_label, self.lat_i_edits = createLabelEditObj('lat_i:', ballistic_content, 5, tool_tip='lat_i')
+        self.lon_i_label, self.lon_i_edits = createLabelEditObj('lon_i:', ballistic_content, 6, tool_tip='lon_i')
+        self.elev_i_label, self.elev_i_edits = createLabelEditObj('elev_i:', ballistic_content, 7, tool_tip='elev_i')
+        self.lat_f_label, self.lat_f_edits = createLabelEditObj('lat_f:', ballistic_content, 5, h_shift=2, tool_tip='lat_f')
+        self.lon_f_label, self.lon_f_edits = createLabelEditObj('lon_f:', ballistic_content, 6, h_shift=2, tool_tip='lon_f')
+        self.elev_f_label, self.elev_f_edits = createLabelEditObj('elev_f:', ballistic_content, 7, h_shift=2, tool_tip='elev_f')
 
-        self.show_ballistic_waveform_label, self.show_ballistic_waveform_edits = self.createComboBoxObj('Show Ballistic Waveform', ballistic_content, 8, items=['True', 'False'], width=2, tool_tip='show_ballistic_waveform')
+        self.show_ballistic_waveform_label, self.show_ballistic_waveform_edits = createComboBoxObj('Show Ballistic Waveform', ballistic_content, 8, items=['True', 'False'], width=2, tool_tip='show_ballistic_waveform')
 
     def initFragmentationTab(self):
+        
         fragmentation = QWidget()
         fragmentation_content = QGridLayout()
         fragmentation.setLayout(fragmentation_content)
@@ -1474,7 +1365,7 @@ class SolutionGUI(QMainWindow):
         self.fragmentation_point.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
         header = self.fragmentation_point.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
-        self.fragmentation_point_label.setToolTip(self.toolTime('fragmentation_point'))
+        self.fragmentation_point_label.setToolTip(toolTime('fragmentation_point'))
 
         self.fragmentation_point_add = QPushButton("+")
         fragmentation_content.addWidget(self.fragmentation_point_add, 2, 3, 1, 2)
@@ -1486,7 +1377,7 @@ class SolutionGUI(QMainWindow):
         self.fragmentation_point_min.clicked.connect(partial(self.changeRows, self.fragmentation_point, -1))
         self.fragmentation_point_min.setToolTip("Remove row")
 
-        self.show_fragmentation_waveform_label, self.show_fragmentation_waveform_edits = self.createComboBoxObj("Show Fragmentation Waveform: ", fragmentation_content, 3, width=2, items=['True', 'False'], tool_tip='show_fragmentation_waveform')
+        self.show_fragmentation_waveform_label, self.show_fragmentation_waveform_edits = createComboBoxObj("Show Fragmentation Waveform: ", fragmentation_content, 3, width=2, items=['True', 'False'], tool_tip='show_fragmentation_waveform')
 
         self.manual_label = QLabel("Manual Fragmentation Search:")
         fragmentation_content.addWidget(self.manual_label, 4, 1, 1, 4)
@@ -1519,39 +1410,28 @@ class SolutionGUI(QMainWindow):
         restriction.setLayout(restriction_content)
         self.section_widget.addTab(restriction, "Restriction")
 
-        self.v_fixed_label, self.v_fixed_edits = self.createLabelEditObj('v_fixed:', restriction_content, 1, width=3, tool_tip='v_fixed')
-        self.max_error_label, self.max_error_edits = self.createLabelEditObj('max_error:', restriction_content, 2, width=3, tool_tip='max_error')
-
+        self.v_fixed_label, self.v_fixed_edits = createLabelEditObj('v_fixed:', restriction_content, 1, width=3, tool_tip='v_fixed')
+    
         self.restricted_time_check = QCheckBox("Enable Restricted Time: ")
         restriction_content.addWidget(self.restricted_time_check, 3, 4, 1, 1)
-        self.restricted_time_label, self.restricted_time_edits = self.createLabelDateEditObj("Restricted Time: ", restriction_content, 3, width=2, tool_tip='restricted_time')
+        self.restricted_time_label, self.restricted_time_edits = createLabelDateEditObj("Restricted Time: ", restriction_content, 3, width=2, tool_tip='restricted_time')
 
-        self.traj_tol_label, self.traj_tol_edits = self.createLabelEditObj('traj_tol:', restriction_content, 4, width=3, tool_tip='traj_tol')
-
-        self.restrict_to_trajectory_label, self.restrict_to_trajectory_edits = self.createComboBoxObj('restrict_to_trajectory', restriction_content, 5, items=['True', 'False'], width=2, tool_tip='restrict_to_trajectory')
-
-        self.azimuth_min_label, self.azimuth_min_edits = self.createLabelEditObj('azimuth_min:', restriction_content, 6, tool_tip='azimuth_min')
-        self.azimuth_max_label, self.azimuth_max_edits = self.createLabelEditObj('azimuth_max:', restriction_content, 6, h_shift=2, tool_tip='azimuth_max')
-        self.zangle_min_label, self.zangle_min_edits = self.createLabelEditObj('zangle_min:', restriction_content, 7, tool_tip='zenith_min')
-        self.zangle_max_label, self.zangle_max_edits = self.createLabelEditObj('zangle_max:', restriction_content, 7, h_shift=2, tool_tip='zenith_max')
-        self.x_min_label, self.x_min_edits = self.createLabelEditObj('x_min:', restriction_content, 8, tool_tip='x_min')
-        self.x_max_label, self.x_max_edits = self.createLabelEditObj('x_max:', restriction_content, 8, h_shift=2, tool_tip='x_max')
-        self.y_min_label, self.y_min_edits = self.createLabelEditObj('y_min:', restriction_content, 9, tool_tip='y_min')
-        self.y_max_label, self.y_max_edits = self.createLabelEditObj('y_max:', restriction_content, 9, h_shift=2, tool_tip='y_max')
-        self.t_min_label, self.t_min_edits = self.createLabelEditObj('t_min:', restriction_content, 10, tool_tip='t_min')
-        self.t_max_label, self.t_max_edits = self.createLabelEditObj('t_max:', restriction_content, 10, h_shift=2, tool_tip='t_max')
-        self.v_min_label, self.v_min_edits = self.createLabelEditObj('v_min:', restriction_content, 11, tool_tip='v_min')
-        self.v_max_label, self.v_max_edits = self.createLabelEditObj('v_max:', restriction_content, 11, h_shift=2, tool_tip='v_max')
-        self.weight_distance_min_label, self.weight_distance_min_edits = self.createLabelEditObj('weight_distance_min', restriction_content, 12, tool_tip='weight_distance_min')
-        self.weight_distance_max_label, self.weight_distance_max_edits = self.createLabelEditObj('weight_distance_max', restriction_content, 12, h_shift=2, tool_tip='weight_distance_max')
-        self.search_time_min_label, self.search_time_min_edits = self.createLabelEditObj('search_time_min', restriction_content, 13, tool_tip='min_time')
-        self.search_time_max_label, self.search_time_max_edits = self.createLabelEditObj('search_time_max', restriction_content, 13, h_shift=2, tool_tip='max_time')
-        self.search_lat_min_label, self.search_lat_min_edits = self.createLabelEditObj('search_lat_min', restriction_content, 14, tool_tip='search_area')
-        self.search_lat_max_label, self.search_lat_max_edits = self.createLabelEditObj('search_lat_max', restriction_content, 14, h_shift=2, tool_tip='search_area')
-        self.search_lon_min_label, self.search_lon_min_edits = self.createLabelEditObj('search_lon_min', restriction_content, 15, tool_tip='search_area')
-        self.search_lon_max_label, self.search_lon_max_edits = self.createLabelEditObj('search_lon_max', restriction_content, 15, h_shift=2, tool_tip='search_area')
-        self.search_elev_min_label, self.search_elev_min_edits = self.createLabelEditObj('search_elev_min', restriction_content, 16, tool_tip='search_area')
-        self.search_elev_max_label, self.search_elev_max_edits = self.createLabelEditObj('search_elev_max', restriction_content, 16, h_shift=2, tool_tip='search_area')
+        self.azimuth_min_label, self.azimuth_min_edits = createLabelEditObj('azimuth_min:', restriction_content, 6, tool_tip='azimuth_min')
+        self.azimuth_max_label, self.azimuth_max_edits = createLabelEditObj('azimuth_max:', restriction_content, 6, h_shift=2, tool_tip='azimuth_max')
+        self.zangle_min_label, self.zangle_min_edits = createLabelEditObj('zangle_min:', restriction_content, 7, tool_tip='zenith_min')
+        self.zangle_max_label, self.zangle_max_edits = createLabelEditObj('zangle_max:', restriction_content, 7, h_shift=2, tool_tip='zenith_max')
+        self.x_min_label, self.x_min_edits = createLabelEditObj('x_min:', restriction_content, 8, tool_tip='x_min')
+        self.x_max_label, self.x_max_edits = createLabelEditObj('x_max:', restriction_content, 8, h_shift=2, tool_tip='x_max')
+        self.y_min_label, self.y_min_edits = createLabelEditObj('y_min:', restriction_content, 9, tool_tip='y_min')
+        self.y_max_label, self.y_max_edits = createLabelEditObj('y_max:', restriction_content, 9, h_shift=2, tool_tip='y_max')
+        self.z_min_label, self.z_min_edits = createLabelEditObj('z_min:', restriction_content, 10, tool_tip='z_min')
+        self.z_max_label, self.z_max_edits = createLabelEditObj('z_max:', restriction_content, 10, h_shift=2, tool_tip='z_max')
+        self.t_min_label, self.t_min_edits = createLabelEditObj('t_min:', restriction_content, 11, tool_tip='t_min')
+        self.t_max_label, self.t_max_edits = createLabelEditObj('t_max:', restriction_content, 11, h_shift=2, tool_tip='t_max')
+        self.v_min_label, self.v_min_edits = createLabelEditObj('v_min:', restriction_content, 12, tool_tip='v_min')
+        self.v_max_label, self.v_max_edits = createLabelEditObj('v_max:', restriction_content, 12, h_shift=2, tool_tip='v_max')
+        self.weight_distance_min_label, self.weight_distance_min_edits = createLabelEditObj('weight_distance_min', restriction_content, 13, tool_tip='weight_distance_min')
+        self.weight_distance_max_label, self.weight_distance_max_edits = createLabelEditObj('weight_distance_max', restriction_content, 13, h_shift=2, tool_tip='weight_distance_max')
 
     def initAtmosphereTab(self):
 
@@ -1560,10 +1440,8 @@ class SolutionGUI(QMainWindow):
         atmosphere.setLayout(atmosphere_content)
         self.section_widget.addTab(atmosphere, "Atmosphere")
 
-        self.enable_winds_label, self.enable_winds_edits = self.createComboBoxObj('Enable Winds: ', atmosphere_content, 1, items=['True', 'False'], tool_tip='enable_winds')
-        self.weather_type_label, self.weather_type_edits = self.createComboBoxObj('Weather Type: ', atmosphere_content, 2, items=['none', 'ecmwf', 'ukmo', 'merra', 'custom'], tool_tip='weather_type')
-
-        self.grid_size_label, self.grid_size_edits = self.createLabelEditObj('Grid Size', atmosphere_content, 3, tool_tip='grid_size')
+        self.enable_winds_label, self.enable_winds_edits = createComboBoxObj('Enable Winds: ', atmosphere_content, 1, items=['True', 'False'], tool_tip='enable_winds')
+        self.weather_type_label, self.weather_type_edits = createComboBoxObj('Weather Type: ', atmosphere_content, 2, items=['none', 'ecmwf', 'ukmo', 'merra', 'custom'], tool_tip='weather_type')
 
     def initPerturbationsTab(self):
 
@@ -1572,11 +1450,11 @@ class SolutionGUI(QMainWindow):
         perturb.setLayout(perturb_content)
         self.section_widget.addTab(perturb, "Perturbations")
 
-        self.perturb_times_label, self.perturb_times_edits = self.createLabelEditObj('Perturbation Times', perturb_content, 1, tool_tip='perturb_times')
-        self.frag_no_label, self.frag_no_edits = self.createLabelEditObj('Fragmentation Number', perturb_content, 2, tool_tip='fragno')
+        self.perturb_times_label, self.perturb_times_edits = createLabelEditObj('Perturbation Times', perturb_content, 1, tool_tip='perturb_times')
+        self.frag_no_label, self.frag_no_edits = createLabelEditObj('Fragmentation Number', perturb_content, 2, tool_tip='fragno')
 
-        self.perturb_label, self.perturb_edits = self.createComboBoxObj('Perturb: ', perturb_content, 3, items=['True', 'False'], tool_tip='perturb')
-        self.perturb_method_label, self.perturb_method_edits = self.createComboBoxObj('Perturb Method', perturb_content, 4, items=['none', 'bmp', 'sppt', 'temporal', 'spread', 'spread_r', 'ensemble'], tool_tip='perturb_method')
+        self.perturb_label, self.perturb_edits = createComboBoxObj('Perturb: ', perturb_content, 3, items=['True', 'False'], tool_tip='perturb')
+        self.perturb_method_label, self.perturb_method_edits = createComboBoxObj('Perturb Method', perturb_content, 4, items=['none', 'bmp', 'sppt', 'temporal', 'spread', 'spread_r', 'ensemble'], tool_tip='perturb_method')
 
 
     def initSpeedTab(self):
@@ -1586,13 +1464,10 @@ class SolutionGUI(QMainWindow):
         speed.setLayout(speed_content)
         self.section_widget.addTab(speed, "Speed")
 
-        self.fast_ballistic_label, self.fast_ballistic_edits = self.createComboBoxObj("Fast Ballistic: ", speed_content, 1, items=['True', 'False'], tool_tip='fast_ballistic')
-
-        self.fit_type_label, self.fit_type_edits = self.createLabelEditObj('Fit Type:', speed_content, 2, tool_tip='fit_type')
-        self.n_theta_label, self.n_theta_edits = self.createLabelEditObj('Theta Resolution', speed_content, 3, tool_tip='n_theta')
-        self.n_phi_label, self.n_phi_edits = self.createLabelEditObj('Phi Resolution', speed_content, 4, tool_tip='n_phi')
-        self.angle_precision_label, self.angle_precision_edits = self.createLabelEditObj('Angle Precision', speed_content, 5, tool_tip='angle_precision')
-        self.angle_error_tol_label, self.angle_error_tol_edits = self.createLabelEditObj('Angle Error Tolerance', speed_content, 6, tool_tip='angle_error_tol')
+        self.n_theta_label, self.n_theta_edits = createLabelEditObj('Theta Resolution', speed_content, 3, tool_tip='n_theta')
+        self.n_phi_label, self.n_phi_edits = createLabelEditObj('Phi Resolution', speed_content, 4, tool_tip='n_phi')
+        self.angle_precision_label, self.angle_precision_edits = createLabelEditObj('Angle Precision', speed_content, 5, tool_tip='angle_precision')
+        self.angle_error_tol_label, self.angle_error_tol_edits = createLabelEditObj('Angle Error Tolerance', speed_content, 6, tool_tip='angle_error_tol')
 
     def initPSOTab(self):
         pso = QWidget()
@@ -1600,16 +1475,16 @@ class SolutionGUI(QMainWindow):
         pso.setLayout(pso_content)
         self.section_widget.addTab(pso, "PSO")
 
-        self.maxiter_label, self.maxiter_edits = self.createLabelEditObj('Max Iterations: ', pso_content, 1, tool_tip='maxiter')
-        self.swarmsize_label, self.swarmsize_edits = self.createLabelEditObj('Swarm Size: ', pso_content, 2, tool_tip='swarmsize')
-        self.run_times_label, self.run_times_edits = self.createLabelEditObj('Run Times:', pso_content, 3, tool_tip='run_times')
-        self.minfunc_label, self.minfunc_edits = self.createLabelEditObj('minfunc:', pso_content, 4, tool_tip='minfunc')
-        self.minstep_label, self.minstep_edits = self.createLabelEditObj('minstep:', pso_content, 5, tool_tip='minstep')
-        self.phip_label, self.phip_edits = self.createLabelEditObj('phip:', pso_content, 6, tool_tip='phip')
-        self.phig_label, self.phig_edits = self.createLabelEditObj('phig:', pso_content, 7, tool_tip='phig')
-        self.omega_label, self.omega_edits = self.createLabelEditObj('omega:', pso_content, 8, tool_tip='omega')
+        self.maxiter_label, self.maxiter_edits = createLabelEditObj('Max Iterations: ', pso_content, 1, tool_tip='maxiter')
+        self.swarmsize_label, self.swarmsize_edits = createLabelEditObj('Swarm Size: ', pso_content, 2, tool_tip='swarmsize')
+        self.run_times_label, self.run_times_edits = createLabelEditObj('Run Times:', pso_content, 3, tool_tip='run_times')
+        self.minfunc_label, self.minfunc_edits = createLabelEditObj('minfunc:', pso_content, 4, tool_tip='minfunc')
+        self.minstep_label, self.minstep_edits = createLabelEditObj('minstep:', pso_content, 5, tool_tip='minstep')
+        self.phip_label, self.phip_edits = createLabelEditObj('phip:', pso_content, 6, tool_tip='phip')
+        self.phig_label, self.phig_edits = createLabelEditObj('phig:', pso_content, 7, tool_tip='phig')
+        self.omega_label, self.omega_edits = createLabelEditObj('omega:', pso_content, 8, tool_tip='omega')
 
-        self.pso_debug_label, self.pso_debug_edits = self.createComboBoxObj("PSO Debug: ", pso_content, 9, tool_tip='pso_debug')
+        self.pso_debug_label, self.pso_debug_edits = createComboBoxObj("PSO Debug: ", pso_content, 9, tool_tip='pso_debug')
 
     def initGraphingTab(self):
 
@@ -1618,32 +1493,10 @@ class SolutionGUI(QMainWindow):
         graphing.setLayout(graphing_content)
         self.section_widget.addTab(graphing, "Graphing")
 
-        self.plot_all_stations_label, self.plot_all_stations_edits = self.createComboBoxObj("Plot All Stations: ", graphing_content, 1, items=['True', 'False'], tool_tip='plot_all_stations')
-        self.color_toggle_label, self.color_toggle_edits = self.createComboBoxObj("Toggle Color: ", graphing_content, 2, items=['True', 'False'], tool_tip='colortoggle')
-
-        self.dot_tol_label, self.dot_tol_edits = self.createLabelEditObj('Dot Product Tolerance:', graphing_content, 3, tool_tip='dot_tol')
-        self.contour_res_label, self.contour_res_edits = self.createLabelEditObj('Contour Resolution:', graphing_content, 4, tool_tip='contour_res')
-        self.high_f_label, self.high_f_edits = self.createLabelEditObj('Highlight Fragmentation:', graphing_content, 5, tool_tip='high_f')
-        self.high_b_label, self.high_b_edits = self.createLabelEditObj('Highlight Ballistic:', graphing_content, 6, tool_tip='high_b')
-        self.rm_stat_label, self.rm_stat_edits = self.createLabelEditObj('Remove Stations:', graphing_content, 7, tool_tip='rm_stat')
-        self.img_dim_label, self.img_dim_edits = self.createLabelEditObj('Image Dimensions:', graphing_content, 8, tool_tip='img_dim')
-
-        self.reported_points_label = QLabel("Reported Points")
-        self.reported_points = QTableWidget(0, 4)
-        graphing_content.addWidget(self.reported_points, 10, 1, 1, 2)
-        graphing_content.addWidget(self.reported_points_label, 9, 1, 1, 4)
-        self.reported_points.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
-        header = self.reported_points.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        self.reported_points_label.setToolTip(self.toolTime('reported_points'))
-
-        self.reported_points_add = QPushButton("+")
-        graphing_content.addWidget(self.reported_points_add, 11, 2)
-        self.reported_points_add.clicked.connect(partial(self.changeRows, self.reported_points, 1))
-
-        self.reported_points_min = QPushButton("-")
-        graphing_content.addWidget(self.reported_points_min, 11, 1)
-        self.reported_points_min.clicked.connect(partial(self.changeRows, self.reported_points, -1))
+        self.contour_res_label, self.contour_res_edits = createLabelEditObj('Contour Resolution:', graphing_content, 4, tool_tip='contour_res')
+        self.high_f_label, self.high_f_edits = createLabelEditObj('Highlight Fragmentation:', graphing_content, 5, tool_tip='high_f')
+        self.high_b_label, self.high_b_edits = createLabelEditObj('Highlight Ballistic:', graphing_content, 6, tool_tip='high_b')
+        self.rm_stat_label, self.rm_stat_edits = createLabelEditObj('Remove Stations:', graphing_content, 7, tool_tip='rm_stat')
 
     def initExtraStationsTab(self):
         extra = QWidget()
@@ -1660,7 +1513,7 @@ class SolutionGUI(QMainWindow):
             'Elevation', 'Station Display Name', 'Channel', 'File Name'])
         header = self.extra_point.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
-        self.extra_label.setToolTip(self.toolTime('stations'))
+        self.extra_label.setToolTip(toolTime('stations'))
 
         self.extra_point_add = QPushButton("+")
         extra_content.addWidget(self.extra_point_add, 2, 3, 1, 2)
@@ -1720,14 +1573,14 @@ class SolutionGUI(QMainWindow):
         setup.perturb_method = self.atm_perturb_method_edits.currentText()
 
         if setup.weather_type == 'none':
-            self.errorMessage('Weather type is set to "none", no weather can be displayed', 1)
+            errorMessage('Weather type is set to "none", no weather can be displayed', 1)
             return None
 
         try:
             dataset = parseWeather(setup, consts)
             sounding = findECMWFSound(lat, lon, dataset)
         except:
-            self.errorMessage('Error reading weather profile in atmPlotProfile', 2)
+            errorMessage('Error reading weather profile in atmPlotProfile', 2)
             return None
 
         self.var_typ = var_typ
@@ -1745,7 +1598,7 @@ class SolutionGUI(QMainWindow):
             Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Direction", units='deg from N')
         else:
-            self.errorMessage('Error reading var_typ in atmPlotProfile', 2)
+            errorMessage('Error reading var_typ in atmPlotProfile', 2)
             return None
 
         self.atm_canvas.clear()
@@ -1805,7 +1658,7 @@ class SolutionGUI(QMainWindow):
         elif obj == self.atm_lon_label:
             obj.setText('Longitude: {:8.2f}'.format(slider.value()*self.slider_scale))
         else:
-            self.errorMessage(self, 'Bad atm slider pass in atmValueChange', 2)
+            errorMessage(self, 'Bad atm slider pass in atmValueChange', 2)
 
         self.atmPlotProfile(self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, self.var_typ)
     
@@ -1856,7 +1709,7 @@ class SolutionGUI(QMainWindow):
         profile_tab_content_graph.addWidget(self.atm_dir_button)
         self.atm_dir_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='d'))
 
-        self.atm_atm_file_label, self.atm_atm_file_edits, self.atm_atm_file_buton = self.createFileSearchObj('Atmospheric File: ', profile_tab_content, 1, width=2, h_shift=0)
+        self.atm_atm_file_label, self.atm_atm_file_edits, self.atm_atm_file_buton = createFileSearchObj('Atmospheric File: ', profile_tab_content, 1, width=2, h_shift=0)
         self.atm_atm_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)'], self.atm_atm_file_edits))
 
         self.atm_weather_type_label = QLabel("Weather Type:")
@@ -1869,10 +1722,10 @@ class SolutionGUI(QMainWindow):
         self.atm_weather_type_edits.addItem("merra")
         self.atm_weather_type_edits.addItem("custom")
 
-        self.atm_perturbation_file_label, self.atm_perturbation_file_edits, self.atm_perturbation_file_buton = self.createFileSearchObj('Perturbation File: ', profile_tab_content, 3, width=2, h_shift=0)
+        self.atm_perturbation_file_label, self.atm_perturbation_file_edits, self.atm_perturbation_file_buton = createFileSearchObj('Perturbation File: ', profile_tab_content, 3, width=2, h_shift=0)
         self.atm_perturbation_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)'], self.atm_perturbation_file_edits))
 
-        self.atm_perturb_times_label, self.atm_perturb_times_edits = self.createLabelEditObj('Perturbation Times: ', profile_tab_content, 4, width=2)
+        self.atm_perturb_times_label, self.atm_perturb_times_edits = createLabelEditObj('Perturbation Times: ', profile_tab_content, 4, width=2)
 
         self.atm_perturb_method_label = QLabel("Perturb Method:")
         self.atm_perturb_method_edits = QComboBox()
@@ -1894,8 +1747,8 @@ class SolutionGUI(QMainWindow):
 
         for line in lst:
 
-            pos = position(line[2], line[3], line[4])
-            stn = station(line[0], line[1], pos, line[5], line[6], line[7])
+            pos = Position(line[2], line[3], line[4])
+            stn = Station(line[0], line[1], pos, line[5], line[6], line[7])
             new_lst.append(stn)
 
         return new_lst
@@ -1905,7 +1758,7 @@ class SolutionGUI(QMainWindow):
         try:
             setup = self.saveINI(write=False)
         except:
-            self.errorMessage("Cannot load station data", 2)
+            errorMessage("Cannot load station data", 2)
             return None
 
         if not os.path.exists(setup.working_directory):
@@ -1939,16 +1792,16 @@ class SolutionGUI(QMainWindow):
         arrTimes = np.array([])
 
         if len(stn_list) == 0:
-            self.errorMessage('No Stations to load', 2)
+            errorMessage('No Stations to load', 2)
             return None 
 
         try:
             #turn coordinates into position objects
-            setup.traj_i = position(setup.lat_i, setup.lon_i, setup.elev_i)
-            setup.traj_f = position(setup.lat_f, setup.lon_f, setup.elev_f)
+            setup.traj_i = Position(setup.lat_i, setup.lon_i, setup.elev_i)
+            setup.traj_f = Position(setup.lat_f, setup.lon_f, setup.elev_f)
         except:
-            setup.traj_i = position(0, 0, 0)
-            setup.traj_f = position(0, 0, 0)
+            setup.traj_i = Position(0, 0, 0)
+            setup.traj_f = Position(0, 0, 0)
             print("Warning: Unable to build trajectory points")
 
         self.waveformPicker(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all, stn_list=stn_list)
@@ -1965,7 +1818,7 @@ class SolutionGUI(QMainWindow):
         """
         print("Trajectory Calculation...")
 
-        ref = position(setup.lat_centre, setup.lon_centre, 0)
+        ref = Position(setup.lat_centre, setup.lon_centre, 0)
 
         # Tail of the trajectory
         A = geo2Loc(ref.lat, ref.lon, ref.elev, setup.lat_i, setup.lon_i, setup.elev_i*1000)
@@ -2013,7 +1866,7 @@ class SolutionGUI(QMainWindow):
         allTimes = [0]*setup.perturb_times
 
         # Ballistic Prediction
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
 
         no_of_frags = len(setup.fragmentation_point)
 
@@ -2109,7 +1962,7 @@ class SolutionGUI(QMainWindow):
                         loadingBar('Calculating all times:', count, d_time)
 
                         # location of supracenter
-                        supra = position(float(line[0]), float(line[1]), float(line[2]))
+                        supra = Position(float(line[0]), float(line[1]), float(line[2]))
                         
                         # convert to local coordinates based off of the ref_pos
                         supra.pos_loc(ref_pos)
@@ -2274,7 +2127,7 @@ class SolutionGUI(QMainWindow):
         #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # Extract coordinates of the reference station
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
@@ -2410,7 +2263,7 @@ class SolutionGUI(QMainWindow):
             try:
                 self.arrTimes = np.load(setup.arrival_times_file)
             except:
-                self.errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
+                errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
                 self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
         else:  
             # Calculate all arrival times
@@ -2434,7 +2287,7 @@ class SolutionGUI(QMainWindow):
         elif obj == self.high_bandpass_label:
             obj.setText('High: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
         else:
-            self.errorMessage('Bad atm slider pass in makeValueChange', 2)
+            errorMessage('Bad atm slider pass in makeValueChange', 2)
 
         self.updatePlot()
     
@@ -2927,7 +2780,7 @@ class SolutionGUI(QMainWindow):
         b_time = 0
 
         # Extract coordinates of the reference station
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
 
         # Calculate ground distances
         stn.stn_ground_distance(ref_pos)
@@ -2983,7 +2836,7 @@ class SolutionGUI(QMainWindow):
                 if f_time == f_time:
                     # Plot Fragmentation Prediction
                     self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
-                    stn.stn_distance(position(line[0], line[1], line[2]))
+                    stn.stn_distance(Position(line[0], line[1], line[2]))
                     print("Range: {:7.3f} km".format(stn.distance/1000))                   
                     print('Arrival: {:.3f} s'.format(f_time))
 
@@ -3158,7 +3011,7 @@ class SolutionGUI(QMainWindow):
                 f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(0, stn.network, \
                     stn.code, stn.position.lat, stn.position.lon, stn.position.elev, pick_jd, pick.time, pick.stn_no))
 
-        self.errorMessage('Output to CSV!', 0, title='Exported!')
+        errorMessage('Output to CSV!', 0, title='Exported!')
 
     def exportToAllTimes(self):
         setup = self.setup
@@ -3167,7 +3020,7 @@ class SolutionGUI(QMainWindow):
             try:
                 self.arrTimes = np.load(setup.arrival_times_file)
             except:
-                self.errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
+                errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
                 self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
         else:  
             # Calculate all arrival times
@@ -3179,7 +3032,7 @@ class SolutionGUI(QMainWindow):
 
         np.save(file_name, self.arrTimes)
 
-        self.errorMessage("Saved Output File", 0)
+        errorMessage("Saved Output File", 0)
 
     def addMakePicksWidgets(self):
         make_picks_master_tab = QWidget()
@@ -3334,7 +3187,7 @@ class SolutionGUI(QMainWindow):
         setup.station_picks_file = self.sup_picks_file_edit.text()
 
         s_info, s_name, weights, ref_pos = convStationDat(setup.station_picks_file)
-        ref_pos = position(ref_pos[0], ref_pos[1], ref_pos[2])
+        ref_pos = Position(ref_pos[0], ref_pos[1], ref_pos[2])
 
         consts = Constants()      
         dataset = parseWeather(setup, consts)
@@ -3437,7 +3290,7 @@ class SolutionGUI(QMainWindow):
         setup.sounding_file = atm_file
 
         s_info, s_name, weights, ref_pos = convStationDat(picks_file, d_min=setup.weight_distance_min, d_max=setup.weight_distance_max)
-        ref_pos = position(ref_pos[0], ref_pos[1], ref_pos[2])
+        ref_pos = Position(ref_pos[0], ref_pos[1], ref_pos[2])
 
         consts = Constants()      
         dataset = parseWeather(setup, consts)
@@ -3572,19 +3425,6 @@ class SolutionGUI(QMainWindow):
             obj.setItem(x, 6, QTableWidgetItem(str(stn.name)))
             obj.setItem(x, 7, QTableWidgetItem(str(stn.file_name)))
 
-    def tryFloat(self, fr):
-
-        try:
-            return float(fr)
-        except:
-            return None
-
-    def tryInt(self, fr):
-
-        try:
-            return int(fr)
-        except:
-            return None
 
     def saveINI(self, write=True):
 
@@ -3593,280 +3433,231 @@ class SolutionGUI(QMainWindow):
         if write:
             dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
-        class Config:
+        self.setup = Config()
 
-            def __init__(self):
-                pass
+        self.setup.fireball_name = self.fireball_name_edits.text()
+        self.setup.get_data = tryBool(self.get_data_edits.currentText())
+        self.setup.run_mode = self.run_mode_edits.currentText()
+        self.setup.debug = tryBool(self.debug_edits.currentText())
 
-        setup = Config()
+        self.setup.working_directory = self.working_directory_edits.text()
+        self.setup.arrival_times_file = self.arrival_times_edits.text()
+        self.setup.sounding_file = self.sounding_file_edits.text()
+        self.setup.perturbation_spread_file = self.perturbation_file_edits.text()
+        self.setup.station_picks_file = self.station_picks_edits.text()
+        self.setup.replot_points_file = self.points_name_edits.text()
 
-        setup.fireball_name = self.fireball_name_edits.text()
-        setup.difference_filter_all = tryBool(self.difference_filter_edits.currentText())
-        setup.get_data = tryBool(self.get_data_edits.currentText())
-        setup.run_mode = self.run_mode_edits.currentText()
-        setup.debug = tryBool(self.debug_edits.currentText())
+        self.setup.lat_centre = tryFloat(self.lat_centre_edits.text())
+        self.setup.lon_centre = tryFloat(self.lon_centre_edits.text())
+        self.setup.deg_radius = tryFloat(self.deg_radius_edits.text())
+        self.setup.fireball_datetime = self.fireball_datetime_edits.dateTime().toPyDateTime()
+        self.setup.v_sound = tryFloat(self.v_sound_edits.text())
 
-        setup.working_directory = self.working_directory_edits.text()
-        setup.arrival_times_file = self.arrival_times_edits.text()
-        setup.sounding_file = self.sounding_file_edits.text()
-        setup.perturbation_spread_file = self.perturbation_file_edits.text()
-        setup.station_picks_file = self.station_picks_edits.text()
-        setup.replot_points_file = self.points_name_edits.text()
+        self.setup.t0 = tryFloat(self.t0_edits.text())
+        self.setup.v = tryFloat(self.v_edits.text())
+        self.setup.azimuth = tryAngle(self.azim_edits.text())
+        self.setup.zenith = tryAngle(self.zangle_edits.text())
+        self.setup.lat_i = tryFloat(self.lat_i_edits.text())
+        self.setup.lon_i = tryFloat(self.lon_i_edits.text())
+        self.setup.elev_i = tryFloat(self.elev_i_edits.text())
+        self.setup.lat_f = tryFloat(self.lat_f_edits.text())
+        self.setup.lon_f = tryFloat(self.lon_f_edits.text())
+        self.setup.elev_f = tryFloat(self.elev_f_edits.text())
 
-        setup.lat_centre = self.tryFloat(self.lat_centre_edits.text())
-        setup.lon_centre = self.tryFloat(self.lon_centre_edits.text())
-        setup.deg_radius = self.tryFloat(self.deg_radius_edits.text())
+        self.setup.pos_i = tryPosition(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
+        self.setup.pos_f = tryPosition(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
+        self.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
 
-        setup.fireball_datetime = self.fireball_datetime_edits.dateTime().toPyDateTime()
-        #setup.end_datetime = self.end_datetime_edits.dateTime().toPyDateTime()
-        
-        setup.v_sound = self.tryFloat(self.v_sound_edits.text())
+        self.setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
-        setup.t0 = self.tryFloat(self.t0_edits.text())
-        setup.v = self.tryFloat(self.v_edits.text())
-        setup.azim = self.tryFloat(self.azim_edits.text())
-        setup.zangle = self.tryFloat(self.zangle_edits.text())
-        setup.lat_i = self.tryFloat(self.lat_i_edits.text())
-        setup.lon_i = self.tryFloat(self.lon_i_edits.text())
-        setup.elev_i = self.tryFloat(self.elev_i_edits.text())
-        setup.lat_f = self.tryFloat(self.lat_f_edits.text())
-        setup.lon_f = self.tryFloat(self.lon_f_edits.text())
-        setup.elev_f = self.tryFloat(self.elev_f_edits.text())
+        self.setup.manual_fragmentation_search = []
+        self.setup.fragmentation_point = trySupracenter(self.fromTable(self.fragmentation_point))
+        self.setup.show_fragmentation_waveform = tryBool(self.show_fragmentation_waveform_edits.currentText())
 
-        setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
+        self.setup.manual_fragmentation_search.append(tryFloat(self.lat_frag_edits.text()))
+        self.setup.manual_fragmentation_search.append(tryFloat(self.lon_frag_edits.text()))
+        self.setup.manual_fragmentation_search.append(tryFloat(self.elev_frag_edits.text()))
+        self.setup.manual_fragmentation_search.append(tryFloat(self.time_frag_edits.text()))
+        self.setup.manual_fragmentation_search = trySupracenter(self.setup.manual_fragmentation_search)
 
-        setup.manual_fragmentation_search = []
-        setup.fragmentation_point = self.fromTable(self.fragmentation_point)
-        setup.show_fragmentation_waveform = tryBool(self.show_fragmentation_waveform_edits.currentText())
+        self.setup.v_fixed = tryFloat(self.v_fixed_edits.text())
+        self.setup.enable_restricted_time = self.restricted_time_check.isChecked()
+        self.setup.restricted_time = self.restricted_time_edits.dateTime().toPyDateTime()
 
-        setup.manual_fragmentation_search.append(self.tryFloat(self.lat_frag_edits.text()))
-        setup.manual_fragmentation_search.append(self.tryFloat(self.lon_frag_edits.text()))
-        setup.manual_fragmentation_search.append(self.tryFloat(self.elev_frag_edits.text()))
-        setup.manual_fragmentation_search.append(self.tryFloat(self.time_frag_edits.text()))
+        self.setup.azimuth_min = tryAngle(self.azimuth_min_edits.text())
+        self.setup.azimuth_max = tryAngle(self.azimuth_max_edits.text())
+        self.setup.zenith_min = tryAngle(self.zangle_min_edits.text())
+        self.setup.zenith_max = tryFloat(self.zangle_max_edits.text())
+        self.setup.x_min = tryFloat(self.x_min_edits.text())
+        self.setup.x_max = tryFloat(self.x_max_edits.text())
+        self.setup.y_min = tryFloat(self.y_min_edits.text())
+        self.setup.y_max = tryFloat(self.y_max_edits.text())
+        self.setup.z_min = tryFloat(self.z_min_edits.text())
+        self.setup.z_max = tryFloat(self.z_max_edits.text())
+        self.setup.t_min = tryFloat(self.t_min_edits.text())
+        self.setup.t_max = tryFloat(self.t_max_edits.text())
+        self.setup.v_min = tryFloat(self.v_min_edits.text())
+        self.setup.v_max = tryFloat(self.v_max_edits.text())
+        self.setup.weight_distance_min = tryFloat(self.weight_distance_min_edits.text())
+        self.setup.weight_distance_max = tryFloat(self.weight_distance_max_edits.text())
 
-        setup.v_fixed = self.tryFloat(self.v_fixed_edits.text())
-        setup.max_error = self.tryFloat(self.max_error_edits.text())
-        setup.enable_restricted_time = self.restricted_time_check.isChecked()
-        setup.restricted_time = self.restricted_time_edits.dateTime().toPyDateTime()
-        setup.traj_tol = self.tryFloat(self.traj_tol_edits.text())
-        setup.restrict_to_trajectory = self.restrict_to_trajectory_edits.currentText()
+        self.setup.pos_min = Position(x_min, y_min, z_min)
+        self.setup.pos_max = Position(x_max, y_max, z_max)
 
-        setup.search_area = []
-        setup.search_height = []
-        setup.azimuth_min = self.tryFloat(self.azimuth_min_edits.text())
-        setup.azimuth_max = self.tryFloat(self.azimuth_max_edits.text())
-        setup.zangle_min = self.tryFloat(self.zangle_min_edits.text())
-        setup.zangle_max = self.tryFloat(self.zangle_max_edits.text())
-        setup.x_min = self.tryFloat(self.x_min_edits.text())
-        setup.x_max = self.tryFloat(self.x_max_edits.text())
-        setup.y_min = self.tryFloat(self.y_min_edits.text())
-        setup.y_max = self.tryFloat(self.y_max_edits.text())
-        setup.t_min = self.tryFloat(self.t_min_edits.text())
-        setup.t_max = self.tryFloat(self.t_max_edits.text())
-        setup.v_min = self.tryFloat(self.v_min_edits.text())
-        setup.v_max = self.tryFloat(self.v_max_edits.text())
-        setup.weight_distance_min = self.tryFloat(self.weight_distance_min_edits.text())
-        setup.weight_distance_max = self.tryFloat(self.weight_distance_max_edits.text())
-        setup.min_time = self.tryFloat(self.search_time_min_edits.text())
-        setup.max_time = self.tryFloat(self.search_time_max_edits.text())
-        setup.search_area.append(self.tryFloat(self.search_lat_min_edits.text()))
-        setup.search_area.append(self.tryFloat(self.search_lat_max_edits.text()))
-        setup.search_area.append(self.tryFloat(self.search_lon_min_edits.text()))
-        setup.search_area.append(self.tryFloat(self.search_lon_max_edits.text()))
-        setup.search_height.append(self.tryFloat(self.search_elev_min_edits.text()))
-        setup.search_height.append(self.tryFloat(self.search_elev_max_edits.text()))
+        self.setup.supra_min = Supracenter(self.setup.pos_min, self.setup.t_min)
+        self.setup.supra_max = Supracenter(self.setup.pos_max, self.setup.t_max)
 
-        setup.enable_winds = tryBool(self.enable_winds_edits.currentText())
-        setup.weather_type = self.weather_type_edits.currentText()
-        setup.grid_size = self.tryFloat(self.grid_size_edits.text())
+        self.setup.traj_min = Trajectory(self.setup.t_min, self.setup.v_min, self.setup.azimuth_min, \
+                                         self.setup.zenith_min, self.setup.pos_min, self.setup.pos_min)
+        self.setup.traj_max = Trajectory(self.setup.t_max, self.setup.v_max, self.setup.azimuth_max, \
+                                         self.setup.zenith_max, self.setup.pos_max, self.setup.pos_max)
 
-        setup.perturb_times = self.tryInt(self.perturb_times_edits.text())
+        self.setup.enable_winds = tryBool(self.enable_winds_edits.currentText())
+        self.setup.weather_type = self.weather_type_edits.currentText()
 
-        setup.observe_frag_no = self.tryInt(self.frag_no_edits.text())
-        setup.perturb = tryBool(self.perturb_edits.currentText())
-        setup.perturb_method = self.perturb_method_edits.currentText()
+        self.setup.perturb_times = tryInt(self.perturb_times_edits.text())
+        self.setup.observe_frag_no = tryInt(self.frag_no_edits.text())
+        self.setup.perturb = tryBool(self.perturb_edits.currentText())
+        self.setup.perturb_method = self.perturb_method_edits.currentText()
 
-        setup.fast_ballistic = tryBool(self.fast_ballistic_edits.currentText())
-        setup.fit_type = self.tryInt(self.fit_type_edits.text())
-        setup.n_theta = self.tryInt(self.n_theta_edits.text())
-        setup.n_phi = self.tryInt(self.n_phi_edits.text())
-        setup.angle_precision = self.tryFloat(self.angle_precision_edits.text())
-        setup.angle_error_tol = self.tryFloat(self.angle_error_tol_edits.text())
+        self.setup.n_theta = tryInt(self.n_theta_edits.text())
+        self.setup.n_phi = tryInt(self.n_phi_edits.text())
+        self.setup.angle_precision = tryFloat(self.angle_precision_edits.text())
+        self.setup.angle_error_tol = tryFloat(self.angle_error_tol_edits.text())
 
-        setup.maxiter = self.tryInt(self.maxiter_edits.text())
-        setup.swarmsize = self.tryInt(self.swarmsize_edits.text())
-        setup.run_times = self.tryInt(self.run_times_edits.text())
-        setup.minfunc = self.tryFloat(self.minfunc_edits.text())
-        setup.minstep = self.tryFloat(self.minstep_edits.text())
-        setup.phip = self.tryFloat(self.phip_edits.text())
-        setup.phig = self.tryFloat(self.phig_edits.text())
-        setup.omega = self.tryFloat(self.omega_edits.text())
-        setup.pso_debug = tryBool(self.pso_debug_edits.currentText())
+        self.setup.maxiter = tryInt(self.maxiter_edits.text())
+        self.setup.swarmsize = tryInt(self.swarmsize_edits.text())
+        self.setup.run_times = tryInt(self.run_times_edits.text())
+        self.setup.minfunc = tryFloat(self.minfunc_edits.text())
+        self.setup.minstep = tryFloat(self.minstep_edits.text())
+        self.setup.phip = tryFloat(self.phip_edits.text())
+        self.setup.phig = tryFloat(self.phig_edits.text())
+        self.setup.omega = tryFloat(self.omega_edits.text())
+        self.setup.pso_debug = tryBool(self.pso_debug_edits.currentText())
 
-        setup.plot_all_stations = tryBool(self.plot_all_stations_edits.currentText())
-        setup.colortoggle = self.color_toggle_edits.currentText()
-        setup.dot_tol = self.tryInt(self.dot_tol_edits.text())
-        setup.contour_res = self.tryInt(self.contour_res_edits.text())
-        setup.high_f = self.high_f_edits.text()
-        setup.high_b = self.high_b_edits.text()
-        setup.rm_stat = self.rm_stat_edits.text()
-        setup.img_dim = self.tryInt(self.img_dim_edits.text())
-        setup.reported_points = self.fromTable(self.reported_points)
+        self.setup.contour_res = tryInt(self.contour_res_edits.text())
+        self.setup.high_f = self.high_f_edits.text()
+        self.setup.high_b = self.high_b_edits.text()
+        self.setup.rm_stat = self.rm_stat_edits.text()
 
-        setup.stations = self.fromTable(self.extra_point)
-
-        # setup.arrival_times_file = os.path.join(setup.working_directory, setup.fireball_name, setup.arrival_times_file)
-        # setup.sounding_file = os.path.join(setup.working_directory, setup.fireball_name, setup.sounding_file)
-        # setup.perturbation_spread_file = os.path.join(setup.working_directory, setup.fireball_name, setup.perturbation_spread_file)
-        # setup.station_picks_file = os.path.join(setup.working_directory, setup.fireball_name, setup.station_picks_file)
-        # setup.replot_points_file = os.path.join(setup.working_directory, setup.fireball_name, setup.replot_points_file)
+        self.setup.stations = self.fromTable(self.extra_point)
 
         if write:
-            if '.ini' not in dlg[0]:
-                configWrite(dlg[0] + '.ini', setup)
+            if '.pkl' not in dlg[0]:
+                output = dlg[0] + '.pkl'
             else:
-                configWrite(dlg[0], setup)
+                output = dlg[0]
 
-        # setup.restrict_to_trajectory = (setup.restrict_to_trajectory.lower() == 'true')
-        # setup.show_ballistic_waveform = (setup.show_ballistic_waveform.lower() == 'true')
-        # setup.show_fragmentation_waveform = (setup.show_fragmentation_waveform.lower() == 'true')    
+            with open(output, 'wb') as f:
+                pickle.dump(self.setup, f)
 
-        return setup
 
 
 
     def loadINI(self):
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setNameFilters(['INI File (*.ini)'])
+        dlg.setNameFilters(['Pickle File (*.pkl)'])
         #filenames = QStringList()
 
         dlg.exec_()
 
         filename = dlg.selectedFiles()
 
-        if '.ini' not in filename[0]:
-            self.errorMessage("No File Selected!", 1)
+        if '.pkl' not in filename[0]:
+            errorMessage("No File Selected!", 1)
             return None
-
-        setup = configRead(filename[0])
         
-        self.fireball_name_edits.setText(setup.fireball_name)
-        self.comboSet(self.difference_filter_edits, setup.difference_filter_all)
-        self.comboSet(self.get_data_edits, setup.get_data)
-        self.comboSet(self.run_mode_edits, setup.run_mode)
-        self.comboSet(self.debug_edits, setup.debug)
+        with open(filename[0], 'rb') as f:
+            self.setup = pickle.load(f)
+        
+        self.fireball_name_edits.setText(self.setup.fireball_name)
+        self.comboSet(self.get_data_edits, self.setup.get_data)
+        self.comboSet(self.run_mode_edits, self.setup.run_mode)
+        self.comboSet(self.debug_edits, self.setup.debug)
 
-        self.working_directory_edits.setText(setup.working_directory)
-        self.arrival_times_edits.setText(setup.arrival_times_file)
-        self.sounding_file_edits.setText(setup.sounding_file)
-        self.perturbation_file_edits.setText(setup.perturbation_spread_file)
-        self.station_picks_edits.setText(setup.station_picks_file)
-        self.points_name_edits.setText(setup.replot_points_file)
+        self.working_directory_edits.setText(self.setup.working_directory)
+        self.arrival_times_edits.setText(self.setup.arrival_times_file)
+        self.sounding_file_edits.setText(self.setup.sounding_file)
+        self.perturbation_file_edits.setText(self.setup.perturbation_spread_file)
+        self.station_picks_edits.setText(self.setup.station_picks_file)
+        self.points_name_edits.setText(self.setup.replot_points_file)
 
-        self.lat_centre_edits.setText(str(setup.lat_centre))
-        self.lon_centre_edits.setText(str(setup.lon_centre))
-        self.deg_radius_edits.setText(str(setup.deg_radius))
-        self.fireball_datetime_edits.setDateTime(setup.fireball_datetime)
-        #self.end_datetime_edits.setDateTime(setup.end_datetime)
-        self.v_sound_edits.setText(str(setup.v_sound))
+        self.lat_centre_edits.setText(str(self.setup.lat_centre))
+        self.lon_centre_edits.setText(str(self.setup.lon_centre))
+        self.deg_radius_edits.setText(str(self.setup.deg_radius))
+        self.fireball_datetime_edits.setDateTime(self.setup.fireball_datetime)
+        self.v_sound_edits.setText(str(self.setup.v_sound))
 
-        self.t0_edits.setText(str(setup.t0))
-        self.v_edits.setText(str(setup.v))
-        self.azim_edits.setText(str(setup.azim))
-        self.zangle_edits.setText(str(setup.zangle))
-        self.lat_i_edits.setText(str(setup.lat_i))
-        self.lon_i_edits.setText(str(setup.lon_i))
-        self.elev_i_edits.setText(str(setup.elev_i))
-        self.lat_f_edits.setText(str(setup.lat_f))
-        self.lon_f_edits.setText(str(setup.lon_f))
-        self.elev_f_edits.setText(str(setup.elev_f))
-        self.comboSet(self.show_ballistic_waveform_edits, setup.show_ballistic_waveform)
+        self.t0_edits.setText(str(self.setup.t0))
+        self.v_edits.setText(str(self.setup.v))
+        self.azim_edits.setText(str(self.setup.azim))
+        self.zangle_edits.setText(str(self.setup.zangle))
+        self.lat_i_edits.setText(str(self.setup.lat_i))
+        self.lon_i_edits.setText(str(self.setup.lon_i))
+        self.elev_i_edits.setText(str(self.setup.elev_i))
+        self.lat_f_edits.setText(str(self.setup.lat_f))
+        self.lon_f_edits.setText(str(self.setup.lon_f))
+        self.elev_f_edits.setText(str(self.setup.elev_f))
+        self.comboSet(self.show_ballistic_waveform_edits, self.setup.show_ballistic_waveform)
 
-        self.toTable(self.fragmentation_point, setup.fragmentation_point)
-        self.comboSet(self.show_fragmentation_waveform_edits, setup.show_fragmentation_waveform)
-        self.lat_frag_edits.setText(str(setup.manual_fragmentation_search[0]))
-        self.lon_frag_edits.setText(str(setup.manual_fragmentation_search[1]))
-        self.elev_frag_edits.setText(str(setup.manual_fragmentation_search[2]))
-        self.time_frag_edits.setText(str(setup.manual_fragmentation_search[3]))
+        self.toTable(self.fragmentation_point, self.setup.fragmentation_point)
+        self.comboSet(self.show_fragmentation_waveform_edits, self.setup.show_fragmentation_waveform)
+        self.lat_frag_edits.setText(str(self.setup.manual_fragmentation_search[0]))
+        self.lon_frag_edits.setText(str(self.setup.manual_fragmentation_search[1]))
+        self.elev_frag_edits.setText(str(self.setup.manual_fragmentation_search[2]))
+        self.time_frag_edits.setText(str(self.setup.manual_fragmentation_search[3]))
 
-        self.v_fixed_edits.setText(str(setup.v_fixed))
-        self.max_error_edits.setText(str(setup.max_error))
-        self.restricted_time_check.setChecked(setup.enable_restricted_time)
-        self.restricted_time_edits.setDateTime(setup.restricted_time)
-        self.traj_tol_edits.setText(str(setup.traj_tol))
-        self.comboSet(self.restrict_to_trajectory_edits, setup.restrict_to_trajectory)
+        self.v_fixed_edits.setText(str(self.setup.v_fixed))
+        self.restricted_time_check.setChecked(self.setup.enable_restricted_time)
+        self.restricted_time_edits.setDateTime(self.setup.restricted_time)
 
-        self.azimuth_min_edits.setText(str(setup.azimuth_min))
-        self.azimuth_max_edits.setText(str(setup.azimuth_max))
-        self.zangle_min_edits.setText(str(setup.zangle_min))
-        self.zangle_max_edits.setText(str(setup.zangle_max))
-        self.x_min_edits.setText(str(setup.x_min))
-        self.x_max_edits.setText(str(setup.x_max))
-        self.y_min_edits.setText(str(setup.y_min))
-        self.y_max_edits.setText(str(setup.y_max))
-        self.t_min_edits.setText(str(setup.t_min))
-        self.t_max_edits.setText(str(setup.t_max))
-        self.v_min_edits.setText(str(setup.v_min))
-        self.v_max_edits.setText(str(setup.v_max))
-        self.weight_distance_min_edits.setText(str(setup.weight_distance_min))
-        self.weight_distance_max_edits.setText(str(setup.weight_distance_max))
-        self.search_time_min_edits.setText(str(setup.min_time))
-        self.search_time_max_edits.setText(str(setup.max_time))
+        self.azimuth_min_edits.setText(str(self.setup.azimuth_min))
+        self.azimuth_max_edits.setText(str(self.setup.azimuth_max))
+        self.zangle_min_edits.setText(str(self.setup.zangle_min))
+        self.zangle_max_edits.setText(str(self.setup.zangle_max))
+        self.x_min_edits.setText(str(self.setup.x_min))
+        self.x_max_edits.setText(str(self.setup.x_max))
+        self.y_min_edits.setText(str(self.setup.y_min))
+        self.y_max_edits.setText(str(self.setup.y_max))
+        self.z_min_edits.setText(str(self.setup.z_min))
+        self.z_max_edits.setText(str(self.setup.z_max))
+        self.t_min_edits.setText(str(self.setup.t_min))
+        self.t_max_edits.setText(str(self.setup.t_max))
+        self.v_min_edits.setText(str(self.setup.v_min))
+        self.v_max_edits.setText(str(self.setup.v_max))
+        self.weight_distance_min_edits.setText(str(self.setup.weight_distance_min))
+        self.weight_distance_max_edits.setText(str(self.setup.weight_distance_max))
 
-        if len(setup.search_area) > 0:
-            self.search_lat_min_edits.setText(str(setup.search_area[0]))
-            self.search_lat_max_edits.setText(str(setup.search_area[1]))
-            self.search_lon_min_edits.setText(str(setup.search_area[2]))
-            self.search_lon_max_edits.setText(str(setup.search_area[3]))
-        else:
-            print("Warning: Unable to detect search_area")
+        self.comboSet(self.enable_winds_edits, self.setup.enable_winds)
+        self.comboSet(self.weather_type_edits, self.setup.weather_type)
 
-        if len(setup.search_area) > 0:
-            self.search_elev_min_edits.setText(str(setup.search_height[0]))
-            self.search_elev_max_edits.setText(str(setup.search_height[1]))
-        else:
-            print("Warning: Unable to detect search_height")
+        self.perturb_times_edits.setText(str(self.setup.perturb_times))
+        self.frag_no_edits.setText(str(self.setup.observe_frag_no))
+        self.comboSet(self.perturb_edits, self.setup.perturb)
+        self.comboSet(self.perturb_method_edits, self.setup.perturb_method)
 
-        self.comboSet(self.enable_winds_edits, setup.enable_winds)
-        self.comboSet(self.weather_type_edits, setup.weather_type)
-        self.grid_size_edits.setText(str(setup.grid_size))
+        self.n_theta_edits.setText(str(self.setup.n_theta))
+        self.n_phi_edits.setText(str(self.setup.n_phi))
+        self.angle_precision_edits.setText(str(self.setup.angle_precision))
+        self.angle_error_tol_edits.setText(str(self.setup.angle_error_tol))
 
-        self.perturb_times_edits.setText(str(setup.perturb_times))
-        self.frag_no_edits.setText(str(setup.observe_frag_no))
-        self.comboSet(self.perturb_edits, setup.perturb)
-        self.comboSet(self.perturb_method_edits, setup.perturb_method)
+        self.maxiter_edits.setText(str(self.setup.maxiter))
+        self.swarmsize_edits.setText(str(self.setup.swarmsize))
+        self.run_times_edits.setText(str(self.setup.run_times))
+        self.minfunc_edits.setText(str(self.setup.minfunc))
+        self.minstep_edits.setText(str(self.setup.minstep))
+        self.phip_edits.setText(str(self.setup.phip))
+        self.phig_edits.setText(str(self.setup.phig))
+        self.omega_edits.setText(str(self.setup.omega))
+        self.comboSet(self.pso_debug_edits, self.setup.pso_debug)
 
-        self.comboSet(self.fast_ballistic_edits, setup.fast_ballistic)
-        self.fit_type_edits.setText(str(setup.fit_type))
-        self.n_theta_edits.setText(str(setup.n_theta))
-        self.n_phi_edits.setText(str(setup.n_phi))
-        self.angle_precision_edits.setText(str(setup.angle_precision))
-        self.angle_error_tol_edits.setText(str(setup.angle_error_tol))
+        self.contour_res_edits.setText(str(self.setup.contour_res))
+        self.high_f_edits.setText(str(self.setup.high_f))
+        self.high_b_edits.setText(str(self.setup.high_b))
+        self.rm_stat_edits.setText(str(self.setup.rm_stat))
 
-        self.maxiter_edits.setText(str(setup.maxiter))
-        self.swarmsize_edits.setText(str(setup.swarmsize))
-        self.run_times_edits.setText(str(setup.run_times))
-        self.minfunc_edits.setText(str(setup.minfunc))
-        self.minstep_edits.setText(str(setup.minstep))
-        self.phip_edits.setText(str(setup.phip))
-        self.phig_edits.setText(str(setup.phig))
-        self.omega_edits.setText(str(setup.omega))
-        self.comboSet(self.pso_debug_edits, setup.pso_debug)
-
-        self.comboSet(self.plot_all_stations_edits, setup.plot_all_stations)
-        self.comboSet(self.color_toggle_edits, setup.colortoggle)
-        self.dot_tol_edits.setText(str(setup.dot_tol))
-        self.contour_res_edits.setText(str(setup.contour_res))
-        self.high_f_edits.setText(str(setup.high_f))
-        self.high_b_edits.setText(str(setup.high_b))
-        self.rm_stat_edits.setText(str(setup.rm_stat))
-        self.img_dim_edits.setText(str(setup.img_dim))
-        self.toTable(self.reported_points, setup.reported_points)
-
-        self.toTableFromStn(self.extra_point, setup.stations)
-
-        self.setup = setup
+        self.toTableFromStn(self.extra_point, self.setup.stations)
 
         self.loadRayGraph()
 
@@ -3944,7 +3735,7 @@ class SolutionGUI(QMainWindow):
                         zline.append(line[2])
                 except:            
                     if not perturb:
-                        self.errorMessage('Cannot trace rays!', 2)
+                        errorMessage('Cannot trace rays!', 2)
                         return None
                 if ptb == 0:
                     ax.plot3D(xline, yline, zline, 'white')
@@ -4100,7 +3891,7 @@ class SolutionGUI(QMainWindow):
                     ax.plot(xline, yline, c='w')
                 except:            
                     if not perturb:
-                        self.errorMessage('Cannot trace rays!', 2)
+                        errorMessage('Cannot trace rays!', 2)
                         return None
                              
 

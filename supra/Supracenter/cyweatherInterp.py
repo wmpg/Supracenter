@@ -5,7 +5,7 @@ import numpy as np
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Supracenter.angleConv import loc2Geo
+from supra.Utils.AngleConv import loc2Geo
 from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound
 from supra.Supracenter.cyzInteg import zInteg
 

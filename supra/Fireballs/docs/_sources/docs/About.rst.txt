@@ -16,6 +16,8 @@ Thanks to Gunter Stober for advice on atmospheric profiles
 
 Made by the Western Meteor Physics Group 
 
+GitHub: https://github.com/dvida/Supracenter
+
 
 .. toctree::
    :maxdepth: 2

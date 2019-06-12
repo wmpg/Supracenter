@@ -32,11 +32,11 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, waveReleasePointWinds, parseWeather, Constants
-from supra.Fireballs.Program import configRead, configParse, position, station
+from supra.Utils.Classes import Position, Station
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
-from supra.Supracenter.angleConv import geo2Loc, loc2Geo
+from supra.Utils.AngleConv import geo2Loc, loc2Geo
 
 DATA_FILE = 'data.txt'
 C = ['r', 'g', 'm', 'k', 'y']

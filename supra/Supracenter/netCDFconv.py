@@ -8,7 +8,7 @@ from netCDF4 import Dataset
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-import supra.Supracenter.angleConv 
+import supra.Utils.AngleConv
 from supra.Supracenter.convLevels import convLevels
 from supra.Supracenter.bisearch import bisearch
 
