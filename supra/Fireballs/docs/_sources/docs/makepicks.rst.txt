@@ -18,7 +18,7 @@ Shortcuts
 ^^^^^^^^^
 
 * Make Pick: Ctrl + M1
-* Delete Pick: *Not yet implemented*
+* Delete Pick: Shift + M1
 * Next Waveform: D
 * Previous Waveform: A
 * Bandpass Current Waveform: W

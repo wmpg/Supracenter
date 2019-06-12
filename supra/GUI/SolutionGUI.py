@@ -280,7 +280,8 @@ class SolutionGUI(QMainWindow):
             try:
 
                 allTimes = np.load(setup.arrival_times_file)
-                print("Status: Loaded picks from perturbations")
+                if self.setup.debug:
+                    print("Status: Loaded picks from perturbations")
 
 
             except:
@@ -409,7 +410,7 @@ class SolutionGUI(QMainWindow):
         pt.z = P[2]
         pt.pos_geo(B)
 
-        if setup.debug:
+        if self.setup.debug:
             print("Solved Point:")
             print(pt)
 
@@ -442,7 +443,7 @@ class SolutionGUI(QMainWindow):
             errorMessage('Error reading weather profile in rayTrace', 2)
             return None
 
-        if setup.debug:
+        if self.setup.debug:
             print("Starting and End points of Ray Trace")
             print(A)
             print(B)
@@ -461,7 +462,7 @@ class SolutionGUI(QMainWindow):
 
             if ptb_n > 0 and self.ray_enable_perts.isChecked():
                 
-                if setup.debug:
+                if self.setup.debug:
                     print("STATUS: Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
@@ -481,7 +482,7 @@ class SolutionGUI(QMainWindow):
             t_arrival_cy[ptb_n], _, _ = cyscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
                                 wind=True, n_theta=setup.n_theta, n_phi=setup.n_theta, precision=setup.angle_precision, tol=setup.angle_error_tol)
 
-        if setup.debug:
+        if self.setup.debug:
             error_list = []
             for ii in range(setup.perturb_times):
                 error_list.append(abs(t_arrival[ptb_n] - t_arrival_cy[ptb_n]))
@@ -493,7 +494,7 @@ class SolutionGUI(QMainWindow):
         xline = []
         yline = []
         zline = []
-        # print("THE TOTAL RUN TIME IS: {:}".format(t1-t0))
+
         try:
             for line in trace_data[0]:
                 #line[0], line[1], line[2] = loc2Geo(A.lat, A.lon, A.elev, [line[0], line[1], line[2]])
@@ -674,8 +675,8 @@ class SolutionGUI(QMainWindow):
             stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=self.setup.rm_stat, debug=self.setup.debug)
 
         else:
-            print('Station and waveform data file not found! Download the waveform files first!')
-            sys.exit()
+            errorMessage('Station and waveform data file not found! Download the waveform files first!', 2)
+            return None
 
 
         if setup.stations is not None:
@@ -1124,7 +1125,7 @@ class SolutionGUI(QMainWindow):
             if (set([var]) < set(dataset.variables.keys())):
                 sounding.append(np.array(dataset.variables[var][time_index, :, lat_index, lon_index]))
             else:
-                print("WARNING: Variable {:} not found in dataset!".format(var))
+                errorMessage("WARNING: Variable {:} not found in dataset!".format(var), 1)
 
         sounding = np.array(sounding).transpose()
 
@@ -1627,7 +1628,7 @@ class SolutionGUI(QMainWindow):
 
                 if ptb_n > 0:
                     
-                    if setup.debug:
+                    if self.setup.debug:
                         print("STATUS: Perturbation {:}".format(ptb_n))
 
                     # generate a perturbed sounding profile
@@ -1774,7 +1775,7 @@ class SolutionGUI(QMainWindow):
             stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
 
         else:
-            print('Station and waveform data file not found! Download the waveform files first!')
+            errorMessage('Station and waveform data file not found! Download the waveform files first!', 2)
             sys.exit()
 
         if setup.stations is not None:
@@ -1802,49 +1803,49 @@ class SolutionGUI(QMainWindow):
         except:
             setup.traj_i = Position(0, 0, 0)
             setup.traj_f = Position(0, 0, 0)
-            print("Warning: Unable to build trajectory points")
+            errorMessage("Warning: Unable to build trajectory points", 1)
 
         self.waveformPicker(dir_path, setup, sounding, stn_list, difference_filter_all=setup.difference_filter_all, stn_list=stn_list)
     
-    def trajCalc(setup):
-        """ Creates trajectory between point A and the ground (B) based off of the initial position and the angle of travel
+    # def trajCalc(setup):
+    #     """ Creates trajectory between point A and the ground (B) based off of the initial position and the angle of travel
 
-        Arguments:
-        setup: [Object] ini file parameters
+    #     Arguments:
+    #     setup: [Object] ini file parameters
 
-        Returns: 
-        A [list] lat/lon/elev of the tail of the trajectory
-        B [list] lat/lon/elev of the head of the trajectory
-        """
-        print("Trajectory Calculation...")
+    #     Returns: 
+    #     A [list] lat/lon/elev of the tail of the trajectory
+    #     B [list] lat/lon/elev of the head of the trajectory
+    #     """
+    #     print("Trajectory Calculation...")
 
-        ref = Position(setup.lat_centre, setup.lon_centre, 0)
+    #     ref = Position(setup.lat_centre, setup.lon_centre, 0)
 
-        # Tail of the trajectory
-        A = geo2Loc(ref.lat, ref.lon, ref.elev, setup.lat_i, setup.lon_i, setup.elev_i*1000)
+    #     # Tail of the trajectory
+    #     A = geo2Loc(ref.lat, ref.lon, ref.elev, setup.lat_i, setup.lon_i, setup.elev_i*1000)
 
-        # convert angles to radians
-        ze = np.radians(setup.zangle)
-        az = np.radians(setup.azim)
+    #     # convert angles to radians
+    #     ze = np.radians(setup.zangle)
+    #     az = np.radians(setup.azim)
 
-        # Create trajectory vector
-        traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
+    #     # Create trajectory vector
+    #     traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
 
-        # How far along the trajectory until it reaches the ground
-        n = -A[2]/traj[2]
+    #     # How far along the trajectory until it reaches the ground
+    #     n = -A[2]/traj[2]
 
-        # B is the intersection between the trajectory vector and the ground
-        B = A + n*traj
+    #     # B is the intersection between the trajectory vector and the ground
+    #     B = A + n*traj
 
-        # Convert back to geo coordinates
-        B = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, B))
-        A = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, A))
+    #     # Convert back to geo coordinates
+    #     B = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, B))
+    #     A = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, A))
 
-        print("Created Trajectory between A and B:")
-        print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
-        print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
+    #     print("Created Trajectory between A and B:")
+    #     print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
+    #     print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
 
-        return A, B
+    #     return A, B
 
 
     def calcAllTimes(self, stn_list, setup, sounding):
@@ -1908,8 +1909,8 @@ class SolutionGUI(QMainWindow):
 
             if ptb_n > 0:
                 
-                # if setup.debug:
-                #     print("STATUS: Perturbation {:}".format(ptb_n))
+                if setup.debug:
+                    print("STATUS: Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
@@ -1993,7 +1994,7 @@ class SolutionGUI(QMainWindow):
 
         # Save as .npy file to be reused in SeismicTrajectory and Supracenter
         np.save(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times'), allTimes)
-        print("All Times File saved as {:}".format(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times.npy')))
+        errorMessage("All Times File saved as {:}".format(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times.npy')), 0)
 
         return allTimes
 
@@ -2034,7 +2035,8 @@ class SolutionGUI(QMainWindow):
                 filtered_stn_list.append(stn)
 
             else:
-                print('mseed file does not exist:', mseed_file_path)
+                if self.setup.debug:
+                    print('mseed file does not exist:', mseed_file_path)
 
         self.stn_list = filtered_stn_list
 
@@ -2392,13 +2394,15 @@ class SolutionGUI(QMainWindow):
 
                 else:
                     bad_stats.append(idx)
-                    print('File {:s} does not exist!'.format(mseed_file_path))
+                    if self.setup.debug:
+                        print('File {:s} does not exist!'.format(mseed_file_path))
                     continue
 
 
             except TypeError as e:
                 bad_stats.append(idx)
-                print('Opening file {:} failed with error: {:}'.format(mseed_file_path, e))
+                if self.setup.debug:
+                    print('Opening file {:} failed with error: {:}'.format(mseed_file_path, e))
                 continue
 
             # Find channel with BHZ, HHZ, or BDF
@@ -2645,19 +2649,21 @@ class SolutionGUI(QMainWindow):
             if os.path.isfile(mseed_file_path):
                 pass
             else:
-                print('File {:s} does not exist!'.format(mseed_file_path))
+                if self.setup.debug:
+                    print('File {:s} does not exist!'.format(mseed_file_path))
                 return False
 
         except TypeError as e:
-            
-            print('Opening file {:s} failed with error: {:s}'.format(mseed_file_path, str(e)))
+            if self.setup.debug:
+                print('Opening file {:s} failed with error: {:s}'.format(mseed_file_path, str(e)))
             return False
 
         try:
             obspy.read(mseed_file_path)
 
         except TypeError:
-            print('mseed file could not be read:', mseed_file_path)
+            if self.setup.debug:
+                print('mseed file could not be read:', mseed_file_path)
             return False
 
         return True
@@ -2688,7 +2694,8 @@ class SolutionGUI(QMainWindow):
             for ii, pick in enumerate(self.pick_list):
                 if pick.stn_no == self.current_station:
                     self.pick_list.pop(ii)
-                    print('Pick removed!')
+                    if self.setup.debug:
+                        print('Pick removed!')
 
                 self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen='r', update=True)
             self.drawWaveform()
@@ -2716,8 +2723,8 @@ class SolutionGUI(QMainWindow):
             mseed = obspy.read(mseed_file_path)
 
         except TypeError:
-            print('mseed file could not be read:', mseed_file_path)
-            #self.incrementStation()
+            if self.setup.debug:
+                print('mseed file could not be read:', mseed_file_path)
             return None
 
         if channel_changed == 0:
@@ -3227,7 +3234,7 @@ class SolutionGUI(QMainWindow):
 
                 if ptb_n > 0:
                     
-                    if setup.debug:
+                    if self.setup.debug:
                         print("STATUS: Perturbation {:}".format(ptb_n))
 
                     # generate a perturbed sounding profile
@@ -3242,7 +3249,7 @@ class SolutionGUI(QMainWindow):
                 setup.fireball_datetime = self.ref_edit.dateTime().toPyDateTime()
 
                 results[ptb_n] = psoSearch(s_info, weights, s_name, setup, sounding_p, consts)
-                print(results[ptb_n].r)
+
                 print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
                 n_stations = len(s_info)
                 xstn = s_info[0:n_stations, 0:3]
@@ -3321,7 +3328,7 @@ class SolutionGUI(QMainWindow):
 
                 if ptb_n > 0:
                     
-                    if setup.debug:
+                    if self.setup.debug:
                         print("STATUS: Perturbation {:}".format(ptb_n))
 
                     # generate a perturbed sounding profile
@@ -3388,7 +3395,8 @@ class SolutionGUI(QMainWindow):
                 for y in range(Y):
                     obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
         else:
-            print("Warning: Table has no length")
+            if self.setup.debug:
+                print("Warning: Table has no length")
 
     def fromTable(self, obj):
 
@@ -3708,9 +3716,7 @@ class SolutionGUI(QMainWindow):
         ax.set_xlabel("Latitude (deg N)", linespacing=3.1)
         ax.set_ylabel("Longitude (deg E)", linespacing=3.1)
         ax.set_zlabel('Elevation (m)', linespacing=3.1)
-        # print(xstn[3, :])
-        # print(x_opt)
-        # print(sup[12, :])
+
         # plot station names and residuals
         for h in range(n_stations):
 
