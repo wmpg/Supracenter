@@ -750,7 +750,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     # azim = azim%(2*np.pi)
     # zangle = zangle%(np.pi/2)
 
-    ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+    ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
 
 
     lat_fin, lon_fin, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, [x0, y0, 0])
@@ -1069,12 +1069,8 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     ax.plot([wrph_x, wrpl_x], [wrph_y, wrpl_y], [wrph_z, wrpl_z], color='red', linewidth=2)
 
     ### Plot the boom corridor ###
-    try:
-        img_dim = int(setup.img_dim)
-    except:
-        print("INI ERROR: img_dim is not an integer")
-    x_data = np.linspace(x_min, x_max, img_dim)
-    y_data = np.linspace(y_min, y_max, img_dim)
+    x_data = np.linspace(x_min, x_max, setup.contour_res)
+    y_data = np.linspace(y_min, y_max, setup.contour_res)
     xx, yy = np.meshgrid(x_data, y_data)
 
     # Make an array of all plane coordinates
@@ -1090,7 +1086,7 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
         times_of_arrival[i] = ti
 
-    times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
+    times_of_arrival = times_of_arrival.reshape(setup.contour_res, setup.contour_res)
 
     # Determine range and number of contour levels, so they are always centred around 0
     # toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])

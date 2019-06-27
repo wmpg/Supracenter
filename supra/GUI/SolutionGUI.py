@@ -46,9 +46,9 @@ from supra.GUI.GUITools import *
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
 
-from supra.Utils.AngleConv import loc2Geo
+from supra.Utils.AngleConv import loc2Geo, chauvenet
 from supra.Utils.Formatting import *
-from supra.Utils.Classes import Position, Station, Config, Supracenter, Trajectory, Constants
+from supra.Utils.Classes import Position, Station, Config, Supracenter, Trajectory, Constants, Pick
 from supra.Utils.TryObj import tryBool, tryFloat, tryInt, tryPosition, trySupracenter, tryAngle, tryTrajectory, saveDefaults
 
 global arrTimes 
@@ -84,6 +84,7 @@ class SolutionGUI(QMainWindow):
         self.ini_dock = QDockWidget("Variables", self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.ini_dock)
         self.ini_dock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+        
 
         self.addIniDockWidgets()
         self.addPicksReadWidgets()
@@ -104,11 +105,31 @@ class SolutionGUI(QMainWindow):
         layout.addWidget(menu_bar, 0, 1)
         file_menu = menu_bar.addMenu('&File')
         about_menu = menu_bar.addMenu('&About')
-        #view_menu = menu_bar.addMenu('&View')
+        view_menu = menu_bar.addMenu('&View')
 
         file_exit = QAction("Exit", self)
-        file_exit.triggered.connect(qApp.quit)
+        file_exit.setShortcut('Ctrl+Q')
+        file_exit.setStatusTip('Exit application')
+        file_exit.triggered.connect(self.quitApp)
         file_menu.addAction(file_exit)
+
+        file_qsave = QAction("Quick Save", self)
+        file_qsave.setShortcut('Ctrl+S')
+        file_qsave.setStatusTip('Saves setup file')
+        file_qsave.triggered.connect(partial(self.saveINI, True, True))
+        file_menu.addAction(file_qsave)
+
+        file_save = QAction("Save", self)
+        file_save.setShortcut('Ctrl+Shift+S')
+        file_save.setStatusTip('Saves setup file')
+        file_save.triggered.connect(partial(self.saveINI, True))
+        file_menu.addAction(file_save)
+
+        file_load = QAction("Load", self)
+        file_load.setShortcut('Ctrl+L')
+        file_load.setStatusTip('Loads setup file')
+        file_load.triggered.connect(self.loadINI)
+        file_menu.addAction(file_load)
 
         about_github = QAction("GitHub", self)
         about_github.triggered.connect(self.openGit)
@@ -118,9 +139,11 @@ class SolutionGUI(QMainWindow):
         about_docs.triggered.connect(self.openDocs)
         about_menu.addAction(about_docs)
 
-        # view_vartools = QAction("Variable Toolbar", self)
-        # view_vartools.triggered.connect()
-        # view_menu.addAction(view_vartools)
+        view_vartools = QAction("Show/Hide Toolbar", self)
+        view_vartools.setShortcut('Ctrl+V')
+        view_vartools.setStatusTip('Toggle if the variable toolbar is visible')
+        view_vartools.triggered.connect(self.viewToolbar)
+        view_menu.addAction(view_vartools)
 
         stylesheet = """ 
         QTabWidget>QWidget>QWidget{background: gray;}
@@ -130,7 +153,8 @@ class SolutionGUI(QMainWindow):
         QGroupBox{color: white;}
         QGroupBox{ 
         border: 2px white; 
-        border-radius: 0px; } 
+        border-radius: 0px; }
+        QMessageBox{color: white; background: black;} 
         """
 
         self.setStyleSheet(stylesheet)
@@ -140,6 +164,19 @@ class SolutionGUI(QMainWindow):
         self.ray_pick_traj = pg.ScatterPlotItem()
         self.ray_pick_point = [0, 0, 0]
         self.ctrl_pressed = False
+
+    def viewToolbar(self):
+        self.ini_dock.toggleViewAction().trigger()
+
+    def quitApp(self):
+
+        reply = QMessageBox.question(self, 'Quit Program', 
+                 'Are you sure you want to quit?', QMessageBox.Yes, QMessageBox.No)
+        if reply == QtGui.QMessageBox.Yes:
+            qApp.quit()
+        else:
+            return None
+        
 
     def openGit(self):
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
@@ -261,11 +298,7 @@ class SolutionGUI(QMainWindow):
         ref_time = jd2Date(jd_ref)
         self.setup.ref_time = datetime.datetime(*(map(int, ref_time)))
 
-
-        # Init the constants
-        consts = Constants()
-
-        sounding = parseWeather(self.setup, consts)
+        sounding = parseWeather(self.setup)
 
         # Set up search parameters
         p0 = [self.setup.lat_f, self.setup.lon_f, self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith]
@@ -746,20 +779,16 @@ class SolutionGUI(QMainWindow):
         self.master_seis.addLayout(self.seis_tab_input)
         self.master_seis.addLayout(self.seis_tab_output)
 
-        tab_layout = QGridLayout()
-        self.seis_tab_input.addLayout(tab_layout)
-
-        self.seis_params_tab = QTabWidget()
-        self.seis_params_tab.blockSignals(True)
-        tab_layout.addWidget(self.seis_params_tab, 1, 1, 1, 100)
-
-        self.seis_search = QPushButton('Search')
-        tab_layout.addWidget(self.seis_search, 2, 51, 1, 50)
-        self.seis_search.clicked.connect(self.seisSearch)
-        
         table_group = QGridLayout()
         self.seis_tab_input.addLayout(table_group)
 
+        tab_layout = QGridLayout()
+        self.seis_tab_input.addLayout(tab_layout)
+
+        self.seis_search = QPushButton('Search')
+        tab_layout.addWidget(self.seis_search, 1, 1, 1, 4)
+        self.seis_search.clicked.connect(self.seisSearch)
+        
         self.seis_table = QTableWidget()
         table_group.addWidget(self.seis_table, 1, 1, 1, 4)
 
@@ -1466,14 +1495,13 @@ class SolutionGUI(QMainWindow):
         #     stn_list = stn_list + self.makeStationObj(self.setup.stations)
 
         # Init the constants
-        consts = Constants()
         self.setup.search_area = [0, 0, 0, 0]
         self.setup.search_area[0] = self.setup.lat_centre - self.setup.deg_radius 
         self.setup.search_area[1] = self.setup.lat_centre + self.setup.deg_radius
         self.setup.search_area[2] = self.setup.lon_centre - self.setup.deg_radius
         self.setup.search_area[3] = self.setup.lon_centre + self.setup.deg_radius
 
-        sounding = parseWeather(self.setup, consts)
+        sounding = parseWeather(self.setup)
         arrTimes = np.array([])
 
         if len(stn_list) == 0:
@@ -1695,7 +1723,6 @@ class SolutionGUI(QMainWindow):
             difference_filter_all: [bool] If True, the Kalenda et al. (2014) difference filter will be applied
                 on the data plotted in the overview plot of all waveforms.
         """
-        self.setup = setup
         self.dir_path = dir_path
 
         self.v_sound = setup.v_sound
@@ -1784,7 +1811,7 @@ class SolutionGUI(QMainWindow):
             lons.append(stat_lon)
 
             # Calculate the distance in kilometers
-            dist = greatCircleDistance(np.radians(setup.lat_centre), np.radians(setup.lon_centre), \
+            dist = greatCircleDistance(np.radians(self.setup.lat_centre), np.radians(self.setup.lon_centre), \
                 np.radians(stat_lat), np.radians(stat_lon))
 
             self.source_dists.append(dist)
@@ -1813,7 +1840,7 @@ class SolutionGUI(QMainWindow):
         #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # Extract coordinates of the reference station
-        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
@@ -1830,12 +1857,12 @@ class SolutionGUI(QMainWindow):
             #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
         
         # Manual Supracenter search
-        if setup.show_fragmentation_waveform:
+        if self.setup.show_fragmentation_waveform:
             
             # Fragmentation plot
-            for i, line in enumerate(setup.fragmentation_point):
+            for i, line in enumerate(self.setup.fragmentation_point):
                 self.make_picks_map_graph_canvas.scatterPlot(x=[float(line[1])], y=[float(line[0])],\
-                    pen=(0 + i*255/len(setup.fragmentation_point), 255 - i*255/len(setup.fragmentation_point), 0), symbol='+')
+                    pen=(0 + i*255/len(self.setup.fragmentation_point), 255 - i*255/len(self.setup.fragmentation_point), 0), symbol='+')
 
 
 
@@ -1843,128 +1870,28 @@ class SolutionGUI(QMainWindow):
         self.make_picks_map_graph_canvas.scatterPlot(x=[setup.lon_centre], y=[setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
         # Manual trajectory search
-        if setup.show_ballistic_waveform:
+        if self.setup.show_ballistic_waveform:
 
             # Plot the trajectory with the bottom point known
-            self.make_picks_map_graph_canvas.plot([setup.traj_i.lon, setup.traj_f.lon], [setup.traj_i.lat, setup.traj_f.lat],\
+            self.make_picks_map_graph_canvas.plot([self.setup.traj_i.lon, self.setup.traj_f.lon], [self.setup.traj_i.lat, self.setup.traj_f.lat],\
                              pen=(0, 0, 255))
             # Plot intersection with the ground
-            self.make_picks_map_graph_canvas.scatterPlot(x=[setup.traj_f.lon], y=[setup.traj_f.lat], symbol='+', pen=(0, 0, 255))
-
-            # ### CONTOUR ###
-
-            # # # Get the limits of the plot
-            # x_min = setup.lat_f - 100000*setup.deg_radius
-            # x_max = setup.lat_f + 100000*setup.deg_radius
-            # y_min = setup.lon_f - 100000*setup.deg_radius
-            # y_max = setup.lon_f + 100000*setup.deg_radius
-
-            # img_dim = int(setup.contour_res)
-            # x_data = np.linspace(x_min, x_max, img_dim)
-            # y_data = np.linspace(y_min, y_max, img_dim)
-            # xx, yy = np.meshgrid(x_data, y_data)
+            self.make_picks_map_graph_canvas.scatterPlot(x=[self.setup.traj_f.lon], y=[self.setup.traj_f.lat], symbol='+', pen=(0, 0, 255))
 
 
-            # # # Make an array of all plane coordinates
-            # plane_coordinates = np.c_[xx.ravel(), yy.ravel(), np.zeros_like(xx.ravel())]
-
-            # times_of_arrival = np.zeros_like(xx.ravel())
-
-            # az = np.radians(setup.azim)
-            # ze = np.radians(setup.zangle)
-
-            # # # vector of the trajectory of the fireball
-            # # traj_vect = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-
-            # for i, plane_coords in enumerate(plane_coordinates):
-
-            #     # Print out percentage complete
-            #     if (i + 1) % 10 == 0:
-
-            #         loadingBar('Drawing Contour:', (i + 1), img_dim**2)
-
-            #     setup.traj_f.pos_loc(ref_pos)
-            #     # Point on the trajectory where the sound wave that will hit the plane_coord originated from
-
-            #     p = waveReleasePointWinds(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
-            #                               ze, setup, sounding, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
-
-            #     # # vector between the wave release point and the plane coordinate
-            #     d_vect = plane_coords - p
-
-            #     # Since the arrivals are always perpendicular to the fireball trajectory, only take arrivals where the dot product
-            #     # of the vectors are small.
-
-            #     #if abs(np.dot(d_vect/1000, traj_vect)) < setup.dot_tol:
-
-            #         # time of arrival from the trajectory
-            #     ti = timeOfArrival(plane_coords, setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, \
-            #                            az, ze, setup, sounding=sounding, ref_loc=[ref_pos.lat, ref_pos.lon, 0], travel=True, fast=False)# - setup.t + setup.t0
-
-            #     # escape value for if sound never reaches the plane_coord
-
-
-            #     times_of_arrival[i] = ti + setup.t0
-
-            # # #Keep this here
-            # print('')
-
-            # # # if sound never reaches the plane_coord, set to maximum value of the contour
-            # max_time = np.nanmax(times_of_arrival)
-            # for i in range(len(times_of_arrival)):
-            #     if np.isnan(times_of_arrival[i]):
-            #         times_of_arrival[i] = max_time
-
-            # times_of_arrival = times_of_arrival.reshape(img_dim, img_dim)
-
-            # # Determine range and number of contour levels, so they are always centred around 0
-            # toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-            # #  toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
-            # levels = np.linspace(0, toa_abs_max, 25)
-
-            # # Convert contour local coordinated to geo coordinates
-            # lat_cont = []
-            # lon_cont = []
-
-            # for x_cont, y_cont in zip(xx.ravel(), yy.ravel()):
-                
-            #     lat_c, lon_c, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, np.array([x_cont, y_cont, 0]))
-
-            #     lat_cont.append(lat_c)
-            #     lon_cont.append(lon_c)
-
-            # lat_cont = np.array(lat_cont).reshape(img_dim, img_dim)
-            # lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
-
-            # # Plot the time of arrival contours
-            # max_time = np.max(times_of_arrival)
-            # min_time = np.min(times_of_arrival)
-
-            # times_of_arrival = (times_of_arrival - min_time)/max_time
-
-
-            # self.make_picks_map_graph_canvas.scatterPlot(x=lon_cont, y=lat_cont, c=times_of_arrival, update=True)
-
-        if setup.arrival_times_file != '':
+        if self.setup.arrival_times_file != '':
             try:
-                self.arrTimes = np.load(setup.arrival_times_file)
+                self.arrTimes = np.load(self.setup.arrival_times_file)
             except:
-                errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
+                errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(self.setup.arrival_times_file), 1)
                 self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
         else:  
             # Calculate all arrival times
             self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
-        
-
-        # self.make_picks_top_graphs.removeWidget(self.make_picks_map_graph_canvas)
-        # self.make_picks_map_graph_canvas = FigureCanvas(Figure(figsize=(1, 1)))
-        # self.make_picks_map_graph_canvas = FigureCanvas(fig)
-        # self.make_picks_map_graph_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        # self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_canvas)    
-        # self.make_picks_map_graph_canvas.draw()
+    
         SolutionGUI.update(self)
 
-        self.updatePlot(setup)
+        self.updatePlot(self.setup)
 
     def makeValueChange(self, obj, slider):
         
@@ -2234,13 +2161,11 @@ class SolutionGUI(QMainWindow):
                 pass
 
         if event.key() == QtCore.Qt.Key_S:
+
             try:
                 self.showSpectrogram(event=event)
             except:
                 pass
-
-            if self.ctrl_pressed == True:
-                self.saveINI(autosave=True)
 
         if event.key() == QtCore.Qt.Key_C:
             try:
@@ -2484,6 +2409,7 @@ class SolutionGUI(QMainWindow):
             # p = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
             #                 ze, setup, sounding, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
             # check if nan
+
             if b_time == b_time:
                 self.make_picks_waveform_canvas.plot(x=[b_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), width=2) , label='Ballistic')
                 print("Ballistic Arrival: {:.3f} s".format(b_time))
@@ -2697,17 +2623,18 @@ class SolutionGUI(QMainWindow):
         errorMessage('Output to CSV!', 0, title='Exported!')
 
     def exportToAllTimes(self):
-        setup = self.setup
 
-        if setup.arrival_times_file != '':
+        sounding = parseWeather(self.setup)
+
+        if self.setup.arrival_times_file != '':
             try:
-                self.arrTimes = np.load(setup.arrival_times_file)
+                self.arrTimes = np.load(self.setup.arrival_times_file)
             except:
                 errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
-                self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+                self.arrTimes = self.calcAllTimes(self.stn_list, self.setup, sounding)
         else:  
             # Calculate all arrival times
-            self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+            self.arrTimes = self.calcAllTimes(self.stn_list, self.setup, sounding)
         
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
@@ -2901,7 +2828,6 @@ class SolutionGUI(QMainWindow):
         return sounding_p
 
     def supSearch(self):
-
 
         s_info, s_name, weights, ref_pos = convStationDat(self.setup.station_picks_file, self.setup, d_min=self.setup.weight_distance_min, d_max=self.setup.weight_distance_max)
         ref_pos = Position(ref_pos[0], ref_pos[1], ref_pos[2])
@@ -3204,9 +3130,8 @@ class SolutionGUI(QMainWindow):
         frag_list = []
         for element in self.setup.fragmentation_point:
             frag_list.append(element.toList())
-        self.setup.fragmentation_point = frag_list
 
-        toTable(self.fragmentation_point, self.setup.fragmentation_point)
+        toTable(self.fragmentation_point, frag_list)
         comboSet(self.show_fragmentation_waveform_edits, self.setup.show_fragmentation_waveform)
 
         if self.setup.manual_fragmentation_search == None:
@@ -3534,8 +3459,7 @@ if __name__ == '__main__':
 
     gui = SolutionGUI()
 
-    w = 1376; h = 1024
-    gui.resize(w, h)
+    gui.showFullScreen()
     gui.show()
 
     app.exec_()
