@@ -40,10 +40,10 @@ import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
-from supra.Utils.AngleConv import loc2Geo, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
-from supra.Utils.Classes import Position
+from supra.Utils.Classes import Position, Constants
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
 from wmpl.Utils.Math import vectMag, vectNorm, rotateVector, meanAngle
@@ -55,25 +55,8 @@ sup = [0, 0, 0, 0, 0, 0]
 errors = [0]
 
 
-class Constants:
-
-    def __init__(self):
-
-        # Ideal gas constant
-        self.R = 8.31432 # J/K mol
-
-        # Kelvins to C
-        self.K = 273.15
-
-        # Heat capacity ratio
-        self.GAMMA = 1.40
-
-        # Molar mass of the air
-        self.M_0 = 0.0289644 #kg/mol
-
-
-def parseWeather(setup, consts, time=0):
-
+def parseWeather(setup, time=0):
+    consts = Constants()
      # Parse weather type
     setup.weather_type = setup.weather_type.lower()
     if setup.weather_type not in ['custom', 'none', 'ecmwf', 'merra', 'ukmo']:
@@ -142,7 +125,7 @@ def parseWeather(setup, consts, time=0):
         except:
 
             try:
-                start_time = (setup.atm_hour + time)%24
+                start_time = (setup.fireball_datetime.hour + time)%24
                 sounding = storeNetCDFECMWF(setup.sounding_file, setup.x0, setup.y0, consts, start_time=start_time)
             except:
                 print("ERROR: Unable to use weather file, or setup.start_datetime/setup.atm_hour is set up incorrectly. Try checking if sounding_file exists")
@@ -168,7 +151,7 @@ def parseWeather(setup, consts, time=0):
 
         # Sample fake weather profile, the absolute minimum that can be passed
         sounding = np.array([[    0.0, setup.v_sound, 0.0, 0.0],
-                             [10000.0, setup.v_sound, 0.0, 0.0],
+                             [0.0, setup.v_sound, 0.0, 0.0],
                              [99999.0, setup.v_sound, 0.0, 0.0]])
 
     return sounding
@@ -301,13 +284,6 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
     # Winds
     else:
 
-        # Source location
-        try: 
-            setup.fast_ballistic = setup.fast_ballistic
-        except:
-            print("CODE WARNING: setup.fast_ballistic not found, setting to false")
-            setup.fast_ballistic = False
-
         # if fast:
         #     # Faster, no-winds solution
         #     S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
@@ -361,7 +337,7 @@ def loop(D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf,
 
     # Cut down atmospheric profile to the correct heights, and interp
     zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, weather_type, \
-                     [np.degrees(ref_loc[0]), np.degrees(ref_loc[1]), ref_loc[2]], copy.copy(sounding), convert=True)
+                     ref_loc, copy.copy(sounding), convert=True)
 
     # Time of arrival between the points with atmospheric profile
     T[i], az[i], tf[i] = cyscan(np.array(S), np.array(D), zProfile, wind=enable_winds)
@@ -397,10 +373,10 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     
     # find top boundary of line given maximum elevation of trajectory
     if setup.elev_i != 0:
-        scale = -setup.elev_i*1000/u[2]
+        scale = -setup.elev_i/u[2]
 
     else:
-        scale = -100*1000/u[2]
+        scale = -100000/u[2]
 
     # define line top boundary
     top_point = ground_point - scale*u
@@ -532,11 +508,6 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     # Unpack estimated parameters
     x0, y0, t0, v, azim, zangle = params
 
-    # Convert the values from km to m
-    x0 *= 1000
-    y0 *= 1000
-    v  *= 1000
-
     # if v_fixed != '':
 
     #     # Keep the fireball velocity fixed
@@ -546,7 +517,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     except:
         pass
 
-    lat0, lon0, elev0 = setup.lat_centre, setup.lon_centre, 0
+    ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
     cost_value = 0
 
     # Go through all arrival times
@@ -556,7 +527,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         ######################################################################################################
 
         # Calculate the time of arrival
-        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding, ref_loc=[lat0, lon0, elev0], theo=True)
+        ti = timeOfArrival(stat_coord, x0, y0, t0, v, np.radians(azim), np.radians(zangle), setup, sounding=sounding, ref_loc=ref_pos, theo=True)
 
         # Smooth approximation of l1 (absolute value) loss
         z = (t_obs - ti)**2
@@ -592,7 +563,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     # Optional print status of searches
     if setup.debug:
         print('Loc: x0 = {:10.2f}, y0 = {:10.2f}, t = {:8.2f}, v = {:4.1f}, azim = {:7.2f}, zangle = {:5.2f}, Err: {:8.4f}'\
-            .format(x0, y0, t0, v/1000, azim, zangle, cost_value))\
+            .format(x0, y0, t0, v, azim, zangle, cost_value))\
 
     return cost_value
 
@@ -622,7 +593,7 @@ def convertStationCoordinates(station_list, ref_indx):
         _, _, _, lat, lon, elev,_,_, _ = entry
 
         # Convert geographical to local coordinates
-        stat_coord = latLon2Local(lat0, lon0, elev0, lat, lon, elev)
+        stat_coord = geo2Loc(lat0, lon0, elev0, lat, lon, elev)
 
         ######
 
@@ -688,19 +659,13 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     # origin of the coordinate system
     stat_coord_list = convertStationCoordinates(station_list, first_arrival_indx)
 
-    if setup.azimuth_min > setup.azimuth_max:
-        setup.azimuth_min -= 360
-
-    setup.azimuth_min = setup.azimuth_min%360
-    setup.azimuth_max = setup.azimuth_max%360  
-
     bounds = [
         (setup.x_min, setup.x_max), # X0
         (setup.y_min, setup.y_max), # Y0
         (setup.t_min, setup.t_max), # t0
         (setup.v_min, setup.v_max), # Velocity (km/s)
-        (setup.azimuth_min, setup.azimuth_max),     # Azimuth
-        (setup.zangle_min, setup.zangle_max)  # Zenith angle
+        (setup.azimuth_min.deg, setup.azimuth_max.deg),     # Azimuth
+        (setup.zenith_min.deg, setup.zenith_max.deg)  # Zenith angle
         ]
 
     print('Bounds:', bounds)
@@ -788,7 +753,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
 
 
-    lat_fin, lon_fin, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, [x0*1000, y0*1000, 0])
+    lat_fin, lon_fin, _ = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, [x0, y0, 0])
 
     print('--------------------')
     print('RESULTS:')
@@ -806,7 +771,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
         print_residuals=True)
 
     # Plot the stations and the estimated trajectory
-    residuals = plotStationsAndTrajectory(station_list, [1000*x0, 1000*y0, t0, 1000*v_est, azim, zangle], setup, sounding, x_perturb=x_perturb, ax=ax)
+    residuals = plotStationsAndTrajectory(station_list, [x0, y0, t0, v_est, azim, zangle], setup, sounding, x_perturb=x_perturb, ax=ax)
 
     global sup
     global errors
@@ -818,7 +783,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
 
     sup = np.delete(sup, -1, 0)
 
-    final_pos = position(lat_fin, lon_fin, 0)
+    final_pos = Position(lat_fin, lon_fin, 0)
     results = [final_pos, ref_pos, t0, v_est, azim, zangle, residuals]
     return sup, errors, results
 
@@ -907,10 +872,10 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     if len(x_perturb) != 0:
 
         for i in range(perturb_times):
-            x_p[i] = x_perturb[i][0] * 1000
-            y_p[i] = x_perturb[i][1] * 1000
+            x_p[i] = x_perturb[i][0] 
+            y_p[i] = x_perturb[i][1] 
             t_p[i] = x_perturb[i][2]
-            v_p[i] = x_perturb[i][3] * 1000
+            v_p[i] = x_perturb[i][3]
             az_p[i] = x_perturb[i][4]
             ze_p[i] = x_perturb[i][5]
 
@@ -941,14 +906,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     # Extract station coordinates
     x_stat, y_stat, z_stat = np.array(stat_coord_list).T
 
-    # Convert station coordinates to km
-    x_stat /= 1000
-    y_stat /= 1000
-    z_stat /= 1000
-
-    x0 /= 1000
-    y0 /= 1000
-
     # Extract coordinates of the reference station
     #lat0, lon0, elev0 = station_list[ref_indx][3:6]
     lat0, lon0, elev0 = setup.lat_centre, setup.lon_centre, 0
@@ -966,11 +923,11 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     for stat_coord in stat_coord_list:
 
         # Calculate time of arrival
-        ti = timeOfArrival(stat_coord, 1000*x0, 1000*y0, t0, v, azim, zangle, setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
+        ti = timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
         stat_model_times_of_arrival.append(ti)
 
         # Calculate point of wave release
-        traj_point = waveReleasePoint(stat_coord, 1000*x0, 1000*y0, t0, v, azim, zangle, setup.v_sound)/1000
+        traj_point = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
         wave_release_points.append(traj_point)
 
     stat_model_times_of_arrival = np.array(stat_model_times_of_arrival)
@@ -1016,14 +973,14 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
     # Corner locations as boundaries for the contour plot
     corner_times = [0, 0, 0, 0]
-    corner_coords = [[1000*setup.x_min, 1000*setup.y_min, 0], \
-                     [1000*setup.x_min, 1000*setup.y_max, 0], \
-                     [1000*setup.x_max, 1000*setup.y_min, 0], \
-                     [1000*setup.x_max, 1000*setup.y_max, 0]]
+    corner_coords = [[setup.x_min, setup.y_min, 0],\
+                     [setup.x_min, setup.y_max, 0],\
+                     [setup.x_max, setup.y_min, 0],\
+                     [setup.x_max, setup.y_max, 0]]
 
     # The maximum time in the contour plot must be in one of the corners
     for i, coor in enumerate(corner_coords):
-        ti = timeOfArrival(coor, 1000*x0, 1000*y0, t0, v, azim, zangle, setup, sounding=sounding)
+        ti = timeOfArrival(coor, x0, y0, t0, v, azim, zangle, setup, sounding=sounding)
         corner_times[i] = ti
     
     # Determine the maximum absolute time of arrival (either positive of negative)
@@ -1102,11 +1059,11 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
         for i in range(perturb_times):
             u_p[i] = getTrajectoryVector(az_p[i], ze_p[i])
 
-            x_beg_p = x_p[i]/1000 - traj_len*u_p[i][0]
-            y_beg_p = y_p[i]/1000 - traj_len*u_p[i][1]
+            x_beg_p = x_p[i] - traj_len*u_p[i][0]
+            y_beg_p = y_p[i] - traj_len*u_p[i][1]
             z_beg_p = -traj_len*u_p[i][2]
 
-            ax.plot([x_p[i]/1000, x_beg_p], [y_p[i]/1000, y_beg_p], [0, z_beg_p], c='b')#, alpha=0.4)
+            ax.plot([x_p[i], x_beg_p], [y_p[i], y_beg_p], [0, z_beg_p], c='b')#, alpha=0.4)
 
     # Plot wave release trajectory segment
     ax.plot([wrph_x, wrpl_x], [wrph_y, wrpl_y], [wrph_z, wrpl_z], color='red', linewidth=2)
@@ -1129,7 +1086,7 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
     # Calculate times of arrival for each point on the reference plane
     for i, plane_coords in enumerate(plane_coordinates):
 
-        ti = timeOfArrival(1000*plane_coords, 1000*x0, 1000*y0, t0, v, azim, zangle, setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
+        ti = timeOfArrival(plane_coords, x0, y0, t0, v, azim, zangle, setup, sounding=sounding, ref_loc=[lat0, lon0, elev0])
 
         times_of_arrival[i] = ti
 
@@ -1165,504 +1122,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
     # # plt.savefig(os.path.join(setup.working_directory, setup.fireball_name) + '_3d.png', dpi=300)
 
-    # # plt.show()
-
-
-    # ### PLOT THE MAP ###
-    # ##########################################################################################################
-
-    # # Calculate the coordinates of the trajectory intersection with the ground
-    # lat_i, lon_i, elev_i = local2LatLon(lat0, lon0, elev0, 1000*np.array([x0, y0, 0]))
-
-    # # Calculate the coordinate of the beginning of the trajectory
-    # lat_beg, lon_beg, elev_beg = local2LatLon(lat0, lon0, elev0, 1000*np.array([x_beg, y_beg, z_beg]))
-
-
-    # # Calculate coordinates of trajectory release points
-    # wrph_lat, wrph_lon, wrph_elev = local2LatLon(lat0, lon0, elev0, 1000*np.array([wrph_x, wrph_y, wrph_z]))
-    # wrpl_lat, wrpl_lon, wrpl_elev = local2LatLon(lat0, lon0, elev0, 1000*np.array([wrpl_x, wrpl_y, wrpl_z]))
-
-
-    # ### Calculate pointing vectors from stations to release points
-
-    # wr_points = []
-    # for wr_point, stat_point in zip(wave_release_points, np.c_[x_stat, y_stat, z_stat]):
-
-    #     # Calculate vector pointing from station to release point
-    #     wr_point = wr_point - stat_point
-
-    #     wr_points.append(wr_point)
-
-    
-    # # Normalize by the longest vector, which will be 1/10 of the trajectory length
-
-    # wr_len_max = max([vectMag(wr_point) for wr_point in wr_points])
-
-    # wr_vect_x = []
-    # wr_vect_y = []
-    # wr_vect_z = []
-
-    # for wr_point in wr_points:
-
-    #     wr_x, wr_y, wr_z = (wr_point/wr_len_max)*traj_len/10
-
-    #     wr_vect_x.append(wr_x)
-    #     wr_vect_y.append(wr_y)
-    #     wr_vect_z.append(wr_z)
-
-    # ###
-
-    # # Extract station coordinates
-    # stat_lat = []
-    # stat_lon = []
-    # stat_elev = []
-
-    # for entry in station_list:
-
-    #     lat_t, lon_t, elev_t = entry[3:6]
-
-    #     stat_lat.append(lat_t)
-    #     stat_lon.append(lon_t)
-    #     stat_elev.append(elev_t)
-
-    # stat_lat = np.array(stat_lat)
-    # stat_lon = np.array(stat_lon)
-    # stat_elev = np.array(stat_elev)
-
-    # # Init the ground map
-    # #m = GroundMap(np.append(stat_lat, lat_i), np.append(stat_lon, lon_i), border_size=20, color_scheme='light')
-
-    # # Convert contour local coordinated to geo coordinates
-    # lat_cont = []
-    # lon_cont = []
-    
-    # for x_cont, y_cont in zip(xx.ravel(), yy.ravel()):
-        
-    #     lat_c, lon_c, _ = local2LatLon(lat0, lon0, elev0, 1000*np.array([x_cont, y_cont, 0]))
-
-    #     lat_cont.append(lat_c)
-    #     lon_cont.append(lon_c)
-
-
-    # lat_cont = np.array(lat_cont).reshape(img_dim, img_dim)
-    # lon_cont = np.array(lon_cont).reshape(img_dim, img_dim)
-
-    # Plot the time of arrival contours
-    # toa_conture = m.m.contourf(np.degrees(lon_cont), np.degrees(lat_cont), times_of_arrival, levels, zorder=3, \
-    #     latlon=True, cmap='viridis')
-
-    # # Add a color bar which maps values to colors
-    # m.m.colorbar(toa_conture, label='Time of arrival (s)')
-
-
-    # # Plot stations
-    # m.scatter(stat_lat, stat_lon, c=stat_model_times_of_arrival, s=20, marker='o', edgecolor='0.5', \
-    #     linewidths=1, cmap='viridis', vmin=0.00, vmax=toa_abs_max)
-
-    # Plot station names
-    # for stat_entry in station_list:
-
-    #     name, s_lat, s_lon = stat_entry[2:5]
-
-    #     # Convert coordinates to map coordinates
-    #     x, y = m.m(np.degrees(s_lon), np.degrees(s_lat))
-
-    #     # Plot the text 
-    #     txt = plt.text(x, y, name, horizontalalignment='left', verticalalignment='top', color='k')
-
-    #     # Add border to text
-    #     txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
-
-    # # Plot intersection with the ground
-    # m.scatter(lat_i, lon_i, s=10, marker='x', c='g')
-
-    # # Plot the trajectory
-    # m.plot([lat_beg, lat_i], [lon_beg, lon_i], c='g')
-
-    # # Plot the wave release segment
-    # m.plot([wrph_lat, wrpl_lat], [wrph_lon, wrpl_lon], c='red', linewidth=2)
-
-
-    # # Plot wave release directions
-    # for i in range(len(x_stat)):
-        
-    #     wr_lat_i, wr_lon_i, wr_elev_i = local2LatLon(lat0, lon0, elev0, 1000*np.array([x_stat[i] + wr_vect_x[i], y_stat[i] + wr_vect_y[i], z_stat[i] + wr_vect_z[i]]))
-    #     #wr_lat_i, wr_lon_i, wr_elev_i = local2LatLon(lat0, lon0, elev0, 1000*np.array([wrp_x[i], wrp_y[i], wrp_z[i]]))
-
-    #     m.plot([stat_lat[i], wr_lat_i], [stat_lon[i], wr_lon_i], c='k', linewidth=1.0)
-
-
-    # plt.tight_layout()
-
-    # plt.savefig(os.path.join(setup.working_directory, setup.fireball_name) + '_map.png', dpi=300)
-
-    # plt.show()
-
-    # global sup
-    # global errors
-    # # Potential Supracenter locations
-    # sup = np.delete(sup, 0, 0)
-
-    # # Error in each potential Supracenter
-    # errors = np.delete(errors, 0)
-
-    # sup = np.delete(sup, -1, 0)
-
-    # if setup.run_mode != 'manual':
-    #     errors = np.resize(errors, errors.size - 1)
-    #     # Create search points file (used to replot previously found data)
-    #     if setup.run_mode == 'search':
-            
-    #         print('Writing data file...')
-
-    #         with open(os.path.join(setup.working_directory, setup.fireball_name) + '_plotted_points.csv', 'w') as f:
-    #             f.write('lat, lon, x0, y0, t0, v, az, ze, err\n')
-
-    #             for i in range(len(sup)):
-
-    #                 alat, alon, _ = local2LatLon(lat0, lon0, elev0, np.array([sup[i, 0], sup[i, 1], 0]))
-    #                 f.write('{:9.2f}, {:9.2f}, {:9.4f}, {:9.4f}, {:6.2f}, {:6.2f}, {:6.2f}, {:6.2f}, {:6.2f}\n'\
-    #                     .format(np.degrees(alat), np.degrees(alon), sup[i, 0], sup[i, 1], sup[i, 2], sup[i, 3], sup[i, 4], sup[i, 5], errors[i]))
-    #             alat, alon, _ = local2LatLon(lat0, lon0, elev0, np.array([x0, y0, 0]))
-
-    #             zangle = np.radians(90 - np.degrees(zangle))
-    #             azim = np.radians((np.degrees(azim))%360)
-
-    #             f.write('{:9.2f}, {:9.2f}, {:9.4f}, {:9.4f}, {:6.2f}, {:6.2f}, {:6.4f}, {:6.4f}, {:6.2f}\n'\
-    #                     .format(np.degrees(alat), np.degrees(alon), x0*1000, y0*1000, t0, v, azim, zangle, 0))
-
-    #         print('Done writing data file...')
-
-        # # Remove points above a certain threshold
-        # for i in range(1):
-
-        #     a = []
-        #     std_error = np.std(errors)
-
-        #     # Threshold
-        #     lim = np.mean(errors) - 0*std_error
-
-        #     for i in range(len(errors)):
-        #         if errors[i] >= lim:
-        #             a.append(i)
-
-        #     errors = np.delete(errors, (a), axis=0)
-        #     sup = np.delete(sup, (a), axis=0)
-
-
-        # Create uncertainty errors
-        # - the best points
-        # unc_errors = errors.copy()
-        # unc_sup = sup.copy()
-
-        # std = np.std(unc_errors)
-
-        # #Only keep the best errors for uncertainty
-        # lim = np.mean(unc_errors) - 0.75*std
-        # lim = np.mean(unc_errors) - np.sqrt(2*np.mean(unc_errors))
-        
-        # for i in range(len(unc_errors)):
-        #     if unc_errors[i] >= lim:
-        #         a.append(i)
-
-        # unc_errors = np.delete(unc_errors, (a), axis=0)
-        # unc_sup = np.delete(unc_sup, (a), axis=0)
-
-
-        # if len(unc_errors) == 0:
-        #     unc_errors = errors
-        #     unc_sup = sup
-
-        # else:
-        #     try:
-        #         # Set up axes
-        #         fig = plt.figure(figsize=plt.figaspect(0.5))
-        #         fig.set_size_inches(20.9, 11.7)
-        #         ax5 = fig.add_subplot(111)
-
-        #         bins = np.linspace(0, max(errors), max(errors)/2)
-
-        #         if len(bins) <= 1:
-        #             bins = np.linspace(0, max(errors) + 1, max(errors)/2)
-
-        #         # plot histrogram of errors showing both unfiltered (after removing large errors) and filtered (uncertainties)
-        #         ax5.hist(    errors, bins, alpha=0.5, label='Unfiltered')
-        #         ax5.hist(unc_errors, bins, alpha=0.5, label='Filtered')
-        #         ax5.set_title('Filtered Error Data')
-        #         ax5.set_xlabel('Error (s)')
-        #         ax5.set_ylabel('Frequency')
-        #         ax5.legend(loc='upper right')
-        #         plt.show()
-        #         plt.clf()
-        #     except:
-        #         print('ERROR: Cannot display histogram of errors!')
-
-        # # Set up axes
-        # fig = plt.figure(figsize=plt.figaspect(0.5))
-        # fig.set_size_inches(20.9, 11.7)
-
-
-        ### FOUR-WINDOW PLOT ###
-        #############################################################################################################
-
-    #     # x, y positions
-    #     ax1 = fig.add_subplot(222)
-
-    #     # potential Supracenter points with color based on error
-    #     sco = ax1.scatter(sup[:, 1]/1000, sup[:, 0]/1000, c=errors, cmap='inferno_r', s=4)
-    #     #ax1.scatter(unc_sup[:, 1]/1000, unc_sup[:, 0]/1000, c='g', s=4)
-    #     ax1.scatter(y0, x0, c = 'c', marker='x', s=50, linewidth=3)
-
-    #     ax1.set_title("Position of Origin")
-    #     ax1.set_ylabel('X (+ south) (km)')
-    #     ax1.set_xlabel('Y (+ east) (km)')
-
-    #     sc = ax1.scatter(y_stat, x_stat, c=toa_residuals, s=24, marker='^', cmap='viridis_r')
-    #     ax1.set_ylim([setup.x_min, setup.x_max])
-    #     ax1.set_xlim([setup.y_min, setup.y_max])
-
-    #     # Plot station names
-    #     for stat_entry in station_list:
-
-    #         name, s_lat, s_lon = stat_entry[2:5]
-
-    #         # Convert coordinates to map coordinates
-    #         x, y, _ = latLon2Local(lat0, lon0, elev0, s_lat, s_lon, 0)
-
-    #         # Plot the text 
-    #         txt = ax1.text(y/1000, x/1000, name, horizontalalignment='left', verticalalignment='top', color='k', size=6)
-
-    #         # Add border to text
-    #         txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
-
-    #     # v, t plot
-    #     ax2 = fig.add_subplot(221)
-    #     ax2.scatter(sup[:, 2], sup[:, 3]/1000, c=errors, cmap='inferno_r', s=4)
-    #     #ax2.scatter(unc_sup[:, 2], unc_sup[:, 3]/1000, c='g', s=4)
-    #     ax2.scatter(t0, v/1000, c = 'c', marker='x', s=50, linewidth=3)
-
-    #     ax2.set_title("Velocity vs Time")
-    #     ax2.set_xlabel("Time (s)")
-    #     ax2.set_ylabel("Velocity (km/s)")
-    #     ax2.set_xlim([setup.t_min, setup.t_max])
-    #     ax2.set_ylim([setup.v_min, setup.v_max])
-
-    #     a = plt.colorbar(sc, ax=ax1)
-    #     a.set_label("Station Residual (s)")
-
-    #     # angle plot
-    #     ra, dec = np.radians(sup[:, 4]), np.radians(90 - sup[:, 5])
-    #     ax3 = fig.add_subplot(223)
-    #     ax3 = CelestialPlot(ra, dec, projection='stere', bgcolor='w')
-
-    #     ax3.scatter(ra, dec, c=errors, cmap='inferno_r', s=4)
-    #     #ax3.scatter(np.radians(unc_sup[:, 4]), np.radians(unc_sup[:, 5]), c='g', s=4)
-
-    #     ax3.scatter(azim, np.pi/2 - zangle, c = 'c', marker='x', s=50, linewidth=3)
-
-    #     plt.title('zangle (from Horizontal) and Azimuth (+E due N) of Trajectory')
-
-    #     # 2D plot
-    #     ax4 = fig.add_subplot(224)
-    #     ax4 = GroundMap(np.append(stat_lat, lat_i), np.append(stat_lon, lon_i), border_size=20, \
-    #         color_scheme='light')
-    #      # Add a color bar which maps values to colors
-    #     ax4.m.colorbar(toa_conture, label='Time of arrival (s)')
-
-    #     # Plot intersection with the ground
-    #     ax4.scatter(lat_i, lon_i, s=10, marker='x', c='g')
-
-    #     # Plot the trajectory
-    #     ax4.plot([lat_beg, lat_i], [lon_beg, lon_i], c='g')
-
-    #     # Plot the wave release segment
-    #     ax4.plot([wrph_lat, wrpl_lat], [wrph_lon, wrpl_lon], c='red', linewidth=2)
-
-    #     # Plot wave release directions
-    #     for i in range(len(x_stat)):
-            
-    #         wr_lat_i, wr_lon_i, wr_elev_i = local2LatLon(lat0, lon0, elev0, 1000*np.array([x_stat[i] + wr_vect_x[i], y_stat[i] + wr_vect_y[i], z_stat[i] + wr_vect_z[i]]))
-    #         #wr_lat_i, wr_lon_i, wr_elev_i = local2LatLon(lat0, lon0, elev0, 1000*np.array([wrp_x[i], wrp_y[i], wrp_z[i]]))
-
-    #         ax4.plot([stat_lat[i], wr_lat_i], [stat_lon[i], wr_lon_i], c='k', linewidth=1.0)
-        
-    #     # Plot stations
-    #     ax4.scatter(stat_lat, stat_lon, c=stat_model_times_of_arrival, s=20, marker='o', edgecolor='0.5', \
-    #         linewidths=1, cmap='viridis', vmin=0.00, vmax=toa_abs_max)
-
-    #     for stat_entry in station_list:
-
-    #         name, s_lat, s_lon = stat_entry[2:5]
-
-    #         # Convert coordinates to map coordinates
-    #         x, y = ax4.m(np.degrees(s_lon), np.degrees(s_lat))
-
-    #         # Plot the text 
-    #         txt = plt.text(x, y, name, horizontalalignment='left', verticalalignment='top', color='k', size=6)
-
-    #         # Add border to text
-    #         txt.set_path_effects([PathEffects.withStroke(linewidth=1, foreground='w')])
-
-    #     # Plot the time of arrival contours
-    #     toa_conture = ax4.m.contourf(np.degrees(lon_cont), np.degrees(lat_cont), times_of_arrival, levels, zorder=3, \
-    #         latlon=True, cmap='viridis')
-
-    #     # Add a color bar which maps values to colors
-    #     ax4.m.colorbar(toa_conture, label='Time of arrival (s)')
-
-    #     lat_dot =     [0]*len(sup)
-    #     lon_dot =     [0]*len(sup)
-    #     # unc_lat_dot = [0]*len(unc_sup)
-    #     # unc_lon_dot = [0]*len(unc_sup)
-    #     for i in range(len(sup)):
-    #         lat_dot[i], lon_dot[i], _ = local2LatLon(lat0, lon0, elev0, [sup[i, 0], sup[i, 1], 0])
-    #     # for i in range(len(unc_sup)):
-    #     #     unc_lat_dot[i], unc_lon_dot[i], _ = local2LatLon(lat0, lon0, elev0, [unc_sup[i, 0], unc_sup[i, 1], 0])
-
-    #     lat_x, lon_x, _ = local2LatLon(lat0, lon0, elev0, [x0*1000, y0*1000, 0])
-
-    #     ax4.scatter(lat_dot, lon_dot, c=errors, cmap='inferno_r', s=4)
-    #     #ax4.scatter(unc_lat_dot, unc_lon_dot, c='g', s=4)
-
-    #     ax4.scatter(lat_x, lon_x, c = 'c', marker='x', s=50, linewidth=3)
-
-    #     fig.subplots_adjust(right=0.8)
-
-    #     cb_ax = fig.add_axes([0.83, 0.1, 0.02, 0.8])
-    #     fig.colorbar(sco, cax=cb_ax)
-
-    #     plt.savefig(os.path.join(setup.working_directory, setup.fireball_name) + '_scatter.png', dpi=300)
-
-    #     plt.title('Error of Solution (s)')
-
-    # #####################
-    # # OUTPUT TEXT FILES #
-    # #####################
-
-    # wave_release_points_geo = [0]*len(station_list)
-
-    # for i in range(len(station_list)):
-    #     wave_release_points_geo[i] = local2LatLon(lat0, lon0, elev0, [wave_release_points[i][0]*1000, wave_release_points[i][1]*1000, wave_release_points[i][2]])
-
-    # # Results .txt
-    # ##############
-    # with open(os.path.join(setup.working_directory, setup.fireball_name) + '_results.txt', 'w') as f:
-
-    #     # Using PSO
-    #     if setup.run_mode == 'search':
-    #         f.write('Mode: Particle Swarm Search\n')
-    #     elif setup.run_mode == 'replot':
-    #         f.write('Mode: Replot Data\n')
-    #     elif setup.run_mode == 'manual':
-    #         f.write('Mode: Manual Search\n')
-    #     else:
-    #         f.write('Mode: ERROR\n')
-
-    #     # Using restricted velocity
-    #     if setup.v_fixed == None:
-    #         f.write('Unrestricted Fireball Velocity\n')
-    #     else:
-    #         f.write('Fireball Velocity Restricted to {:5f}\n'.format(setup.v_fixed))
-
-    #     # Using Winds
-    #     if setup.enable_winds:
-    #         f.write('Winds Enabled\n')
-    #     else:
-    #         f.write('Winds Disabled\n')
-
-    #     f.write('x0: {:8.3f} km \n'.format(x0))
-    #     f.write('y0: {:8.3f} km \n'.format(y0))
-    #     f.write('t0: {:8.3f} s  \n'.format(t0))
-    #     f.write('v: {:8.3f} m/s\n'.format(v ))
-    #     f.write('Azimuth (+E of due N): {:6.2f}\n'.format(np.degrees(azim)))
-    #     f.write('zangle (from horizon): {:6.2f}\n'.format(90 - np.degrees(zangle)))
-    #     f.write('==========================================================================================================\n')
-    #     f.write('  Station Name       Station Location          Residual       Travel Time         Wave Release Point      \n')
-    #     f.write('                 (lat( N),lon( E),elev(m))       (s)              (s)          (lat( N),lon( E),elev(m))  \n')
-    #     f.write('==========================================================================================================\n')
-    #     for i in range(len(station_list)):
-    #         f.write('      {:}        {:7.4f} {:7.4f} {:5.0f}        {:+7.3f}          {:6.2f}        {:7.3f} {:7.3f} {:7.3f}\n'\
-    #             .format(station_list[i][2], np.degrees(stat_lat[i]), np.degrees(stat_lon[i]), stat_elev[i], res[i], stat_model_times_of_arrival[i], \
-    #                 np.degrees(wave_release_points_geo[i][0]), np.degrees(wave_release_points_geo[i][1]), wave_release_points_geo[i][2]))              
-    #     f.close()
-
-    # # Sounding Output .txt
-    # ######################
-
-    # # Compatible with darkflight
-    # # Produces weather profile at the low point of the trajectory
-
-    # if setup.weather_type != 'none':
-
-    #     # Create weather profile at end point for use with darkflight
-    #     # Use lowest point
-    #     sounding, _ = supra.Supracenter.cyweatherInterp.getWeather([wrpl_x*1000, wrpl_y*1000, wrpl_z*1000], [wrpl_x*1000, wrpl_y*1000, 0], setup.weather_type, [x0, y0, 0], sounding)
-    #     n, m = sounding.shape
-
-    #     # Add model pressure (see the U. S. Standard Atmosphere Model of 1976)
-    #     pressure_list = addPressure(sounding)
-
-    #     # with open(setup.file_name + 'darkflight_sounding.txt', 'w') as f:
-
-    #     #     for i in range(n):
-    #     #         f.write(' {:8.2f} {:7.3f} {:7.3f} {:6.2f} {:6.2f}\n'.format(sounding[i, 0], sounding[i, 1], \
-    #     #             sounding[i, 2], (sounding[i, 3]), float(pressure_list[i])))
-    #     #     f.close()
-
-    # # If no weather profile is given, an isotropic model is given
-    # else:
-    #     with open(os.path.join(setup.working_directory, setup.fireball_name) + 'darkflight_sounding.txt', 'w') as f:
-
-    #         # fake height profile
-    #         n = [0, 10000, 20000, 30000, 40000, 50000]
-
-    #         # model pressures 
-    #         p = [1000, 259, 49, 11, 3, 1]
-
-    #         for i in range(len(n)):
-    #             f.write(' {:8.2f} {:7.3f} {:7.3f} {:6.2f} {:6.2f}\n'.format(n[i], 0, 0, 0, p[i]))
-    #         f.close()
-
-    # # Produce input file for darkflight
-    # ####################################
-
-    # with open(os.path.join(setup.working_directory, setup.fireball_name) + '_darkflight_input.ini', 'w') as f:
-    #     pos = local2LatLon(lat0, lon0, elev0, [wrpl_x*1000, wrpl_y*1000, wrpl_z*1000])
-    #     f.write('[General]\n')
-    #     f.write('error=True\n')
-    #     f.write('output={:}\n'.format(os.path.join(setup.working_directory, setup.fireball_name) + 'darkflight_trajectory_path'))
-    #     f.write('atm={:}\n'.format(os.path.join(setup.working_directory, setup.fireball_name) + 'darkflight_sounding.txt'))
-    #     f.write('\n')
-    #     f.write('[Variables]\n')
-
-    #     # Use final found values for darkflight, these values represent the end of the trajectory, not any point during the trajectory
-    #     # and may not represent the actual darkflight variables
-    #     f.write('lat = {:f}\nlon = {:f}\nz = {:f}\nv = {:f}\naz = {:f}\nze = {:f}\n'\
-    #         .format(np.degrees(pos[0]), np.degrees(pos[1]), pos[2]/1000, v/1000, \
-    #             (180 - np.degrees(azim))%360, (90 - np.degrees(zangle))))
-        
-    #     # Setup blank ini file
-    #     # Blank values will be set as default
-    #     # These can be further changed by the user
-    #     f.write('mass_min = \n')
-    #     f.write('mass_max = \n')
-    #     f.write('tan = \n')
-    #     f.write('sig = \n')
-    #     f.write('den =\n')
-    #     f.write('end = \n')
-    #     f.write('shape = \n')
-    #     f.write('dlat = \n')
-    #     f.write('dlon = \n')
-    #     f.write('dh = \n')
-    #     f.write('dv = \n')
-    #     f.write('daz = \n')
-    #     f.write('dze = \n')
-    #     f.write('max_iter = \n')
-    #     f.write('drag = \n')
-    #     f.write('\n')
-    #     f.write('# This file was produced by SeismicTrajectory.py and should only be used as an estimation! Weather and variables may be inaccurate!')
-    #     f.write('# The velocity produced in this file is based off of the trajectory solution, and is a very high estimate')
-    #     f.close()
 
     ##########################################################################################################
     return residuals
@@ -1795,10 +1254,10 @@ if __name__ == "__main__":
     setup.ref_time = datetime.datetime(*(map(int, ref_time)))
 
     # Find search area in lat/lon (weather area)
-    setup.search_area[0] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min*1000, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max*1000, 0, 0])[0]))
-    setup.search_area[1] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min*1000, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max*1000, 0, 0])[0]))
-    setup.search_area[2] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min*1000, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max*1000, 0])[1]))
-    setup.search_area[3] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min*1000, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max*1000, 0])[1]))
+    setup.search_area[0] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max, 0, 0])[0]))
+    setup.search_area[1] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max, 0, 0])[0]))
+    setup.search_area[2] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max, 0])[1]))
+    setup.search_area[3] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max, 0])[1]))
 
     # Init the constants
     consts = Constants()
@@ -1843,101 +1302,8 @@ if __name__ == "__main__":
         plotStationsAndTrajectory(station_list, p0, setup, sounding)
  
     elif setup.run_mode == 'manual':
-        p0[3] *= 1000
         plotStationsAndTrajectory(station_list, p0, setup, sounding)
 
     else:
         print('Invalid mode! Use search, replot, or manual.')
         exit()
-
-    #TEMPORARY EXIT FOR IF INPUTS ARE NOT AVAILABLE
-    exit()
-
-    ##########################################################################################################
-
-    ### INPUTS ###
-    ##########################################################################################################
-
-
-    # DATA PATHS
-    dir_paths = [
-        "/local4/infrasound/Infrasound/Fireball/15-Sep-2007/seismic/UBh2"
-        #"/local4/infrasound/Infrasound/Fireball/15-Sep-2011-SW_USA/is56"
-        #"/local4/infrasound/Infrasound/Fireball/15-Sep-2011-SW_USA/is57"
-        #"/local4/infrasound/Infrasound/Fireball/15-Sep-2007/seismic/LPAZ"
-    ]
-
-    site_files = [
-        "UBh2.site"
-        #"is56.site"
-        #"is57.site"
-        #"impact.site"
-        ]
-
-    wfdisc_files = [
-        "UBh2.wfdisc"
-        #"is56.wfdisc"
-        #"is57.wfdisc"
-        #"impact.wfdisc"
-        ]
-
-    # Average speed of sound in the atmosphere
-    v_sound = 320 # m/s
-
-
-    ##########################################################################################################
-
-    seismic_data = []
-
-    # Load seismic data from given files
-    for dir_path, site_file, wfdisc_file in zip(dir_paths, site_files, wfdisc_files):
-
-        # Load the seismic data from individual file
-        file_data = loadCSSseismicData(dir_path, site_file, wfdisc_file)
-
-        # Add all entries to the global list
-        for entry in file_data:
-            seismic_data.append(entry)
-
-
-    # Merge all data from the same channels
-    merged_data = mergeChannels(seismic_data)
-
-    # Determine the earliest time from all beginning times
-    ref_time = min([w.begin_time for _, merged_w, _, _ in merged_data for w in merged_w])
-
-    # Setup the plotting
-    f, axes = plt.subplots(nrows=len(merged_data), ncols=1, sharex=True)
-
-    # Go through data from all channels
-    for i, entry in enumerate(merged_data):
-
-        # Select the current axis for plotting
-        ax = axes[i]
-
-        # Unpack the channels
-        merged_sites, merged_wfdisc, merged_time, merged_waveform = entry
-
-        # Go through all individual measurements
-        for site, w, time_data, waveform_data in zip(merged_sites, merged_wfdisc, merged_time, merged_waveform):
-
-            # Calculate the difference from the reference time
-            t_diff = (w.begin_time - ref_time).total_seconds()
-
-            # Offset the time data to be in accordance with the reference time
-            time_data += t_diff
-
-            # Plot the seismic data
-            ax.plot(time_data/60, waveform_data, zorder=3, linewidth=0.5)
-
-        # Add the station label
-        ax.text(ax.get_xlim()[0], ax.get_ylim()[1], w.sta + " " + w.chan, va='top')
-
-        ax.grid(color='0.9')
-
-
-    plt.xlabel('Time (min)')
-
-    plt.subplots_adjust(hspace=0)
-    plt.show()
-

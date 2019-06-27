@@ -8,46 +8,68 @@ class Config:
 
         # set configuration defaults
         self.fireball_name = 'Untitled Fireball'
-        self.difference_filter = False
-        self.get_data = False
+        self.get_data = 'false'
         self.run_mode = 'search'
-        self.debug = False
+        self.debug = 'false'
 
+        self.working_directory = None
+        self.arrival_times_file = None
+        self.sounding_file = None
+        self.perturbation_spread_file = None
+        self.station_picks_file = None
+        self.points_name = None
+
+        self.lat_centre = None
+        self.lon_centre = None
         self.deg_radius = 2
-
+        self.fireball_datetime = None
         self.v_sound = 310
-        self.show_ballistic_waveform = False
-        self.show_fragmentation_waveform = False
 
-        self.v_fixed = 11
+        self.t0 = None
+        self.v = None
+        self.azim = None
+        self.zangle = None
+        self.lat_i = None
+        self.lon_i = None
+        self.elev_i = None
+        self.lat_f = None
+        self.lon_f = None
+        self.elev_f = None
+        self.show_ballistic_waveform = 'false'
 
+        self.fragmentation_point = None
+        self.show_fragmentation_waveform = 'false'
+        self.manual_fragmetnation_search = None
+
+        self.v_fixed = 11000
         self.azimuth_min = 0
         self.azimuth_max = 359.99
         self.zenith_min = 0
         self.zenith_max = 89.99
+        self.x_min = -200000
+        self.x_max = 200000
+        self.y_min = -200000
+        self.y_max = 200000
+        self.z_min = 0
+        self.z_max = 100000
+        self.t_min = -200
+        self.t_max = 200
         self.v_min = 11000
         self.v_max = 30000 
-
         self.max_error = 1000
-        self.enable_restricted_time = False
-
-        self.restrict_to_trajectory = False
-
+        self.restricted_time = None
+        self.enable_restricted_time = 'false'
         self.weight_distance_min = 0
         self.weight_distance_max = 0
 
-        self.enable_winds = False
+        self.enable_winds = 'false'
         self.weather_type = 'none'
 
-        self.grid_size = 0.5
-
-        self.perturb = False
+        self.perturb = 'false'
         self.perturb_method = 'none'
         self.perturb_times = 0
-
         self.observe_frag_no = 0
 
-        self.fit_type = 1
         self.n_theta = 45
         self.n_phi = 90
         self.angle_precision = 1e-5
@@ -59,12 +81,16 @@ class Config:
         self.phip = 0.5
         self.phig = 0.5
         self.omega = 0.5
-        self.pso_debug = False
+        self.pso_debug = 'false'
         self.minfunc = 1e-8
         self.minstep = 1e-8
 
         self.contour_res = 10
+        self.high_f = None
+        self.high_b = None
+        self.rm_stat = None
 
+        self.stations = None
 
 class Constants:
 
@@ -93,9 +119,9 @@ class Pick:
 class Angle:
 
     def __init__(self, deg):
-        self.deg = deg%360
-
+        
         if deg != None:
+            self.deg = deg%360
             self.rad = np.radians(deg)
         else:
             self.rad = None
@@ -108,6 +134,9 @@ class Angle:
 
     def __sub__(self, other):
         return (self.deg - other.deg)%360
+
+    def __gt__(self, other):
+        return self.deg > other.deg
 
     def invert(self):
         # Rotate coordinate system 90 degrees CCW
@@ -141,7 +170,11 @@ class Position:
             self.lon_r = None
 
     def __str__(self):
-        return "Lat: {:8.4f} deg N, Lon: {:8.4f} deg E, Elev: {:10.2f} m".format(self.lat, self.lon, self.elev)
+        try:
+            result = "Lat: {:8.4f} deg N, Lon: {:8.4f} deg E, Elev: {:10.2f} m".format(self.lat, self.lon, self.elev)
+        except:
+            result = "Position is None Type"
+        return result
     
     def pos_loc(self, ref_pos):
         """
@@ -152,13 +185,14 @@ class Position:
             used to convert another position object to local coordinates
         """
         self.x, self.y, self.z = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, self.lat, self.lon, self.elev)
+        self.xyz = np.array([self.x, self.y, self.z])
 
     def pos_geo(self, ref_pos):
         """ Converts a position object to geometric coordinates
         """
 
         self.lat, self.lon, self.elev = loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, [self.x, self.y, self.z])
-
+        self.xyz = np.array([self.x, self.y, self.z])
 
     def pos_distance(self, other):
 
@@ -224,6 +258,15 @@ class Station:
         self.name = name
         self.offset = 0
 
+    def __str__(self):
+        A = "Station: {:} | Channel {:} \n".format(self.name, self.channel)
+        B = str(self.position) + "\n"
+        try:
+            C = "Ground Distance: {:}".format(self.ground_distance)
+        except:
+            C = ''
+        return A + B + C
+
     def stn_distance(self, ref_pos):
         self.distance = self.position.pos_distance(ref_pos)
 
@@ -235,12 +278,19 @@ class Supracenter:
         self.position = position
         self.time = t
 
+    def __str__(self):
+        try:
+            A = "Position: Lat: {:8.4f} deg N, Lon: {:8.4f} deg E, Elev: {:10.2f} m | Time: {:8.3f} s".format(self.position.lat, self.position.lon, self.position.elev, self.time)
+        except:
+            A = "Undefined Supracenter Position"
+        return A
+
+    def toList(self):
+        return [self.position.lat, self.position.lon, self.position.elev, self.time]       
+
 class Trajectory:
     def __init__(self, t, v, zenith=None, azimuth=None, pos_i=None, pos_f=None):
         
-        # convert v to metres
-        if v <= 1000:
-            v *= 1000
         self.v = v
 
         self.t = t

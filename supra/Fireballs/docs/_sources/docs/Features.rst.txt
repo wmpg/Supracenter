@@ -7,6 +7,12 @@
 Features
 ########
 
+*************************
+Atmosphere Profile Viewer
+*************************
+
+An one-dimensional atmosphere profile slice can be viewed at a specific latitude and longitude for temperature and winds. Perturbations may also be generated for this data.
+
 **************************
 Inversion of Arrival Times
 **************************

@@ -295,8 +295,8 @@ def readStationAndWaveformsListFile(file_path, rm_stat=[], debug=False):
                 except:
                     print("ERROR: Waveform files downloaded previous to Jan. 8, 2019 are lacking a channel tag added. Redownloading the waveform files will likely fix this")
 
-                stat_pos = position(float(stat_lat), float(stat_lon), float(stat_elev))
-                stn = station(network, station_code, stat_pos, channel, station_name, mseed_file)
+                stat_pos = Position(float(stat_lat), float(stat_lon), float(stat_elev))
+                stn = Station(network, station_code, stat_pos, channel, station_name, mseed_file)
 
                 if station_code not in rm_stat:
                     stn_list.append(stn)

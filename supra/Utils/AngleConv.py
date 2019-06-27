@@ -56,8 +56,6 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     # Rotate the coordinates so the origin point is tangent to the Earth's surface
     local_coord = np.array(ecef2ENU(lat0, lon0, *local_coord))
 
-    # Rotate the coordinate system so X points towards the south and Y towards the east
-    local_coord = rotateVector(local_coord, np.array([0, 0, 1]), np.pi/2)
 
     # Ignore height component transformation
     return local_coord[0], local_coord[1], elev

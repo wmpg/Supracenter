@@ -8,7 +8,7 @@ from netCDF4 import Dataset
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-import supra.Utils.AngleConv
+from supra.Utils.AngleConv import angle2NDE
 from supra.Supracenter.convLevels import convLevels
 from supra.Supracenter.bisearch import bisearch
 
@@ -326,7 +326,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     # The correct way of this
     #dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
     dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
-    dirs = supra.Supracenter.angleConv.angle2NDE(np.degrees(dirs))
+    dirs = angle2NDE(np.degrees(dirs))
     
     level = convLevels()
     level = np.flipud(np.array(level))
@@ -392,7 +392,7 @@ def storeHDF(file_name, consts):
 
     # Direction the winds are coming from, angle in radians from North due East
     dirs = (np.arctan2(-y_wind, -x_wind))%(2*np.pi)*180/np.pi
-    dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
+    dirs = angle2NDE(dirs)*np.pi/180
 
     # Store data in a list of arrays
     store_data = [latitude, longitude, temps, mags, dirs, height]
@@ -469,10 +469,10 @@ def storeNetCDFUKMO(file_name, area, consts):
 
     # Direction the winds are coming from, angle in radians from North due East
     dirs = (np.arctan2(-y_wind, -x_wind))%(2*np.pi)*180/np.pi
-    dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
+    dirs = angle2NDE(dirs)*np.pi/180
 
     # convert heights from geopotential to geometric
-    height = supra.Supracenter.angleConv.geopot2Geomet(ht)
+    height = geopot2Geomet(ht)
 
     # data is needed in reverse order
     temps = np.flipud(np.array(temps))

@@ -209,8 +209,8 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
 
         if convert:
             # convert to unrounded lat/lon
-            s = np.array(loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], S))
-            d = np.array(loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], D))
+            s = np.array(loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, S))
+            d = np.array(loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, D))
             s[2] = S[2]
             d[2] = D[2]
         else:

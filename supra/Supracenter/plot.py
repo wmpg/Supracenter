@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from supra.Utils.AngleConv import loc2Geo, geo2Loc, angle2NDE
+from supra.Utils.Classes import Constants
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.slowscan import slowscan
@@ -45,7 +46,7 @@ def pointsList(sounding, points):
     return locs
 
 
-def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, output_name, s_name, kotc, w):
+def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name, s_name, kotc, w):
     """ Function to calculate the results of the optimal Supracenter and export interpolated weather data
         from each station.
 
@@ -71,6 +72,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
         r: [list] residuals to each station            
     
     """
+    consts = Constants()
     # Station Times
     tobs = stns[0:n_stations, 4]
 
@@ -99,7 +101,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
     for j in range(n_stations):
         #print(np.array(x_opt), np.array(xstn[j, :]))
         # get interpolated weather profile
-        sounding, points = getWeather(np.array(x_opt), np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
+        sounding, points = getWeather(x_opt.xyz, np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
 
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
@@ -145,9 +147,9 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
                             .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
 
         # ray tracing function
-        temp_trace, _, _ = slowscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+        temp_trace, _, _ = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
                                             precision=setup.angle_precision, tol=setup.angle_error_tol)
-        time3D[j], _, _ = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+        time3D[j], _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
                                            precision=setup.angle_precision, tol=setup.angle_error_tol)
         trace.append(temp_trace)
         # find residuals

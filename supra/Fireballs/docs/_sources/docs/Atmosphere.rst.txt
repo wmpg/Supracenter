@@ -76,7 +76,7 @@ UKMO data is found as a .pp file on the CEDA site
 
 Supracenter only handles .nc files, so the file needs to be converted.
 
----CONVERT .PP TO .NC-------------------------------------------------
+CONVERT .PP TO .NC
 Download xConv1.94 <replace 1.94 with the current version number>
 http://cms.ncas.ac.uk/documents/xconv/
 and extract xconv1.94 and convsh1.94. Create a symbolic link to convsh: 
