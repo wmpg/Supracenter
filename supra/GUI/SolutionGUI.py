@@ -1,4 +1,3 @@
-
 import os
 import time
 import datetime
@@ -42,20 +41,20 @@ from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
 
 from supra.GUI.GUITools import *
+from supra.GUI.WidgetBuilder import *
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
 
 from supra.Utils.AngleConv import loc2Geo, chauvenet
 from supra.Utils.Formatting import *
-from supra.Utils.Classes import Position, Station, Config, Supracenter, Trajectory, Constants, Pick
-from supra.Utils.TryObj import tryBool, tryFloat, tryInt, tryPosition, trySupracenter, tryAngle, tryTrajectory, saveDefaults
+from supra.Utils.Classes import Position, Station, Config, Constants, Pick
+from supra.Utils.TryObj import *
 
 global arrTimes 
 global sounding
 
 DATA_FILE = 'data.txt'
-OUTPUT_CSV = 'data_picks.csv'
   
 class SolutionGUI(QMainWindow):
     def __init__(self):
@@ -87,15 +86,15 @@ class SolutionGUI(QMainWindow):
         
 
         self.addIniDockWidgets()
-        self.addStationsWidgets()
-        self.addPicksReadWidgets()
-        self.addSupraWidgets()
-        self.addSupWidgets()
-        self.addMakePicksWidgets()
-        self.addSeisTrajWidgets()
-        self.addFetchATMWidgets()
-        self.addProfileWidgets()
-        self.addRayTracerWidgets()
+        addStationsWidgets(self)
+        addPicksReadWidgets(self)
+        addSupraWidgets(self)
+        addSupWidgets(self)
+        addMakePicksWidgets(self)
+        addSeisTrajWidgets(self)
+        addFetchATMWidgets(self)
+        addProfileWidgets(self)
+        addRayTracerWidgets(self)
 
         self.var_typ = 't'
 
@@ -152,7 +151,6 @@ class SolutionGUI(QMainWindow):
         view_fullscreen.triggered.connect(self.viewFullscreen)
         view_menu.addAction(view_fullscreen)
 
-
         stylesheet = """ 
         QTabWidget>QWidget>QWidget{background: gray;}
         QLabel{color: white;}
@@ -163,6 +161,7 @@ class SolutionGUI(QMainWindow):
         border: 2px white; 
         border-radius: 0px; }
         QMessageBox{color: white; background: black;} 
+        QTableWidget{color: white; background: black;}
         """
 
         self.setStyleSheet(stylesheet)
@@ -197,37 +196,6 @@ class SolutionGUI(QMainWindow):
 
     def openDocs(self):
         webbrowser.open_new_tab("supra/Fireballs/docs/index.html")
-
-    def addPicksReadWidgets(self):
-        picks_read_tab = QWidget()
-        picks_read_tab_content = QGridLayout()
-        picks_read_tab.setLayout(picks_read_tab_content)
-
-        self.tab_widget.addTab(picks_read_tab, "Picks Read")
-
-        self.csv_table = QTableWidget(0, 9)
-        picks_read_tab_content.addWidget(self.csv_table, 1, 1, 1, 4)
-        self.csv_table.setHorizontalHeaderLabels(['Pick Group', 'Network', 'Code', 'Latitude', 'Longitude', 'Elevation', 'Pick JD', 'Pick Time', 'station_number'])
-        header = self.csv_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-
-        self.csv_table_add = QPushButton("+")
-        picks_read_tab_content.addWidget(self.csv_table_add, 2, 2, 1, 1)
-        self.csv_table_add.clicked.connect(partial(self.changeRows, self.csv_table, 1))
-        self.csv_table_add.setToolTip("Add row")
-
-        self.csv_table_min = QPushButton("-")
-        picks_read_tab_content.addWidget(self.csv_table_min, 2, 1, 1, 1)
-        self.csv_table_min.clicked.connect(partial(self.changeRows, self.csv_table, -1))
-        self.csv_table_min.setToolTip("Remove row")
-
-        self.csv_table_load = QPushButton("Load")
-        picks_read_tab_content.addWidget(self.csv_table_load, 2, 3, 1, 1)
-        self.csv_table_load.clicked.connect(self.csvLoad)
-
-        self.csv_table_save = QPushButton("Save")
-        picks_read_tab_content.addWidget(self.csv_table_save, 2, 4, 1, 1)
-        self.csv_table_save.clicked.connect(self.csvSave)
 
     def csvLoad(self):
         
@@ -708,79 +676,6 @@ class SolutionGUI(QMainWindow):
             self.ray_pick_label.setText("Lat: {:10.4f} Lon: {:10.4f} Elev {:10.2f}".format(*self.ray_pick_point))
 
 
-    def addRayTracerWidgets(self):
-        ray_tab = QWidget()
-
-        self.master_ray = QVBoxLayout()
-        self.ray_graphs = QHBoxLayout()
-        self.ray_control = QGridLayout()
-
-        self.master_ray.addLayout(self.ray_graphs)
-        self.master_ray.addLayout(self.ray_control)
-
-        ray_tab.setLayout(self.master_ray)
-        self.tab_widget.addTab(ray_tab, "Ray Tracer")
-
-        self.ray_view = pg.GraphicsLayoutWidget()
-        self.ray_canvas = self.ray_view.addPlot()
-        self.ray_graphs.addWidget(self.ray_view)
-        self.ray_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        self.ray_canvas.setLabel('bottom', "Longitude", units='deg E')
-        self.ray_canvas.setLabel('left', "Latitude", units='deg N')
-
-        self.ray_line_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        self.ray_line_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.ray_graphs.addWidget(self.ray_line_canvas)
-
-        self.ray_label = QLabel('Starting Point')
-        self.ray_control.addWidget(self.ray_label, 1, 0)
-        
-        self.ray_label2 = QLabel('Ending Point')
-        self.ray_control.addWidget(self.ray_label2, 3, 0, 1, 1)
-
-        self.ray_height_label, self.ray_height_edits = createLabelEditObj("Height", self.ray_control, 1, width=3)
-        
-        self.ray_button = QPushButton('Solve for Lat/Lon')
-        self.ray_control.addWidget(self.ray_button, 7, 3, 4, 1)
-        self.ray_button.clicked.connect(self.trajSolver)
-
-        self.ray_button = QPushButton('Load Data')
-        self.ray_control.addWidget(self.ray_button, 7, 1, 1, 1)
-        self.ray_button.clicked.connect(self.loadRayGraph)
-
-        self.ray_lat_label, self.ray_lat_edits = createLabelEditObj("Lat", self.ray_control, 2)
-        self.ray_lon_label, self.ray_lon_edits = createLabelEditObj("Lon", self.ray_control, 2, h_shift=2)
-
-        self.ray_pick_label = QLabel('')
-        self.ray_control.addWidget(self.ray_pick_label, 3, 1, 1, 5)
-
-        self.ray_enable_windfield = QCheckBox('Enable Wind Field')
-        self.ray_control.addWidget(self.ray_enable_windfield, 1, 5)
-        self.ray_enable_windfield.stateChanged.connect(self.trajSolver)
-
-        self.ray_enable_perts = QCheckBox('Enable Perturbations')
-        self.ray_control.addWidget(self.ray_enable_perts, 2, 5)
-        self.ray_enable_perts.stateChanged.connect(self.trajSolver)
-
-        self.ray_canvas.scene().sigMouseClicked.connect(self.rayMouseClicked)
-
-    def addStationsWidgets(self):
-        station_tab = QWidget()
-
-        self.station_layout = QVBoxLayout()
-        station_tab.setLayout(self.station_layout)
-        self.tab_widget.addTab(station_tab, "Stations")
-
-        self.station_label = QLabel("Stations:")
-        self.station_layout.addWidget(self.station_label)
-
-        self.station_table = QTableWidget()
-        self.station_layout.addWidget(self.station_table)
-
-        self.station_button = QPushButton("Get Station Data")
-        self.station_layout.addWidget(self.station_button)
-        self.station_button.clicked.connect(self.getStations)
-
     def getStations(self):
 
         # Create fireball folder
@@ -817,124 +712,7 @@ class SolutionGUI(QMainWindow):
         toTableFromStn(self.station_table, stn_list)
 
 
-    def addSeisTrajWidgets(self):
-
-        seis_tab = QWidget()
-        self.master_seis = QHBoxLayout()
-        self.seis_tab_input = QVBoxLayout()
-        self.seis_tab_output = QVBoxLayout()
-
-        seis_tab.setLayout(self.master_seis)
-        self.tab_widget.addTab(seis_tab, "Seismic Trajectory")
-
-        self.master_seis.addLayout(self.seis_tab_input)
-        self.master_seis.addLayout(self.seis_tab_output)
-
-        table_group = QGridLayout()
-        self.seis_tab_input.addLayout(table_group)
-
-        tab_layout = QGridLayout()
-        self.seis_tab_input.addLayout(tab_layout)
-
-        self.seis_search = QPushButton('Search')
-        tab_layout.addWidget(self.seis_search, 1, 1, 1, 4)
-        self.seis_search.clicked.connect(self.seisSearch)
-        
-        self.seis_table = QTableWidget()
-        table_group.addWidget(self.seis_table, 1, 1, 1, 4)
-
-        self.seis_resids = QTableWidget()
-        table_group.addWidget(self.seis_resids, 2, 1, 1, 4)
-
-        self.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
-        self.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.seis_tab_output.addWidget(self.seis_three_canvas)
-
-        two_graphs = QGridLayout()
-        self.seis_tab_output.addLayout(two_graphs)
-
-        self.seis_two_lat_view = pg.GraphicsLayoutWidget()
-        self.seis_two_lat_canvas = self.seis_two_lat_view.addPlot()
-        two_graphs.addWidget(self.seis_two_lat_view, 1, 1)
-        self.seis_two_lat_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        
-        self.seis_two_time_view = pg.GraphicsLayoutWidget()
-        self.seis_two_time_canvas = self.seis_two_time_view.addPlot()
-        two_graphs.addWidget(self.seis_two_time_view, 1, 2)
-        self.seis_two_time_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        
-        self.seis_two_angle_view = pg.GraphicsLayoutWidget()
-        self.seis_two_angle_canvas = self.seis_two_angle_view.addPlot()
-        two_graphs.addWidget(self.seis_two_angle_view, 2, 1)
-        self.seis_two_angle_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        
-        self.seis_two_plot_view = pg.GraphicsLayoutWidget()
-        self.seis_two_plot_canvas = self.seis_two_plot_view.addPlot()
-        two_graphs.addWidget(self.seis_two_plot_view, 2, 2)
-        self.seis_two_plot_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
     
-    def addSupWidgets(self):
-
-        sup_tab = QWidget()
-        self.master_sup = QHBoxLayout()
-        self.sup_tab_content = QGridLayout()
-        self.sup_plots = QVBoxLayout()
-
-        self.sup_two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        self.sup_two_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.sup_plots.addWidget(self.sup_two_canvas)
-        
-        self.sup_three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        self.sup_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.sup_plots.addWidget(self.sup_three_canvas)
-
-        self.sup_search_button = QPushButton('Search')
-        self.sup_tab_content.addWidget(self.sup_search_button, 5, 1, 1, 75)
-        self.sup_search_button.clicked.connect(self.supSearch)
-
-        self.sup_results_label = QLabel("Results: ")
-        self.sup_tab_content.addWidget(self.sup_results_label, 3, 1, 1, 1)
-
-        self.sup_results_table = QTableWidget(0, 0)
-        self.sup_tab_content.addWidget(self.sup_results_table, 4, 1, 1, 75)
-
-        self.master_sup.addLayout(self.sup_tab_content)
-        self.master_sup.addLayout(self.sup_plots)
-
-        sup_tab.setLayout(self.master_sup)
-        self.tab_widget.addTab(sup_tab, "Supracenter PSO Search")
-  
-    def addSupraWidgets(self):
-
-        supra_tab = QWidget()
-        self.master_supra = QGridLayout()
-        self.supra_tab_content = QVBoxLayout()
-        self.plots = QVBoxLayout()
-
-        self.two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        self.two_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.plots.addWidget(self.two_canvas)
-
-        self.three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
-        self.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        self.plots.addWidget(self.three_canvas)
-
-        self.results_label = QLabel("Results: ")
-        self.supra_tab_content.addWidget(self.results_label)
-
-        self.tableWidget = QTableWidget(0, 0)
-        self.supra_tab_content.addWidget(self.tableWidget)
-
-        self.search_button = QPushButton('Search')
-        self.supra_tab_content.addWidget(self.search_button)
-        self.search_button.clicked.connect(self.supraSearch)
-
-        self.master_supra.addLayout(self.supra_tab_content, 1, 1, 1, 100)
-        self.master_supra.addLayout(self.plots, 1, 101)
-
-        supra_tab.setLayout(self.master_supra)
-        self.tab_widget.addTab(supra_tab, "Supracenter Manual Search")
 
     def fatmPlot(self):
 
@@ -1111,85 +889,7 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
 
-    def addFetchATMWidgets(self):
-        fetch = QWidget()
-        fetch_master = QHBoxLayout()
-        fetch_content = QGridLayout()
-        fetch_plots = QVBoxLayout()
-        fetch_master.addLayout(fetch_plots)
-        fetch_master.addLayout(fetch_content)
-        fetch.setLayout(fetch_master)
-        self.tab_widget.addTab(fetch, "Fetch Atmosphere")
 
-        self.fatm_view = pg.GraphicsLayoutWidget()
-        self.fatm_canvas = self.fatm_view.addPlot()
-        fetch_plots.addWidget(self.fatm_view)
-        self.fatm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        self.fatm_variable_combo = QComboBox()
-        fetch_plots.addWidget(self.fatm_variable_combo)
-        self.fatm_variable_combo.currentTextChanged.connect(self.fatmPlot)
-
-        self.fatm_name_label, self.fatm_name_edits = createLabelEditObj('Name:', fetch_content, 1)
-
-        self.fatm_button = QPushButton('Browse')
-        fetch_content.addWidget(self.fatm_button, 1, 3)
-        self.fatm_button.clicked.connect(partial(self.folderSearch, self.fatm_name_edits))
-
-        self.fatm_datetime_label = QLabel("Time of Profile:")
-        self.fatm_datetime_edits = QDateTimeEdit()
-        fetch_content.addWidget(self.fatm_datetime_label, 2, 1)
-        fetch_content.addWidget(self.fatm_datetime_edits, 2, 2)
-        self.fatm_datetime_edits.setCalendarPopup(True)
-
-        self.fatm_variable_group = QGroupBox("Variables")
-        fetch_content.addWidget(self.fatm_variable_group, 4, 1, 1, 2)
-
-        #############################
-        group_box = QGridLayout()
-        self.fatm_variable_group.setLayout(group_box)
-
-        self.fatm_temp = QCheckBox('Temperature')
-        group_box.addWidget(self.fatm_temp, 1, 1)
-
-        self.fatm_u_wind = QCheckBox('U Wind')
-        group_box.addWidget(self.fatm_u_wind, 1, 2)
-
-        self.fatm_v_wind = QCheckBox('V Wind')
-        group_box.addWidget(self.fatm_v_wind, 1, 3)
-        ##############################
-
-        self.fatm_fetch = QPushButton("Download")
-        fetch_content.addWidget(self.fatm_fetch, 5, 1, 1, 2)
-        self.fatm_fetch.clicked.connect(partial(self.fatmFetch, True))
-
-        self.fatm_open = QPushButton("Open")
-        fetch_content.addWidget(self.fatm_open, 6, 1, 1, 2)
-        self.fatm_open.clicked.connect(partial(self.fatmFetch, False))
-
-        self.fatm_print = QPushButton("Print")
-        fetch_content.addWidget(self.fatm_print, 9, 1, 1, 2)
-        self.fatm_print.clicked.connect(self.fatmPrint)
-
-        self.fatm_lat_label = QLabel("Latitude: 0")
-        self.fatm_lat_slide = QSlider(Qt.Horizontal)
-        fetch_content.addWidget(self.fatm_lat_label, 7, 1)
-        fetch_content.addWidget(self.fatm_lat_slide, 7, 2)
-        self.fatm_lat_slide.setMinimum(-90/self.slider_scale)
-        self.fatm_lat_slide.setMaximum(90/self.slider_scale)
-        self.fatm_lat_slide.setValue(0)
-        self.fatm_lat_slide.setTickInterval(0.5)
-        self.fatm_lat_slide.valueChanged.connect(partial(self.fatmValueChange, self.fatm_lat_label, self.fatm_lat_slide))
-
-        self.fatm_lon_label = QLabel("Longitude: 0")
-        self.fatm_lon_slide = QSlider(Qt.Horizontal)
-        fetch_content.addWidget(self.fatm_lon_label, 8, 1)
-        fetch_content.addWidget(self.fatm_lon_slide, 8, 2)
-        self.fatm_lon_slide.setMinimum(-180/self.slider_scale)
-        self.fatm_lon_slide.setMaximum(180/self.slider_scale)
-        self.fatm_lon_slide.setValue(0)
-        self.fatm_lon_slide.setTickInterval(0.5)
-        self.fatm_lon_slide.valueChanged.connect(partial(self.fatmValueChange, self.fatm_lon_label, self.fatm_lon_slide))
 
     def addIniDockWidgets(self):
 
@@ -1463,54 +1163,7 @@ class SolutionGUI(QMainWindow):
 
         self.atmPlotProfile(self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, self.var_typ)
     
-    def addProfileWidgets(self):
-        profile_tab = QWidget()
-        profile_master = QHBoxLayout()
-        profile_tab_content = QGridLayout()
-        profile_tab_content_graph = QVBoxLayout()
-        profile_tab.setLayout(profile_master)
-        profile_master.addLayout(profile_tab_content_graph)
-        profile_master.addLayout(profile_tab_content)
-
-        self.atm_lat_label = QLabel("Latitude: 0")
-        self.atm_lat_slide = QSlider(Qt.Horizontal)
-        profile_tab_content.addWidget(self.atm_lat_label, 6, 1)
-        profile_tab_content.addWidget(self.atm_lat_slide, 6, 2, 1, 3)
-        self.atm_lat_slide.setMinimum(-90/self.slider_scale)
-        self.atm_lat_slide.setMaximum(90/self.slider_scale)
-        self.atm_lat_slide.setValue(0)
-        self.atm_lat_slide.setTickInterval(0.5)
-        self.atm_lat_slide.valueChanged.connect(partial(self.atmValueChange, self.atm_lat_label, self.atm_lat_slide))
-
-        self.atm_lon_label = QLabel("Longitude: 0")
-        self.atm_lon_slide = QSlider(Qt.Horizontal)
-        profile_tab_content.addWidget(self.atm_lon_label, 7, 1)
-        profile_tab_content.addWidget(self.atm_lon_slide, 7, 2, 1, 3)
-        self.atm_lon_slide.setMinimum(-180/self.slider_scale)
-        self.atm_lon_slide.setMaximum(180/self.slider_scale)
-        self.atm_lon_slide.setValue(0)
-        self.atm_lon_slide.setTickInterval(0.5)
-        self.atm_lon_slide.valueChanged.connect(partial(self.atmValueChange, self.atm_lon_label, self.atm_lon_slide))
-
-        self.atm_view = pg.GraphicsLayoutWidget()
-        self.atm_canvas = self.atm_view.addPlot()
-
-        profile_tab_content_graph.addWidget(self.atm_view)
-        self.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        self.atm_T_button = QPushButton('Temperature')
-        profile_tab_content_graph.addWidget(self.atm_T_button)
-        self.atm_T_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='t'))
-
-        self.atm_mag_button = QPushButton('Wind Magnitude')
-        profile_tab_content_graph.addWidget(self.atm_mag_button)
-        self.atm_mag_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='m'))
-
-        self.atm_dir_button = QPushButton('Wind Direction')
-        profile_tab_content_graph.addWidget(self.atm_dir_button)
-        self.atm_dir_button.clicked.connect(partial(self.atmPlotProfile, self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, var_typ='d'))
-
-        self.tab_widget.addTab(profile_tab, "Atmospheric Profile")
+    
 
     def makeStationObj(self, lst):
 
@@ -1553,7 +1206,6 @@ class SolutionGUI(QMainWindow):
         self.setup.search_area[3] = self.setup.lon_centre + self.setup.deg_radius
 
         sounding = parseWeather(self.setup)
-        arrTimes = np.array([])
 
         if len(stn_list) == 0:
             errorMessage('No Stations to load', 2)
@@ -1891,7 +1543,7 @@ class SolutionGUI(QMainWindow):
         #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # Extract coordinates of the reference station
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
@@ -2694,105 +2346,7 @@ class SolutionGUI(QMainWindow):
         np.save(file_name, self.arrTimes)
 
         errorMessage("Saved Output File", 0)
-
-    def addMakePicksWidgets(self):
-        make_picks_master_tab = QWidget()
-        make_picks_master = QVBoxLayout()
-        make_picks_master_tab.setLayout(make_picks_master)
-
-        self.make_picks_top_graphs = QHBoxLayout()
-        self.make_picks_bottom_graphs = QVBoxLayout()
-        make_picks_master.addLayout(self.make_picks_top_graphs)
-        make_picks_master.addLayout(self.make_picks_bottom_graphs)
-
-        self.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
-        self.make_picks_station_graph_canvas = self.make_picks_station_graph_view.addPlot()
-        self.make_picks_top_graphs.addWidget(self.make_picks_station_graph_view)
-        self.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        self.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
-        self.make_picks_map_graph_canvas = self.make_picks_map_graph_view.addPlot()
-        self.make_picks_top_graphs.addWidget(self.make_picks_map_graph_view)
-        self.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        self.make_picks_waveform_view = pg.GraphicsLayoutWidget()
-        self.make_picks_waveform_canvas = self.make_picks_waveform_view.addPlot()
-        self.make_picks_bottom_graphs.addWidget(self.make_picks_waveform_view)
-        self.make_picks_waveform_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        make_picks_control_panel = QHBoxLayout()
-        self.make_picks_bottom_graphs.addLayout(make_picks_control_panel)
-
-        make_picks_station_group = QGroupBox("Station Navigation")
-        make_picks_control_panel.addWidget(make_picks_station_group)
-
-        station_group_layout = QGridLayout()
-        make_picks_station_group.setLayout(station_group_layout)
-
-        self.make_picks_station_choice = QComboBox()
-        station_group_layout.addWidget(self.make_picks_station_choice, 0, 0, 1, 2)
-
-        self.make_picks_channel_choice = QComboBox()
-        station_group_layout.addWidget(self.make_picks_channel_choice, 1, 0, 1, 2)
-        self.make_picks_channel_choice.currentIndexChanged.connect(partial(self.drawWaveform, 1))
-
-        self.prev_stat = QPushButton('Prev')
-        station_group_layout.addWidget(self.prev_stat, 2, 0, 1, 1)
-
-        self.next_stat = QPushButton('Next')
-        station_group_layout.addWidget(self.next_stat, 2, 1, 1, 1)
-
-        launch = QPushButton('Load Station Data')
-        station_group_layout.addWidget(launch, 3, 0, 1, 2)
-        launch.clicked.connect(self.makePicks)
-
-        make_picks_filter_group = QGroupBox("Waveform Filtering")
-        make_picks_control_panel.addWidget(make_picks_filter_group)
-
-        filter_group_layout = QGridLayout()
-        make_picks_filter_group.setLayout(filter_group_layout)
-
-        self.low_bandpass_label = QLabel('Low: 2 Hz')
-        filter_group_layout.addWidget(self.low_bandpass_label, 0, 0, 1, 1)
-
-        self.low_bandpass_slider = QSlider(Qt.Horizontal)
-        filter_group_layout.addWidget(self.low_bandpass_slider, 0, 1, 1, 1)
-
-        self.high_bandpass_label = QLabel("High: 8 Hz")
-        filter_group_layout.addWidget(self.high_bandpass_label, 1, 0, 1, 1)
-
-        self.high_bandpass_slider = QSlider(Qt.Horizontal)
-        filter_group_layout.addWidget(self.high_bandpass_slider, 1, 1, 1, 1)
-
-        self.low_bandpass_slider.setMinimum(0/self.bandpass_scale)
-        self.low_bandpass_slider.setMaximum(5/self.bandpass_scale)
-        self.low_bandpass_slider.setValue(2/self.bandpass_scale)
-        self.low_bandpass_slider.setTickInterval(0.5)
-        self.low_bandpass_slider.valueChanged.connect(partial(self.makeValueChange, self.low_bandpass_label, self.low_bandpass_slider))
-
-        self.high_bandpass_slider.setMinimum(3/self.bandpass_scale)
-        self.high_bandpass_slider.setMaximum(40/self.bandpass_scale)
-        self.high_bandpass_slider.setValue(8/self.bandpass_scale)
-        self.high_bandpass_slider.setTickInterval(0.5)
-        self.high_bandpass_slider.valueChanged.connect(partial(self.makeValueChange, self.high_bandpass_label, self.high_bandpass_slider))
-
-
-        self.filter_combo_box = QComboBox()
-        filter_group_layout.addWidget(self.filter_combo_box, 2, 0, 1, 2)
-
-        make_picks_picks_group = QGroupBox("Arrival Picks")
-        make_picks_control_panel.addWidget(make_picks_picks_group)
-
-        pick_group_layout = QGridLayout()
-        make_picks_picks_group.setLayout(pick_group_layout)
-
-        self.export_to_csv = QPushButton('Export to CSV')
-        pick_group_layout.addWidget(self.export_to_csv)
-
-        self.export_to_all_times = QPushButton('Export All Times')
-        pick_group_layout.addWidget(self.export_to_all_times)
-
-        self.tab_widget.addTab(make_picks_master_tab, 'Make Picks')         
+       
 
     def changeRows(self, obj, change):
         n_rows = obj.rowCount()
@@ -3170,12 +2724,12 @@ class SolutionGUI(QMainWindow):
         self.v_edits.setText(str(self.setup.v))
         self.azim_edits.setText(str(self.setup.azimuth.deg))
         self.zangle_edits.setText(str(self.setup.zenith.deg))
-        self.lat_i_edits.setText(str(self.setup.lat_i))
-        self.lon_i_edits.setText(str(self.setup.lon_i))
-        self.elev_i_edits.setText(str(self.setup.elev_i))
-        self.lat_f_edits.setText(str(self.setup.lat_f))
-        self.lon_f_edits.setText(str(self.setup.lon_f))
-        self.elev_f_edits.setText(str(self.setup.elev_f))
+        self.lat_i_edits.setText(str(self.setup.pos_i.lat))
+        self.lon_i_edits.setText(str(self.setup.pos_i.lon))
+        self.elev_i_edits.setText(str(self.setup.pos_i.elev))
+        self.lat_f_edits.setText(str(self.setup.pos_f.lat))
+        self.lon_f_edits.setText(str(self.setup.pos_f.lon))
+        self.elev_f_edits.setText(str(self.setup.pos_f.elev))
         comboSet(self.show_ballistic_waveform_edits, self.setup.show_ballistic_waveform)
 
         frag_list = []
@@ -3204,12 +2758,12 @@ class SolutionGUI(QMainWindow):
         self.azimuth_max_edits.setText(str(self.setup.azimuth_max.deg))
         self.zangle_min_edits.setText(str(self.setup.zenith_min.deg))
         self.zangle_max_edits.setText(str(self.setup.zenith_max.deg))
-        self.lat_min_edits.setText(str(self.setup.lat_min))
-        self.lat_max_edits.setText(str(self.setup.lat_max))
-        self.lon_min_edits.setText(str(self.setup.lon_min))
-        self.lon_max_edits.setText(str(self.setup.lon_max))
-        self.elev_min_edits.setText(str(self.setup.elev_min))
-        self.elev_max_edits.setText(str(self.setup.elev_max))
+        self.lat_min_edits.setText(str(self.setup.pos_min.lat))
+        self.lat_max_edits.setText(str(self.setup.pos_max.lat))
+        self.lon_min_edits.setText(str(self.setup.pos_min.lon))
+        self.lon_max_edits.setText(str(self.setup.pos_max.lon))
+        self.elev_min_edits.setText(str(self.setup.pos_min.elev))
+        self.elev_max_edits.setText(str(self.setup.pos_max.elev))
         self.t_min_edits.setText(str(self.setup.t_min))
         self.t_max_edits.setText(str(self.setup.t_max))
         self.v_min_edits.setText(str(self.setup.v_min))
@@ -3497,6 +3051,7 @@ class SolutionGUI(QMainWindow):
         SolutionGUI.update(self)
 
 if __name__ == '__main__':
+
     print('#########################################')
     print('#     Western Meteor Python Library     #')
     print('# Seismic and Infrasonic Meteor Program #')

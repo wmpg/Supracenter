@@ -512,10 +512,8 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
 
     #     # Keep the fireball velocity fixed
     #     v = v_fixed
-    try:
+    if v_fixed != None:
         v = float(v_fixed)
-    except:
-        pass
 
     ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
     cost_value = 0
@@ -648,7 +646,6 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
 
     jd_ref = min(jd_list)
     jd_list = np.array(jd_list)
-    arrival_times = (jd_list - jd_ref)*86400.0
 
     # Get the index of the first arrival station
     first_arrival_indx = np.argwhere(jd_list == jd_ref)[0][0]
@@ -1250,10 +1247,6 @@ if __name__ == "__main__":
     setup.ref_time = datetime.datetime(*(map(int, ref_time)))
 
     # Find search area in lat/lon (weather area)
-    setup.search_area[0] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max, 0, 0])[0]))
-    setup.search_area[1] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_min, 0, 0])[0]), np.degrees(local2LatLon(lat0, lon0, elev0, [setup.x_max, 0, 0])[0]))
-    setup.search_area[2] = min(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max, 0])[1]))
-    setup.search_area[3] = max(np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_min, 0])[1]), np.degrees(local2LatLon(lat0, lon0, elev0, [0, setup.y_max, 0])[1]))
 
     # Init the constants
     consts = Constants()
@@ -1269,7 +1262,7 @@ if __name__ == "__main__":
 
     # # input is given as latitude/longitude
     # if setup.geomode:
-    setup.lat_f, setup.lon_f, _ = latLon2Local(lat0, lon0, elev0, np.radians(setup.lat_f), np.radians(setup.lon_f), 0)   
+
 
     # Set up search parameters
     p0 = [setup.lat_f, setup.lon_f, setup.t0, setup.v, setup.azim, setup.zangle]

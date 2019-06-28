@@ -109,7 +109,6 @@ def saveDefaults(setup):
         if setup.show_ballistic_waveform == None:           setup.show_ballistic_waveform = 'false'
         if setup.show_fragmentation_waveform == None:       setup.show_fragmentation_waveform = 'false'
 
-        if setup.v_fixed == None:                           setup.v_fixed = 11000
         if setup.azimuth_min == None:                       setup.azimuth_min = 0
         if setup.azimuth_max == None:                       setup.azimuth_max = 359.99
         if setup.zenith_min == None:                        setup.zenith_min = 0
