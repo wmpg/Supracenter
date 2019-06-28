@@ -121,8 +121,7 @@ def toTable(obj, table):
             for y in range(Y):
                 obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
     else:
-        if self.setup.debug:
-            print("Warning: Table has no length")
+        print("Warning: Table has no length")
 
 def fromTable(obj):
 

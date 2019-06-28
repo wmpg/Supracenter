@@ -28,7 +28,7 @@ from matplotlib.figure import Figure
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter
+from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
 from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
 
 from supra.Supracenter.slowscan import slowscan
@@ -87,6 +87,7 @@ class SolutionGUI(QMainWindow):
         
 
         self.addIniDockWidgets()
+        self.addStationsWidgets()
         self.addPicksReadWidgets()
         self.addSupraWidgets()
         self.addSupWidgets()
@@ -107,12 +108,6 @@ class SolutionGUI(QMainWindow):
         about_menu = menu_bar.addMenu('&About')
         view_menu = menu_bar.addMenu('&View')
 
-        file_exit = QAction("Exit", self)
-        file_exit.setShortcut('Ctrl+Q')
-        file_exit.setStatusTip('Exit application')
-        file_exit.triggered.connect(self.quitApp)
-        file_menu.addAction(file_exit)
-
         file_qsave = QAction("Quick Save", self)
         file_qsave.setShortcut('Ctrl+S')
         file_qsave.setStatusTip('Saves setup file')
@@ -131,6 +126,12 @@ class SolutionGUI(QMainWindow):
         file_load.triggered.connect(self.loadINI)
         file_menu.addAction(file_load)
 
+        file_exit = QAction("Exit", self)
+        file_exit.setShortcut('Ctrl+Q')
+        file_exit.setStatusTip('Exit application')
+        file_exit.triggered.connect(self.quitApp)
+        file_menu.addAction(file_exit)
+
         about_github = QAction("GitHub", self)
         about_github.triggered.connect(self.openGit)
         about_menu.addAction(about_github)
@@ -144,6 +145,13 @@ class SolutionGUI(QMainWindow):
         view_vartools.setStatusTip('Toggle if the variable toolbar is visible')
         view_vartools.triggered.connect(self.viewToolbar)
         view_menu.addAction(view_vartools)
+
+        view_fullscreen = QAction("Fullscreen", self)
+        view_fullscreen.setShortcut('F11')
+        view_fullscreen.setStatusTip('Toggles fullscreen')
+        view_fullscreen.triggered.connect(self.viewFullscreen)
+        view_menu.addAction(view_fullscreen)
+
 
         stylesheet = """ 
         QTabWidget>QWidget>QWidget{background: gray;}
@@ -167,6 +175,12 @@ class SolutionGUI(QMainWindow):
 
     def viewToolbar(self):
         self.ini_dock.toggleViewAction().trigger()
+
+    def viewFullscreen(self):
+        if self.windowState() & QtCore.Qt.WindowFullScreen:
+            self.showNormal()
+        else:
+            self.showFullScreen()
 
     def quitApp(self):
 
@@ -261,22 +275,6 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Output to CSV!', 0, title='Exported!')
 
-
-    def supSaveChanges(self):
-        pass
-
-    def supraSaveChanges(self):
-
-        self.sounding_file_edits.setText(self.atmospheric_file_edit.text())
-        self.station_picks_edits.setText(self.picks_file_edit.text())
-        self.fireball_datetime_edits.setDateTime(self.ref_edit.dateTime().toPyDateTime())
-        self.lat_frag_edits.setText(str(self.lat_edit.text()))
-        self.lon_frag_edits.setText(str(self.lon_edit.text()))
-        self.elev_frag_edits.setText(str(self.elev_edit.text()))
-        self.time_frag_edits.setText(str(self.time_edit.text()))
-
-        errorMessage('File Copied!', 0, title='Ini Information Copied')
-   
     def seisSearch(self):
 
         # Read station file
@@ -765,6 +763,59 @@ class SolutionGUI(QMainWindow):
         self.ray_enable_perts.stateChanged.connect(self.trajSolver)
 
         self.ray_canvas.scene().sigMouseClicked.connect(self.rayMouseClicked)
+
+    def addStationsWidgets(self):
+        station_tab = QWidget()
+
+        self.station_layout = QVBoxLayout()
+        station_tab.setLayout(self.station_layout)
+        self.tab_widget.addTab(station_tab, "Stations")
+
+        self.station_label = QLabel("Stations:")
+        self.station_layout.addWidget(self.station_label)
+
+        self.station_table = QTableWidget()
+        self.station_layout.addWidget(self.station_table)
+
+        self.station_button = QPushButton("Get Station Data")
+        self.station_layout.addWidget(self.station_button)
+        self.station_button.clicked.connect(self.getStations)
+
+    def getStations(self):
+
+        # Create fireball folder
+        if not os.path.exists(self.setup.working_directory):
+            os.makedirs(self.setup.working_directory)
+
+        #Build seismic data path
+        dir_path = os.path.join(self.setup.working_directory, self.setup.fireball_name)
+
+        ##########################################################################################################
+
+        if self.setup.get_data:
+            ### Download all waveform files which are within the given geographical and temporal range ###
+            ##########################################################################################################
+            getAllWaveformFiles(self.setup.lat_centre, self.setup.lon_centre, self.setup.deg_radius, self.setup.fireball_datetime, \
+                 network='*', channel='all', dir_path=dir_path)
+            ##########################################################################################################
+
+        data_file_path = os.path.join(dir_path, DATA_FILE)
+
+        if os.path.isfile(data_file_path):
+            
+            stn_list = readStationAndWaveformsListFile(data_file_path)
+
+        else:
+            print('Station and waveform data file not found! Download the waveform files first!')
+            sys.exit()
+
+        stn_list = stn_list + self.setup.stations
+
+        self.station_table.setRowCount(len(stn_list))
+        self.station_table.setColumnCount(8)
+
+        toTableFromStn(self.station_table, stn_list)
+
 
     def addSeisTrajWidgets(self):
 

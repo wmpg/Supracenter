@@ -124,6 +124,7 @@ class Angle:
             self.deg = deg%360
             self.rad = np.radians(deg)
         else:
+            self.deg = None
             self.rad = None
 
     def __str__(self):
