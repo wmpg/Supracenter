@@ -414,6 +414,7 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     # Compute time of flight residuals for all stations
     prop_mag = pool.map(func, iterable)
 
+
     pool.close()
     pool.join()
 
