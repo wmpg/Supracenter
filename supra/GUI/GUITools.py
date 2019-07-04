@@ -119,7 +119,11 @@ def toTable(obj, table):
 
         for x in range(X):
             for y in range(Y):
-                obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
+                if QTableWidgetItem(str(table[x][y])) == None:
+                    obj.setItem(x, y, QTableWidgetItem(''))
+                else:
+                    obj.setItem(x, y, QTableWidgetItem(str(table[x][y])))
+
     else:
         print("Warning: Table has no length")
 
@@ -135,8 +139,10 @@ def fromTable(obj):
         for y in range(Y):
             try:
                 line[y] = float(obj.item(x, y).text())
-            except:
+            except ValueError:
                 line[y] = obj.item(x, y).text()
+            except AttributeError:
+                line[y] = None
         table.append(line)
     return table
 
@@ -180,3 +186,47 @@ def sphereData(a, b, c, X, Y, Z):
     z = c * np.outer(np.ones(np.size(u)), np.cos(v)) + Z
 
     return x, y, z
+
+def changeRows(obj, change):
+    n_rows = obj.rowCount()
+    if change == 1:
+        obj.insertRow(n_rows)
+    else:
+        obj.removeRow(n_rows-1)
+
+def fileSearch(filters, obj):
+    # obj - where the text goes
+    dlg = QFileDialog()
+    dlg.setFileMode(QFileDialog.AnyFile)
+    dlg.setNameFilters(filters)
+    dlg.selectNameFilter(filters[0])
+    #filenames = QStringList()
+
+    dlg.exec_()
+
+    filename = dlg.selectedFiles()
+
+    if obj != None:
+        try:
+            obj.setText(filename[0])
+        except:
+            errorMessage("File not Found!", 1)
+    else:
+        return filename[0]
+
+def folderSearch(obj):
+    # dlg = QFileDialog()
+    # dlg.getExistingDirectory(self, "Select Directory")
+
+    # obj - where the text goes
+    dlg = QFileDialog()
+    dlg.setFileMode(QFileDialog.Directory)
+    #dlg.setNameFilters()
+    # dlg.selectNameFilter(filters[0])
+    #filenames = QStringList()
+
+    dlg.exec_()
+
+    filename = dlg.selectedFiles()
+
+    obj.setText(filename[0])

@@ -72,10 +72,10 @@ def tryAngle(angle):
 
 def tryTrajectory(t, v, az, ze, i, f):
 
-    try:
-        result = Trajectory(t, v, azimuth=az, zenith=ze, pos_i=i, pos_f=f)
-    except:
-        result = None
+    # try:
+    result = Trajectory(t, v, azimuth=az, zenith=ze, pos_i=i, pos_f=f)
+    # except:
+    #     result = None
 
     return result
 
@@ -123,7 +123,7 @@ def saveDefaults(setup):
         if setup.t_max == None:                             setup.t_max = 200
         if setup.v_min == None:                             setup.v_min = 11000
         if setup.v_max == None:                             setup.v_max = 30000 
-        if setup.max_error == None:                         setup.max_error = 1000
+        if setup.max_error == None:                         setup.max_error = 1000000
         if setup.enable_restricted_time == None:            setup.enable_restricted_time = 'false'
         if setup.weight_distance_min == None:               setup.weight_distance_min = 0
         if setup.weight_distance_max == None:               setup.weight_distance_max = 0

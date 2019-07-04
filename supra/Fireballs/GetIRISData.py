@@ -1132,10 +1132,6 @@ if __name__ == "__main__":
     cml_args = arg_parser.parse_args()
 
     #################
-
-    setup = configRead(cml_args.input_file)
-    configParse(setup, 'get_data')
-
     # 90 - zenith is used in the program
     #setup.zangle = 90 - setup.zangle
 

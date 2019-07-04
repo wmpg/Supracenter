@@ -1,6 +1,6 @@
 import numpy as np
 
-from supra.Utils.AngleConv import geo2Loc, loc2Geo
+from supra.Utils.AngleConv import geo2Loc, loc2Geo, angle2NDE
 
 class Config:
 
@@ -307,7 +307,7 @@ class Trajectory:
             self.vector = None
 
         # Case 1: everything is given
-        if pos_i != None and pos_f != None and zenith != None and azimuth != None:
+        if pos_i.lat != None and pos_f.lat != None and zenith != None and azimuth != None:
 
             pos_i.pos_loc(pos_f)
             pos_f.pos_loc(pos_f)
@@ -315,12 +315,12 @@ class Trajectory:
             scale = (pos_f.z - pos_i.z) / self.vector.z
 
         # Case 2: end points are given
-        elif pos_i != None and pos_f != None:
-            
+        elif pos_i.lat != None and pos_f.lat != None:
+
             pos_i.pos_loc(pos_f)
             pos_f.pos_loc(pos_f)
 
-            azimuth = Angle(np.degrees(np.pi - np.arctan2(pos_f.y - pos_i.y, pos_f.x - pos_i.x)))
+            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(pos_f.y - pos_i.y, pos_f.x - pos_i.x))))
 
             ground_distance = (np.sqrt((pos_f.y - pos_i.y)**2 + (pos_f.x - pos_i.x)**2))
 
@@ -333,7 +333,7 @@ class Trajectory:
             scale = (pos_f.z - pos_i.z) / self.vector.z
 
         # Case 3: top point and angles are given
-        elif pos_i != None and zenith != None and azimuth != None:
+        elif pos_i.lat != None and zenith != None and azimuth != None:
 
             pos_i.pos_loc(pos_i)
 
@@ -344,7 +344,7 @@ class Trajectory:
             pos_f.pos_geo(pos_i)
 
         # Case 4: bottom point and angles are given
-        elif pos_f != None and zenith != None and azimuth != None:
+        elif pos_f.lat != None and zenith != None and azimuth != None:
 
             pos_f.pos_loc(pos_f)
 
@@ -358,10 +358,10 @@ class Trajectory:
         else:
             scale = None
 
-        if pos_i == None:
+        if pos_i.lat == None:
             pos_i = Position(None, None, None)
 
-        if pos_f == None:
+        if pos_f.lat == None:
             pos_f = Position(None, None, None)
 
         if azimuth == None:
@@ -428,3 +428,45 @@ class Trajectory:
                 print(pt)
 
         return P
+
+    def findGeo(self, height):
+        
+        self.pos_i.pos_loc(self.pos_f)
+        self.pos_f.pos_loc(self.pos_f)
+
+        C = Position(0, 0, 0)
+        
+        C.z = height
+        s = (C.z - self.pos_i.z) / self.vector.z
+
+        C.x = s*self.vector.x + self.pos_i.x
+        C.y = s*self.vector.y + self.pos_i.y
+
+        C.pos_geo(self.pos_f)
+
+        return C
+
+    def findTime(self, height):
+
+        self.pos_i.pos_loc(self.pos_f)
+        self.pos_f.pos_loc(self.pos_f)
+
+        frac = height / (self.pos_i.z)
+
+        A = self.pos_i
+        B = self.pos_f
+
+        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+        time_of_meteor = length_of_meteor/self.v
+
+        return frac*time_of_meteor
+
+if __name__ == '__main__':
+    A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920), pos_f=Position(48.3314, 13.0706, 0))
+    print(A.findTime(25282.2671429))
+    print(A.findTime(26275.6971429))
+    print(A.findTime(29530.2757143))
+    print(A.findTime(33884.5985714))
+    print(A.findTime(35210.1614286))
+    print(A.findTime(38288.7771429))
+    print(A.findTime(38949.2314286))

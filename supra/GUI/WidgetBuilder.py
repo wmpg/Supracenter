@@ -43,12 +43,12 @@ def addPicksReadWidgets(obj):
 
     obj.csv_table_add = QPushButton("+")
     picks_read_tab_content.addWidget(obj.csv_table_add, 2, 2, 1, 1)
-    obj.csv_table_add.clicked.connect(partial(obj.changeRows, obj.csv_table, 1))
+    obj.csv_table_add.clicked.connect(partial(changeRows, obj.csv_table, 1))
     obj.csv_table_add.setToolTip("Add row")
 
     obj.csv_table_min = QPushButton("-")
     picks_read_tab_content.addWidget(obj.csv_table_min, 2, 1, 1, 1)
-    obj.csv_table_min.clicked.connect(partial(obj.changeRows, obj.csv_table, -1))
+    obj.csv_table_min.clicked.connect(partial(changeRows, obj.csv_table, -1))
     obj.csv_table_min.setToolTip("Remove row")
 
     obj.csv_table_load = QPushButton("Load")
@@ -218,6 +218,21 @@ def addMakePicksWidgets(obj):
     obj.export_to_all_times = QPushButton('Export All Times')
     pick_group_layout.addWidget(obj.export_to_all_times)
 
+    obj.show_frags = QCheckBox('Show Fragmentations')
+    pick_group_layout.addWidget(obj.show_frags)
+    obj.show_frags.stateChanged.connect(partial(obj.updatePlot, True))
+
+    obj.show_ball = QCheckBox('Show Ballistic')
+    pick_group_layout.addWidget(obj.show_ball)
+    obj.show_ball.stateChanged.connect(partial(obj.updatePlot, True))
+
+    obj.show_perts = QCheckBox('Show Perturbations')
+    pick_group_layout.addWidget(obj.show_perts)
+    obj.show_perts.stateChanged.connect(partial(obj.updatePlot, True))
+
+    obj.show_height = QCheckBox('Show Height Prediction')
+    pick_group_layout.addWidget(obj.show_height)
+
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 
 def addSeisTrajWidgets(obj):
@@ -299,7 +314,7 @@ def addFetchATMWidgets(obj):
 
     obj.fatm_button = QPushButton('Browse')
     fetch_content.addWidget(obj.fatm_button, 1, 3)
-    obj.fatm_button.clicked.connect(partial(obj.folderSearch, obj.fatm_name_edits))
+    obj.fatm_button.clicked.connect(partial(folderSearch, obj.fatm_name_edits))
 
     obj.fatm_datetime_label = QLabel("Time of Profile:")
     obj.fatm_datetime_edits = QDateTimeEdit()

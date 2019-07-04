@@ -1,9 +1,4 @@
-#    ____                                __         
-#   / __/_ _____  _______ ________ ___  / /____ ____
-#  _\ \/ // / _ \/ __/ _ `/ __/ -_) _ \/ __/ -_) __/
-# /___/\_,_/ .__/_/  \_,_/\__/\__/_//_/\__/\__/_/   
-#         /_/   
-#
+
 # Based off of Wayne Edwards' ray-tracing algorithm (2003)               
 # Finds path between two locations with an atmospheric profile in between #
 ###########################################################################

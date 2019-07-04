@@ -39,16 +39,17 @@ def readCustAtm(file_name, consts):
             line = line.replace('\n', '').replace('\r', '')
 
             # Split the line by the delimiter
-            line = line.split()
+            line = line.split(',')
             
             # Strip whitespaces from individual entries in the line
             for i, entry in enumerate(line):
                 line[i] = float(entry.strip())
 
             # Transform Temperature to Speed of Sound (m/s)
-            line[1] += consts.K
+            #line[1] += consts.K
             line[1] = (consts.GAMMA*consts.R/consts.M_0*line[1])**0.5
-            line[3] = line[3]*np.pi/180
+            line[3] = (line[3] + 180)%360
+            #line[3] = line[3]*np.pi/180
             
             # Add the contents of the line to the data list
             data = np.vstack((data, line))
@@ -487,9 +488,106 @@ def storeNetCDFUKMO(file_name, area, consts):
 
     return store_data
 
-#   wwwwww
-#  | ==== |
-#  | . \. | 
-#  |   /  |
-#  w  \_/ w 
-#   wwwwww
+def storeAus(consts):
+    dataset = Dataset('/home/luke/Desktop/AliceSprings', "r+", format="NETCDF4")
+
+
+
+    #Times, XLAT, XLON, U, V, T, PB
+    p =         np.array(dataset.variables['PB'][0])
+    P =         np.array(dataset.variables['P'][0])
+    ptot = p + P
+    T =         np.array(dataset.variables['T'][0])
+    u =         np.array(dataset.variables['U'][0, :, :270, :270])
+    v =         np.array(dataset.variables['V'][0, :, :270, :270])
+    lat =       np.array(dataset.variables['XLAT'][0, :, 0])
+    lon =       np.array(dataset.variables['XLONG'][0, :, 0])
+
+    dataset.close()
+
+    theta = T + 300
+    temp = theta*(ptot/1000)**(2/7)
+
+    h = np.empty_like(p)
+    for x in range(len(lat)):
+        for y in range(len(lon)):
+            P_0 = ptot[0, x, y]
+            for l in range(len(p[:, 0, 0])):
+                P_i = ptot[l, x, y]
+                TEMP = temp[l, x, y]
+                h[l, x, y] = ((P_0/P_i)**(0.1902) - 1)*TEMP/0.0065
+
+    speed = (consts.GAMMA*consts.R/consts.M_0*temp)**0.5
+
+    mags = np.sqrt(u**2 + v**2)
+
+    dirs = np.degrees((np.arctan2(v, u))%(2*np.pi))
+
+    sounding = [lat, lon, speed, mags, dirs, h]
+
+    return sounding
+
+def findAus(lat, lon, dataset):
+    """ Finds the atmospheric profile from a given lat/lon, from ECMWF archive data, to the closest grid point 
+
+    Arguments:
+        lat, lon: [float] latitude, longitude of the atmospheric profile needed
+        grid_size: [float] the grid_size requested to ECMWF
+        dataset: [ndarray] array of atmospheric profiles for each lat/lon grid point
+
+
+    Returns:
+        sounding: [ndarray] atmospheric profile to be used by ascan, in the form of 
+                [height (m), speed of sound (m/s), wind speed (m/s), wind direction (radians from North due East)] 
+    """
+
+    ### Pull variables from the file
+    # range of lat/lons used
+    latitude = dataset[0]%360
+    longitude = dataset[1]%360
+
+    # Temperature, K, with height, lat, lon
+    temperature = dataset[2]
+
+    # Wind, positive from W to E, height, lat, lon
+    x_wind = dataset[3]
+
+    # Wind, positive from S to N, height, lat, lon
+    y_wind = dataset[4]
+
+    # pressure levels in hPa
+    height = dataset[5]
+
+
+    # Find the closest data point to the requested lat, lon
+    try:
+        lat_i = bisearch(latitude, lat%360)
+        lon_i = bisearch(longitude, lon%360)
+    except:
+        print('ERROR: Cannot find given latitude/longitude in atmospheric profile range! (netCDFconv.py)')
+        exit()
+
+
+    # Create sounding array of all levels from the closest lat and lon
+    # Initialize arrays
+    sounding = np.array([0, 0, 0, 0])
+    row = np.array([0, 0, 0, 0])
+
+    # find total number of height layers
+    LAYERS = len(height[:, 0, 0])
+
+    # build atmospheric profile
+    for i in range(LAYERS):
+
+        # Add each row of the atmospheric profile
+        # Negative signs are because ECMWF defines direction from where wind is blowing TO, where cyscan defines it 
+        # as where it is blowing FROM, (needed for wind angles) 
+        row = np.array((float(height[i, lat_i, lon_i]), float(temperature[i, lat_i, lon_i]), float(x_wind[i, lat_i, lon_i]), float(y_wind[i, lat_i, lon_i])))
+        
+        # Append row to sounding
+        sounding = np.vstack((sounding, row))
+
+    # First row was all zeroes
+    sounding = np.delete(sounding, 0, 0)
+    
+    return sounding

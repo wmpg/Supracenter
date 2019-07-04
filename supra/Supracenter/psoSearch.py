@@ -66,14 +66,11 @@ def loop(x, stns, w, tweaks, ref_pos, dataset, j):
         # Create interpolated atmospheric profile for use with cyscan
         sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], weather_type, ref_pos, copy.copy(dataset))
 
-        # Rotate winds to match with coordinate system
-        #sounding[:, 3] = angle2NDE(sounding[:, 3])
-        
+
         # Use distance and atmospheric data to find path time
         time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
                                             wind=tweaks[1], n_theta=tweaks[2], n_phi=tweaks[3], \
                                             precision=tweaks[4])
-
         # Residual time for each station
         sotc[j] = tobs[j] - time3D[j]
 
@@ -120,7 +117,7 @@ def timeFunction(x, *args):
     wn = w
 
     # total weight
-    nwn =sum(w)
+    nwn = sum(w)
 
     # Mean occurrence time
     motc = 0
@@ -138,7 +135,6 @@ def timeFunction(x, *args):
     sotc = pool.map(func, iterable)
     
     motc = np.dot(wn, sotc)/sum(wn)
-
     ##########
 
     # User defined occurrence time
@@ -155,10 +151,10 @@ def timeFunction(x, *args):
     global errors
 
     # Save points and errors for plotting
-
+    MAX_ERROR = 1000000
     # check: Err == nan
     if not err > 0:
-        err = setup.max_error
+        err = MAX_ERROR
 
     # Method to get times to be inside the restrictions. Set errors of time outside of range to be proportional
     # to how far outside of the range it is

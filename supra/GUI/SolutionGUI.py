@@ -28,17 +28,18 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
-from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
+from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
 
 from supra.Supracenter.slowscan import slowscan
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
-from supra.Supracenter.netCDFconv import findECMWFSound
+from supra.Supracenter.netCDFconv import findECMWFSound, findAus
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.fetchCopernicus import copernicusAPI
 from supra.Supracenter.cyscan import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
+from supra.Supracenter.CalcAllTimes import calcAllTimes
 
 from supra.GUI.GUITools import *
 from supra.GUI.WidgetBuilder import *
@@ -68,7 +69,7 @@ class SolutionGUI(QMainWindow):
 
         self.setWindowTitle('WMPG Seismic and Infrasound Meteor Program')
         app_icon = QtGui.QIcon()
-        app_icon.addFile('wmpl.png', QtCore.QSize(16,16))
+        app_icon.addFile('wmpl.png', QtCore.QSize(16, 16))
         self.setWindowIcon(app_icon)
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.black)
@@ -410,9 +411,8 @@ class SolutionGUI(QMainWindow):
         A.pos_loc(B)
         B.pos_loc(B)
 
-        consts = Constants()
         try:
-            sounding = parseWeather(self.setup, consts)
+            sounding = parseWeather(self.setup)
         except:
             errorMessage('Error reading weather profile in rayTrace', 2)
             return None
@@ -421,6 +421,9 @@ class SolutionGUI(QMainWindow):
             print("Starting and End points of Ray Trace")
             print(A)
             print(B)
+
+        if self.setup.perturb_times == 0:
+            self.setup.perturb_times = 1
 
         trace_data =    [None]*self.setup.perturb_times
         t_arrival =     [None]*self.setup.perturb_times
@@ -450,6 +453,7 @@ class SolutionGUI(QMainWindow):
 
             z_profile, _ = getWeather(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), \
                     self.setup.weather_type, A, copy.copy(sounding_p))
+
 
             trace_data[ptb_n], t_arrival[ptb_n], err[ptb_n] = slowscan(A.xyz, B.xyz, z_profile,\
                                 wind=True, n_theta=self.setup.n_theta, n_phi=self.setup.n_theta, precision=self.setup.angle_precision, tol=self.setup.angle_error_tol)
@@ -481,14 +485,15 @@ class SolutionGUI(QMainWindow):
                 errorMessage('Cannot trace rays!', 2)
                 return None
 
-
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
         fig.set_size_inches(5, 5)
         ax = fig.add_subplot(1, 1, 1, projection='3d')
 
+
         ax.plot3D(xline, yline, zline, 'white')
-        ax.scatter(xline, yline, zline, 'black')
+        ax.scatter(xline, yline, zline, 'blue', marker='o')
+        ax.scatter(0, 0, 0, 'orange', marker='^')
 
         x_pts = [None]*len(xline)
         y_pts = [None]*len(xline)
@@ -540,8 +545,13 @@ class SolutionGUI(QMainWindow):
             norm.autoscale(t)
 
             #convert mags and dirs to u and v
-            u = mags*np.sin(dirs)
-            v = mags*np.cos(dirs)
+
+            if self.setup.weather_type == 'custom':
+                u = mags*np.sin(np.radians(dirs))
+                v = mags*np.cos(np.radians(dirs))
+            else:
+                u = mags*np.sin(dirs)
+                v = mags*np.cos(dirs)
 
             c = t[:-1]
             c = (c.ravel() - c.min()) / c.ptp()
@@ -694,6 +704,9 @@ class SolutionGUI(QMainWindow):
                  network='*', channel='all', dir_path=dir_path)
             ##########################################################################################################
 
+        else:
+            print("WARNING: get_data is turned off, this is the data only on this machine!")
+
         data_file_path = os.path.join(dir_path, DATA_FILE)
 
         if os.path.isfile(data_file_path):
@@ -712,7 +725,6 @@ class SolutionGUI(QMainWindow):
         toTableFromStn(self.station_table, stn_list)
 
 
-    
 
     def fatmPlot(self):
 
@@ -889,6 +901,21 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
 
+    def loadFrags(self):
+        
+        frag_list = []
+        frag_name = fileSearch(['CSV (*.csv)'], None)
+
+        with open(frag_name, 'r') as f:
+
+            for line in f:
+                a = line.strip('\n').split(',')
+                a = [float(i) for i in a]
+
+                frag_list.append(a)
+
+            f.close()
+        toTable(self.fragmentation_point, frag_list)
 
 
     def addIniDockWidgets(self):
@@ -921,17 +948,17 @@ class SolutionGUI(QMainWindow):
         self.run_mode_label, self.run_mode_edits = createComboBoxObj('Run Mode: ', tab1_content, 3, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
         self.debug_label, self.debug_edits = createComboBoxObj('Debug: ', tab1_content, 4, items=['True', 'False'], tool_tip='debug')
         self.working_directory_label, self.working_directory_edits, self.working_directory_buton = createFileSearchObj('Working Directory: ', tab1_content, 5, width=1, h_shift=0, tool_tip='working_directory')
-        self.working_directory_buton.clicked.connect(partial(self.folderSearch, self.working_directory_edits))
+        self.working_directory_buton.clicked.connect(partial(folderSearch, self.working_directory_edits))
         self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = createFileSearchObj('Arrival Times:', tab1_content, 6, width=1, h_shift=0, tool_tip='arrival_times_file')
-        self.arrival_times_buton.clicked.connect(partial(self.fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
+        self.arrival_times_buton.clicked.connect(partial(fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
         self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = createFileSearchObj('Sounding File:', tab1_content, 7, width=1, h_shift=0, tool_tip='sounding_file')
-        self.sounding_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)'], self.sounding_file_edits))
+        self.sounding_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)', 'CSV (*.csv)'], self.sounding_file_edits))
         self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = createFileSearchObj('Perturbation', tab1_content, 8, width=1, h_shift=0, tool_tip='perturbation_spread_file')
-        self.perturbation_file_buton.clicked.connect(partial(self.fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
+        self.perturbation_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
         self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 9, width=1, h_shift=0, tool_tip='station_picks_file')
-        self.station_picks_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
+        self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
         self.points_name_label, self.points_name_edits, self.points_name_buton = createFileSearchObj('Replot Points File: ', tab1_content, 10, width=1, h_shift=0, tool_tip='points_name')
-        self.points_name_buton.clicked.connect(partial(self.fileSearch, ['CSV (*.csv)'], self.points_name_edits))
+        self.points_name_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.points_name_edits))
         self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre')
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre')
         self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius')
@@ -957,18 +984,21 @@ class SolutionGUI(QMainWindow):
         self.fragmentation_point_label = QLabel("Fragmentation Point(s)")
         self.fragmentation_point = QTableWidget(0, 4)
         tab2_content.addWidget(self.fragmentation_point, 1, 1, 1, 4)
-        tab2_content.addWidget(self.fragmentation_point_label, 0, 1, 1, 4)
+        tab2_content.addWidget(self.fragmentation_point_label, 0, 1, 1, 2)
+        self.fragmentation_csv = QPushButton("Load Points")
+        tab2_content.addWidget(self.fragmentation_csv, 0, 3, 1, 1)
+        self.fragmentation_csv.clicked.connect(self.loadFrags)
         self.fragmentation_point.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
         header = self.fragmentation_point.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
         self.fragmentation_point_label.setToolTip(toolTime('fragmentation_point'))
         self.fragmentation_point_add = QPushButton("+")
         tab2_content.addWidget(self.fragmentation_point_add, 2, 3, 1, 2)
-        self.fragmentation_point_add.clicked.connect(partial(self.changeRows, self.fragmentation_point, 1))
+        self.fragmentation_point_add.clicked.connect(partial(changeRows, self.fragmentation_point, 1))
         self.fragmentation_point_add.setToolTip("Add row")
         self.fragmentation_point_min = QPushButton("-")
         tab2_content.addWidget(self.fragmentation_point_min, 2, 1, 1, 2)
-        self.fragmentation_point_min.clicked.connect(partial(self.changeRows, self.fragmentation_point, -1))
+        self.fragmentation_point_min.clicked.connect(partial(changeRows, self.fragmentation_point, -1))
         self.fragmentation_point_min.setToolTip("Remove row")
         self.show_fragmentation_waveform_label, self.show_fragmentation_waveform_edits = createComboBoxObj("Show Fragmentation Waveform: ", tab2_content, 3, width=2, items=['True', 'False'], tool_tip='show_fragmentation_waveform')
         self.manual_label = QLabel("Manual Fragmentation Search:")
@@ -1017,7 +1047,7 @@ class SolutionGUI(QMainWindow):
         ini_tabs.addTab(tab3, "Atmosphere")
 
         self.enable_winds_label, self.enable_winds_edits = createComboBoxObj('Enable Winds: ', tab3_content, 1, items=['True', 'False'], tool_tip='enable_winds')
-        self.weather_type_label, self.weather_type_edits = createComboBoxObj('Weather Type: ', tab3_content, 2, items=['none', 'ecmwf', 'ukmo', 'merra', 'custom'], tool_tip='weather_type')
+        self.weather_type_label, self.weather_type_edits = createComboBoxObj('Weather Type: ', tab3_content, 2, items=['none', 'ecmwf', 'ukmo', 'merra', 'custom', 'binary'], tool_tip='weather_type')
         self.perturb_times_label, self.perturb_times_edits = createLabelEditObj('Perturbation Times', tab3_content, 3, tool_tip='perturb_times')
         self.frag_no_label, self.frag_no_edits = createLabelEditObj('Fragmentation Number', tab3_content, 4, tool_tip='fragno')
         self.perturb_label, self.perturb_edits = createComboBoxObj('Perturb: ', tab3_content, 5, items=['True', 'False'], tool_tip='perturb')
@@ -1064,10 +1094,10 @@ class SolutionGUI(QMainWindow):
         self.extra_label.setToolTip(toolTime('stations'))
         self.extra_point_add = QPushButton("+")
         tab5_content.addWidget(self.extra_point_add, 2, 2, 1, 1)
-        self.extra_point_add.clicked.connect(partial(self.changeRows, self.extra_point, 1))
+        self.extra_point_add.clicked.connect(partial(changeRows, self.extra_point, 1))
         self.extra_point_min = QPushButton("-")
         tab5_content.addWidget(self.extra_point_min, 2, 1, 1, 1)
-        self.extra_point_min.clicked.connect(partial(self.changeRows, self.extra_point, -1))
+        self.extra_point_min.clicked.connect(partial(changeRows, self.extra_point, -1))
 
     def atmPlotProfile(self, lat, lon, var_typ='t', perturb='none'):
         
@@ -1077,12 +1107,14 @@ class SolutionGUI(QMainWindow):
             errorMessage('Weather type is set to "none", no weather can be displayed', 1)
             return None
 
-        try:
-            dataset = parseWeather(self.setup, consts)
+        dataset = parseWeather(self.setup)
+
+        if self.setup.weather_type == 'ecmwf':
             sounding = findECMWFSound(lat, lon, dataset)
-        except:
-            errorMessage('Error reading weather profile in atmPlotProfile', 2)
-            return None
+        elif self.setup.weather_type == 'binary':
+            sounding = findAus(lat, lon, dataset)
+        elif self.setup.weather_type == 'custom':
+            sounding = dataset
 
         self.var_typ = var_typ
         self.atm_canvas.setLabel('left', "Height", units='m')
@@ -1221,197 +1253,7 @@ class SolutionGUI(QMainWindow):
             errorMessage("Warning: Unable to build trajectory points", 1)
 
         self.waveformPicker(dir_path, self.setup, sounding, stn_list, stn_list=stn_list)
-    
-    # def trajCalc(setup):
-    #     """ Creates trajectory between point A and the ground (B) based off of the initial position and the angle of travel
 
-    #     Arguments:
-    #     setup: [Object] ini file parameters
-
-    #     Returns: 
-    #     A [list] lat/lon/elev of the tail of the trajectory
-    #     B [list] lat/lon/elev of the head of the trajectory
-    #     """
-    #     print("Trajectory Calculation...")
-
-    #     ref = Position(setup.lat_centre, setup.lon_centre, 0)
-
-    #     # Tail of the trajectory
-    #     A = geo2Loc(ref.lat, ref.lon, ref.elev, setup.lat_i, setup.lon_i, setup.elev_i*1000)
-
-    #     # convert angles to radians
-    #     ze = np.radians(setup.zangle)
-    #     az = np.radians(setup.azim)
-
-    #     # Create trajectory vector
-    #     traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
-
-    #     # How far along the trajectory until it reaches the ground
-    #     n = -A[2]/traj[2]
-
-    #     # B is the intersection between the trajectory vector and the ground
-    #     B = A + n*traj
-
-    #     # Convert back to geo coordinates
-    #     B = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, B))
-    #     A = np.array(loc2Geo(ref.lat, ref.lon, ref.elev, A))
-
-    #     print("Created Trajectory between A and B:")
-    #     print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
-    #     print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
-
-    #     return A, B
-
-
-    def calcAllTimes(self, stn_list, setup, sounding):
-        """ 
-        Method to calculate all arrival times and place them into an array, so that they are not recalculated every
-        time a new waveform is opened
-                
-        Arguments:
-        data_list: [ndarray] array containing all station names and locations
-        setup: [object] ini file parameters
-        sounding: [ndarray] atmospheric profile
-
-        Returns:
-        allTimes: [ndarray] a ndarray that stores the arrival times for all stations over every perturbation
-        [perturbation, station, 0 - ballistic/ 1 - fragmentation, frag number (0 for ballistic)]
-        """
-
-        #All perturbation happens here
-        allTimes = [0]*setup.perturb_times
-
-        # Ballistic Prediction
-        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
-
-        no_of_frags = len(setup.fragmentation_point)
-
-        # array of frags and ballistic arrivals have to be the same size. So, minimum can be 1
-        if no_of_frags == 0:
-            no_of_frags = 1
-
-        # Initialize variables
-        b_time = 0
-
-        consts = Constants()
-
-        # For temporal perturbations, fetch the soudning data for the hour before and after the event
-        if setup.perturb_method == 'temporal':
-
-            # sounding data one hour later
-            sounding_u = parseWeather(setup, consts, time= 1)
-
-            # sounding data one hour earlier
-            sounding_l = parseWeather(setup, consts, time=-1)
-
-        else:
-            sounding_u = []
-            sounding_l = []
-
-        if setup.perturb_method == 'ensemble':
-            ensemble_file = setup.perturbation_spread_file
-        else:
-            ensemble_file = ''
-
-        if setup.show_fragmentation_waveform and setup.show_ballistic_waveform:
-            d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
-        else:
-            d_time = (setup.perturb_times*len(stn_list)*no_of_frags)
-        count = 0
-
-        #number of perturbations
-        for ptb_n in range(setup.perturb_times):
-
-            if ptb_n > 0:
-                
-                if setup.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
-
-                # generate a perturbed sounding profile
-                sounding_p = perturb(setup, sounding, setup.perturb_method, \
-                    sounding_u=sounding_u, sounding_l=sounding_l, \
-                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
-            else:
-
-                # if not using perturbations on this current step, then return the original sounding profile
-                sounding_p = sounding
-
-            # Initialize station times array
-            stnTimes = [0]*len(stn_list)
-
-            #number of stations
-            for n, stn in enumerate(stn_list):
-
-                # For ballistic arrivals
-                if setup.show_ballistic_waveform:
-                    bTimes = [0]*no_of_frags
-                    for i in range(no_of_frags):
-                        count += 1
-                        loadingBar('Calculating all times:', count, d_time)
-                        # sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
-                        # sys.stdout.flush()
-                        #need filler values to make this a numpy array with fragmentation
-                        if i == 0:
-                            
-                            stn.position.pos_loc(ref_pos)
-                            setup.traj_f.pos_loc(ref_pos)
-
-                            # Time to travel from trajectory to station
-                            b_time = timeOfArrival(stn.position.xyz, self.setup.traj_f.x/1000, setup.traj_f.y/1000, self.setup.t0, 1000*self.setup.v, \
-                                                        self.setup.azimuth.rad, self.setup.zenith.rad, self.setup, sounding=sounding_p, travel=False, fast=False, ref_loc=ref_pos)# + setup.t 
-
-                            bTimes[i] = b_time
-                        else:
-                            bTimes[i] = np.nan
-
-                else:
-                    bTimes = [np.nan]*no_of_frags
-
-                # Fragmentation Prediction
-                f_time = np.array([0]*no_of_frags)
-
-                # If manual fragmentation search is on
-                if setup.show_fragmentation_waveform:
-                    fTimes = [0]*no_of_frags
-                    for i, line in enumerate(setup.fragmentation_point):
-                        count += 1
-                        loadingBar('Calculating all times:', count, d_time)
-
-                        # location of supracenter
-                        supra = Position(float(line[0]), float(line[1]), float(line[2]))
-                        
-                        # convert to local coordinates based off of the ref_pos
-                        supra.pos_loc(ref_pos)
-
-                        # convert station coordinates to local coordinates based on the ref_pos
-                        stn.position.pos_loc(ref_pos)
-
-                        # Cut down atmospheric profile to the correct heights, and interp
-                        zProfile, _ = getWeather(np.array([supra.lat, supra.lon, supra.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=False)
-
-                        # Travel time of the fragmentation wave
-                        f_time, _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
-
-                        fTimes[i] = f_time + line[3]
-
-                else:
-
-                    # Repack all arrays into allTimes array
-                    fTimes = [np.nan]*no_of_frags
-
-                stnTimes[n] = ([np.array(bTimes), np.array(fTimes)])
-
-            allTimes[ptb_n] = np.array(stnTimes)
-
-        allTimes = np.array(allTimes)
-
-        # Save as .npy file to be reused in SeismicTrajectory and Supracenter
-        np.save(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times'), allTimes)
-        errorMessage("All Times File saved as {:}".format(os.path.join(setup.working_directory, setup.fireball_name, 'all_pick_times.npy')), 0)
-
-        return allTimes
 
 
     def waveformPicker(self, dir_path, setup, sounding, data_list, waveform_window=600, \
@@ -1439,6 +1281,8 @@ class SolutionGUI(QMainWindow):
         names = []
         lats = []
         lons = []
+
+        self.stn_list = self.stn_list + self.setup.stations
 
         for stn in self.stn_list:
             
@@ -1564,9 +1408,8 @@ class SolutionGUI(QMainWindow):
             
             # Fragmentation plot
             for i, line in enumerate(self.setup.fragmentation_point):
-                self.make_picks_map_graph_canvas.scatterPlot(x=[float(line[1])], y=[float(line[0])],\
+                self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
                     pen=(0 + i*255/len(self.setup.fragmentation_point), 255 - i*255/len(self.setup.fragmentation_point), 0), symbol='+')
-
 
 
         # Plot source location
@@ -1576,10 +1419,14 @@ class SolutionGUI(QMainWindow):
         if self.setup.show_ballistic_waveform:
 
             # Plot the trajectory with the bottom point known
-            self.make_picks_map_graph_canvas.plot([self.setup.traj_i.lon, self.setup.traj_f.lon], [self.setup.traj_i.lat, self.setup.traj_f.lat],\
-                             pen=(0, 0, 255))
+            self.make_picks_map_graph_canvas.plot([self.setup.trajectory.pos_i.lon, self.setup.trajectory.pos_f.lon],\
+                                                  [self.setup.trajectory.pos_i.lat, self.setup.trajectory.pos_f.lat],\
+                                                    pen=(0, 0, 255))
+
             # Plot intersection with the ground
-            self.make_picks_map_graph_canvas.scatterPlot(x=[self.setup.traj_f.lon], y=[self.setup.traj_f.lat], symbol='+', pen=(0, 0, 255))
+            self.make_picks_map_graph_canvas.scatterPlot(x=[self.setup.trajectory.pos_f.lon], \
+                                                         y=[self.setup.trajectory.pos_f.lat], \
+                                                            symbol='+', pen=(0, 0, 255))
 
 
         if self.setup.arrival_times_file != '':
@@ -1587,10 +1434,10 @@ class SolutionGUI(QMainWindow):
                 self.arrTimes = np.load(self.setup.arrival_times_file)
             except:
                 errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(self.setup.arrival_times_file), 1)
-                self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+                self.arrTimes = calcAllTimes(self.stn_list, setup, sounding)
         else:  
             # Calculate all arrival times
-            self.arrTimes = self.calcAllTimes(self.stn_list, setup, sounding)
+            self.arrTimes = calcAllTimes(self.stn_list, setup, sounding)
     
         SolutionGUI.update(self)
 
@@ -1760,12 +1607,7 @@ class SolutionGUI(QMainWindow):
             if len(waveform_data) == 0:
                 continue
 
-
-
             waveform_data = convolutionDifferenceFilter(waveform_data)
-
-
-
 
             # Calculate the distance from the source point to this station (kilometers)
             station_dist = greatCircleDistance(np.radians(setup.lat_centre), np.radians(setup.lon_centre), stn.position.lat_r, stn.position.lon_r)
@@ -1882,9 +1724,6 @@ class SolutionGUI(QMainWindow):
         if event.key() == QtCore.Qt.Key_Control:
             self.ctrl_pressed = False
 
-        if event.key() == QtCore.Qt.Key_Control:
-            self.ctrl_pressed = False
-
     def incrementStation(self, event=None):
         """ Increments the current station index. """
 
@@ -1990,9 +1829,102 @@ class SolutionGUI(QMainWindow):
 
             pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station].channel)
             self.pick_list.append(pick)
+            print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
 
-            if self.setup.debug:
-                print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
+            if self.show_height.isChecked():
+
+                X = []
+                Y = []
+                Y_M = []
+
+                A = self.setup.trajectory.pos_i
+                B = self.setup.trajectory.pos_f
+
+                A.pos_loc(B)
+                B.pos_loc(B)
+
+                length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+                time_of_meteor = length_of_meteor/self.setup.trajectory.v
+
+                if len(self.setup.fragmentation_point) > 5:
+                    for i in range(len(self.setup.fragmentation_point)):
+                        X.append(self.setup.fragmentation_point[i].position.elev)
+                        Y.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x())
+                        Y_M.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
+
+                    X = np.array(X)
+                    Y_M = np.array(Y_M)
+                    Y = np.array(Y)
+
+                    plt.scatter(X, Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M), color='m', marker='o')
+
+                    Y_P = [[]]*self.setup.perturb_times
+                    Y_P_M = [[]]*self.setup.perturb_times
+                    opt_points = []
+                    for ptb in range(self.setup.perturb_times):
+                        y_p = [] 
+                        y_p_M = []
+                        for i in range(len(self.setup.fragmentation_point)):
+                            y_p.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x())
+                            y_p_M.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
+                            plt.errorbar(X[i], (y_p[i] + y_p_M[i])/2, xerr=0, yerr=abs(y_p_M[i]-(y_p[i] + y_p_M[i])/2), color='lime', alpha=0.2)
+                        Y_P[ptb].append(y_p)
+                        Y_P_M[ptb].append(y_p_M)
+
+                        y_p = np.array(y_p)
+                        y_p_M = np.array(y_p_M)
+
+                        plt.scatter(X, y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M), color='lime', alpha=0.2)
+
+                        P_p_y = y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M)
+                        idx = np.isfinite(X) & np.isfinite(P_p_y)
+                        P_p = np.polyfit(X[idx], P_p_y[idx], 1)
+                        pert_line_y = P_p[0]*X + P_p[1]
+                        plt.plot(X, pert_line_y, color='lime', alpha=0.2)
+                        pert_opt = -P_p[1]/P_p[0]
+                        opt_points.append(pert_opt)
+                        plt.scatter(pert_opt, 0, color='lime', marker='*', zorder=5)
+                        
+                    for i in range(len(X)):
+                        plt.errorbar(X[i], (Y[i] + Y_M[i])/2, xerr=0, yerr=abs(Y_M[i]-(Y[i] + Y_M[i])/2), color='m')
+
+                    idx = np.isfinite(X) & np.isfinite(Y)
+                    P = np.polyfit(X[idx], Y[idx], 1)
+                    y = P[0]*np.array(X) + P[1]
+
+                    plt.plot(X, y, color='b')
+                    
+                    optimal_height = -P[1]/P[0]
+
+                    idx = np.isfinite(X) & np.isfinite(Y)
+                    P_M = np.polyfit(X[idx], Y[idx] + time_of_meteor, 1)
+                    y_M = P_M[0]*np.array(X) + P_M[1]
+                    plt.plot(X, y_M, color='b')
+                    optimal_height_M = -P_M[1]/P_M[0]
+
+                    P_o_y = Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M)
+                    idx = np.isfinite(X) & np.isfinite(P_o_y)
+                    P_o = np.polyfit(X[idx], P_o_y[idx], 1)
+                    y_o = P_o[0]*X + P_o[1]
+                    plt.plot(X, y_o, color='m')
+
+                    #fraction_of_meteor = 
+                    best_guess_frac = optimal_height_M*self.setup.trajectory.pos_i.elev/(self.setup.trajectory.pos_i.elev - optimal_height + optimal_height_M)
+
+                    #plot a white line between blues, and guess where timing is
+                    opt_points.append(best_guess_frac)
+                    opt_points = np.array(opt_points)
+                    plt.axhline(y=0, color='r', linestyle='-')
+                    plt.scatter(-P_o[1]/P_o[0], 0, color='m', marker='*', zorder=3)
+                    plt.errorbar((optimal_height + optimal_height_M)/2, 0, xerr=abs(optimal_height-(optimal_height + optimal_height_M)/2), yerr=0, zorder=3, color='w')
+                    print("Optimal Solution: {:.5f} km".format(opt_points[-1]/1000))
+                    if self.setup.perturb:
+                        data, remove = chauvenet(opt_points)
+                        print("Perturbation Range: {:.5f} - {:.5f} km".format(np.nanmin(data)/1000, np.nanmax(data)/1000))
+                        print("Removed Points: {:} km".format(remove))
+                    plt.show()
+
+                    self.ctrl_pressed = False
 
         elif self.shift_pressed:
 
@@ -2102,11 +2034,12 @@ class SolutionGUI(QMainWindow):
         print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
 
         # If manual ballistic search is on
-        if setup.show_ballistic_waveform:
+        if setup.show_ballistic_waveform and self.show_ball.isChecked():
 
             # az = np.radians(setup.azim)
             # ze = np.radians(setup.zangle)
             # Plot Ballistic Prediction
+
             b_time = self.arrTimes[0, self.current_station, 0, 0]
             # sounding = parseWeather(setup, consts)
             # p = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
@@ -2119,8 +2052,9 @@ class SolutionGUI(QMainWindow):
             else:
                 print("No Ballistic Arrival")
 
+
             for i in range(setup.perturb_times):
-                if i >= 1:
+                if i >= 1 and self.show_perts.isChecked():
                     if i == 1:
                         data, remove = chauvenet(self.arrTimes[:, self.current_station, 0, 0])
                         try:
@@ -2136,31 +2070,28 @@ class SolutionGUI(QMainWindow):
             # Fragmentation Prediction
 
             # If manual fragmentation search is on
-        if setup.show_fragmentation_waveform:
+        if setup.show_fragmentation_waveform and self.show_frags.isChecked():
 
-            for i, line in enumerate(setup.fragmentation_point):
+            for i, frag in enumerate(setup.fragmentation_point):
 
                 f_time = self.arrTimes[0, self.current_station, 1, i]
             #     # check if nan
 
                 print('++++++++++++++++')
-                print('Fragmentation {:} ({:6.2f} km)'.format(i+1, line[2]/1000))
+                print('Fragmentation {:} ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 if f_time == f_time:
                     # Plot Fragmentation Prediction
                     self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
-                    stn.stn_distance(Position(line[0], line[1], line[2]))
+                    stn.stn_distance(frag.position)
                     print("Range: {:7.3f} km".format(stn.distance/1000))                   
                     print('Arrival: {:.3f} s'.format(f_time))
 
-                    #if abs(f_time-395.3038374383332) <= 4:
-                    #print('Fragmentation {:} Arrival: {:.3f}s / {:.3f}s'.format(i+1, f_time-282, f_time-290.5))
-
                 else:
                     pass
-                    print('No Fragmentation {:} ({:6.2f} m) Arrival'.format(i+1, line[2]))
+                    print('No Fragmentation {:} ({:6.2f} km) Arrival'.format(i+1, frag.position.elev/1000))
 
-                for j in range(setup.perturb_times):
-                    if j >= 1:
+                for j in range(self.setup.perturb_times):
+                    if j >= 1 and self.show_perts.isChecked():
                         #try:
                             if j == 1:
                                 data, remove = chauvenet(self.arrTimes[:, self.current_station, 1, i])
@@ -2169,9 +2100,13 @@ class SolutionGUI(QMainWindow):
                                     print('Removed points {:}'.format(remove))
                                 except ValueError:
                                     print('No Perturbation Arrivals')
-                            self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
-                                np.max(waveform_data)], alpha=0.3,\
-                                pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], style=QtCore.Qt.DotLine), zorder=3)
+                            try:
+                                self.make_picks_waveform_canvas.plot(x=[self.arrTimes[j, self.current_station, 1, i]]*2, y=[np.min(waveform_data),\
+                                    np.max(waveform_data)], alpha=0.3,\
+                                    pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], style=QtCore.Qt.DotLine), zorder=3)
+                            except IndexError:
+                                errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
+                                return None
                         #except:
                         #    pass
 
@@ -2288,17 +2223,12 @@ class SolutionGUI(QMainWindow):
         self.markStationWaveform()
         self.markCurrentStation()
 
-        # Reset bandpass filter values to default
-        # self.make_picks.set_val(self.bandpass_low_default)
-        # self.bandpass_high_slider.set_val(self.bandpass_high_default)
-
         SolutionGUI.update(self)
 
     def exportCSV(self, event):
         """ Save picks to a CSV file. """
 
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
-
 
         if '.csv' not in dlg[0]:
             file_name = dlg[0] + '.csv'
@@ -2327,17 +2257,17 @@ class SolutionGUI(QMainWindow):
 
     def exportToAllTimes(self):
 
-        sounding = parseWeather(self.setup)
+        # sounding = parseWeather(self.setup)
 
-        if self.setup.arrival_times_file != '':
-            try:
-                self.arrTimes = np.load(self.setup.arrival_times_file)
-            except:
-                errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
-                self.arrTimes = self.calcAllTimes(self.stn_list, self.setup, sounding)
-        else:  
-            # Calculate all arrival times
-            self.arrTimes = self.calcAllTimes(self.stn_list, self.setup, sounding)
+        # if self.setup.arrival_times_file != '':
+        #     try:
+        #         self.arrTimes = np.load(self.setup.arrival_times_file)
+        #     except:
+        #         errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
+        #         self.arrTimes = calcAllTimes(self.stn_list, self.setup, sounding)
+        # else:  
+        #     # Calculate all arrival times
+        #     self.arrTimes = calcAllTimes(self.stn_list, self.setup, sounding)
         
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
@@ -2347,45 +2277,6 @@ class SolutionGUI(QMainWindow):
 
         errorMessage("Saved Output File", 0)
        
-
-    def changeRows(self, obj, change):
-        n_rows = obj.rowCount()
-        if change == 1:
-            obj.insertRow(n_rows)
-        else:
-            obj.removeRow(n_rows-1)
-
-    def fileSearch(self, filters, obj):
-        # obj - where the text goes
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.AnyFile)
-        dlg.setNameFilters(filters)
-        dlg.selectNameFilter(filters[0])
-        #filenames = QStringList()
-
-        dlg.exec_()
-
-        filename = dlg.selectedFiles()
-
-        obj.setText(filename[0])
-
-    def folderSearch(self, obj):
-        # dlg = QFileDialog()
-        # dlg.getExistingDirectory(self, "Select Directory")
-
-        # obj - where the text goes
-        dlg = QFileDialog()
-        dlg.setFileMode(QFileDialog.Directory)
-        #dlg.setNameFilters()
-        # dlg.selectNameFilter(filters[0])
-        #filenames = QStringList()
-
-        dlg.exec_()
-
-        filename = dlg.selectedFiles()
-
-        obj.setText(filename[0])
-
     def perturbSetup(self):
 
         if self.setup.perturb_method == 'temporal':
@@ -2503,13 +2394,13 @@ class SolutionGUI(QMainWindow):
      
         dataset = parseWeather(self.setup)
         
-        self.perturbSetup()
+        perturb_data = self.perturbSetup()
 
         results = [None]*self.setup.perturb_times
 
         for ptb_n in range(self.setup.perturb_times):
-
-            sounding_p = self.perturbGenerate(ptb_n, dataset)
+            
+            sounding_p = self.perturbGenerate(ptb_n, dataset, perturb_data)
 
             results[ptb_n] = psoSearch(s_info, weights, s_name, self.setup, sounding_p, manual=True)
             print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
@@ -2582,7 +2473,8 @@ class SolutionGUI(QMainWindow):
 
         self.setup.pos_i = tryPosition(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
         self.setup.pos_f = tryPosition(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
-        self.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
+
+        self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
 
         self.setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
@@ -2658,7 +2550,11 @@ class SolutionGUI(QMainWindow):
         self.setup.stations = []
         temp_stats = fromTable(self.extra_point)
         for stn in temp_stats:
-            self.setup.stations.append(Station(stn[0], stn[1], Position(stn[2], stn[3], stn[4]), stn[5], stn[6], stn[7]))
+            try:
+                self.setup.stations.append(Station(stn[0], stn[1], Position(stn[2], stn[3], stn[4]), stn[5], stn[6], stn[7]))
+            except TypeError:
+
+                print("WARNING: Station: {:}-{:} could not be read".format(stn[0], stn[1]))
 
         if autosave:
             with open(self.setup_file, 'wb') as f:
@@ -2720,16 +2616,16 @@ class SolutionGUI(QMainWindow):
         self.fireball_datetime_edits.setDateTime(self.setup.fireball_datetime)
         self.v_sound_edits.setText(str(self.setup.v_sound))
 
-        self.t0_edits.setText(str(self.setup.t0))
-        self.v_edits.setText(str(self.setup.v))
-        self.azim_edits.setText(str(self.setup.azimuth.deg))
-        self.zangle_edits.setText(str(self.setup.zenith.deg))
-        self.lat_i_edits.setText(str(self.setup.pos_i.lat))
-        self.lon_i_edits.setText(str(self.setup.pos_i.lon))
-        self.elev_i_edits.setText(str(self.setup.pos_i.elev))
-        self.lat_f_edits.setText(str(self.setup.pos_f.lat))
-        self.lon_f_edits.setText(str(self.setup.pos_f.lon))
-        self.elev_f_edits.setText(str(self.setup.pos_f.elev))
+        self.t0_edits.setText(str(self.setup.trajectory.t))
+        self.v_edits.setText(str(self.setup.trajectory.v))
+        self.azim_edits.setText(str(self.setup.trajectory.azimuth.deg))
+        self.zangle_edits.setText(str(self.setup.trajectory.zenith.deg))
+        self.lat_i_edits.setText(str(self.setup.trajectory.pos_i.lat))
+        self.lon_i_edits.setText(str(self.setup.trajectory.pos_i.lon))
+        self.elev_i_edits.setText(str(self.setup.trajectory.pos_i.elev))
+        self.lat_f_edits.setText(str(self.setup.trajectory.pos_f.lat))
+        self.lon_f_edits.setText(str(self.setup.trajectory.pos_f.lon))
+        self.elev_f_edits.setText(str(self.setup.trajectory.pos_f.elev))
         comboSet(self.show_ballistic_waveform_edits, self.setup.show_ballistic_waveform)
 
         frag_list = []
@@ -2754,20 +2650,20 @@ class SolutionGUI(QMainWindow):
         self.restricted_time_check.setChecked(self.setup.enable_restricted_time)
         self.restricted_time_edits.setDateTime(self.setup.restricted_time)
 
-        self.azimuth_min_edits.setText(str(self.setup.azimuth_min.deg))
-        self.azimuth_max_edits.setText(str(self.setup.azimuth_max.deg))
-        self.zangle_min_edits.setText(str(self.setup.zenith_min.deg))
-        self.zangle_max_edits.setText(str(self.setup.zenith_max.deg))
-        self.lat_min_edits.setText(str(self.setup.pos_min.lat))
-        self.lat_max_edits.setText(str(self.setup.pos_max.lat))
-        self.lon_min_edits.setText(str(self.setup.pos_min.lon))
-        self.lon_max_edits.setText(str(self.setup.pos_max.lon))
-        self.elev_min_edits.setText(str(self.setup.pos_min.elev))
-        self.elev_max_edits.setText(str(self.setup.pos_max.elev))
-        self.t_min_edits.setText(str(self.setup.t_min))
-        self.t_max_edits.setText(str(self.setup.t_max))
-        self.v_min_edits.setText(str(self.setup.v_min))
-        self.v_max_edits.setText(str(self.setup.v_max))
+        self.azimuth_min_edits.setText(str(self.setup.traj_min.azimuth.deg))
+        self.azimuth_max_edits.setText(str(self.setup.traj_max.azimuth.deg))
+        self.zangle_min_edits.setText(str(self.setup.traj_min.zenith.deg))
+        self.zangle_max_edits.setText(str(self.setup.traj_max.zenith.deg))
+        self.lat_min_edits.setText(str(self.setup.traj_min.pos_f.lat))
+        self.lat_max_edits.setText(str(self.setup.traj_max.pos_f.lat))
+        self.lon_min_edits.setText(str(self.setup.traj_min.pos_f.lon))
+        self.lon_max_edits.setText(str(self.setup.traj_max.pos_f.lon))
+        self.elev_min_edits.setText(str(self.setup.traj_min.pos_f.elev))
+        self.elev_max_edits.setText(str(self.setup.traj_max.pos_f.elev))
+        self.t_min_edits.setText(str(self.setup.traj_min.t))
+        self.t_max_edits.setText(str(self.setup.traj_max.t))
+        self.v_min_edits.setText(str(self.setup.traj_min.v))
+        self.v_max_edits.setText(str(self.setup.traj_max.v))
         self.weight_distance_min_edits.setText(str(self.setup.weight_distance_min))
         self.weight_distance_max_edits.setText(str(self.setup.weight_distance_max))
 
@@ -2898,7 +2794,9 @@ class SolutionGUI(QMainWindow):
             elev_list.append(results[ptb].x_opt.elev)   
 
         if self.setup.perturb:
-
+            lat_list = np.array(lat_list)
+            lon_list = np.array(lon_list)
+            elev_list = np.array(elev_list)
             # Plot the surface
             a = np.nanmax(((x_opt.lat - lat_list)**2 + (x_opt.lon - lon_list)**2)**0.5)
             r = np.nanmax(abs(x_opt.elev - elev_list))
@@ -3007,7 +2905,8 @@ class SolutionGUI(QMainWindow):
             lon_list.append(results_arr[ptb].x_opt.lon)  
 
         if self.setup.perturb:
-
+            lat_list = np.array(lat_list)
+            lon_list = np.array(lon_list)
             # Plot the surface
             a = np.nanmax(((x_opt.lat - lat_list)**2 + (x_opt.lon - lon_list)**2)**0.5)
 

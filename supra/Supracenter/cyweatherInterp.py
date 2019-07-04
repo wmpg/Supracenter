@@ -6,7 +6,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Utils.AngleConv import loc2Geo
-from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound
+from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound, findAus
 from supra.Supracenter.cyzInteg import zInteg
 
 def nearestPoint2D(points_list, point):
@@ -127,6 +127,10 @@ def interpWeather(s, d, weather_type, dataset):
 
             # find atmospheric profile for given lat/lon
             loc_sounding = np.array(findUKMOSound(points[i][0], points[i][1], dataset))
+
+        elif weather_type == 'binary':
+
+            loc_sounding = np.array(findAus(points[i][0], points[i][1], dataset))
 
         # Fix heights to limit between source and detector
         loc_sounding = zInteg(d[2], s[2], loc_sounding)

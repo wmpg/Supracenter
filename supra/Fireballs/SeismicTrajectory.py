@@ -37,7 +37,7 @@ except:
 
 from supra.Supracenter.cyscan import cyscan
 import supra.Supracenter.cyweatherInterp
-from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm
+from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc
@@ -59,28 +59,24 @@ def parseWeather(setup, time=0):
     consts = Constants()
      # Parse weather type
     setup.weather_type = setup.weather_type.lower()
-    if setup.weather_type not in ['custom', 'none', 'ecmwf', 'merra', 'ukmo']:
-        print('INI ERROR: [Atmospheric] weather_type must be one of: custom, none, ecmwf, merra, ukmo')
+    if setup.weather_type not in ['custom', 'none', 'ecmwf', 'merra', 'ukmo', 'binary']:
+        print('INI ERROR: [Atmospheric] weather_type must be one of: custom, none, ecmwf, merra, ukmo, binary')
         sys.exit()
 
     # Custom weather data    
     if setup.weather_type == 'custom':
 
-        try:
-            sounding = readCustAtm(setup.sounding_file, consts)
-        except:
-            print('ERROR: Could not read custom atmosphere profile!')
-            exit()
+        # try:
+        sounding = readCustAtm(setup.sounding_file, consts)
+        # except:
+        #     print('ERROR: Could not read custom atmosphere profile!')
+        #     exit()
 
         # Check file name
         if len(sounding) < 2:
             print('FILE ERROR: file must have at least two data points!')
             sys.exit()
 
-        # Check file type
-        if '.txt' not in setup.sounding_file:
-            print("FILE ERROR: custom data set must be a .txt file!")
-            sys.exit()
 
     # MERRA-2
     elif setup.weather_type == 'merra':
@@ -146,6 +142,11 @@ def parseWeather(setup, time=0):
         except:
             print('ERROR: Could not read UKMO atmosphere profile!')
             exit()
+
+    elif setup.weather_type == 'binary':
+
+        
+        sounding = storeAus(consts)
 
     else:
 
@@ -225,8 +226,6 @@ def wrapRaDec(ra, dec):
     return ra, dec
 
 
-
-
 def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], ref_loc=[0, 0, 0], travel=False, fast=False, theo=False):
     """ Calculate the time of arrival at given coordinates in the local coordinate system for the given
         parameters of the fireball.
@@ -280,7 +279,6 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
                 # Calculate the time of arrival
                 ti = t0 - dt/v + (dp*np.cos(beta))/setup.v_sound   
 
-
     # Winds
     else:
 
@@ -292,6 +290,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
         #         S = waveReleasePoint(stat_coord, x0, y0, t0, v, azim, zangle, setup.v_sound)
         #     else:
         #         # Slow, winds solution
+
         S = waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding, ref_loc)
 
         # Detector location
@@ -300,25 +299,26 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
         try:
             # Cut down atmospheric profile to the correct heights, and interp
             zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, setup.weather_type, \
-                             [ref_loc[0], ref_loc[1], ref_loc[2]], copy.copy(sounding), convert=True)
-
-            # Time of arrival between the points with atmospheric profile
-            T, _, _ = cyscan(np.array(S), np.array(D), zProfile, wind=setup.enable_winds)
-
-            if travel:
-                # travel from trajectory only
-                ti = T*np.cos(beta)
-
-            else:
-                if theo:
-                    # Calculate time of arrival
-                    ti = t0 +dt/v + T*np.cos(beta)
-                else:
-                    # Calculate time of arrival
-                    ti = t0 -dt/v + T*np.cos(beta)
-
-        except:
+                             ref_loc, copy.copy(sounding), convert=True)
+        except ValueError:
             return np.nan
+
+        # Time of arrival between the points with atmospheric profile
+        T, _, _ = cyscan(np.array(S), np.array(D), zProfile, wind=setup.enable_winds)
+
+
+        if travel:
+            # travel from trajectory only
+            ti = T*np.cos(beta)
+
+        else:
+            if theo:
+                # Calculate time of arrival
+                ti = t0 +dt/v + T*np.cos(beta)
+            else:
+                # Calculate time of arrival
+                ti = t0 -dt/v + T*np.cos(beta)
+
     return ti
 
 # methods for finding angle between two vectors
@@ -359,8 +359,8 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     # Break up the trajectory into points
     GRID_SPACE = 200
     ANGLE_TOL = 30 #deg
-    MIN_HEIGHT = 17000
-    MAX_HEIGHT = 45000
+    MIN_HEIGHT = 15000
+    MAX_HEIGHT = 60000
 
     pool = multiprocessing.Pool(multiprocessing.cpu_count()) 
 
@@ -372,8 +372,8 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     ground_point = (x0, y0, stat_coord[2])
     
     # find top boundary of line given maximum elevation of trajectory
-    if setup.elev_i != 0:
-        scale = -setup.elev_i/u[2]
+    if setup.trajectory.pos_i.elev != None:
+        scale = -setup.trajectory.pos_i.elev/u[2]
 
     else:
         scale = -100000/u[2]
@@ -421,7 +421,9 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
 
     # plt.plot(points[:, 2], np.degrees(np.arccos(prop_mag)))
     # plt.show()
+
     prop_mag = np.absolute(prop_mag)
+
     for ii, element in enumerate(prop_mag):
         if element > np.sin(np.radians(ANGLE_TOL)):
             prop_mag[ii] = np.nan
