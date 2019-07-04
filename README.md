@@ -15,35 +15,9 @@ pip install pyqt5 pyswarm
 
 ## Running a test case
 
-Create an .ini file using either the example .ini located in ```supra/Fireballs/docs/example_ini.ini``` or by creating a custom .ini file using the information given in the user manual in ```supra/Fireballs/docs/User Manual.txt```
-
-First, the waveform data must be obtained by running:
-```
-python -m wmpl.Fireballs.GetIRISData <location of .ini file>
-```
-with the variable get_data = True
-
-To analyze the waveform data and make arrival time picks:
-```
-python -m wmpl.Fireballs.MakeIRISPicks <location of .ini file>
-```
-
-If picks have been created, the Supracenter module can be run by:
-```
-python -m wmpl.Supracenter.mainmenu <location of .ini file>
-```
-
-and the Trajectory solution can be run by:
-```
-python -m wmpl.Fireballs.SeismicTrajectory <location of .ini file>
-```
-
-The GUI for the program, which contains most of the features, can be run by:
+The GUI for the program, which contains all of the features, can be run by:
 ```
 python -m supra.Fireballs.SolutionGUI
 ```
 
-
-## More documentation
-
-You can find more documentation under ```supra/Fireballs/docs``` and ```supra/Fireballs/Supracenter```.
+For further documentation, look for About->Documentation in the GUI or if the GUI is not running, look for supra/Fireballs/docs/index.html in the files
