@@ -215,6 +215,7 @@ class Vector3D:
         self.x = x
         self.y = y
         self.z = z
+        self.xyz = np.array([x, y, z])
 
     def __add__(self, other):
         result = Position(0, 0, 0)
@@ -462,11 +463,6 @@ class Trajectory:
         return frac*time_of_meteor
 
 if __name__ == '__main__':
-    A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920), pos_f=Position(48.3314, 13.0706, 0))
-    print(A.findTime(25282.2671429))
-    print(A.findTime(26275.6971429))
-    print(A.findTime(29530.2757143))
-    print(A.findTime(33884.5985714))
-    print(A.findTime(35210.1614286))
-    print(A.findTime(38288.7771429))
-    print(A.findTime(38949.2314286))
+    A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    #A = Trajectory(0, 13913, pos_i=Position(-23.5742415562, 132.712445759, 100000), pos_f=Position(-23.616963, 132.902681, 0))
+    A.trajInterp(div=100, write=True)

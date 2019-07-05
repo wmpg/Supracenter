@@ -18,5 +18,5 @@ def loadingBar(message, step, max_steps):
 
     sys.stdout.write("\r{:} : {:}{:} {:7.2%}{:}".format(message, '#'*(load), ' '*(load_len -load), percent, ' '))
     sys.stdout.flush()
-    if step == max_steps:
+    if percent == 100.00:
         print('')

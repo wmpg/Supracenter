@@ -22,7 +22,7 @@ def calcAllTimes(stn_list, setup, sounding):
 
     Returns:
     allTimes: [ndarray] a ndarray that stores the arrival times for all stations over every perturbation
-    [perturbation, station, 0 - ballistic/ 1 - fragmentation, frag number (0 for ballistic)]
+    [perturbation, station, 0 - ballistic/ 1 - fragmentation/ 2 - Azimuths of Initial Rays, 3 - Takeoff angles of Initial Rays, frag number (0 for ballistic)]
     """
 
     if setup.perturb_times == 0:
@@ -72,8 +72,8 @@ def calcAllTimes(stn_list, setup, sounding):
 
         if ptb_n > 0:
             
-            if setup.debug:
-                print("STATUS: Perturbation {:}".format(ptb_n))
+            # if setup.debug:
+            #     print("STATUS: Perturbation {:}".format(ptb_n))
 
             # generate a perturbed sounding profile
             sounding_p = perturb(setup, sounding, setup.perturb_method, \
@@ -122,7 +122,16 @@ def calcAllTimes(stn_list, setup, sounding):
 
             # If manual fragmentation search is on
             if setup.show_fragmentation_waveform:
+                
+                # Arrival times to the station
                 fTimes = [0]*no_of_frags
+                
+                # Azimuths of initial rays
+                fAz =    [0]*no_of_frags
+                
+                # Takeoff angles of initial rays
+                fTf =    [0]*no_of_frags
+
                 for i, frag in enumerate(setup.fragmentation_point):
                     count += 1
                     loadingBar('Calculating all times:', count, d_time)
@@ -141,17 +150,19 @@ def calcAllTimes(stn_list, setup, sounding):
                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=False)
 
                     # Travel time of the fragmentation wave
-                    f_time, _, _ = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                    f_time, frag_azimuth, frag_takeoff = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
                         n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
 
                     fTimes[i] = f_time + frag.time
+                    fAz[i]    = frag_azimuth
+                    fTf[i]    = frag_takeoff
 
             else:
 
                 # Repack all arrays into allTimes array
                 fTimes = [np.nan]*no_of_frags
 
-            stnTimes[n] = ([np.array(bTimes), np.array(fTimes)])
+            stnTimes[n] = ([np.array(bTimes), np.array(fTimes), np.array(fAz), np.array(fTf)])
 
         allTimes[ptb_n] = np.array(stnTimes)
 

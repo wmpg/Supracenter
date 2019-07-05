@@ -297,6 +297,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
         D = stat_coord
 
         try:
+
             # Cut down atmospheric profile to the correct heights, and interp
             zProfile, _ = supra.Supracenter.cyweatherInterp.getWeather(S, D, setup.weather_type, \
                              ref_loc, copy.copy(sounding), convert=True)
@@ -320,6 +321,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, sounding=[], r
                 ti = t0 -dt/v + T*np.cos(beta)
 
     return ti
+
 
 # methods for finding angle between two vectors
 # import math
@@ -358,7 +360,7 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
     GRID_SPACE = 200
-    ANGLE_TOL = 30 #deg
+    ANGLE_TOL = 25 #deg
     MIN_HEIGHT = 15000
     MAX_HEIGHT = 60000
 
@@ -412,7 +414,7 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
     func = partial(loop, D, points, weather_type, ref_loc, sounding, enable_winds, u, T, az, tf, prop_mag)
 
     # Compute time of flight residuals for all stations
-    prop_mag = pool.map(func, iterable)
+    prop_mag_raw = pool.map(func, iterable)
 
 
     pool.close()
@@ -422,11 +424,11 @@ def waveReleasePointWinds(stat_coord, x0, y0, t0, v, azim, zangle, setup, soundi
 
     # plt.plot(points[:, 2], np.degrees(np.arccos(prop_mag)))
     # plt.show()
-
-    prop_mag = np.absolute(prop_mag)
+    #np.save(setup.working_directory + str(stat_coord), prop_mag_raw)
+    prop_mag = np.absolute(prop_mag_raw)
 
     for ii, element in enumerate(prop_mag):
-        if element > np.sin(np.radians(ANGLE_TOL)):
+        if element > np.cos(np.radians(ANGLE_TOL)):
             prop_mag[ii] = np.nan
 
     try:
@@ -745,11 +747,6 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
     azim, zangle = res.x[4:]
 
 
-    # azim = np.radians(azim)
-    # # Wrap azimuth and zangle to the allowed range
-    # azim = azim%(2*np.pi)
-    # zangle = zangle%(np.pi/2)
-
     ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
 
 
@@ -879,26 +876,14 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
             az_p[i] = x_perturb[i][4]
             ze_p[i] = x_perturb[i][5]
 
-    # print("############")
-    # print('x', x0, x_p)
-    # print('y', y0, y_p)
-    # print('t', t0, t_p)
-    # print('v', v, v_p)
-    # print('azimuth', azim, az_p)
-    # print('zenith', zangle, ze_p)
-    # print("#############")
-
     # Extract all Julian dates
     jd_list = [entry[6] for entry in station_list]
     pick_time = [float(entry[7]) for entry in station_list]
     # Calculate the arrival times as the time in seconds from the earliest JD
-    jd_ref = min(jd_list)
     ref_indx = np.argmin(jd_list)
     jd_list = np.array(jd_list)
     stat_obs_times_of_arrival = pick_time#(jd_list - jd_ref)*86400.0
 
-
-    
     # Convert station coordiantes to local coordinates, with the station of the first arrival being the
     # origin of the coordinate system
     stat_coord_list = convertStationCoordinates(station_list, ref_indx)

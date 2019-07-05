@@ -178,33 +178,17 @@ def addMakePicksWidgets(obj):
     filter_group_layout = QGridLayout()
     make_picks_filter_group.setLayout(filter_group_layout)
 
-    obj.low_bandpass_label = QLabel('Low: 2 Hz')
-    filter_group_layout.addWidget(obj.low_bandpass_label, 0, 0, 1, 1)
+    obj.low_bandpass_label, obj.low_bandpass_edits = createLabelEditObj('Low: ', filter_group_layout, 0)
+    obj.high_bandpass_label, obj.high_bandpass_edits = createLabelEditObj('High: ', filter_group_layout, 1)
 
-    obj.low_bandpass_slider = QSlider(Qt.Horizontal)
-    filter_group_layout.addWidget(obj.low_bandpass_slider, 0, 1, 1, 1)
+    obj.low_bandpass_edits.setText('2')
+    obj.high_bandpass_edits.setText('8')
 
-    obj.high_bandpass_label = QLabel("High: 8 Hz")
-    filter_group_layout.addWidget(obj.high_bandpass_label, 1, 0, 1, 1)
-
-    obj.high_bandpass_slider = QSlider(Qt.Horizontal)
-    filter_group_layout.addWidget(obj.high_bandpass_slider, 1, 1, 1, 1)
-
-    obj.low_bandpass_slider.setMinimum(0/obj.bandpass_scale)
-    obj.low_bandpass_slider.setMaximum(5/obj.bandpass_scale)
-    obj.low_bandpass_slider.setValue(2/obj.bandpass_scale)
-    obj.low_bandpass_slider.setTickInterval(0.5)
-    obj.low_bandpass_slider.valueChanged.connect(partial(obj.makeValueChange, obj.low_bandpass_label, obj.low_bandpass_slider))
-
-    obj.high_bandpass_slider.setMinimum(3/obj.bandpass_scale)
-    obj.high_bandpass_slider.setMaximum(40/obj.bandpass_scale)
-    obj.high_bandpass_slider.setValue(8/obj.bandpass_scale)
-    obj.high_bandpass_slider.setTickInterval(0.5)
-    obj.high_bandpass_slider.valueChanged.connect(partial(obj.makeValueChange, obj.high_bandpass_label, obj.high_bandpass_slider))
-
+    obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
+    obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)
 
     obj.filter_combo_box = QComboBox()
-    filter_group_layout.addWidget(obj.filter_combo_box, 2, 0, 1, 2)
+    filter_group_layout.addWidget(obj.filter_combo_box, 2, 0, 1, 4)
 
     make_picks_picks_group = QGroupBox("Arrival Picks")
     make_picks_control_panel.addWidget(make_picks_picks_group)
@@ -218,20 +202,26 @@ def addMakePicksWidgets(obj):
     obj.export_to_all_times = QPushButton('Export All Times')
     pick_group_layout.addWidget(obj.export_to_all_times)
 
+    make_picks_check_group = QGroupBox("Toggles")
+    make_picks_control_panel.addWidget(make_picks_check_group)
+
+    check_group_layout = QVBoxLayout()
+    make_picks_check_group.setLayout(check_group_layout)
+
     obj.show_frags = QCheckBox('Show Fragmentations')
-    pick_group_layout.addWidget(obj.show_frags)
+    check_group_layout.addWidget(obj.show_frags)
     obj.show_frags.stateChanged.connect(partial(obj.updatePlot, True))
 
     obj.show_ball = QCheckBox('Show Ballistic')
-    pick_group_layout.addWidget(obj.show_ball)
+    check_group_layout.addWidget(obj.show_ball)
     obj.show_ball.stateChanged.connect(partial(obj.updatePlot, True))
 
     obj.show_perts = QCheckBox('Show Perturbations')
-    pick_group_layout.addWidget(obj.show_perts)
+    check_group_layout.addWidget(obj.show_perts)
     obj.show_perts.stateChanged.connect(partial(obj.updatePlot, True))
 
     obj.show_height = QCheckBox('Show Height Prediction')
-    pick_group_layout.addWidget(obj.show_height)
+    check_group_layout.addWidget(obj.show_height)
 
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 

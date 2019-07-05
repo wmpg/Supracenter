@@ -47,7 +47,7 @@ from supra.GUI.WidgetBuilder import *
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
 
-from supra.Utils.AngleConv import loc2Geo, chauvenet
+from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE
 from supra.Utils.Formatting import *
 from supra.Utils.Classes import Position, Station, Config, Constants, Pick
 from supra.Utils.TryObj import *
@@ -56,7 +56,166 @@ global arrTimes
 global sounding
 
 DATA_FILE = 'data.txt'
-  
+
+# Fragmentation Viewer
+class MyPopup(QWidget):
+
+    def __init__(self, setup, pack):
+
+        QWidget.__init__(self)
+        self.setWindowTitle('Fragmentation Viewer')
+        self.arrTimes, self.current_station, mousePoint = pack
+        layout = QVBoxLayout()
+
+        self.setup = setup
+
+        self.plot_view = pg.GraphicsLayoutWidget()
+        self.height_canvas = self.plot_view.addPlot()
+        self.plot_view.nextRow()
+        self.angle_canvas = self.plot_view.addPlot()
+        self.angle_canvas.setXLink(self.height_canvas)   
+        layout.addWidget(self.plot_view)
+        self.plot_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+        X = []
+        Y = []
+        Y_M = []
+
+        A = self.setup.trajectory.pos_i
+        B = self.setup.trajectory.pos_f
+
+        A.pos_loc(B)
+        B.pos_loc(B)
+
+        # Get prediction of time of the meteor, so the timing of each fragmentation can be known
+        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+        time_of_meteor = length_of_meteor/self.setup.trajectory.v
+
+        # Plot nominal points
+        for i in range(len(self.setup.fragmentation_point)):
+            X.append(self.setup.fragmentation_point[i].position.elev)
+            Y.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x())
+            Y_M.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
+
+        X = np.array(X)
+        Y_M = np.array(Y_M)
+        Y = np.array(Y)
+
+        base_points = pg.ScatterPlotItem()
+        base_points.addPoints(x=X, y=Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M), pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
+        base_points.setZValue(1)
+        self.height_canvas.addItem(base_points, update=True)
+
+        # Perturbation points
+        Y_P = [[]]*self.setup.perturb_times
+        Y_P_M = [[]]*self.setup.perturb_times
+        opt_points = []
+        for ptb in range(self.setup.perturb_times):
+            y_p = [] 
+            y_p_M = []
+            for i in range(len(self.setup.fragmentation_point)):
+                y_p.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x())
+                y_p_M.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
+
+            y_p = np.array(y_p)
+            y_p_M = np.array(y_p_M)
+
+            err = pg.ErrorBarItem(x=X, y=(y_p + y_p_M)/2, top=abs(y_p_M-(y_p + y_p_M)/2), bottom=abs(y_p_M-(y_p + y_p_M)/2), beam=0.5, pen=(0, 255, 26, 50))
+            self.height_canvas.addItem(err)
+
+               
+            Y_P[ptb].append(y_p)
+            Y_P_M[ptb].append(y_p_M)
+
+            y_p = np.array(y_p)
+            y_p_M = np.array(y_p_M)
+
+            perturbation_points = pg.ScatterPlotItem()
+            perturbation_points.addPoints(x=X, y=y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M), pen=(0, 255, 26, 50), brush=(0, 255, 26, 50), symbol='o')
+            perturbation_points.setZValue(0)
+            self.height_canvas.addItem(perturbation_points, update=True)
+
+            P_p_y = y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M)
+            idx = np.isfinite(X) & np.isfinite(P_p_y)
+            P_p = np.polyfit(X[idx], P_p_y[idx], 1)
+            pert_line_y = P_p[0]*X + P_p[1]
+            self.height_canvas.plot(x=X, y=pert_line_y, pen=(0, 255, 26, 50))
+            pert_opt = -P_p[1]/P_p[0]
+            opt_points.append(pert_opt)
+            self.height_canvas.scatterPlot(x=[pert_opt], y=[0], pen=(0, 255, 26), symbol='+')
+    
+        # Error Bars
+        err = pg.ErrorBarItem(x=X, y=(Y + Y_M)/2, top=abs(Y_M[i]-(Y[i] + Y_M[i])/2), bottom=abs(Y_M[i]-(Y[i] + Y_M[i])/2), beam=0.5, pen=(255, 0, 238))
+        self.height_canvas.addItem(err)
+
+        idx = np.isfinite(X) & np.isfinite(Y)
+        P = np.polyfit(X[idx], Y[idx], 1)
+        y = P[0]*np.array(X) + P[1]
+
+        self.height_canvas.plot(x=X, y=y, pen='b')
+        
+        optimal_height = -P[1]/P[0]
+
+        idx = np.isfinite(X) & np.isfinite(Y)
+        P_M = np.polyfit(X[idx], Y[idx] + time_of_meteor, 1)
+        y_M = P_M[0]*np.array(X) + P_M[1]
+        self.height_canvas.plot(x=X, y=y_M, pen='b')
+        optimal_height_M = -P_M[1]/P_M[0]
+
+        P_o_y = Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M)
+        idx = np.isfinite(X) & np.isfinite(P_o_y)
+        P_o = np.polyfit(X[idx], P_o_y[idx], 1)
+        y_o = P_o[0]*X + P_o[1]
+        self.height_canvas.plot(X, y_o, pen=(255, 0, 238))
+
+        best_guess_frac = optimal_height_M*self.setup.trajectory.pos_i.elev/(self.setup.trajectory.pos_i.elev - optimal_height + optimal_height_M)
+
+
+        opt_points.append(best_guess_frac)
+        opt_points = np.array(opt_points)
+        self.height_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[0, 0], pen='r')
+        self.height_canvas.scatterPlot(x=[-P_o[1]/P_o[0]], y=[0], pen=(255, 0, 238), symbol='+')
+        print("Optimal Solution: {:.5f} km".format(opt_points[-1]/1000))
+        if self.setup.perturb:
+            data, remove = chauvenet(opt_points)
+            print("Perturbation Range: {:.5f} - {:.5f} km".format(np.nanmin(data)/1000, np.nanmax(data)/1000))
+            print("Removed Points: {:} km".format(remove))
+        
+        u = np.array([self.setup.trajectory.vector.x,
+                      self.setup.trajectory.vector.y,
+                      self.setup.trajectory.vector.z])
+
+        angle_off = []
+        for i in range(len(self.setup.fragmentation_point)):
+            az = self.arrTimes[0, self.current_station, 2, i]
+            tf = self.arrTimes[0, self.current_station, 3, i]
+            az = angle2NDE(az)
+            az = np.radians(az)
+            tf = np.radians(90 - (tf - 90))
+            v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+            angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+
+        angle_off = np.array(angle_off)
+
+        best_indx = np.nanargmin(abs(angle_off - 90))
+
+        self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen='b')
+        self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen='b')
+        self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
+        self.angle_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[90, 90], pen='r')
+        self.angle_canvas.setXRange(15000, 45000, padding=0)
+
+        self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick')
+        self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path')
+        self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(mousePoint.x()), units='s')
+        self.angle_canvas.setLabel('left', 'Angle Away from Trajectory of Initial Acoustic Wave Path', units='deg')
+        self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
+        self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
+
+        self.setLayout(layout)
+
+# Main Window
 class SolutionGUI(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -141,7 +300,7 @@ class SolutionGUI(QMainWindow):
         about_menu.addAction(about_docs)
 
         view_vartools = QAction("Show/Hide Toolbar", self)
-        view_vartools.setShortcut('Ctrl+V')
+        view_vartools.setShortcut('V')
         view_vartools.setStatusTip('Toggle if the variable toolbar is visible')
         view_vartools.triggered.connect(self.viewToolbar)
         view_menu.addAction(view_vartools)
@@ -1832,99 +1991,11 @@ class SolutionGUI(QMainWindow):
             print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
 
             if self.show_height.isChecked():
+                self.w = MyPopup(self.setup, [self.arrTimes, self.current_station, mousePoint])
+                self.w.setGeometry(QRect(100, 100, 900, 900))
+                self.w.show()
 
-                X = []
-                Y = []
-                Y_M = []
-
-                A = self.setup.trajectory.pos_i
-                B = self.setup.trajectory.pos_f
-
-                A.pos_loc(B)
-                B.pos_loc(B)
-
-                length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
-                time_of_meteor = length_of_meteor/self.setup.trajectory.v
-
-                if len(self.setup.fragmentation_point) > 5:
-                    for i in range(len(self.setup.fragmentation_point)):
-                        X.append(self.setup.fragmentation_point[i].position.elev)
-                        Y.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x())
-                        Y_M.append(self.arrTimes[0, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
-
-                    X = np.array(X)
-                    Y_M = np.array(Y_M)
-                    Y = np.array(Y)
-
-                    plt.scatter(X, Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M), color='m', marker='o')
-
-                    Y_P = [[]]*self.setup.perturb_times
-                    Y_P_M = [[]]*self.setup.perturb_times
-                    opt_points = []
-                    for ptb in range(self.setup.perturb_times):
-                        y_p = [] 
-                        y_p_M = []
-                        for i in range(len(self.setup.fragmentation_point)):
-                            y_p.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x())
-                            y_p_M.append(self.arrTimes[ptb, self.current_station, 1, i] - mousePoint.x() + time_of_meteor)
-                            plt.errorbar(X[i], (y_p[i] + y_p_M[i])/2, xerr=0, yerr=abs(y_p_M[i]-(y_p[i] + y_p_M[i])/2), color='lime', alpha=0.2)
-                        Y_P[ptb].append(y_p)
-                        Y_P_M[ptb].append(y_p_M)
-
-                        y_p = np.array(y_p)
-                        y_p_M = np.array(y_p_M)
-
-                        plt.scatter(X, y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M), color='lime', alpha=0.2)
-
-                        P_p_y = y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M)
-                        idx = np.isfinite(X) & np.isfinite(P_p_y)
-                        P_p = np.polyfit(X[idx], P_p_y[idx], 1)
-                        pert_line_y = P_p[0]*X + P_p[1]
-                        plt.plot(X, pert_line_y, color='lime', alpha=0.2)
-                        pert_opt = -P_p[1]/P_p[0]
-                        opt_points.append(pert_opt)
-                        plt.scatter(pert_opt, 0, color='lime', marker='*', zorder=5)
-                        
-                    for i in range(len(X)):
-                        plt.errorbar(X[i], (Y[i] + Y_M[i])/2, xerr=0, yerr=abs(Y_M[i]-(Y[i] + Y_M[i])/2), color='m')
-
-                    idx = np.isfinite(X) & np.isfinite(Y)
-                    P = np.polyfit(X[idx], Y[idx], 1)
-                    y = P[0]*np.array(X) + P[1]
-
-                    plt.plot(X, y, color='b')
-                    
-                    optimal_height = -P[1]/P[0]
-
-                    idx = np.isfinite(X) & np.isfinite(Y)
-                    P_M = np.polyfit(X[idx], Y[idx] + time_of_meteor, 1)
-                    y_M = P_M[0]*np.array(X) + P_M[1]
-                    plt.plot(X, y_M, color='b')
-                    optimal_height_M = -P_M[1]/P_M[0]
-
-                    P_o_y = Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M)
-                    idx = np.isfinite(X) & np.isfinite(P_o_y)
-                    P_o = np.polyfit(X[idx], P_o_y[idx], 1)
-                    y_o = P_o[0]*X + P_o[1]
-                    plt.plot(X, y_o, color='m')
-
-                    #fraction_of_meteor = 
-                    best_guess_frac = optimal_height_M*self.setup.trajectory.pos_i.elev/(self.setup.trajectory.pos_i.elev - optimal_height + optimal_height_M)
-
-                    #plot a white line between blues, and guess where timing is
-                    opt_points.append(best_guess_frac)
-                    opt_points = np.array(opt_points)
-                    plt.axhline(y=0, color='r', linestyle='-')
-                    plt.scatter(-P_o[1]/P_o[0], 0, color='m', marker='*', zorder=3)
-                    plt.errorbar((optimal_height + optimal_height_M)/2, 0, xerr=abs(optimal_height-(optimal_height + optimal_height_M)/2), yerr=0, zorder=3, color='w')
-                    print("Optimal Solution: {:.5f} km".format(opt_points[-1]/1000))
-                    if self.setup.perturb:
-                        data, remove = chauvenet(opt_points)
-                        print("Perturbation Range: {:.5f} - {:.5f} km".format(np.nanmin(data)/1000, np.nanmax(data)/1000))
-                        print("Removed Points: {:} km".format(remove))
-                    plt.show()
-
-                    self.ctrl_pressed = False
+                self.ctrl_pressed = False
 
         elif self.shift_pressed:
 
@@ -2146,8 +2217,8 @@ class SolutionGUI(QMainWindow):
         """ Run bandpass filtering using values set on sliders. """
 
         # Get bandpass filter values
-        bandpass_low = self.low_bandpass_slider.value()*self.bandpass_scale
-        bandpass_high = self.high_bandpass_slider.value()*self.bandpass_scale
+        bandpass_low = float(self.low_bandpass_edits.text())
+        bandpass_high = float(self.high_bandpass_edits.text())
 
 
         # Limit the high frequency to be lower than the Nyquist frequency
@@ -2165,7 +2236,6 @@ class SolutionGUI(QMainWindow):
 
         # Filter the data
         waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
-
 
         # Plot the updated waveform
         self.drawWaveform(channel_changed=2, waveform_data=waveform_data)
@@ -2954,7 +3024,7 @@ if __name__ == '__main__':
     print('#########################################')
     print('#     Western Meteor Python Library     #')
     print('# Seismic and Infrasonic Meteor Program #')
-    print('#      /// Legendary Edition ///        #')
+    print('#       ***Legendary Edition***         #')
     print('#            Luke McFadden,             #')
     print('#              Denis Vida,              #') 
     print('#              Peter Brown              #')

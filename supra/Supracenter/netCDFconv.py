@@ -489,24 +489,28 @@ def storeNetCDFUKMO(file_name, area, consts):
     return store_data
 
 def storeAus(consts):
+
+    # This is meant for WRF files
+
     dataset = Dataset('/home/luke/Desktop/AliceSprings', "r+", format="NETCDF4")
 
 
-
+    # print(dataset.variables['PB'])
+    # exit()
     #Times, XLAT, XLON, U, V, T, PB
-    p =         np.array(dataset.variables['PB'][0])
-    P =         np.array(dataset.variables['P'][0])
+    p =         np.array(dataset.variables['PB'][0, :, 0:270:10, 0:270:10])
+    P =         np.array(dataset.variables['P'][0, :, 0:270:10, 0:270:10])
     ptot = p + P
-    T =         np.array(dataset.variables['T'][0])
-    u =         np.array(dataset.variables['U'][0, :, :270, :270])
-    v =         np.array(dataset.variables['V'][0, :, :270, :270])
-    lat =       np.array(dataset.variables['XLAT'][0, :, 0])
-    lon =       np.array(dataset.variables['XLONG'][0, :, 0])
+    T =         np.array(dataset.variables['T'][0, :, 0:270:10, 0:270:10])
+    u =         np.array(dataset.variables['U'][0, :, 0:270:10, 0:270:10])
+    v =         np.array(dataset.variables['V'][0, :, 0:270:10, 0:270:10])
+    lat =       np.array(dataset.variables['XLAT'][0, 0::10, 0])
+    lon =       np.array(dataset.variables['XLONG'][0, 0::10, 0])
 
     dataset.close()
 
     theta = T + 300
-    temp = theta*(ptot/1000)**(2/7)
+    temp = theta*(ptot/100000)**(2/7)
 
     h = np.empty_like(p)
     for x in range(len(lat)):
