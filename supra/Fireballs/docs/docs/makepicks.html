@@ -104,6 +104,8 @@
 <li class="toctree-l4"><a class="reference internal" href="#map-window">Map Window</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#all-station-waveforms-window">All Station Waveforms Window</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#exporting-picks">Exporting Picks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#exporting-all-times-files">Exporting All Times Files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fragentation-viewer">Fragentation Viewer</a></li>
 </ul>
 </li>
 <li class="toctree-l3"><a class="reference internal" href="fetchatmosphere.html">Fetch Atmosphere</a></li>
@@ -214,6 +216,7 @@
 </div>
 <div class="section" id="bandpass-filter">
 <h2>Bandpass Filter<a class="headerlink" href="#bandpass-filter" title="Permalink to this headline">¶</a></h2>
+<p>Bandpasses the current waveform between the two values given. Also helpful for reseting the GUI’s display of the waveform.</p>
 </div>
 <div class="section" id="spectrogram-view">
 <h2>Spectrogram View<a class="headerlink" href="#spectrogram-view" title="Permalink to this headline">¶</a></h2>
@@ -223,9 +226,11 @@
 </div>
 <div class="section" id="waveform-window">
 <h2>Waveform Window<a class="headerlink" href="#waveform-window" title="Permalink to this headline">¶</a></h2>
+<p>You can make picks directly onto the waveform by moving the mouse to the desired location and hitting ‘Ctrl+M1’</p>
 </div>
 <div class="section" id="map-window">
 <h2>Map Window<a class="headerlink" href="#map-window" title="Permalink to this headline">¶</a></h2>
+<p>Shows the stations and the inputted trajectory and fragmentation points</p>
 </div>
 <div class="section" id="all-station-waveforms-window">
 <h2>All Station Waveforms Window<a class="headerlink" href="#all-station-waveforms-window" title="Permalink to this headline">¶</a></h2>
@@ -233,6 +238,17 @@
 <div class="section" id="exporting-picks">
 <h2>Exporting Picks<a class="headerlink" href="#exporting-picks" title="Permalink to this headline">¶</a></h2>
 <p>Once all of the user picks have been made on the waveforms, the “Export CSV” button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.</p>
+</div>
+<div class="section" id="exporting-all-times-files">
+<h2>Exporting All Times Files<a class="headerlink" href="#exporting-all-times-files" title="Permalink to this headline">¶</a></h2>
+<p>The calculations of the arrival times can be saved as a .npy to be input back into the program at a later time. This way, the lengthy calculations to find the perturbations and everything else only need to be done once for a given configuration. If anything is changed, this WILL need to be recalculated.</p>
+</div>
+<div class="section" id="fragentation-viewer">
+<h2>Fragentation Viewer<a class="headerlink" href="#fragentation-viewer" title="Permalink to this headline">¶</a></h2>
+<p>The fragmentation viewer can be accessed by checking the Show Height Prediction box on the MakePicks window and creating a pick on the waveform with Ctrl+M1. Once clicked, a new window will pop up after a calculation. This will show the estimate in the height of a fragmentation that would have arrived at this time, and the optimal height of the ballistic arrival. This viewer is meant for predicting heights and is used well with the Trajectory Interp found in Classes.</p>
+<p>The intended method of using the Fragmentation Viewer is with a large number of fragmentation points along the trajectory. Take the starting and ending points of the trajectory and use the interpolation method in the Trajectory Class found in Classes.py. Once you have a large number of fragmentation points, edit the output into a .csv (in the form: lat, lon, elev) and add a “, 0.0” at the end of each line, representing the time after the starting point the fragmentation happened (which is taken account for by the viewer, so this should be left at 0.0 for it to work properly).</p>
+<p>Then load the .csv containing the frags into the fragmentation points of the .pkl file. And load all of the station values in the Make Picks window (all of the calculations have to be done for ALL of the fragmentation points). It is recommended that weather and perturbations be turned on for this, as they may give a better indication of where the fragmentation and ballistic arrivals are.</p>
+<p>The top view shows both the nominal and perturbed arrival times relative to the time of the pick made. The ‘+’ symbols show the fitted best height that a given data set’s fragmentation would occour at to arrive at that time. The blue sloped lines represent the fitted maximum and minimum arrival times of the data, accounting only for the time of the fireball. The pink and green sloped lines represent the fit for the nominal and perturbed data respectively.</p>
 <div class="toctree-wrapper compound">
 </div>
 </div>

@@ -88,9 +88,6 @@ def findECMWFSound(lat, lon, dataset):
     # Wind, positive from S to N, height, lat, lon
     y_wind = dataset[4]
 
-    # pressure levels in hPa
-    height = dataset[5]
-
 
     # Find the closest data point to the requested lat, lon
     try:

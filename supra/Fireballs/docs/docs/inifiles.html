@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>INI Files &mdash; Western Meteor Physics Group Seismic and Infrasonic Meteor Program  documentation</title>
+  <title>PKL Files &mdash; Western Meteor Physics Group Seismic and Infrasonic Meteor Program  documentation</title>
   
 
   
@@ -99,7 +99,7 @@
 <li class="toctree-l2"><a class="reference internal" href="atmospherefiles.html">Atmosphere Files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="stationfiles.html">Station Picks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="alltimesfiles.html">All Times Files</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">INI Files</a><ul>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">PKL Files</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="variables.html">Variables</a></li>
 </ul>
 </li>
@@ -153,7 +153,7 @@
         
           <li><a href="Files.html">Files</a> &raquo;</li>
         
-      <li>INI Files</li>
+      <li>PKL Files</li>
     
     
       <li class="wy-breadcrumbs-aside">
@@ -172,24 +172,18 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="ini-files">
-<h1>INI Files<a class="headerlink" href="#ini-files" title="Permalink to this headline">¶</a></h1>
-<p>ini files contain the information for a given fireball event. These are loaded into each part of the program with the parameters of the fireball. For most parts of the program, not all of the variables in the ini files need to be set. For example, in the Supracenter solver, the ballistic search parameters do not need to be filled out.</p>
+  <div class="section" id="pkl-files">
+<h1>PKL Files<a class="headerlink" href="#pkl-files" title="Permalink to this headline">¶</a></h1>
+<p>pkl files contain the information for a given fireball event. These are loaded into each part of the program with the parameters of the fireball. For most parts of the program, not all of the variables in the pkl files need to be set. For example, in the Supracenter solver, the ballistic search parameters do not need to be filled out.</p>
 <p>If the terminal returns an “INI ERROR” while running the code, try setting [General] debug = True, which will print out what variables are being detected by the program.</p>
+<p>As of June 2019, the INI file format has been replaced by the PKL format to reduce outputting to a human readable form. The PKL files can be completely edited with the GUI</p>
 <div class="toctree-wrapper compound">
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="variables.html">Variables</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="variables.html#general">General</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#files">Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#parameters">Parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#ballistic">Ballistic</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#fragmentation">Fragmentation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#restrictions">Restrictions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="variables.html#sources">Sources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="variables.html#atmosphere">Atmosphere</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#perturbations">Perturbations</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#speed">Speed</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#pso">PSO</a></li>
-<li class="toctree-l2"><a class="reference internal" href="variables.html#graphing">Graphing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="variables.html#tweaks">Tweaks</a></li>
 <li class="toctree-l2"><a class="reference internal" href="variables.html#extra-stations">Extra Stations</a></li>
 </ul>
 </li>

@@ -19,6 +19,11 @@ Inversion of Arrival Times
 
 Seismic and infrasonic data can be inverted to find a fragmentation or trajectory solution.
 
+*******************
+Acoustic Ray Tracer
+*******************
+
+An direct-arrival acoustic wave may be traced through the atmosphere given winds and temperatures in the given region.
 
 .. toctree::
    :maxdepth: 2

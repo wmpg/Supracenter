@@ -139,7 +139,7 @@ class MyPopup(QWidget):
             idx = np.isfinite(X) & np.isfinite(P_p_y)
             P_p = np.polyfit(X[idx], P_p_y[idx], 1)
             pert_line_y = P_p[0]*X + P_p[1]
-            self.height_canvas.plot(x=X, y=pert_line_y, pen=(0, 255, 26, 50))
+            #self.height_canvas.plot(x=X, y=pert_line_y, pen=(0, 255, 26, 50))
             pert_opt = -P_p[1]/P_p[0]
             opt_points.append(pert_opt)
             self.height_canvas.scatterPlot(x=[pert_opt], y=[0], pen=(0, 255, 26), symbol='+')
@@ -152,21 +152,21 @@ class MyPopup(QWidget):
         P = np.polyfit(X[idx], Y[idx], 1)
         y = P[0]*np.array(X) + P[1]
 
-        self.height_canvas.plot(x=X, y=y, pen='b')
+        #self.height_canvas.plot(x=X, y=y, pen='b')
         
         optimal_height = -P[1]/P[0]
 
         idx = np.isfinite(X) & np.isfinite(Y)
         P_M = np.polyfit(X[idx], Y[idx] + time_of_meteor, 1)
         y_M = P_M[0]*np.array(X) + P_M[1]
-        self.height_canvas.plot(x=X, y=y_M, pen='b')
+        #self.height_canvas.plot(x=X, y=y_M, pen='b')
         optimal_height_M = -P_M[1]/P_M[0]
 
         P_o_y = Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M)
         idx = np.isfinite(X) & np.isfinite(P_o_y)
         P_o = np.polyfit(X[idx], P_o_y[idx], 1)
         y_o = P_o[0]*X + P_o[1]
-        self.height_canvas.plot(X, y_o, pen=(255, 0, 238))
+        #self.height_canvas.plot(X, y_o, pen=(255, 0, 238))
 
         best_guess_frac = optimal_height_M*self.setup.trajectory.pos_i.elev/(self.setup.trajectory.pos_i.elev - optimal_height + optimal_height_M)
 
@@ -189,9 +189,9 @@ class MyPopup(QWidget):
         for i in range(len(self.setup.fragmentation_point)):
             az = self.arrTimes[0, self.current_station, 2, i]
             tf = self.arrTimes[0, self.current_station, 3, i]
-            az = angle2NDE(az)
+            # az = angle2NDE(az)
             az = np.radians(az)
-            tf = np.radians(90 - (tf - 90))
+            tf = np.radians(180 - tf)
             v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
 
             angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
@@ -199,12 +199,43 @@ class MyPopup(QWidget):
         angle_off = np.array(angle_off)
 
         best_indx = np.nanargmin(abs(angle_off - 90))
+        print("Optimal Ballistic Height {:.2f} km with angle of {:.2f} deg".format(X[best_indx]/1000, angle_off[best_indx]))
 
-        self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen='b')
-        self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen='b')
+        self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen=(0, 0, 255))
+        self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen=(0, 0, 255))
         self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
         self.angle_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[90, 90], pen='r')
         self.angle_canvas.setXRange(15000, 45000, padding=0)
+        best_arr = []
+        angle_arr = []
+        for ptb in range(self.setup.perturb_times):
+            angle_off = []
+            for i in range(len(self.setup.fragmentation_point)):
+                az = self.arrTimes[ptb, self.current_station, 2, i]
+                tf = self.arrTimes[ptb, self.current_station, 3, i]
+                # az = angle2NDE(az)
+                az = np.radians(az)
+                tf = np.radians(180 - tf)
+                v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+                angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+
+            angle_off = np.array(angle_off)
+
+            best_indx = (np.nanargmin(abs(angle_off - 90)))
+            best_arr.append(best_indx)
+            angle_arr.append(angle_off[best_indx])
+            self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen=(0, 0, 255, 100))
+            self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen=(0, 0, 255, 100))
+            self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(0, 255, 26, 50), symbol='o', brush=(0, 255, 26, 50))
+            self.angle_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[90, 90], pen='r')
+
+        if self.setup.perturb:
+            data, remove = chauvenet(X[best_arr])
+            data_angle, remove_angle = chauvenet(angle_arr)
+            print("Ballistic Perturbation Range: {:.5f} - {:.5f} km, with angles of {:.2f} - {:.2f} deg"\
+                            .format(np.nanmin(data)/1000, np.nanmax(data)/1000, np.nanmin(data_angle), np.nanmax(data_angle)))
+            print("Removed Points: {:} km".format(remove))
 
         self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick')
         self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path')
@@ -457,7 +488,42 @@ class SolutionGUI(QMainWindow):
                 azim_range=[self.setup.azimuth_min, self.setup.azimuth_max],
                 elev_range=[self.setup.zenith_min, self.setup.zenith_max], v_fixed=self.setup.v_fixed, \
                 allTimes=allTimes, ax=self.seis_traj_ax)
-        
+            
+            results = np.array(results)
+            lats = results[:, 0]
+            n_points = len(lats)
+            lons = results[:, 1]
+            elevs = np.array([0]*n_points)
+            ts = results[:, 2]
+            vs = results[:, 3]*1000
+            azims = results[:, 4]
+            zangles = results[:, 5]
+            
+            pos = np.empty((n_points, 3))
+            pos_i = np.empty((n_points, 3))
+            size = np.empty((n_points))
+            sp = [None]*n_points
+            sp1 = [None]*n_points
+            color = np.empty((n_points, 4))
+
+            for i in range(n_points):
+                a = Position(lats[i], lons[i], elevs[i])
+                a.pos_loc(self.setup.ref_pos)
+                pos[i] = a.xyz
+                size[i] = 0.1
+                color[i] = (0.0, 0.0, 1.0, 1.0)
+
+                traj = tryTrajectory(ts[i], vs[i], tryAngle(azims[i]), tryAngle(zangles[i]), Position(None, None, None), Position(lats[i], lons[i], elevs[i]))
+                traj.pos_i.pos_loc(self.setup.ref_pos)
+                pos_i[i] = traj.pos_i.xyz
+
+                sp[i] = gl.GLLinePlotItem(pos=np.array([pos_i[i], pos[i]]), color=(0.0, 0.0, 1.0, 1.0), mode='line_strip')
+                self.seis_view.addItem(sp[i])
+
+                sp1[i] = gl.GLScatterPlotItem(pos=np.array([pos[i]]), size=size[i], color=color[i], pxMode=False)
+                self.seis_view.addItem(sp1[i])
+
+
         # Replot 
         elif self.setup.run_mode == 'replot':
             dat = readPoints(self.setup.points_name, header=1)
@@ -472,27 +538,27 @@ class SolutionGUI(QMainWindow):
             errorMessage('Invalid mode! Use search, replot, or manual', 2)
             return None
         
-        fig.set_facecolor("none")
-        self.seis_tab_output.removeWidget(self.seis_three_canvas)
-        self.seis_three_canvas = FigureCanvas(Figure(figsize=(15, 15)))
-        self.seis_three_canvas = FigureCanvas(fig)
-        self.seis_three_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        self.seis_tab_output.addWidget(self.seis_three_canvas)    
-        self.seis_three_canvas.draw()
-        self.seis_traj_ax.mouse_init()
+        # fig.set_facecolor("none")
+        # self.seis_tab_output.removeWidget(self.seis_three_canvas)
+        # self.seis_three_canvas = FigureCanvas(Figure(figsize=(15, 15)))
+        # self.seis_three_canvas = FigureCanvas(fig)
+        # self.seis_three_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        # self.seis_tab_output.addWidget(self.seis_three_canvas)    
+        # self.seis_three_canvas.draw()
+        # self.seis_traj_ax.mouse_init()
         SolutionGUI.update(self)
 
-        self.seis_two_lat_canvas.scatterPlot(x=sup[0::10, 0], y=sup[0::10, 1], pen='r', update=True)
+        self.seis_two_lat_canvas.scatterPlot(x=sup[:, 0], y=sup[:, 1], pen='r', update=True)
         self.seis_two_lat_canvas.setTitle('Position of Geometric Landing Point')
         self.seis_two_lat_canvas.setLabel('bottom', "x (+ East)", units='m')
         self.seis_two_lat_canvas.setLabel('left', "y (+ North)", units='m')
 
-        self.seis_two_time_canvas.scatterPlot(x=sup[0::10, 2], y=sup[0::10, 3]*1000, pen='r', update=True)
+        self.seis_two_time_canvas.scatterPlot(x=sup[:, 2], y=sup[:, 3]*1000, pen='r', update=True)
         self.seis_two_time_canvas.setTitle('Velocty and Time of Fireball')
         self.seis_two_time_canvas.setLabel('bottom', "Time after Reference", units='s')
         self.seis_two_time_canvas.setLabel('left', "Velocity", units='m/s')
 
-        self.seis_two_angle_canvas.scatterPlot(x=sup[0::10, 4], y=sup[0::10, 5], pen='r', update=True)
+        self.seis_two_angle_canvas.scatterPlot(x=sup[:, 4], y=sup[:, 5], pen='r', update=True)
         self.seis_two_angle_canvas.setTitle('Angles of Trajectory')
         self.seis_two_angle_canvas.setLabel('bottom', "Azimuth Angle", units='deg')
         self.seis_two_angle_canvas.setLabel('left', "Zenith Angle", units='deg')
@@ -508,23 +574,24 @@ class SolutionGUI(QMainWindow):
         self.seis_two_plot_canvas.setLabel('bottom', "Latitude", units='deg N')
         self.seis_two_plot_canvas.setLabel('left', "Longitiude", units='deg E')
 
-        final_pos = results[0]
-        t0 = results[2]
-        v_est = results[3]
-        azim = results[4]
-        zangle = results[5]
-        residuals = results[6]
+        final_lat = results[0, 0]
+        final_lon = results[0, 1]
+        t0 = results[0, 2]
+        v_est = results[0, 3]
+        azim = results[0, 4]
+        zangle = results[0, 5]
+        residuals = results[0, 6]
 
-        table_data = [[final_pos.lat, final_pos.lon, t0, v_est, azim, zangle]]
+        table_data = [[final_lat, final_lon, t0, v_est, azim, zangle]]
         toTable(self.seis_table, table_data)
         self.seis_table.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Time', 'Velocity', 'Azimuth', 'Zenith'])
         header = self.seis_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
 
-        toTable(self.seis_resids, residuals)
-        self.seis_resids.setHorizontalHeaderLabels(['Station', 'Residual'])
-        header2 = self.seis_resids.horizontalHeader()
-        header2.setSectionResizeMode(QHeaderView.Stretch)
+        # toTable(self.seis_resids, residuals)
+        # self.seis_resids.setHorizontalHeaderLabels(['Station', 'Residual'])
+        # header2 = self.seis_resids.horizontalHeader()
+        # header2.setSectionResizeMode(QHeaderView.Stretch)
 
     def trajSolver(self):
 
@@ -813,6 +880,8 @@ class SolutionGUI(QMainWindow):
         else:
             errorMessage('Station and waveform data file not found! Download the waveform files first!', 2)
             return None
+
+        stn_list = stn_list + self.setup.stations
 
         for stn in stn_list:
             text = pg.TextItem(text='{:}-{:}'.format(stn.network, stn.code),\
@@ -1448,7 +1517,7 @@ class SolutionGUI(QMainWindow):
             mseed_file = stn.file_name
             mseed_file_path = os.path.join(self.dir_path, mseed_file)
 
-            if os.path.isfile(mseed_file_path):
+            if os.path.isfile(mseed_file_path) and stn.code not in self.setup.rm_stat:
                 filtered_stn_list.append(stn)
 
             else:
@@ -2419,10 +2488,38 @@ class SolutionGUI(QMainWindow):
             results[ptb_n] = psoSearch(s_info, weights, s_name, self.setup, sounding_p, manual=False)
 
             print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
+            print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
+                .format(results[ptb_n].x_opt.lat, results[ptb_n].x_opt.lon, results[ptb_n].x_opt.elev, results[ptb_n].motc))
             
         self.scatterPlot(self.setup, results, n_stations, xstn, s_name, dataset, manual=False)
 
         self.residPlot(results, s_name, xstn, self.setup.working_directory, n_stations, manual=False)
+
+        print("Results")
+        for ii, result in enumerate(results):
+            if ii >= 1:
+                print("Error Function: {:5.2f} (Perturbation {:4d}) | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}"\
+                    .format(results[ii].f_opt, ii, results[ii].x_opt.lat, results[ii].x_opt.lon, \
+                        results[ii].x_opt.elev, results[ii].motc))
+            else:
+                print("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}"\
+                    .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
+                        results[ii].x_opt.elev, results[ii].motc))
+
+        file_name = os.path.join(self.setup.working_directory, self.setup.fireball_name, "SupracenterResults.txt")
+        print('Output printed at: {:}'.format(file_name))
+
+        with open(file_name, "w") as f:
+            f.write("Results\n")
+            for ii, result in enumerate(results):
+                if ii >= 1:
+                    f.write("Error Function: {:5.2f} (Perturbation {:4d}) | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
+                        .format(results[ii].f_opt, ii, results[ii].x_opt.lat, results[ii].x_opt.lon, \
+                            results[ii].x_opt.elev, results[ii].motc))
+                else:
+                    f.write("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
+                        .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
+                            results[ii].x_opt.elev, results[ii].motc))
 
         # set row count
         self.sup_results_table.setRowCount(n_stations + 1)
@@ -2474,6 +2571,8 @@ class SolutionGUI(QMainWindow):
 
             results[ptb_n] = psoSearch(s_info, weights, s_name, self.setup, sounding_p, manual=True)
             print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
+            print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
+                .format(results[ptb_n].x_opt.lat, results[ptb_n].x_opt.lon, results[ptb_n].x_opt.elev, results[ptb_n].motc))
         
         n_stations = len(s_info)
         xstn = s_info[0:n_stations, 0:3]
@@ -2853,6 +2952,13 @@ class SolutionGUI(QMainWindow):
 
         # Add stations with color based off of residual
         ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
+
+        
+
+        ax.plot3D([self.setup.trajectory.pos_f.lat,  self.setup.trajectory.pos_i.lat ],\
+                  [self.setup.trajectory.pos_f.lon,  self.setup.trajectory.pos_i.lon ],\
+                  [self.setup.trajectory.pos_f.elev, self.setup.trajectory.pos_i.elev],
+                  'blue')
 
         for ptb in range(setup.perturb_times):
             

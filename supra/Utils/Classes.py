@@ -465,4 +465,4 @@ class Trajectory:
 if __name__ == '__main__':
     A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
     #A = Trajectory(0, 13913, pos_i=Position(-23.5742415562, 132.712445759, 100000), pos_f=Position(-23.616963, 132.902681, 0))
-    A.trajInterp(div=100, write=True)
+    A.trajInterp(div=250, write=True)

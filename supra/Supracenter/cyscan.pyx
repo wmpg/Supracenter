@@ -134,8 +134,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     ### Scan Loop ###
     while not found:
         
-        a = np.cos(Phi)
-        b = np.sin(Phi)
+        a, b = np.cos(Phi), np.sin(Phi)
 
         for i in range(n_layers - 1):
 

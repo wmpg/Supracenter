@@ -2,6 +2,7 @@ import numpy as np
 import os
 import copy
 
+
 from supra.Utils.Classes import Position
 from supra.GUI.GUITools import errorMessage
 from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival
@@ -9,6 +10,39 @@ from supra.Supracenter.SPPT import perturb
 from supra.Utils.Formatting import loadingBar
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan import cyscan
+
+def findPoints(setup):    
+    GRID_SPACE = 50
+    MIN_HEIGHT = 15000
+    MAX_HEIGHT = 60000
+
+    u = setup.trajectory.vector.xyz
+    ground_point = setup.trajectory.pos_f.xyz
+    # find top boundary of line given maximum elevation of trajectory
+    if setup.trajectory.pos_i.elev != None:
+        scale = -setup.trajectory.pos_i.elev/u[2]
+
+    else:
+        scale = -100000/u[2]
+
+    # define line top boundary
+    top_point = ground_point - scale*u
+
+    ds = scale / (GRID_SPACE)
+
+    points = []
+
+    for i in range(GRID_SPACE + 1):
+        points.append(top_point + i*ds*u)
+
+    points = np.array(points)
+
+    offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
+    bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
+
+    points = np.array(points[offset:(bottom_offset+1)])
+
+    return points
 
 def calcAllTimes(stn_list, setup, sounding):
     """ 
@@ -24,6 +58,11 @@ def calcAllTimes(stn_list, setup, sounding):
     allTimes: [ndarray] a ndarray that stores the arrival times for all stations over every perturbation
     [perturbation, station, 0 - ballistic/ 1 - fragmentation/ 2 - Azimuths of Initial Rays, 3 - Takeoff angles of Initial Rays, frag number (0 for ballistic)]
     """
+
+
+    # define line bottom boundary
+    
+    points = findPoints(setup)
 
     if setup.perturb_times == 0:
         setup.perturb_times = 1
@@ -107,7 +146,7 @@ def calcAllTimes(stn_list, setup, sounding):
 
                         # Time to travel from trajectory to station
                         b_time = timeOfArrival(stn.position.xyz, setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
-                                                    setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, sounding=sounding_p, \
+                                                    setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding_p, \
                                                     travel=False, fast=False, ref_loc=ref_pos)# + setup.t 
 
                         bTimes[i] = b_time

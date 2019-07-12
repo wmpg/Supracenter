@@ -13,12 +13,12 @@ Most data sources also allow for .kml files to be downloaded. It may be useful t
 
 Sites that stations can be downloaded from:
 
-North Carolina - http://service.ncedc.org/fdsnws/dataselect/1/
-South Carolina - https://service.scedc.caltech.edu/fdsnws/dataselect/1/
-Turkey - http://tdvm.afad.gov.tr/
-Europe - http://udim.koeri.boun.edu.tr/mseed/
-Europe - http://eida.gfz-potsdam.de/webdc3/
-IRIS - http://service.iris.edu/fdsnws/dataselect/docs/1/builder/
+* North Carolina - http://service.ncedc.org/fdsnws/dataselect/1/
+* South Carolina - https://service.scedc.caltech.edu/fdsnws/dataselect/1/
+* Turkey - http://tdvm.afad.gov.tr/
+* Europe - http://udim.koeri.boun.edu.tr/mseed/
+* Europe - http://eida.gfz-potsdam.de/webdc3/
+* IRIS - http://service.iris.edu/fdsnws/dataselect/docs/1/builder/
 
 Others may be found by searching for .mseed files online
 

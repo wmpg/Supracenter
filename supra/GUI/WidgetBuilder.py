@@ -8,6 +8,8 @@ from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.figure import Figure
 
 import pyqtgraph as pg
+from pyqtgraph.Qt import QtCore, QtGui
+import pyqtgraph.opengl as gl
 
 from supra.GUI.GUITools import *
 
@@ -230,7 +232,7 @@ def addSeisTrajWidgets(obj):
     seis_tab = QWidget()
     obj.master_seis = QHBoxLayout()
     obj.seis_tab_input = QVBoxLayout()
-    obj.seis_tab_output = QVBoxLayout()
+    obj.seis_tab_output = QGridLayout()
 
     seis_tab.setLayout(obj.master_seis)
     obj.tab_widget.addTab(seis_tab, "Seismic Trajectory")
@@ -245,21 +247,28 @@ def addSeisTrajWidgets(obj):
     obj.seis_tab_input.addLayout(tab_layout)
 
     obj.seis_search = QPushButton('Search')
-    tab_layout.addWidget(obj.seis_search, 1, 1, 1, 4)
+    tab_layout.addWidget(obj.seis_search, 0, 1, 1, 100)
     obj.seis_search.clicked.connect(obj.seisSearch)
     
     obj.seis_table = QTableWidget()
-    table_group.addWidget(obj.seis_table, 1, 1, 1, 4)
+    table_group.addWidget(obj.seis_table, 1, 1, 1, 100)
 
     obj.seis_resids = QTableWidget()
-    table_group.addWidget(obj.seis_resids, 2, 1, 1, 4)
+    table_group.addWidget(obj.seis_resids, 2, 1, 1, 100)
 
-    obj.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
-    obj.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    obj.seis_tab_output.addWidget(obj.seis_three_canvas)
+    #obj.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
+    # obj.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
+
+    obj.seis_view = gl.GLViewWidget()
+    #view.setMinimumSize(384,360)
+    xgrid = gl.GLGridItem()
+    xgrid.setSize(x=100000, y=100000, z=100000)
+    xgrid.setSpacing(x=10000, y=10000, z=10000)
+    obj.seis_view.addItem(xgrid)
+    obj.seis_tab_output.addWidget(obj.seis_view, 1, 1, 50, 1)
 
     two_graphs = QGridLayout()
-    obj.seis_tab_output.addLayout(two_graphs)
+    obj.seis_tab_output.addLayout(two_graphs, 51, 1, 50, 1)    
 
     obj.seis_two_lat_view = pg.GraphicsLayoutWidget()
     obj.seis_two_lat_canvas = obj.seis_two_lat_view.addPlot()

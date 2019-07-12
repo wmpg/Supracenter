@@ -33,6 +33,11 @@ W.I.P. Documentation of functions in the code
 
    :rtype: array (time of arrival, initial azimuth angle, initial takeoff angle)
 
+.. class:: Position(self, lat, lon, elev):
+
+   Defines a 3-D position in geographic coordinates, which can be easily converted to local coordinates with a given reference position.
+
+   
 .. toctree::
    :maxdepth: 2
 

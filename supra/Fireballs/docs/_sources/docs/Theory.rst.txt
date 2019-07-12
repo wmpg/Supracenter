@@ -20,6 +20,12 @@ The low-frequency sounds representing the shock wave decaying at long distances 
 
 In previous works, the time of arrivals of a shock wave at infrasound and seismic stations was used to find fragmentation points, as well as the ballistic (or cylindrical) arrival. These are verified by other methods of observing the meteor, such as by optical instruments. Infrasound provides another way to observe bolides and may be used to estimate the fireball trajectory, fragmentation points, and energy deposition profile.
 
+*******
+Sources
+*******
+
+Ballistic vs. Fragmentation anaylsis
+
 .. toctree::
    :maxdepth: 2
 

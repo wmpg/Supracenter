@@ -8,7 +8,7 @@ import sys
 import datetime
 
 import numpy as np
-from pyswarm import pso
+from supra.Utils.pso import pso
 from functools import partial
 import matplotlib.pyplot as plt
 import pyximport
@@ -18,69 +18,8 @@ from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan import cyscan
 from supra.Utils.AngleConv import loc2Geo, geo2Loc, trajRestriction, point2LineDist3D, angle2NDE
 from supra.Utils.Classes import Position
+from supra.Utils.Formatting import loadingBar, meteorspinny
 from supra.Supracenter.plot import residPlot, scatterPlot, outputText, outputWeather
-
-sup = [0, 0, 0]
-errors = [0] 
-
-def loop(x, stns, w, tweaks, ref_pos, dataset, j):
-    """ Helper function that is the loop to use with multiprocessing
-    returns the travel time to each station as calculated with cyscan
-
-    Arguments:
-        h: passed variables and iterable variable
-            j: [int] iterable variable
-            x: [list] current Supracenter position
-            stns: [list] station location and time of arrivals
-            w: [list] weights of each station
-            tweaks: [Object] user-defined options
-            ref_pos: [list] mean position of stations for use when converting to/from local coordinates
-            dataset: [ndarray] atmospheric profile of the search area
-
-    Returns:
-        sotc: calculated time for the current search position signal to hit each station
-    """
-    
-    # number of stations total
-    n_stations = len(stns)
-
-    # Station Times
-    tobs = stns[0:n_stations, 4]
-
-    # Station Location
-    xstn = stns[0:n_stations, 0:3]
-
-    # Initialize arrays
-    # Simulated travel times to each station
-    time3D = np.empty(n_stations)
-
-    # Residuals to each station
-    sotc = np.empty(n_stations)
-
-    # 0 - custom weather, 1 - MERRA, 2 - ECMWF, 3 - UKMO
-    weather_type = tweaks[0]
-    
-    # if station has weight
-    if w[j] > 0:
-
-        # Create interpolated atmospheric profile for use with cyscan
-        sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], weather_type, ref_pos, copy.copy(dataset))
-
-
-        # Use distance and atmospheric data to find path time
-        time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
-                                            wind=tweaks[1], n_theta=tweaks[2], n_phi=tweaks[3], \
-                                            precision=tweaks[4])
-        # Residual time for each station
-        sotc[j] = tobs[j] - time3D[j]
-
-    # If station has no weight
-    else:
-        sotc[j] = tobs[j]
-
-
-    return sotc[j]
-
 
 def timeFunction(x, *args):
     ''' Helper function for PSO
@@ -102,9 +41,8 @@ def timeFunction(x, *args):
         err: [float] error in the current position, x, searched
     '''
 
-    
     # Retrieve passed arguments
-    stns, w, kotc, setup, ref_pos, dataset, pool = args
+    stns, w, kotc, setup, ref_pos, dataset, v = args
 
     # number of stations total
     n_stations = len(stns)
@@ -124,15 +62,40 @@ def timeFunction(x, *args):
 
     ### multiprocessing
 
-    # Pass data through to multiprocess loop
-    iterable = range(n_stations)
+    # number of stations total
+    n_stations = len(stns)
 
-    # Store functions to be used with multiprocessing
-    func = partial(loop, x, stns, w, [setup.weather_type, setup.enable_winds, setup.n_theta, setup.n_phi,\
-                                        setup.angle_precision], setup.ref_pos, dataset)
+    # Station Times
+    tobs = stns[0:n_stations, 4]
+
+    # Station Location
+    xstn = stns[0:n_stations, 0:3]
+
+    # Initialize arrays
+    # Simulated travel times to each station
+    time3D = np.empty(n_stations)
+
+    # Residuals to each station
+    sotc = np.empty(n_stations)
     
-    # Compute time of flight residuals for all stations
-    sotc = pool.map(func, iterable)
+    for j in range(n_stations):
+        # if station has weight
+        if w[j] > 0:
+
+            # Create interpolated atmospheric profile for use with cyscan
+            sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], setup.weather_type, ref_pos, copy.copy(dataset))
+
+
+            # Use distance and atmospheric data to find path time
+            time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
+                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+                                                precision=setup.angle_precision, tol=setup.angle_error_tol)
+            # Residual time for each station
+            sotc[j] = tobs[j] - time3D[j]
+
+        # If station has no weight
+        else:
+            sotc[j] = tobs[j]
     
     motc = np.dot(wn, sotc)/sum(wn)
     ##########
@@ -145,44 +108,98 @@ def timeFunction(x, *args):
 
     # Unknown occurrence time
     else:
-        err = np.dot(wn, np.absolute(sotc - np.dot(wn, sotc)/nwn))/nwn
+        err = np.dot(wn, np.absolute(sotc - motc))/nwn
 
-    global sup 
-    global errors
+    # if setup.debug:
+    #     # print out current search location
+    #     print("Supracenter: {:10.2f} m x {:10.2f} m y {:10.2f} m z  Time: {:8.2f} Error: {:25.2f}".format(x[0], x[1], x[2], motc, err))
 
-    # Save points and errors for plotting
-    MAX_ERROR = 1000000
-    # check: Err == nan
-    if not err > 0:
-        err = MAX_ERROR
-
-    # Method to get times to be inside the restrictions. Set errors of time outside of range to be proportional
-    # to how far outside of the range it is
-
-    if motc < setup.t_min or motc > setup.t_max:
-        err = abs(motc - (setup.t_min + setup.t_max)/2)*setup.max_error + setup.max_error
-
-    # if setup.restrict_to_trajectory:
-    #     if d > setup.traj_tol:
-    #         err = abs(setup.traj_tol - d)*min(abs(motc - setup.min_time), abs(motc - setup.max_time))*setup.max_error + setup.max_error
-    
-    # check large error
-    if err > setup.max_error:
-
-        errors = np.hstack((errors, setup.max_error))
-        sup = np.vstack((sup, [x[0], x[1], x[2]]))
-
-    else:
-        errors = np.hstack((errors, err))
-        sup = np.vstack((sup, [x[0], x[1], x[2]]))
-
-    if setup.debug:
-        # print out current search location
-        print("Supracenter: {:10.2f} m x {:10.2f} m y {:10.2f} m z  Time: {:8.2f} Error: {:25.2f}".format(x[0], x[1], x[2], motc, err))
-
-    
     # variable to be minimized by the particle swarm optimization
     return err
+
+def timeConstraints(x, *args):
+        # Retrieve passed arguments
+    stns, w, kotc, setup, ref_pos, dataset, v = args
+
+    # number of stations total
+    n_stations = len(stns)
+
+    # Residuals to each station
+    sotc = np.empty(n_stations)
+
+    # Initialize variables
+    # Weight of each station
+    wn = w
+
+    # Mean occurrence time
+    motc = 0
+
+    ### multiprocessing
+
+    # number of stations total
+    n_stations = len(stns)
+
+    # Station Times
+    tobs = stns[0:n_stations, 4]
+
+    # Station Location
+    xstn = stns[0:n_stations, 0:3]
+
+    # Initialize arrays
+    # Simulated travel times to each station
+    time3D = np.empty(n_stations)
+
+    # Residuals to each station
+    sotc = np.empty(n_stations)
+    
+    for j in range(n_stations):
+        # if station has weight
+        if w[j] > 0:
+
+            # Create interpolated atmospheric profile for use with cyscan
+            sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], setup.weather_type, ref_pos, copy.copy(dataset))
+
+
+            # Use distance and atmospheric data to find path time
+            time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
+                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
+                                                precision=setup.angle_precision, tol=setup.angle_error_tol)
+            # Residual time for each station
+            sotc[j] = tobs[j] - time3D[j]
+
+        # If station has no weight
+        else:
+            sotc[j] = tobs[j]
+    
+    t_avg = (setup.t_min + setup.t_max)/2
+
+
+    diff = abs(motc - t_avg)
+    TOL = setup.t_max - t_avg
+    motc = np.dot(wn, sotc)/sum(wn)
+
+    
+    if diff < TOL:
+        return diff
+    else:
+        return -diff
+
+def trajConstraints(x, *args):
+    # Retrieve passed arguments
+    stns, w, kotc, setup, ref_pos, dataset, v = args
+
+    TOL = 1000
+
+    diff_vect = np.array(x) - x[2]/v[2] * v
+
+    diff = (diff_vect[0]**2 + diff_vect[1]**2 + diff_vect[2]**2)**0.5
+
+
+    # print(diff)
+    if diff <= TOL:
+        return diff
+    else:
+        return -diff
 
 def psoSearch(stns, w, s_name, setup, dataset, manual=False):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
@@ -248,6 +265,16 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
     # combined weights
     nwn = sum(w)
 
+    try:
+        v = -setup.trajectory.vector.xyz
+        setup.ref_pos = setup.trajectory.pos_f
+        if setup.debug:
+            print("Constraining Trajectory")
+    except:
+        v = [None]
+        if setup.debug:
+            print("Free Search")
+
     # Prevent search below stations
     if search_min.elev < max(xstn[:, 2]):
 
@@ -261,11 +288,8 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
         # Boundaries of search volume
         #  [x, y, z] local coordinates
 
-        # Init pool of workers
-        pool = multiprocessing.Pool(multiprocessing.cpu_count())
-
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, [setup.ref_pos.lat, setup.ref_pos.lon, setup.ref_pos.elev], dataset, pool)
+        args = (stns, w, kotc, setup, setup.ref_pos, dataset, v)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location
@@ -276,12 +300,14 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
         #     x_opt, f_opt = pso(timeFunction, lb, ub, f_ieqcons=lineConstraint, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
         #                 phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep) 
         # else:
+        if v[0] != None:
+            x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, ieqcons=[trajConstraints, timeConstraints], args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
+                    phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep, processes=multiprocessing.cpu_count(), particle_output=True) 
+        else:
+            x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
+                    phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep, processes=multiprocessing.cpu_count(), particle_output=True) 
 
-        x_opt_temp, f_opt = pso(timeFunction, search_min.xyz, search_max.xyz, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
-                phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep) 
 
-        pool.close()
-        pool.join()
         print('Done Searching')
         
         x_opt = Position(0, 0, 0)
@@ -295,6 +321,8 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
 
         single_point.position.pos_loc(setup.ref_pos)
         x_opt = single_point.position
+        sup = single_point.position.xyz
+        errors=0
 
 
     # Get results for current Supracenter
@@ -326,19 +354,6 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
     except ValueError:
         otc = None
 
-    global sup
-    global errors
-
-    try:
-        # Potential Supracenter locations
-        sup = np.delete(sup, 0, 0)
-
-        # Error in each potential Supracenter
-        errors = np.delete(errors, 0)
-    except:
-        pass
-
-    #Filter errors
     try:
         #while max(errors) > setup.max_error/100:
         a = []
