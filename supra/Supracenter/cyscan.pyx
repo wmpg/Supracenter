@@ -128,7 +128,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         float takeoff = 0
 
     # ignore negative roots
-
+    last_error = 1e20
     np.seterr(divide='ignore', invalid='ignore')
 
     ### Scan Loop ###
@@ -189,9 +189,17 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):
             k, l = k[len(k)//2], l[len(l)//2]
+        
+        new_error = E[k, l]
+        # #print(abs(new_error - last_error)/(last_error + 1e-6))
+        # if (abs(new_error - last_error)/(last_error + 1e-25) < 1) or (new_error > last_error):
+        #     # pass on the azimuth & ray parameter information for use in traveltime calculation
+        #     if new_error <= tol or dtheta < precision or dphi < precision:
+        #         found = True
+        #     else: 
+        #         # As handled in original Supracenter
+        #         return np.array([np.nan, np.nan, np.nan])
 
-
-        # If the error is within tolerance
         if E[k, l] < tol or dtheta < precision or dphi < precision:
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
@@ -199,7 +207,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
         else:
             ### FAST PART ###
-            
+            last_error = E[k, l]
             # reduce evenly in both directions
             n_phi = n_theta
 
@@ -265,8 +273,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     ######################
     ### 0.0033s
-    
-    
+
     # Final solution for initial azimuth angle
 
     # Rotate coordinate system 90 degrees CCW

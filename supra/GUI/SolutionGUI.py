@@ -806,17 +806,17 @@ class SolutionGUI(QMainWindow):
 
             print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y at {:6.2f} s'.format(err[0], xline[-1], yline[-1], t_arrival[0]))
 
-            if setup.debug:
-                F = Position(0, 0, 0)
+            # if setup.debug:
+            #     F = Position(0, 0, 0)
                 
-                F.x = xline[-1]
-                F.y = yline[-1]
-                F.z = zline[-1]
+            #     F.x = xline[-1]
+            #     F.y = yline[-1]
+            #     F.z = zline[-1]
 
-                F.pos_geo(B)
+            #     F.pos_geo(B)
             
-                print('Final point:')
-                print(F)
+            #     print('Final point:')
+            #     print(F)
 
         except:
             print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y'.format(err[0], np.nan, np.nan))
@@ -2219,11 +2219,18 @@ class SolutionGUI(QMainWindow):
 
                 print('++++++++++++++++')
                 print('Fragmentation {:} ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
+                frag.position.pos_loc(stn.position)
+                stn.position.pos_loc(stn.position)
+                print(frag.position.lat, frag.position.lon)
+                xyz_range = np.sqrt((frag.position.x - stn.position.x)**2 + \
+                                    (frag.position.y - stn.position.y)**2 + \
+                                    (frag.position.z - stn.position.z)**2)
+                print('Range {:7.3f} km'.format(xyz_range/1000))
                 if f_time == f_time:
                     # Plot Fragmentation Prediction
                     self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
                     stn.stn_distance(frag.position)
-                    print("Range: {:7.3f} km".format(stn.distance/1000))                   
+                    #print("Range: {:7.3f} km".format(stn.distance/1000))                   
                     print('Arrival: {:.3f} s'.format(f_time))
 
                 else:
