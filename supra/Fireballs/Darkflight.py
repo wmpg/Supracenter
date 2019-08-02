@@ -1,3 +1,4 @@
+
 import subprocess
 import os
 import sys
@@ -121,7 +122,7 @@ def runDarkflight(params, mass, uncertainty=False):
 
     # Directory of Darkflight
     darkflight_dir = "/local4/fireballs/darkflight"
-    
+
     # Run Darkflight through terminal calls
 
     # darkflight.c help menu

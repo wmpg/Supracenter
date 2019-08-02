@@ -80,6 +80,37 @@ cpdef zInteg(long d, long s, region):
     return interval
 
 
+def zInterp(d, s, region, div=100):
+    f = 0
+    max_indx = 0
+    min_indx = 0
+    r = d - s
+    dr = r/(div)
+    column_list = []
+    
+    for i in range(div):
+        h = d - i*dr
+        row_list = []
+        
+        for j in range(len(region[:, 0])):
+            if h - region[j, 0] < 0:
+                max_indx = j
+                min_indx = j - 1
+                f = (h - region[j - 1, 0])/(region[j, 0] - region[j - 1, 0])
+                break
+
+        for e in range(len(region[0])):
+            if e > 0:
+                row_list.append(f*(region[max_indx, e] - region[min_indx, e]) + region[min_indx, e])
+            else:
+                row_list.append(h)
+        
+        column_list.append(row_list)
+
+    region = np.concatenate((region, np.array(column_list)), axis=0)
+    region = np.unique(region, axis=0)
+    region = region[region[:,0].argsort()]
+    return region
 
 if __name__ == "__main__":
 

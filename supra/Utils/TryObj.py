@@ -62,11 +62,15 @@ def tryPosition(lat, lon, elev):
     return result
 
 def tryAngle(angle):
-
+    try:
+        if len(angle) == 0:
+            return None
+    except:
+        return None
     try:
         result = Angle(tryFloat(angle))
     except:
-        result = Angle(None)
+        result = None
 
     return result
 

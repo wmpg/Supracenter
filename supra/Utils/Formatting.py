@@ -15,12 +15,13 @@ def loadingBar(message, step, max_steps):
 
     load_len = os.get_terminal_size().columns - len(message) - 12
     percent = step/max_steps
-    load = round(percent*load_len) + 1
+    load = round(percent*load_len) - 5
+    pattern = ['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}', '¯_-0}', '_-¯0}']
+    a = random.randint(0, len(pattern)-1)
 
-    sys.stdout.write("\r{:} : {:}{:} {:7.2%}{:}".format(message, '#'*(load), ' '*(load_len -load), percent, ' '))
+    sys.stdout.write("\r{:} : {:}{:} {:7.2%} ".format(message, '*'*(load), pattern[a], percent))
     sys.stdout.flush()
-    if step == max_steps:
-        print('')
+
 
 def randospinny(message):
     sym = ['\\', '/', '|', '_', '-', '=', '+', '#', 'o']
@@ -39,8 +40,5 @@ def meteorspinny(message, count, pattern=['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}'
     load_len = os.get_terminal_size().columns - len(message)
     a = random.randint(0, len(pattern)-1)
     count = count%load_len + len(pattern[0])
-
     sys.stdout.write(('\r' + message + ' '*count + pattern[a] + ' '*(load_len - count))[:load_len + len(message) + 1])
-
     sys.stdout.flush()
-

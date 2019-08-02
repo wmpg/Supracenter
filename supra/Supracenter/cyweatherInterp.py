@@ -64,7 +64,8 @@ def divLine(a, b, div, points_x,  points_y):
         # round each division to the usable points
         # x_opt = bisearch(np.flip(points_x, 0), a[0] + i*dx)
         # y_opt = bisearch(np.flip(points_y, 0), b[0] + i*dy) 
-        x_opt, y_opt = nearestPoint2D([points_x, points_y], [a[0] + i*dx, b[0] + i*dy])
+
+        x_opt, y_opt = nearestPoint2D([points_x, points_y], [a[0] + i*dx, a[1] + i*dy])
 
         # add points to usable points list
         p.append([points_x[x_opt], points_y[y_opt]])
@@ -117,7 +118,7 @@ def interpWeather(s, d, weather_type, dataset):
 
         # ECMWF
         elif weather_type == 'ecmwf':
-            
+
             # find atmospheric profile for given lat/lon
             loc_sounding = np.array(findECMWFSound(points[i][0], points[i][1], dataset))
 

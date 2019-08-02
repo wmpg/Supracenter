@@ -291,7 +291,7 @@ class Supracenter:
         return [self.position.lat, self.position.lon, self.position.elev, self.time]       
 
 class Trajectory:
-    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=None, pos_f=None):
+    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None)):
         
         self.v = v
 
@@ -462,7 +462,24 @@ class Trajectory:
 
         return frac*time_of_meteor
 
+    def getRanges(self, stat_pos, div=100, write=False):
+
+        P = self.trajInterp(div=div)
+
+        pos_list = []
+        for element in P:
+            r = stat_pos.pos_distance(element)
+            pos_list.append(r)
+
+            if write:
+                print(element, r)
+
+        return pos_list
+
 if __name__ == '__main__':
     A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    A.getRanges(Position(48.846135, 13.71793, 1141.1), write=True, div=1000)
     #A = Trajectory(0, 13913, pos_i=Position(-23.5742415562, 132.712445759, 100000), pos_f=Position(-23.616963, 132.902681, 0))
-    A.trajInterp(div=500, write=True)
+    #P = A.trajInterp(div=500, write=True)
+    # A = Trajectory(0, 13913, pos_i=Position(43.721, -78.680, 95536), pos_f=Position(44.734, -78.212, 29307))#pos_f=Position(44.828, -78.153, 28866))
+    # print(A.azimuth)

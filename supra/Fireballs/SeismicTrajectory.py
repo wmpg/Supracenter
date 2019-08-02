@@ -37,7 +37,8 @@ except:
     import configparser
 
 
-from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyzInteg import zInterp
 import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Supracenter.fetchECMWF import fetchECMWF
@@ -370,9 +371,9 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u):
         S = np.array(points[i])
 
         zProfile = zInteg(D[2], S[2], z_profile)
+        zProfile = zInterp(D[2], S[2], zProfile, div=37)
+        cyscan_res.append(cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol))
 
-        cyscan_res.append(cyscan(S, D, zProfile, wind=setup.enable_winds))
-    
     cyscan_res = np.array(cyscan_res)
     T = cyscan_res[:, 0]
     az = cyscan_res[:, 1]

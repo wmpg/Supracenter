@@ -9,7 +9,13 @@ from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival
 from supra.Supracenter.SPPT import perturb
 from supra.Utils.Formatting import loadingBar
 from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyscan2 import cyscan
+#from supra.Supracenter.faultscan import cyscan as faultscan
+from supra.Supracenter.pscan import psoRayTrace
+
+import pyximport
+pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+from supra.Supracenter.cyzInteg import zInterp
 
 def findPoints(setup):    
     GRID_SPACE = 50
@@ -143,12 +149,11 @@ def calcAllTimes(stn_list, setup, sounding):
 
                         stn.position.pos_loc(ref_pos)
                         setup.traj_f.pos_loc(ref_pos)
-
+                        
                         # Time to travel from trajectory to station
                         b_time = timeOfArrival(stn.position.xyz, setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
                                                     setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding_p, \
                                                     travel=False, fast=False, ref_loc=ref_pos)# + setup.t 
-
                         bTimes[i] = b_time
                     else:
                         bTimes[i] = np.nan
@@ -158,18 +163,21 @@ def calcAllTimes(stn_list, setup, sounding):
 
             # Fragmentation Prediction
             f_time = np.array([0]*no_of_frags)
+            # Arrival times to the station
+            fTimes = [0]*no_of_frags
+            
+            # Azimuths of initial rays
+            fAz =    [0]*no_of_frags
+            
+            # Takeoff angles of initial rays
+            fTf =    [0]*no_of_frags
 
+            # Error of ray trace
+            fEr =    [0]*no_of_frags
             # If manual fragmentation search is on
             if setup.show_fragmentation_waveform:
                 
-                # Arrival times to the station
-                fTimes = [0]*no_of_frags
-                
-                # Azimuths of initial rays
-                fAz =    [0]*no_of_frags
-                
-                # Takeoff angles of initial rays
-                fTf =    [0]*no_of_frags
+
 
                 for i, frag in enumerate(setup.fragmentation_point):
                     count += 1
@@ -187,21 +195,31 @@ def calcAllTimes(stn_list, setup, sounding):
                     # Cut down atmospheric profile to the correct heights, and interp
                     zProfile, _ = getWeather(np.array([supra.lat, supra.lon, supra.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), setup.weather_type, \
                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=False)
+                    
+                    zProfile = zInterp(stn.position.z, supra.z, zProfile, div=37)
 
+                    # u = zProfile[:, 2]*np.sin(zProfile[:, 3])
+                    # v = zProfile[:, 2]*np.cos(zProfile[:, 3])
+
+                    # zProfile[:, 2] = u
+                    # zProfile[:, 3] = v
                     # Travel time of the fragmentation wave
-                    f_time, frag_azimuth, frag_takeoff = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                        n_theta=setup.n_theta, n_phi=setup.n_phi, precision=setup.angle_precision, tol=setup.angle_error_tol)
+                    f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                        n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+                    #f_time, frag_azimuth, frag_takeoff, _ = psoRayTrace(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile)
+
 
                     fTimes[i] = f_time + frag.time
                     fAz[i]    = frag_azimuth
                     fTf[i]    = frag_takeoff
+                    fEr[i]    = frag_err
 
             else:
 
                 # Repack all arrays into allTimes array
                 fTimes = [np.nan]*no_of_frags
 
-            stnTimes[n] = ([np.array(bTimes), np.array(fTimes), np.array(fAz), np.array(fTf)])
+            stnTimes[n] = ([np.array(bTimes), np.array(fTimes), np.array(fAz), np.array(fTf), np.array(fEr)])
 
         allTimes[ptb_n] = np.array(stnTimes)
 

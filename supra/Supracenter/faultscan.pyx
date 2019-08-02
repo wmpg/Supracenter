@@ -19,12 +19,21 @@ from supra.Supracenter.cynwDir import nwDir
 FLOAT_TYPE = np.float64
 ctypedef np.float64_t FLOAT_TYPE_t
 
+def minIndx(arr):
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        k, l = np.where(arr == np.nanmin(arr))
+
+    if len(k > 1):
+        k, l = k[len(k)//2], l[len(l)//2]
+    
+    return k, l
+
 @cython.wraparound(False)
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, 
-    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=1e-5, float v_tol=1000):
+def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=45, n_phi=90, precision=1e-5, h_tol=1000, v_tol=1000, var_path=False):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
@@ -79,18 +88,18 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         int n_layers = len(z_profile)
 
         # Slowness, as defined in SUPRACENTER on pg 35, s = 1/c
-        np.ndarray[FLOAT_TYPE_t, ndim=1] s = 1.0/z_profile[0:n_layers, 1]
+        np.ndarray[FLOAT_TYPE_t, ndim=1] s = 1.0/np.flipud(z_profile[:, 1])
 
         # Elevation for that layer
-        np.ndarray[FLOAT_TYPE_t, ndim=1] z  = z_profile[0:n_layers, 0]
+        np.ndarray[FLOAT_TYPE_t, ndim=1] z  = z_profile[:, 0]
 
         # Set up grid of angles
         np.ndarray[FLOAT_TYPE_t, ndim=1] phi = np.linspace(azth-M_PI_2, azth+M_PI_2, n_phi)
         np.ndarray[FLOAT_TYPE_t, ndim=2] Phi = np.tile(phi, (n_theta, 1))
     
         # Component of wind vector in the direction of phi and phi + pi/2 respectively
-        np.ndarray[FLOAT_TYPE_t, ndim=2] u = nwDir(z_profile[:, 2], z_profile[:, 3], phi)
-        np.ndarray[FLOAT_TYPE_t, ndim=2] v = nwDir(z_profile[:, 2], z_profile[:, 3], phi+M_PI_2)
+        np.ndarray[FLOAT_TYPE_t, ndim=2] u = nwDir(np.flipud(z_profile[:, 2]), np.flipud(z_profile[:, 3]), phi)
+        np.ndarray[FLOAT_TYPE_t, ndim=2] v = nwDir(np.flipud(z_profile[:, 2]), np.flipud(z_profile[:, 3]), phi+M_PI_2)
 
         # Construct ray parameter net
         # Theta - the take-off angle, of the ray from the source to the station
@@ -128,14 +137,20 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         float takeoff = 0
 
     # ignore negative roots
-    last_error = 1e20
-    np.seterr(divide='ignore', invalid='ignore')
 
+    trace_var = []
+
+    counter = 0
+    np.seterr(divide='ignore', invalid='ignore')
+    last_error = 1e10
+     
     ### Scan Loop ###
     while not found:
-        
+        counter += 1
         a, b = np.cos(Phi), np.sin(Phi)
 
+        trace = []
+        error = []    
         for i in range(n_layers - 1):
 
             s2 = s[i]**2
@@ -168,96 +183,123 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 # Equation (3)
                 X += p*(delz)/(np.sqrt(s2 - p**2))
+                Y = 0
 
+            x = supra_pos[0] + np.cos(Phi)*X + np.cos(Phi + M_PI_2)*Y
+            y = supra_pos[1] + np.sin(Phi)*X + np.sin(Phi + M_PI_2)*Y
+
+            if (z[n_layers - i - 2] - detec_pos[2]) > v_tol:
+                E_tot = np.sqrt((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - i - 2] - detec_pos[2])**2)
+            else:
+                E_tot = np.sqrt((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2)
+
+            k, l = minIndx(E_tot)
+            #print((x - detec_pos[0])**2 - (a*X - b*Y - dx)**2)
+            E_h = np.sqrt((x[k, l] - detec_pos[0])**2 + (y[k, l] - detec_pos[1])**2)
+            if (z[n_layers - i - 2] - detec_pos[2]) > v_tol:
+                E_v = abs(z[n_layers - i - 2] - detec_pos[2]) 
+            else:
+                E_v = 0
                 # Calculate true destination positions (transform back)
 
+            if var_path:
+                trace_var.append([x, y, np.ones_like(E_tot)*z[n_layers - i - 2], counter, Phi, Theta])
 
-        # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
-        E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2)) 
+            trace.append([x[k, l], y[k, l], z[n_layers - i - 2]])
+            error.append([E_tot[k, l], E_h, E_v, k, l])
 
-        # Ignore all nan slices - not interested in these points
-        # Find the position of the smallest value
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            k, l = np.where(E == np.nanmin(E))
+            # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
+            
 
-        # Check for all nan error function
+            # Ignore all nan slices - not interested in these points
+            # Find the position of the smallest value
+            # Check for all nan error function
         if k.shape == (0, ):
             # As handled in original Supracenter
-            return np.array([np.nan, np.nan, np.nan, np.nan])
+            print('nan exit')
+            return np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
 
         # If there are mulitple, take one closest to phi (in the middle)
-        if len(k > 1):
-            k, l = k[len(k)//2], l[len(l)//2]
-        
-        new_error = E[k, l]
-        # #print(abs(new_error - last_error)/(last_error + 1e-6))
-        # if (abs(new_error - last_error)/(last_error + 1e-25) < 1) or (new_error > last_error):
+
+        low_error = np.nanmin(error, axis=0)[0]
+
+        low_error_indx = np.nanargmin(error, axis=0)[0]
+        k = error[low_error_indx][3]
+        l = error[low_error_indx][4]
+        # print(E_tot[k, l])
+        # print(low_error)
+        if (abs(low_error - last_error) < 1e-8):
+
+            if (error[low_error_indx][0] < 1000):
+
+                # pass on the azimuth & ray parameter information for use in traveltime calculation
+                found = True
+            else:
+                print('stationary exit')
+                #print(error[low_error_indx][1], error[low_error_indx][2])
+                return np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
+
+        # # If the error is within tolerance
+        # if E[k, l] < tol:
+
         #     # pass on the azimuth & ray parameter information for use in traveltime calculation
-        #     if new_error <= tol or dtheta < precision or dphi < precision:
-        #         found = True
-        #     else: 
-        #         # As handled in original Supracenter
-        #         return np.array([np.nan, np.nan, np.nan])
+        #     found = True
 
-        if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
+        last_error = low_error
 
-            # pass on the azimuth & ray parameter information for use in traveltime calculation
+        ### FAST PART ###
+        
+        # reduce evenly in both directions
+        n_phi = n_theta
+        N = 1
+        
+        # General Case: central take off angle is between 0 & 90 degrees
+        if ((theta[k] != M_PI_2) and (theta[k] != M_PI)):
 
-            found = True
+            # Respace net around best value
+            phi = np.linspace(N*(phi[l] - dphi), N*(phi[l] + dphi), n_phi)    
+            dphi = N*2*dphi/n_phi
 
-        else:
-            ### FAST PART ###
-            last_error = E[k, l]
-            # reduce evenly in both directions
-            n_phi = n_theta
+            # Check: theta must be > 90 degrees
+            if theta[k] - dtheta < M_PI_2:
+                theta = np.linspace(N*(M_PI_2), N*(theta[k] + dtheta), n_theta)
+            else: 
+                theta = np.linspace(N*(theta[k] - dtheta), N*(theta[k] + dtheta), n_theta) 
+            dtheta = N*2*dtheta/n_theta  
 
-            # General Case: central take off angle is between 0 & 90 degrees
-            if ((theta[k] != M_PI_2) and (theta[k] != M_PI)):
+        # Case: central takeoff angle is at 180 degrees (vertical)
+        elif (theta[k] == M_PI):
 
-                # Respace net around best value
-                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)    
-                dphi = 2*dphi/n_phi
-
-                # Check: theta must be > 90 degrees
-                if theta[k] - dtheta < M_PI_2:
-                    theta = np.linspace(M_PI_2, theta[k] + 2*dtheta, n_theta)
-                else: 
-                    theta = np.linspace(theta[k] - dtheta, theta[k] + dtheta, n_theta) 
-                dtheta = 2*dtheta/n_theta  
-
-            # Case: central takeoff angle is at 180 degrees (vertical)
-            elif (theta[k] == M_PI):
-
-                # Respace net around best value
-                # Higher accuracy in n_phi helps here
-                phi = np.linspace(0, 2*M_PI - dphi, n_phi) 
-                dphi = dphi/n_phi
-                
-                theta = np.linspace(theta[k] - dtheta, theta[k], n_theta)                      
-                dtheta = dtheta/n_theta
-
-            # Case: central takeoff angle is at 90 degrees (horizontal)
-            elif (theta[k] == M_PI_2):
-
-                # Respace net around best value
-                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)         
-                dphi = 2*dphi/n_phi  
-
-                theta = np.linspace(M_PI_2, theta[k] + 2*dtheta, n_theta) 
-                dtheta = dtheta/n_theta/2
+            # Respace net around best value
+            # Higher accuracy in n_phi helps here
+            phi = np.linspace(0, 2*M_PI - dphi, n_phi) 
+            dphi = dphi/n_phi
             
-            # Update values, and try again
-            u = nwDir(z_profile[:, 2], z_profile[:, 3], phi)
-            v = nwDir(z_profile[:, 2], z_profile[:, 3], phi + M_PI_2)
+            theta = np.linspace(theta[k] - dtheta, theta[k], n_theta)                      
+            dtheta = dtheta/n_theta
 
-            n_theta = len(theta)
-            n_phi = len(phi)
+        # Case: central takeoff angle is at 90 degrees (horizontal)
+        elif (theta[k] == M_PI_2):
 
-            # redefine variables
-            Phi = np.tile(phi, (n_theta, 1))
-            Theta = np.tile(theta, (n_phi, 1)).T
-            u0 = np.tile(u[0, :], (n_theta, 1))
+            # Respace net around best value
+            phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)         
+            dphi = 2*dphi/n_phi  
+
+            theta = np.linspace(M_PI_2, theta[k] + 2*dtheta, n_theta) 
+            dtheta = dtheta/n_theta/2
+
+        
+        # Update values, and try again
+        u = nwDir(np.flipud(z_profile[:, 2]), np.flipud(z_profile[:, 3]), phi)
+        v = nwDir(np.flipud(z_profile[:, 2]), np.flipud(z_profile[:, 3]), phi + M_PI_2)
+
+        n_theta = len(theta)
+        n_phi = len(phi)
+
+        # redefine variables
+        Phi = np.tile(phi, (n_theta, 1))
+        Theta = np.tile(theta, (n_phi, 1)).T
+        u0 = np.tile(u[0, :], (n_theta, 1))
 
 
             ### END FAST PART ###
@@ -274,7 +316,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     ######################
     ### 0.0033s
-
+    
+    
     # Final solution for initial azimuth angle
 
     # Rotate coordinate system 90 degrees CCW
@@ -287,11 +330,13 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     p1 = p[k, l]
     p2 = p[k, l]**2
     # Find sum of travel times between layers (z)
-    for i in range(n_layers - 1):
+    for i in range(low_error_indx):
 
-        s2 = s[i]**2
+        s2 = s[n_layers - i - 2]**2
         # Equation (9)
-        t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])
-    
+        t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[n_layers - i - 1] - z[n_layers - i - 2])
+
+
     ##########################
-    return np.array([t_arrival, azimuth, takeoff, E[k, l]])
+    return t_arrival, azimuth, takeoff, trace[:low_error_indx], error[low_error_indx], trace_var, counter, error
+

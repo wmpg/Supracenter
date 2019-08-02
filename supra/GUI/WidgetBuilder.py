@@ -225,6 +225,10 @@ def addMakePicksWidgets(obj):
     obj.show_height = QCheckBox('Show Height Prediction')
     check_group_layout.addWidget(obj.show_height)
 
+    obj.solve_height = QCheckBox('Solve Heights')
+    check_group_layout.addWidget(obj.solve_height)
+
+
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 
 def addSeisTrajWidgets(obj):
@@ -473,4 +477,9 @@ def addRayTracerWidgets(obj):
     obj.ray_control.addWidget(obj.ray_enable_perts, 2, 5)
     obj.ray_enable_perts.stateChanged.connect(obj.trajSolver)
 
+    obj.ray_enable_vars = QCheckBox('Enable Ray Grid')
+    obj.ray_control.addWidget(obj.ray_enable_vars, 3, 5)
+    obj.ray_enable_vars.stateChanged.connect(obj.trajSolver)
+
     obj.ray_canvas.scene().sigMouseClicked.connect(obj.rayMouseClicked)
+

@@ -105,7 +105,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         np.ndarray[FLOAT_TYPE_t, ndim=2] Theta = np.tile(theta, (n_phi, 1)).T
 
         # Component of wind along the phi direction (azimuth)
-        np.ndarray[FLOAT_TYPE_t, ndim=2] u0 = np.tile(u[n_layers-1, :], (n_theta, 1))
+        np.ndarray[FLOAT_TYPE_t, ndim=2] u0 = np.tile(u[n_layers - 1, :], (n_theta, 1))
 
         # ray parameter
         np.ndarray[FLOAT_TYPE_t, ndim=2] p = s_val*np.sin(Theta)/(1 + s_val*u0*np.sin(Theta))
@@ -135,9 +135,9 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     while not found:
         
         a, b = np.cos(Phi), np.sin(Phi)
-
+        last_z = 0
         for i in range(n_layers - 1):
-
+            
             s2 = s[i]**2
             delz = z[i + 1] - z[i]
 
@@ -153,6 +153,10 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 # This term produces nans
                 A = delz/np.sqrt(s2 - p2**2)
 
+                if np.isnan(A).all():
+
+                    break
+
                 # Equation (10)
                 X += (p2 + s2*U)*A
 
@@ -161,19 +165,19 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 # Calculate true destination positions (transform back)
                 #0.0016s
-
+                last_z = i + 1
 
             # Winds Disabled
             else:
 
                 # Equation (3)
                 X += p*(delz)/(np.sqrt(s2 - p**2))
-
+                last_z = i + 1
                 # Calculate true destination positions (transform back)
 
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
-        E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2)) 
+        E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
 
         # Ignore all nan slices - not interested in these points
         # Find the position of the smallest value
@@ -203,8 +207,10 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
-
-            found = True
+            if E[k, l] < v_tol:
+                found = True
+            else:
+                return np.array([np.nan, np.nan, np.nan, np.nan])
 
         else:
             ### FAST PART ###
@@ -287,7 +293,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     p1 = p[k, l]
     p2 = p[k, l]**2
     # Find sum of travel times between layers (z)
-    for i in range(n_layers - 1):
+    for i in range(n_layers - 1):# - n_layers + last_z):
 
         s2 = s[i]**2
         # Equation (9)

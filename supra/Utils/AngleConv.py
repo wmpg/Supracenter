@@ -205,4 +205,5 @@ def chauvenet(data):
 
 
 if __name__ == "__main__":
-    pass
+    a = [1, 2, 3]
+    print(chauvenet(a))
