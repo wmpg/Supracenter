@@ -18,6 +18,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 import scipy.signal
+import pyqtgraph.exporters
 
 from functools import partial
 
@@ -49,7 +50,7 @@ from supra.GUI.WidgetBuilder import *
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
 
-from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE, invertColor
 from supra.Utils.Formatting import *
 from supra.Utils.Classes import Position, Station, Config, Constants, Pick
 from supra.Utils.TryObj import *
@@ -57,7 +58,15 @@ from supra.Utils.TryObj import *
 global arrTimes 
 global sounding
 
+HEIGHT_SOLVER_DIV = 100
 DATA_FILE = 'data.txt'
+PEN = [(0     *255, 0.4470*255, 0.7410*255),        
+       (0.8500*255, 0.3250*255, 0.0980*255),            
+       (0.9290*255, 0.6940*255, 0.1250*255),          
+       (0.4940*255, 0.1840*255, 0.5560*255),                
+       (0.4660*255, 0.6740*255, 0.1880*255),                
+       (0.3010*255, 0.7450*255, 0.9330*255),                
+       (0.6350*255, 0.0780*255, 0.1840*255),]
 
 class MyPopup2(QScrollArea):
 
@@ -70,6 +79,25 @@ class MyPopup2(QScrollArea):
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.black)
         self.setPalette(p)
+
+        menu_bar = QMenuBar(self) 
+        #layout.addWidget(menu_bar, 0, 1)
+        file_menu = menu_bar.addMenu('&File')
+        select_menu = menu_bar.addMenu('&Select')
+
+        self.selected = False
+
+        file_export = QAction("Export Selected Menu", self)
+        file_export.setShortcut('Ctrl+E')
+        file_export.setStatusTip('Exports all selected files to svg')
+        file_export.triggered.connect(self.export)
+        file_menu.addAction(file_export)
+
+        select_all = QAction("Select All", self)
+        select_all.setShortcut('Ctrl+A')
+        select_all.setStatusTip('Selects all')
+        select_all.triggered.connect(self.select)
+        select_menu.addAction(select_all)
 
         stylesheet = """ 
         QWindow{background: black;}
@@ -85,23 +113,32 @@ class MyPopup2(QScrollArea):
         QTableWidget{color: white; background: black;}
         QScrollArea{color: white; background: black;}
         QPushButton{color: white; background: black;}
+        QMenuBar{color: white}
         """
 
         self.setStyleSheet(stylesheet)
-
+        self.position = position
         point = position
         widget = QWidget()
-        layout = QVBoxLayout(widget)
-        layout.setAlignment(Qt.AlignTop)
-        print('Best Position: {:}'.format(position))
+        self.layout = QVBoxLayout(widget)
+        self.layout.setAlignment(Qt.AlignTop)
+        for point in position:
+            print('Best Position: {:}'.format(point))
+
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         count = 0
-        max_steps = len(stn_list)*setup.perturb_times
+        max_steps = len(stn_list)*len(position)
         dataset = parseWeather(self.setup)
+        self.save_button = []
+        self.stn_view = []
+        self.stn_canvas = []
+        self.invert = []
+        self.waveform_data = [None]*len(stn_list)
         for index in range(len(stn_list)):
+        
             stn = stn_list[index]
             station_layout = QGridLayout()
-            layout.addLayout(station_layout)
+            self.layout.addLayout(station_layout)
             label_layout = QVBoxLayout()
             control_layout = QGridLayout()
             waveform_layout = QVBoxLayout()
@@ -116,44 +153,85 @@ class MyPopup2(QScrollArea):
             label_layout.addWidget(QLabel('Lon: {:}'.format(stn_list[index].position.lon)))
             label_layout.addWidget(QLabel('Elev: {:}'.format(stn_list[index].position.elev)))
 
-            control_layout.addWidget(QPushButton('-'), 0, 0)
+            self.save_button.append(QPushButton('Select'))
+            self.save_button[index].clicked.connect(partial(self.saveButton, index))
+            control_layout.addWidget(self.save_button[index], 0, 0)
             control_layout.addWidget(QPushButton('-'), 0, 1)
             control_layout.addWidget(QPushButton('-'), 1, 0)
             control_layout.addWidget(QPushButton('-'), 1, 1)
 
-            stn_view = pg.GraphicsLayoutWidget()
-            stn_canvas = stn_view.addPlot()
-            waveform_layout.addWidget(stn_view)
+            self.stn_view.append(pg.GraphicsLayoutWidget())
+            self.stn_canvas.append(self.stn_view[index].addPlot())
+            waveform_layout.addWidget(self.stn_view[index])
+            self.invert.append(False)
 
-
-            min_point, max_point = self.discountDrawWaveform(setup, index, stn_canvas)
-            for ptb_n in range(self.setup.perturb_times):
-                        
-                dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
+            min_point, max_point = self.discountDrawWaveform(setup, index, self.stn_canvas[index])
+            # for ptb_n in range(self.setup.perturb_times):
+            for p, point in enumerate(position):                
+                dataset = SolutionGUI.perturbGenerate(self, 0, dataset, SolutionGUI.perturbSetup(self))
                 zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
+                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
                 point.pos_loc(ref_pos)
                 stn.position.pos_loc(ref_pos)
                 f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                    n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-                if ptb_n == 0:
-                    nom_time = f_time
+                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+     
+                nom_time = f_time
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     try:
-                        stn_canvas.plot(x=[f_time, f_time], y=[min_point, max_point], pen='r', brush='r')
+                        self.stn_canvas[index].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
                     except:
                         pass
-                count += 1
-                loadingBar("Generating Plots", count, max_steps)
-            try:
-                stn_canvas.setXRange(nom_time-25, nom_time+25, padding=1)
-            except:
-                avg_time = stn.position.pos_distance(point)/330
-                stn_canvas.setXRange(avg_time-25, avg_time+25, padding=1)
+                    count += 1
+                    loadingBar("Generating Plots", count, max_steps)
+                try:
+                    self.stn_canvas[index].setXRange(nom_time-25, nom_time+25, padding=1)
+                except:
+                    avg_time = stn.position.pos_distance(point)/330
+                    self.stn_canvas[index].setXRange(avg_time-25, avg_time+25, padding=1)
 
         self.setWidget(widget)
         self.setWidgetResizable(True)
+
+    def yesSelect(self, index):
+        self.stn_view[index].setBackground((255, 255, 255))
+        self.waveform_data[index].setPen((0, 0, 0))
+        self.stn_canvas[index].getAxis('bottom').setPen((0, 0, 0)) 
+        self.stn_canvas[index].getAxis('left').setPen((0, 0, 0)) 
+        self.invert[index] = True
+
+    def noSelect(self, index):
+        self.stn_view[index].setBackground((0, 0, 0))
+        self.waveform_data[index].setPen((255, 255, 255))
+        self.stn_canvas[index].getAxis('bottom').setPen((255, 255, 255)) 
+        self.stn_canvas[index].getAxis('left').setPen((255, 255, 255)) 
+        self.invert[index] = False
+
+
+    def select(self):
+
+        for i in range(len(self.waveform_data)):
+
+            if self.selected:
+                self.noSelect(i)
+
+            else:
+                self.yesSelect(i)
+
+
+        self.selected = not self.selected
+
+
+    def saveButton(self, index):
+
+        if self.invert[index]:
+            #Make normal
+            self.noSelect(index)
+        else:
+            #Make inverted
+            self.yesSelect(index)
+
 
     def discountDrawWaveform(self, setup, station_no, canvas):
         # Extract current station
@@ -206,17 +284,188 @@ class MyPopup2(QScrollArea):
         # Filter the data
         waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
 
-        # Store currently plotted waveform
-        self.current_waveform_processed = waveform_data
-
         # Plot the waveform
-        canvas.plot(x=time_data, y=waveform_data, pen='w')
+        self.waveform_data[station_no] = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
+        canvas.addItem(self.waveform_data[station_no])
         #canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
         #canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
         canvas.setLabel('left', "Signal Response")
 
         return np.min(waveform_data), np.max(waveform_data)
 
+    def export(self):
+        self.w = MyPopup3(self.invert, self.setup, self.stn_list, self.position)
+        self.w.setGeometry(QRect(100, 100, 900, 900))
+        self.w.show()
+
+
+class MyPopup3(QScrollArea):
+    def __init__(self, invert, setup, stn_list, position):
+        self.link = False
+        self.grid = False
+        QWidget.__init__(self)
+        self.selected_stn_view = pg.GraphicsLayoutWidget()
+        self.stn_canvas = []
+        self.stn_list = stn_list
+        self.setup = setup
+        self.waveform_data = [None]*len(stn_list)
+        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+        count = 0
+        max_steps = len(stn_list)*setup.perturb_times
+        dataset = parseWeather(self.setup)
+        for ii, index in enumerate(invert):
+
+            if index:
+                stn = stn_list[ii]
+                self.stn_canvas.append(self.selected_stn_view.addPlot())
+                self.selected_stn_view.nextRow()
+                min_point, max_point = self.discountDrawWaveform(setup, ii, self.stn_canvas[-1])
+                self.stn_canvas[-1].getAxis('bottom').setPen((0, 0, 0)) 
+                self.stn_canvas[-1].getAxis('left').setPen((0, 0, 0)) 
+                self.waveform_data[ii].setPen((0, 0, 0))
+                #self.stn_canvas[-1].addItem(pg.LabelItem(text="{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0)))
+                self.stn_canvas[-1].setTitle("{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0))
+
+                for p, point in enumerate(position):             
+                    dataset = SolutionGUI.perturbGenerate(self, 0, dataset, SolutionGUI.perturbSetup(self))
+                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                                        [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
+                    point.pos_loc(ref_pos)
+                    stn.position.pos_loc(ref_pos)
+                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+
+                    nom_time = f_time
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        try:
+                            self.stn_canvas[-1].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
+                        except:
+                            pass
+                    count += 1
+                    loadingBar("Generating Plots", count, max_steps)
+                    try:
+                        self.stn_canvas[-1].setXRange(nom_time-25, nom_time+25, padding=1)
+                    except:
+                        pass
+
+        self.selected_stn_view.setBackground((255, 255, 255))
+
+
+        layout = QVBoxLayout()
+        layout.addWidget(self.selected_stn_view)
+        self.setLayout(layout)
+
+        toggle_group = QGroupBox("Toggles")
+        layout.addWidget(toggle_group)
+
+        toggle_group_layout = QVBoxLayout()
+        toggle_group.setLayout(toggle_group_layout)
+
+        sync_button = QCheckBox('Sync')
+        toggle_group_layout.addWidget(sync_button)
+        sync_button.stateChanged.connect(self.sync)
+
+        grid_button = QCheckBox('Grid')
+        toggle_group_layout.addWidget(grid_button)
+        grid_button.stateChanged.connect(self.grid_toggle)
+
+        export_button = QPushButton("Export")
+        export_button.clicked.connect(self.export)
+        layout.addWidget(export_button)
+
+
+    def export(self):
+        exporter = pg.exporters.ImageExporter(self.selected_stn_view.scene())
+
+        # set export parameters if needed
+        #exporter.parameters()['width'] = 1000   # (note this also affects height parameter)
+
+        # save to file
+        exporter.export('/home/luke/Desktop/fileName.png')
+
+    def sync(self):
+        if self.link:
+            for i in range(len(self.stn_canvas)):
+                self.stn_canvas[i].setXLink(None)
+                self.stn_canvas[i].showAxis('bottom') 
+        else:
+            for i in range(len(self.stn_canvas)):
+                self.stn_canvas[i].setXLink(self.stn_canvas[0])
+                self.stn_canvas[i].hideAxis('bottom')    
+                self.stn_canvas[-1].showAxis('bottom')
+
+        self.link = not self.link
+
+    def grid_toggle(self):
+        if self.grid:
+            for i in range(len(self.stn_canvas)):
+                self.stn_canvas[i].showGrid(x=False, y=False)
+        else:
+            for i in range(len(self.stn_canvas)):
+                self.stn_canvas[i].showGrid(x=True, y=False)
+
+        self.grid = not self.grid
+
+    def discountDrawWaveform(self, setup, station_no, canvas):
+        # Extract current station
+        stn = self.stn_list[station_no]
+
+        # Get the miniSEED file path
+        mseed_file_path = os.path.join(setup.working_directory, setup.fireball_name, stn.file_name)
+
+        # Try reading the mseed file, if it doesn't work, skip to the next frame
+        try:
+            mseed = obspy.read(mseed_file_path)
+
+        except TypeError:
+            if setup.debug:
+                print('mseed file could not be read:', mseed_file_path)
+            return None
+
+        # Unpact miniSEED data
+        delta = mseed[0].stats.delta
+        start_datetime = mseed[0].stats.starttime.datetime
+        end_datetime = mseed[0].stats.endtime.datetime
+
+        stn.offset = (start_datetime - setup.fireball_datetime).total_seconds()
+
+        waveform_data = mseed[0].data
+
+        # Store raw data for bookkeeping on first open
+        self.current_waveform_raw = waveform_data
+
+        self.current_waveform_delta = delta
+        self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
+            delta)
+
+        # Construct time array, 0 is at start_datetime
+        time_data = np.copy(self.current_waveform_time)
+
+        # Cut the waveform data length to match the time data
+        waveform_data = waveform_data[:len(time_data)]
+        time_data = time_data[:len(waveform_data)] + stn.offset
+
+        # Get bandpass filter values
+        bandpass_low = float(2)
+        bandpass_high = float(8)
+
+
+        # Init the butterworth bandpass filter
+        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
+            1.0/self.current_waveform_delta, order=6)
+
+        # Filter the data
+        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
+
+        # Plot the waveform
+        self.waveform_data[station_no] = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
+        canvas.addItem(self.waveform_data[station_no])
+        #canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
+        #canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
+        canvas.setLabel('left', "Signal Response")
+
+        return np.min(waveform_data), np.max(waveform_data)
 # Fragmentation Viewer
 class MyPopup(QWidget):
 
@@ -481,6 +730,7 @@ class SolutionGUI(QMainWindow):
         self.ini_dock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
         
         self.group_no = 0
+        self.position = []
 
         self.addIniDockWidgets()
         addStationsWidgets(self)
@@ -2286,39 +2536,39 @@ class SolutionGUI(QMainWindow):
                 self.ctrl_pressed = False
             elif self.solve_height.isChecked():
                 ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-                P = self.setup.trajectory.trajInterp(div=100)
+                P = self.setup.trajectory.trajInterp(div=HEIGHT_SOLVER_DIV)
                 stn = self.stn_list[self.current_station]
                 stn.position.pos_loc(ref_pos)
                 dataset = parseWeather(self.setup)
                 A = []
-                max_steps = len(P)*self.setup.perturb_times
+                max_steps = len(P)
                 count = 0
                 loadingBar("Trying Heights", 0, max_steps)
                 for ii, point in enumerate(P):
                     point.pos_loc(ref_pos)
-                    for ptb_n in range(self.setup.perturb_times):
+                    # for ptb_n in range(self.setup.perturb_times):
                         
-                        self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
-                        
-                        #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
+                    self.sounding = self.perturbGenerate(0, dataset, self.perturbSetup())
+                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+                    
+                    #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
 
-                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-                        A.append(f_time)
-                        count += 1
-                        loadingBar("Trying Heights", count, max_steps)
+                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+                    A.append(f_time)
+                    count += 1
+                    loadingBar("Trying Heights", count, max_steps)
                 A = np.array(A)
 
                 idx = np.nanargmin(np.abs(A - pick.time))
-
+                print("Error in time: {:.2f} s".format(np.abs(A - pick.time)[idx]))
                 height_idx = idx//self.setup.perturb_times
                 pert_idx = idx%self.setup.perturb_times
 
-                position = P[height_idx]
+                self.position.append(P[height_idx])
 
-                self.x = MyPopup2(self.setup, self.stn_list, position, pert_idx)
+                self.x = MyPopup2(self.setup, self.stn_list, self.position, pert_idx)
                 self.x.setGeometry(QRect(100, 100, 900, 900))
                 self.x.show()
 
@@ -2650,18 +2900,6 @@ class SolutionGUI(QMainWindow):
         errorMessage('Output to CSV!', 0, title='Exported!')
 
     def exportToAllTimes(self):
-
-        # sounding = parseWeather(self.setup)
-
-        # if self.setup.arrival_times_file != '':
-        #     try:
-        #         self.arrTimes = np.load(self.setup.arrival_times_file)
-        #     except:
-        #         errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(setup.arrival_times_file), 1)
-        #         self.arrTimes = calcAllTimes(self.stn_list, self.setup, sounding)
-        # else:  
-        #     # Calculate all arrival times
-        #     self.arrTimes = calcAllTimes(self.stn_list, self.setup, sounding)
         
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
