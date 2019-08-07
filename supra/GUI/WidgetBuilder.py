@@ -204,11 +204,16 @@ def addMakePicksWidgets(obj):
     obj.export_to_all_times = QPushButton('Export All Times')
     pick_group_layout.addWidget(obj.export_to_all_times)
 
+    obj.export_to_image = QPushButton('Export Image')
+    pick_group_layout.addWidget(obj.export_to_image)
+    obj.export_to_image.clicked.connect(obj.exportImage)
+
     make_picks_check_group = QGroupBox("Toggles")
     make_picks_control_panel.addWidget(make_picks_check_group)
 
     check_group_layout = QVBoxLayout()
     make_picks_check_group.setLayout(check_group_layout)
+
 
     obj.show_frags = QCheckBox('Show Fragmentations')
     check_group_layout.addWidget(obj.show_frags)
@@ -227,6 +232,20 @@ def addMakePicksWidgets(obj):
 
     obj.solve_height = QCheckBox('Solve Heights')
     check_group_layout.addWidget(obj.solve_height)
+
+    make_picks_plot_tools_group = QGroupBox("Plot Tools")
+    make_picks_control_panel.addWidget(make_picks_plot_tools_group)
+
+    plot_tweaks_layout = QVBoxLayout()
+    make_picks_plot_tools_group.setLayout(plot_tweaks_layout)
+
+    obj.invert = QCheckBox('Invert') 
+    plot_tweaks_layout.addWidget(obj.invert)
+    obj.invert.stateChanged.connect(obj.invertGraph)
+
+    obj.show_title = QCheckBox('Show Title')
+    plot_tweaks_layout.addWidget(obj.show_title)
+    obj.show_title.stateChanged.connect(obj.showTitle)
 
 
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  

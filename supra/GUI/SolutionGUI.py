@@ -58,7 +58,7 @@ from supra.Utils.TryObj import *
 global arrTimes 
 global sounding
 
-HEIGHT_SOLVER_DIV = 100
+HEIGHT_SOLVER_DIV = 10
 DATA_FILE = 'data.txt'
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
        (0.8500*255, 0.3250*255, 0.0980*255),            
@@ -89,7 +89,7 @@ class MyPopup2(QScrollArea):
 
         file_export = QAction("Export Selected Menu", self)
         file_export.setShortcut('Ctrl+E')
-        file_export.setStatusTip('Exports all selected files to svg')
+        file_export.setStatusTip('Brings up the Export Menu with the selected stations')
         file_export.triggered.connect(self.export)
         file_menu.addAction(file_export)
 
@@ -127,7 +127,7 @@ class MyPopup2(QScrollArea):
 
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         count = 0
-        max_steps = len(stn_list)*len(position)
+        max_steps = len(stn_list)*len(position)*self.setup.perturb_times
         dataset = parseWeather(self.setup)
         self.save_button = []
         self.stn_view = []
@@ -167,29 +167,30 @@ class MyPopup2(QScrollArea):
 
             min_point, max_point = self.discountDrawWaveform(setup, index, self.stn_canvas[index])
             # for ptb_n in range(self.setup.perturb_times):
-            for p, point in enumerate(position):                
-                dataset = SolutionGUI.perturbGenerate(self, 0, dataset, SolutionGUI.perturbSetup(self))
-                zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
-                point.pos_loc(ref_pos)
-                stn.position.pos_loc(ref_pos)
-                f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-     
-                nom_time = f_time
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
+            for p, point in enumerate(position): 
+                for ptb_n in range(self.setup.perturb_times):               
+                    dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
+                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
+                    point.pos_loc(ref_pos)
+                    stn.position.pos_loc(ref_pos)
+                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+         
+                    nom_time = f_time
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore")
+                        try:
+                            self.stn_canvas[index].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
+                        except:
+                            pass
+                        count += 1
+                        loadingBar("Generating Plots", count, max_steps)
                     try:
-                        self.stn_canvas[index].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
+                        self.stn_canvas[index].setXRange(nom_time-25, nom_time+25, padding=1)
                     except:
-                        pass
-                    count += 1
-                    loadingBar("Generating Plots", count, max_steps)
-                try:
-                    self.stn_canvas[index].setXRange(nom_time-25, nom_time+25, padding=1)
-                except:
-                    avg_time = stn.position.pos_distance(point)/330
-                    self.stn_canvas[index].setXRange(avg_time-25, avg_time+25, padding=1)
+                        avg_time = stn.position.pos_distance(point)/330
+                        self.stn_canvas[index].setXRange(avg_time-25, avg_time+25, padding=1)
 
         self.setWidget(widget)
         self.setWidgetResizable(True)
@@ -311,7 +312,7 @@ class MyPopup3(QScrollArea):
         self.waveform_data = [None]*len(stn_list)
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         count = 0
-        max_steps = len(stn_list)*setup.perturb_times
+        max_steps = len(position)*len(stn_list)*setup.perturb_times
         dataset = parseWeather(self.setup)
         for ii, index in enumerate(invert):
 
@@ -326,28 +327,29 @@ class MyPopup3(QScrollArea):
                 #self.stn_canvas[-1].addItem(pg.LabelItem(text="{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0)))
                 self.stn_canvas[-1].setTitle("{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0))
 
-                for p, point in enumerate(position):             
-                    dataset = SolutionGUI.perturbGenerate(self, 0, dataset, SolutionGUI.perturbSetup(self))
-                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                        [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
-                    point.pos_loc(ref_pos)
-                    stn.position.pos_loc(ref_pos)
-                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+                for p, point in enumerate(position):
+                    for ptb_n in range(self.setup.perturb_times):             
+                        dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
+                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
+                        point.pos_loc(ref_pos)
+                        stn.position.pos_loc(ref_pos)
+                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
-                    nom_time = f_time
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
+                        nom_time = f_time
+                        with warnings.catch_warnings():
+                            warnings.simplefilter("ignore")
+                            try:
+                                self.stn_canvas[-1].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
+                            except:
+                                pass
+                        count += 1
+                        loadingBar("Generating Plots", count, max_steps)
                         try:
-                            self.stn_canvas[-1].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
+                            self.stn_canvas[-1].setXRange(nom_time-25, nom_time+25, padding=1)
                         except:
                             pass
-                    count += 1
-                    loadingBar("Generating Plots", count, max_steps)
-                    try:
-                        self.stn_canvas[-1].setXRange(nom_time-25, nom_time+25, padding=1)
-                    except:
-                        pass
 
         self.selected_stn_view.setBackground((255, 255, 255))
 
@@ -376,13 +378,18 @@ class MyPopup3(QScrollArea):
 
 
     def export(self):
-        exporter = pg.exporters.ImageExporter(self.selected_stn_view.scene())
 
         # set export parameters if needed
         #exporter.parameters()['width'] = 1000   # (note this also affects height parameter)
+        dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
-        # save to file
-        exporter.export('/home/luke/Desktop/fileName.png')
+        file_name = dlg[0]
+
+        exporter = pg.exporters.SVGExporter(self.selected_stn_view.scene())
+
+        file_name = file_name + '.svg'
+        exporter.export(file_name)
+
 
     def sync(self):
         if self.link:
@@ -724,6 +731,9 @@ class SolutionGUI(QMainWindow):
 
         self.tab_widget = QTabWidget()
         self.tab_widget.blockSignals(True)
+        
+        self.inverted = False
+        self.showtitled = False
 
         self.ini_dock = QDockWidget("Variables", self)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.ini_dock)
@@ -2418,6 +2428,12 @@ class SolutionGUI(QMainWindow):
             except:
                 pass
 
+        if event.key() == QtCore.Qt.Key_I:
+            try:
+                self.invertGraph()
+            except:
+                pass
+
         if event.key() == QtCore.Qt.Key_Up:
             self.group_no += 1
             self.group_no = self.group_no%10
@@ -2541,24 +2557,24 @@ class SolutionGUI(QMainWindow):
                 stn.position.pos_loc(ref_pos)
                 dataset = parseWeather(self.setup)
                 A = []
-                max_steps = len(P)
+                max_steps = len(P)*self.setup.perturb_times
                 count = 0
                 loadingBar("Trying Heights", 0, max_steps)
                 for ii, point in enumerate(P):
                     point.pos_loc(ref_pos)
-                    # for ptb_n in range(self.setup.perturb_times):
+                    for ptb_n in range(self.setup.perturb_times):
                         
-                    self.sounding = self.perturbGenerate(0, dataset, self.perturbSetup())
-                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
-                    
-                    #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
+                        self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+                        
+                        #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
 
-                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-                    A.append(f_time)
-                    count += 1
-                    loadingBar("Trying Heights", count, max_steps)
+                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+                        A.append(f_time)
+                        count += 1
+                        loadingBar("Trying Heights", count, max_steps)
                 A = np.array(A)
 
                 idx = np.nanargmin(np.abs(A - pick.time))
@@ -2655,7 +2671,8 @@ class SolutionGUI(QMainWindow):
         t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
 
         # Plot the waveform
-        self.make_picks_waveform_canvas.plot(x=time_data, y=waveform_data, pen='w')
+        self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
+        self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
         self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
@@ -2908,7 +2925,50 @@ class SolutionGUI(QMainWindow):
         np.save(file_name, self.arrTimes)
 
         errorMessage("Saved Output File", 0)
-       
+
+    def exportImage(self):
+
+        dlg = QFileDialog.getSaveFileName(self, 'Save File')
+
+        file_name = dlg[0]
+
+        exporter = pg.exporters.SVGExporter(self.make_picks_waveform_view.scene())
+
+        file_name = file_name + '.svg'
+        exporter.export(file_name)
+
+    def yesSelect(self):
+
+        self.make_picks_waveform_view.setBackground((255, 255, 255))
+        self.current_station_waveform.setPen((0, 0, 0))
+        self.make_picks_waveform_canvas.getAxis('bottom').setPen((0, 0, 0)) 
+        self.make_picks_waveform_canvas.getAxis('left').setPen((0, 0, 0)) 
+
+    def noSelect(self):
+
+        self.make_picks_waveform_view.setBackground((0, 0, 0))
+        self.current_station_waveform.setPen((255, 255, 255))
+        self.make_picks_waveform_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        self.make_picks_waveform_canvas.getAxis('left').setPen((255, 255, 255)) 
+
+    def invertGraph(self):
+
+        if self.inverted:
+            self.noSelect()
+        else:
+            self.yesSelect()
+
+        self.inverted = not self.inverted
+        
+    def showTitle(self):
+        stn = self.station_list[self.current_station]
+        if self.showtitled:
+            self.make_picks_waveform_canvas.setTitle('{:}-{:}'.format(stn.network, stn.code))
+        else:
+            self.make_picks_waveform_canvas.setTitle('')
+
+        self.showtitled = not self.showtitled
+
     def perturbSetup(self):
 
         if self.setup.perturb_method == 'temporal':
