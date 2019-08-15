@@ -196,13 +196,9 @@ def calcAllTimes(stn_list, setup, sounding):
                     zProfile, _ = getWeather(np.array([supra.lat, supra.lon, supra.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), setup.weather_type, \
                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding_p), convert=False)
                     
-                    zProfile = zInterp(stn.position.z, supra.z, zProfile, div=37)
+                    zProfile = zInterp(stn.position.z, supra.z, zProfile, div=100)
 
-                    # u = zProfile[:, 2]*np.sin(zProfile[:, 3])
-                    # v = zProfile[:, 2]*np.cos(zProfile[:, 3])
 
-                    # zProfile[:, 2] = u
-                    # zProfile[:, 3] = v
                     # Travel time of the fragmentation wave
                     f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
                         n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)

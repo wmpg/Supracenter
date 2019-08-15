@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import numpy as np
 
 from supra.Utils.AngleConv import geo2Loc, loc2Geo, angle2NDE
@@ -109,11 +110,12 @@ class Constants:
         self.M_0 = 0.0289644 #kg/mol
 
 class Pick:
-    def __init__(self, t, stn, stn_no, channel):
+    def __init__(self, t, stn, stn_no, channel, group):
         self.time = t
         self.stn = stn
         self.stn_no = stn_no
         self.channel = channel
+        self.group = group
 
 
 class Angle:
@@ -171,8 +173,9 @@ class Position:
             self.lon_r = None
 
     def __str__(self):
+        degree_sign= u'\N{DEGREE SIGN}'
         try:
-            result = "Lat: {:8.4f} deg N, Lon: {:8.4f} deg E, Elev: {:10.2f} m".format(self.lat, self.lon, self.elev)
+            result = "Lat: {:8.4f}{:}N, Lon: {:8.4f}{:}E, Elev: {:10.2f} m".format(self.lat, degree_sign, self.lon, degree_sign, self.elev)
         except:
             result = "Position is None Type"
         return result
@@ -477,8 +480,12 @@ class Trajectory:
         return pos_list
 
 if __name__ == '__main__':
-    A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
-    A.getRanges(Position(48.846135, 13.71793, 1141.1), write=True, div=1000)
+
+    pass
+
+    # A = Position()
+    # A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    # A.getRanges(Position(48.846135, 13.71793, 1141.1), write=True, div=1000)
     #A = Trajectory(0, 13913, pos_i=Position(-23.5742415562, 132.712445759, 100000), pos_f=Position(-23.616963, 132.902681, 0))
     #P = A.trajInterp(div=500, write=True)
     # A = Trajectory(0, 13913, pos_i=Position(43.721, -78.680, 95536), pos_f=Position(44.734, -78.212, 29307))#pos_f=Position(44.828, -78.153, 28866))

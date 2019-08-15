@@ -206,7 +206,8 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
             if E[k, l] < v_tol:
-                trace=[[detec_pos[0], detec_pos[1], detec_pos[2]]]
+                trace = []
+                #trace=[[detec_pos[0], detec_pos[1], detec_pos[2]]]
                 a, b = np.cos(Phi), np.sin(Phi)
                 last_z = 0
                 for i in range(n_layers - 1):
@@ -251,7 +252,7 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
                     x = supra_pos[0] + np.cos(Phi)*X + np.cos(Phi + np.pi/2)*Y
                     y = supra_pos[1] + np.sin(Phi)*X + np.sin(Phi + np.pi/2)*Y
 
-                    trace.append([detec_pos[0] - x[k, l], detec_pos[1] - y[k, l], z[last_z - 1]])
+                    trace.append([detec_pos[0] - x[k, l], detec_pos[1] - y[k, l], z[last_z]])
                 print("Azimuth = {:}".format(np.degrees(np.arctan2(-trace[-1][0], -trace[-1][1]))))
                 print("Elevation = {:}".format(np.degrees(np.arctan2(trace[-1][2], np.sqrt((trace[-1][0])**2 + (trace[-1][1])**2)))))
                 found = True

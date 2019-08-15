@@ -295,6 +295,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     # Find sum of travel times between layers (z)
     for i in range(n_layers - 1):# - n_layers + last_z):
 
+
         s2 = s[i]**2
         # Equation (9)
         t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])

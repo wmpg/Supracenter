@@ -247,6 +247,25 @@ def addMakePicksWidgets(obj):
     plot_tweaks_layout.addWidget(obj.show_title)
     obj.show_title.stateChanged.connect(obj.showTitle)
 
+    obj.show_contour = QPushButton('Show Contour')
+    plot_tweaks_layout.addWidget(obj.show_contour)
+    obj.show_contour.clicked.connect(obj.showContour)
+
+    obj.grid_spacing = QSpinBox()
+    obj.grid_spacing.setMinimum(2)
+    obj.grid_spacing.setMaximum(1337)
+    obj.grid_spacing.setValue(25)
+    plot_tweaks_layout.addWidget(obj.grid_spacing)
+
+    obj.save_contour = QPushButton('Save Contour')
+    plot_tweaks_layout.addWidget(obj.save_contour)
+    obj.save_contour.clicked.connect(obj.saveContour)
+
+    obj.load_contour = QPushButton('Load Contour')
+    plot_tweaks_layout.addWidget(obj.load_contour)
+    obj.load_contour.clicked.connect(obj.loadContour)
+
+
 
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 

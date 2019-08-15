@@ -11,8 +11,8 @@ import matplotlib.pyplot as plt
 from supra.Utils.AngleConv import loc2Geo, geo2Loc, angle2NDE
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.cyscan import cyscan
-from supra.Supracenter.slowscan import slowscan
+from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.slowscan2 import cyscan as slowscan
 
 def pointsList(sounding, points):
     """ Helper function: Divides list sounding into 'length of points' divisions and expands each point into 
@@ -147,11 +147,10 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name,
                             .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
 
         # ray tracing function
-        temp_trace, _, _ = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                            precision=setup.angle_precision, tol=setup.angle_error_tol)
-        time3D[j], _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                           precision=setup.angle_precision, tol=setup.angle_error_tol)
+        _, _, _, _, temp_trace = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+        time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
         trace.append(temp_trace)
+
         # find residuals
         sotc[j] = tobs[j] - time3D[j]
 

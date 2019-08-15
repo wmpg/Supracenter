@@ -5,9 +5,11 @@ import copy
 import webbrowser
 import pickle
 import warnings
+import multiprocessing
 
 from netCDF4 import Dataset
 from PyQt5.QtWidgets import *
+from functools import partial
 import sys
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -20,8 +22,6 @@ import obspy
 import scipy.signal
 import pyqtgraph.exporters
 
-from functools import partial
-
 from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -30,7 +30,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
-from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory
+from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, timeOfArrival
 
 from supra.Supracenter.cyzInteg import zInterp
 from supra.Supracenter.slowscan2 import cyscan as slowscan
@@ -39,13 +39,15 @@ from supra.Supracenter.psoSearch import psoSearch
 from supra.Supracenter.netCDFconv import findECMWFSound, findAus
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.fetchCopernicus import copernicusAPI
-from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
-from supra.Supracenter.CalcAllTimes import calcAllTimes
+from supra.Supracenter.CalcAllTimes import calcAllTimes, findPoints
 
 from supra.GUI.GUITools import *
 from supra.GUI.WidgetBuilder import *
+from supra.GUI.FragStaff import FragmentationStaff
+from supra.GUI.AllWaveformView import AllWaveformViewer
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
@@ -58,7 +60,7 @@ from supra.Utils.TryObj import *
 global arrTimes 
 global sounding
 
-HEIGHT_SOLVER_DIV = 10
+HEIGHT_SOLVER_DIV = 100
 DATA_FILE = 'data.txt'
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
        (0.8500*255, 0.3250*255, 0.0980*255),            
@@ -66,643 +68,94 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.4940*255, 0.1840*255, 0.5560*255),                
        (0.4660*255, 0.6740*255, 0.1880*255),                
        (0.3010*255, 0.7450*255, 0.9330*255),                
-       (0.6350*255, 0.0780*255, 0.1840*255),]
+       (0.6350*255, 0.0780*255, 0.1840*255)]
 
-class MyPopup2(QScrollArea):
+def contourLoop(setup, XX, YY, ref_pos, dy, dx, sounding, points, i):
 
-    def __init__(self, setup, stn_list, position, pert_idx):
+    Z = timeOfArrival(np.array([XX[i], YY[i], 0]), setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
+                setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding, \
+                travel=False, fast=False, ref_loc=ref_pos, div=1)
+    A = Position(0, 0, 0)
+    A.x = XX[i]
+    A.y = YY[i]
+    A.z = 0
+    A.pos_geo(ref_pos)
 
-        QWidget.__init__(self)
-        self.setWindowTitle('Height Solver')
-        self.setup = setup
-        self.stn_list = stn_list
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.black)
-        self.setPalette(p)
+    data = (A.lon, A.lat, dy, dx, Z)
 
-        menu_bar = QMenuBar(self) 
-        #layout.addWidget(menu_bar, 0, 1)
-        file_menu = menu_bar.addMenu('&File')
-        select_menu = menu_bar.addMenu('&Select')
+    return data
 
-        self.selected = False
 
-        file_export = QAction("Export Selected Menu", self)
-        file_export.setShortcut('Ctrl+E')
-        file_export.setStatusTip('Brings up the Export Menu with the selected stations')
-        file_export.triggered.connect(self.export)
-        file_menu.addAction(file_export)
 
-        select_all = QAction("Select All", self)
-        select_all.setShortcut('Ctrl+A')
-        select_all.setStatusTip('Selects all')
-        select_all.triggered.connect(self.select)
-        select_menu.addAction(select_all)
-
-        stylesheet = """ 
-        QWindow{background: black;}
-        QWidget{background: black;}
-        QLabel{color: white;}
-        QCheckBox{color: white;}
-        QDockWidget{color: white; background: black;}
-        QGroupBox{color: white;}
-        QGroupBox{ 
-        border: 2px white; 
-        border-radius: 0px; }
-        QMessageBox{color: white; background: black;} 
-        QTableWidget{color: white; background: black;}
-        QScrollArea{color: white; background: black;}
-        QPushButton{color: white; background: black;}
-        QMenuBar{color: white}
-        """
-
-        self.setStyleSheet(stylesheet)
-        self.position = position
-        point = position
-        widget = QWidget()
-        self.layout = QVBoxLayout(widget)
-        self.layout.setAlignment(Qt.AlignTop)
-        for point in position:
-            print('Best Position: {:}'.format(point))
-
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        count = 0
-        max_steps = len(stn_list)*len(position)*self.setup.perturb_times
-        dataset = parseWeather(self.setup)
-        self.save_button = []
-        self.stn_view = []
-        self.stn_canvas = []
-        self.invert = []
-        self.waveform_data = [None]*len(stn_list)
-        for index in range(len(stn_list)):
-        
-            stn = stn_list[index]
-            station_layout = QGridLayout()
-            self.layout.addLayout(station_layout)
-            label_layout = QVBoxLayout()
-            control_layout = QGridLayout()
-            waveform_layout = QVBoxLayout()
-            station_layout.addLayout(label_layout, 0, 100, 1, 100)
-            station_layout.addLayout(control_layout, 0, 0, 1, 100)
-            station_layout.addLayout(waveform_layout, 0, 200, 1, 100)
-
-            label_layout.addWidget(QLabel('Station: {:} - {:}'.format(stn_list[index].network, stn_list[index].code)))
-            label_layout.addWidget(QLabel('Channel: {:}'.format(stn_list[index].channel)))
-            label_layout.addWidget(QLabel('Name: {:}'.format(stn_list[index].name)))
-            label_layout.addWidget(QLabel('Lat: {:}'.format(stn_list[index].position.lat)))
-            label_layout.addWidget(QLabel('Lon: {:}'.format(stn_list[index].position.lon)))
-            label_layout.addWidget(QLabel('Elev: {:}'.format(stn_list[index].position.elev)))
-
-            self.save_button.append(QPushButton('Select'))
-            self.save_button[index].clicked.connect(partial(self.saveButton, index))
-            control_layout.addWidget(self.save_button[index], 0, 0)
-            control_layout.addWidget(QPushButton('-'), 0, 1)
-            control_layout.addWidget(QPushButton('-'), 1, 0)
-            control_layout.addWidget(QPushButton('-'), 1, 1)
-
-            self.stn_view.append(pg.GraphicsLayoutWidget())
-            self.stn_canvas.append(self.stn_view[index].addPlot())
-            waveform_layout.addWidget(self.stn_view[index])
-            self.invert.append(False)
-
-            min_point, max_point = self.discountDrawWaveform(setup, index, self.stn_canvas[index])
-            # for ptb_n in range(self.setup.perturb_times):
-            for p, point in enumerate(position): 
-                for ptb_n in range(self.setup.perturb_times):               
-                    dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
-                    zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
-                    point.pos_loc(ref_pos)
-                    stn.position.pos_loc(ref_pos)
-                    f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-         
-                    nom_time = f_time
-                    with warnings.catch_warnings():
-                        warnings.simplefilter("ignore")
-                        try:
-                            self.stn_canvas[index].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
-                        except:
-                            pass
-                        count += 1
-                        loadingBar("Generating Plots", count, max_steps)
-                    try:
-                        self.stn_canvas[index].setXRange(nom_time-25, nom_time+25, padding=1)
-                    except:
-                        avg_time = stn.position.pos_distance(point)/330
-                        self.stn_canvas[index].setXRange(avg_time-25, avg_time+25, padding=1)
-
-        self.setWidget(widget)
-        self.setWidgetResizable(True)
-
-    def yesSelect(self, index):
-        self.stn_view[index].setBackground((255, 255, 255))
-        self.waveform_data[index].setPen((0, 0, 0))
-        self.stn_canvas[index].getAxis('bottom').setPen((0, 0, 0)) 
-        self.stn_canvas[index].getAxis('left').setPen((0, 0, 0)) 
-        self.invert[index] = True
-
-    def noSelect(self, index):
-        self.stn_view[index].setBackground((0, 0, 0))
-        self.waveform_data[index].setPen((255, 255, 255))
-        self.stn_canvas[index].getAxis('bottom').setPen((255, 255, 255)) 
-        self.stn_canvas[index].getAxis('left').setPen((255, 255, 255)) 
-        self.invert[index] = False
-
-
-    def select(self):
-
-        for i in range(len(self.waveform_data)):
-
-            if self.selected:
-                self.noSelect(i)
-
-            else:
-                self.yesSelect(i)
-
-
-        self.selected = not self.selected
-
-
-    def saveButton(self, index):
-
-        if self.invert[index]:
-            #Make normal
-            self.noSelect(index)
-        else:
-            #Make inverted
-            self.yesSelect(index)
-
-
-    def discountDrawWaveform(self, setup, station_no, canvas):
-        # Extract current station
-        stn = self.stn_list[station_no]
-
-        # Get the miniSEED file path
-        mseed_file_path = os.path.join(setup.working_directory, setup.fireball_name, stn.file_name)
-
-        # Try reading the mseed file, if it doesn't work, skip to the next frame
-        try:
-            mseed = obspy.read(mseed_file_path)
-
-        except TypeError:
-            if setup.debug:
-                print('mseed file could not be read:', mseed_file_path)
-            return None
-
-        # Unpact miniSEED data
-        delta = mseed[0].stats.delta
-        start_datetime = mseed[0].stats.starttime.datetime
-        end_datetime = mseed[0].stats.endtime.datetime
-
-        stn.offset = (start_datetime - setup.fireball_datetime).total_seconds()
-
-        waveform_data = mseed[0].data
-
-        # Store raw data for bookkeeping on first open
-        self.current_waveform_raw = waveform_data
-
-        self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
-            delta)
-
-        # Construct time array, 0 is at start_datetime
-        time_data = np.copy(self.current_waveform_time)
-
-        # Cut the waveform data length to match the time data
-        waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + stn.offset
-
-        # Get bandpass filter values
-        bandpass_low = float(2)
-        bandpass_high = float(8)
-
-
-        # Init the butterworth bandpass filter
-        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_waveform_delta, order=6)
-
-        # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
-
-        # Plot the waveform
-        self.waveform_data[station_no] = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
-        canvas.addItem(self.waveform_data[station_no])
-        #canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
-        #canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
-        canvas.setLabel('left', "Signal Response")
-
-        return np.min(waveform_data), np.max(waveform_data)
-
-    def export(self):
-        self.w = MyPopup3(self.invert, self.setup, self.stn_list, self.position)
-        self.w.setGeometry(QRect(100, 100, 900, 900))
-        self.w.show()
-
-
-class MyPopup3(QScrollArea):
-    def __init__(self, invert, setup, stn_list, position):
-        self.link = False
-        self.grid = False
-        QWidget.__init__(self)
-        self.selected_stn_view = pg.GraphicsLayoutWidget()
-        self.stn_canvas = []
-        self.stn_list = stn_list
-        self.setup = setup
-        self.waveform_data = [None]*len(stn_list)
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        count = 0
-        max_steps = len(position)*len(stn_list)*setup.perturb_times
-        dataset = parseWeather(self.setup)
-        for ii, index in enumerate(invert):
-
-            if index:
-                stn = stn_list[ii]
-                self.stn_canvas.append(self.selected_stn_view.addPlot())
-                self.selected_stn_view.nextRow()
-                min_point, max_point = self.discountDrawWaveform(setup, ii, self.stn_canvas[-1])
-                self.stn_canvas[-1].getAxis('bottom').setPen((0, 0, 0)) 
-                self.stn_canvas[-1].getAxis('left').setPen((0, 0, 0)) 
-                self.waveform_data[ii].setPen((0, 0, 0))
-                #self.stn_canvas[-1].addItem(pg.LabelItem(text="{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0)))
-                self.stn_canvas[-1].setTitle("{:}-{:}".format(stn.network, stn.code), color=(0, 0, 0))
-
-                for p, point in enumerate(position):
-                    for ptb_n in range(self.setup.perturb_times):             
-                        dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
-                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
-                        point.pos_loc(ref_pos)
-                        stn.position.pos_loc(ref_pos)
-                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-
-                        nom_time = f_time
-                        with warnings.catch_warnings():
-                            warnings.simplefilter("ignore")
-                            try:
-                                self.stn_canvas[-1].plot(x=[f_time, f_time], y=[min_point, max_point], pen=PEN[p%7], brush=PEN[p%7])
-                            except:
-                                pass
-                        count += 1
-                        loadingBar("Generating Plots", count, max_steps)
-                        try:
-                            self.stn_canvas[-1].setXRange(nom_time-25, nom_time+25, padding=1)
-                        except:
-                            pass
-
-        self.selected_stn_view.setBackground((255, 255, 255))
-
-
-        layout = QVBoxLayout()
-        layout.addWidget(self.selected_stn_view)
-        self.setLayout(layout)
-
-        toggle_group = QGroupBox("Toggles")
-        layout.addWidget(toggle_group)
-
-        toggle_group_layout = QVBoxLayout()
-        toggle_group.setLayout(toggle_group_layout)
-
-        sync_button = QCheckBox('Sync')
-        toggle_group_layout.addWidget(sync_button)
-        sync_button.stateChanged.connect(self.sync)
-
-        grid_button = QCheckBox('Grid')
-        toggle_group_layout.addWidget(grid_button)
-        grid_button.stateChanged.connect(self.grid_toggle)
-
-        export_button = QPushButton("Export")
-        export_button.clicked.connect(self.export)
-        layout.addWidget(export_button)
-
-
-    def export(self):
-
-        # set export parameters if needed
-        #exporter.parameters()['width'] = 1000   # (note this also affects height parameter)
-        dlg = QFileDialog.getSaveFileName(self, 'Save File')
-
-        file_name = dlg[0]
-
-        exporter = pg.exporters.SVGExporter(self.selected_stn_view.scene())
-
-        file_name = file_name + '.svg'
-        exporter.export(file_name)
-
-
-    def sync(self):
-        if self.link:
-            for i in range(len(self.stn_canvas)):
-                self.stn_canvas[i].setXLink(None)
-                self.stn_canvas[i].showAxis('bottom') 
-        else:
-            for i in range(len(self.stn_canvas)):
-                self.stn_canvas[i].setXLink(self.stn_canvas[0])
-                self.stn_canvas[i].hideAxis('bottom')    
-                self.stn_canvas[-1].showAxis('bottom')
-
-        self.link = not self.link
-
-    def grid_toggle(self):
-        if self.grid:
-            for i in range(len(self.stn_canvas)):
-                self.stn_canvas[i].showGrid(x=False, y=False)
-        else:
-            for i in range(len(self.stn_canvas)):
-                self.stn_canvas[i].showGrid(x=True, y=False)
-
-        self.grid = not self.grid
-
-    def discountDrawWaveform(self, setup, station_no, canvas):
-        # Extract current station
-        stn = self.stn_list[station_no]
-
-        # Get the miniSEED file path
-        mseed_file_path = os.path.join(setup.working_directory, setup.fireball_name, stn.file_name)
-
-        # Try reading the mseed file, if it doesn't work, skip to the next frame
-        try:
-            mseed = obspy.read(mseed_file_path)
-
-        except TypeError:
-            if setup.debug:
-                print('mseed file could not be read:', mseed_file_path)
-            return None
-
-        # Unpact miniSEED data
-        delta = mseed[0].stats.delta
-        start_datetime = mseed[0].stats.starttime.datetime
-        end_datetime = mseed[0].stats.endtime.datetime
-
-        stn.offset = (start_datetime - setup.fireball_datetime).total_seconds()
-
-        waveform_data = mseed[0].data
-
-        # Store raw data for bookkeeping on first open
-        self.current_waveform_raw = waveform_data
-
-        self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
-            delta)
-
-        # Construct time array, 0 is at start_datetime
-        time_data = np.copy(self.current_waveform_time)
-
-        # Cut the waveform data length to match the time data
-        waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + stn.offset
-
-        # Get bandpass filter values
-        bandpass_low = float(2)
-        bandpass_high = float(8)
-
-
-        # Init the butterworth bandpass filter
-        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_waveform_delta, order=6)
-
-        # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
-
-        # Plot the waveform
-        self.waveform_data[station_no] = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
-        canvas.addItem(self.waveform_data[station_no])
-        #canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
-        #canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
-        canvas.setLabel('left', "Signal Response")
-
-        return np.min(waveform_data), np.max(waveform_data)
 # Fragmentation Viewer
-class MyPopup(QWidget):
 
-    def __init__(self, setup, pack):
 
-        QWidget.__init__(self)
-        self.setWindowTitle('Fragmentation Staff')
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.black)
-        self.setPalette(p)
-        
-        # Take important values from main window class
-        self.arrTimes, self.current_station, self.pick_list = pack
-
-        nom_pick = self.pick_list[0]
-
-        layout = QVBoxLayout()
-
-        # Pass setup value
-        self.setup = setup
-
-        # Create plot
-        self.plot_view = pg.GraphicsLayoutWidget()
-        self.height_canvas = self.plot_view.addPlot()
-        self.plot_view.nextRow()
-        self.angle_canvas = self.plot_view.addPlot()
-
-        # Force x-axes to stay aligned
-        self.angle_canvas.setXLink(self.height_canvas)   
-        layout.addWidget(self.plot_view)
-        self.plot_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-
-        guess = True
-        X = []
-        Y = []
-        Y_M = []
-
-        A = self.setup.trajectory.pos_i
-        B = self.setup.trajectory.pos_f
-
-        A.pos_loc(B)
-        B.pos_loc(B)
-
-        # Get prediction of time of the meteor, so the timing of each fragmentation can be known
-        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
-        time_of_meteor = length_of_meteor/self.setup.trajectory.v
-
-        # Plot nominal points
-        for i in range(len(self.setup.fragmentation_point)):
-            X.append(self.setup.fragmentation_point[i].position.elev)
-            Y.append(self.arrTimes[0, self.current_station, 1, i] - nom_pick.time)
-            Y_M.append(self.arrTimes[0, self.current_station, 1, i] - nom_pick.time + time_of_meteor)
-
-        X = np.array(X)
-        Y_M = np.array(Y_M)
-        Y = np.array(Y)
-        ptb_colors = [(0, 255, 26, 150), (3, 252, 219, 150), (252, 3, 3, 150), (223, 252, 3, 150), (255, 133, 3, 150),
-                      (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (255, 230, 249, 150)]
-        base_points = pg.ScatterPlotItem()
-        base_points.addPoints(x=X, y=Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M), pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
-        for i in range(len(self.setup.fragmentation_point)):
-            try:
-                txt = pg.TextItem("{:.2f}".format(self.arrTimes[0, self.current_station, 4, i]), color=(255, 0, 238))
-                txt.setPos(X[i], Y[i])
-                self.height_canvas.addItem(txt)
-            except:
-                pass
-
-        base_points.setZValue(1)
-        self.height_canvas.addItem(base_points, update=True)
-
-        # Perturbation points
-        Y_P = [[]]*self.setup.perturb_times
-        Y_P_M = [[]]*self.setup.perturb_times
-        opt_points = []
-        for ptb in range(self.setup.perturb_times):
-            y_p = [] 
-            y_p_M = []
-            for i in range(len(self.setup.fragmentation_point)):
-                y_p.append(self.arrTimes[ptb, self.current_station, 1, i] - nom_pick.time)
-                y_p_M.append(self.arrTimes[ptb, self.current_station, 1, i] - nom_pick.time + time_of_meteor)
-
-            y_p = np.array(y_p)
-            y_p_M = np.array(y_p_M)
-
-            err = pg.ErrorBarItem(x=X, y=(y_p + y_p_M)/2, top=abs(y_p_M-(y_p + y_p_M)/2), bottom=abs(y_p_M-(y_p + y_p_M)/2), beam=0.5, pen=ptb_colors[ptb])
-            self.height_canvas.addItem(err)
-            for i in range(len(self.setup.fragmentation_point)):
-                try:
-                    txt = pg.TextItem("{:.2f}".format(self.arrTimes[ptb, self.current_station, 4, i]), color=ptb_colors[ptb])
-                    txt.setPos(X[i], y_p[i])
-                    self.height_canvas.addItem(txt)
-                except:
-                    pass
-
-               
-            Y_P[ptb].append(y_p)
-            Y_P_M[ptb].append(y_p_M)
-
-            y_p = np.array(y_p)
-            y_p_M = np.array(y_p_M)
-
-            perturbation_points = pg.ScatterPlotItem()
-            perturbation_points.addPoints(x=X, y=y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M), pen=ptb_colors[ptb], brush=ptb_colors[ptb], symbol='o')
-            perturbation_points.setZValue(0)
-            self.height_canvas.addItem(perturbation_points, update=True)
-
-            P_p_y = y_p_M + X/self.setup.trajectory.pos_i.elev*(y_p - y_p_M)
-            idx = np.isfinite(X) & np.isfinite(P_p_y)
-            if len(P_p_y[idx]) > 0:
-                P_p = np.polyfit(X[idx], P_p_y[idx], 1)
-                pert_line_y = P_p[0]*X + P_p[1]
-                #self.height_canvas.plot(x=X, y=pert_line_y, pen=(0, 255, 26, 50))
-                pert_opt = -P_p[1]/P_p[0]
-                opt_points.append(pert_opt)
-                #self.height_canvas.scatterPlot(x=[pert_opt], y=[0], pen=(0, 255, 26), symbol='+')
+class RectangleItem(pg.GraphicsObject):
+    def __init__(self, data):
+        pg.GraphicsObject.__init__(self)
+        self.data = data
+        self.normed_dat = self.normData()
+        self.generatePicture()
     
-        # Error Bars
-        err = pg.ErrorBarItem(x=X, y=(Y + Y_M)/2, top=abs(Y_M[i]-(Y[i] + Y_M[i])/2), bottom=abs(Y_M[i]-(Y[i] + Y_M[i])/2), beam=0.5, pen=(255, 0, 238))
-        self.height_canvas.addItem(err)
-
-        idx = np.isfinite(X) & np.isfinite(Y)
-        if len(Y[idx]) > 0 and len(X) > 0:
-            P = np.polyfit(X[idx], Y[idx], 1)
-            y = P[0]*np.array(X) + P[1]
-
-            #self.height_canvas.plot(x=X, y=y, pen='b')
+    def normData(self):
+        data = np.array(self.data)
+        data = data[:, 4]
         
-            optimal_height = -P[1]/P[0]
+        max_data = np.nanmax(data)
+        min_data = np.nanmin(data)
 
-        idx = np.isfinite(X) & np.isfinite(Y)
-        if len(Y[idx]) > 0 and len(X) > 0:
-            P_M = np.polyfit(X[idx], Y[idx] + time_of_meteor, 1)
-            y_M = P_M[0]*np.array(X) + P_M[1]
-            #self.height_canvas.plot(x=X, y=y_M, pen='b')
-            optimal_height_M = -P_M[1]/P_M[0]
+        r = max_data - min_data 
 
-        P_o_y = Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M)
-        idx = np.isfinite(X) & np.isfinite(P_o_y)
-        if len(P_o_y[idx]) > 0 and len(X) > 0:
-            P_o = np.polyfit(X[idx], P_o_y[idx], 1)
-            y_o = P_o[0]*X + P_o[1]
-        #self.height_canvas.plot(X, y_o, pen=(255, 0, 238))
-        try:
-            best_guess_frac = optimal_height_M*self.setup.trajectory.pos_i.elev/(self.setup.trajectory.pos_i.elev - optimal_height + optimal_height_M)
-        except:
-            guess = False
+        data = (data - min_data)/r
+        return data
 
-        if guess:
-            opt_points.append(best_guess_frac)
-            opt_points = np.array(opt_points)
+    def gradient(self, weight):
+        if weight == weight:
+            c_ender = (7, 65, 112)
+            c_end = (111, 255, 0)
+            c_start   = (224, 245, 66)
+            c_starter = (232, 72, 9)
 
-        for pick in self.pick_list:
-            self.height_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[pick.time - nom_pick.time, pick.time - nom_pick.time], pen='r')
-        if guess:
-            #self.height_canvas.scatterPlot(x=[-P_o[1]/P_o[0]], y=[0], pen=(255, 0, 238), symbol='+')
-            print("Optimal Solution: {:.5f} km".format(opt_points[-1]/1000))
-            if self.setup.perturb:
-                data, remove = chauvenet(opt_points)
-                print("Perturbation Range: {:.5f} - {:.5f} km".format(np.nanmin(data)/1000, np.nanmax(data)/1000))
-                print("Removed Points: {:} km".format(remove))
-        
-        u = np.array([self.setup.trajectory.vector.x,
-                      self.setup.trajectory.vector.y,
-                      self.setup.trajectory.vector.z])
+            if weight > (2/3):
+                r = c_end[0] + 3*(weight - (2/3))*(c_ender[0] - c_end[0])
+                g = c_end[1] + 3*(weight - (2/3))*(c_ender[1] - c_end[1])
+                b = c_end[2] + 3*(weight - (2/3))*(c_ender[2] - c_end[2])
+            elif weight > (1/3):
+                r = c_start[0] + 3*(weight - (1/3))*(c_end[0] - c_start[0])
+                g = c_start[1] + 3*(weight - (1/3))*(c_end[1] - c_start[1])
+                b = c_start[2] + 3*(weight - (1/3))*(c_end[2] - c_start[2])
+            else:
+                r = c_starter[0] + 3*(weight)*(c_start[0] - c_starter[0])
+                g = c_starter[1] + 3*(weight)*(c_start[1] - c_starter[1])
+                b = c_starter[2] + 3*(weight)*(c_start[2] - c_starter[2])
 
-        angle_off = []
-        for i in range(len(self.setup.fragmentation_point)):
-            az = self.arrTimes[0, self.current_station, 2, i]
-            tf = self.arrTimes[0, self.current_station, 3, i]
-            # az = angle2NDE(az)
-            az = np.radians(az)
-            tf = np.radians(180 - tf)
-            v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+            return (r, g, b, 50)
+        else:
+            return (0, 0, 0, 0)
 
-            angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+    def generatePicture(self):
+        ## pre-computing a QPicture object allows paint() to run much more quickly, 
+        ## rather than re-drawing the shapes every time.
+        self.picture = QtGui.QPicture()
+        p = QtGui.QPainter(self.picture)
 
-        angle_off = np.array(angle_off)
-        try:
-            best_indx = np.nanargmin(abs(angle_off - 90))
-            print("Optimal Ballistic Height {:.2f} km with angle of {:.2f} deg".format(X[best_indx]/1000, angle_off[best_indx]))
-
-            self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen=(0, 0, 255))
-            self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen=(0, 0, 255))
-            self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
-            self.angle_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[90, 90], pen='r')
-            self.angle_canvas.setXRange(15000, 45000, padding=0)
-            best_arr = []
-            angle_arr = []
-            for ptb in range(self.setup.perturb_times):
-                angle_off = []
-                for i in range(len(self.setup.fragmentation_point)):
-                    az = self.arrTimes[ptb, self.current_station, 2, i]
-                    tf = self.arrTimes[ptb, self.current_station, 3, i]
-                    # az = angle2NDE(az)
-                    az = np.radians(az)
-                    tf = np.radians(180 - tf)
-                    v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
-
-                    angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
-
-                angle_off = np.array(angle_off)
-
-                best_indx = (np.nanargmin(abs(angle_off - 90)))
-                best_arr.append(best_indx)
-                angle_arr.append(angle_off[best_indx])
-                self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen=(0, 0, 255, 100))
-                self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen=(0, 0, 255, 100))
-                self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=ptb_colors[ptb], symbol='o', brush=ptb_colors[ptb])
-                self.angle_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[90, 90], pen='r')
-
-                if self.setup.perturb:
-                    data, remove = chauvenet(X[best_arr])
-                    data_angle, remove_angle = chauvenet(angle_arr)
-                    print("Ballistic Perturbation Range: {:.5f} - {:.5f} km, with angles of {:.2f} - {:.2f} deg"\
-                                    .format(np.nanmin(data)/1000, np.nanmax(data)/1000, np.nanmin(data_angle), np.nanmax(data_angle)))
-                    print("Removed Points: {:} km".format(remove))
-        except ValueError:
-            best_indx = None
-
-        self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick')
-        self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path')
-        self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(nom_pick.time), units='s')
-        self.angle_canvas.setLabel('left', 'Angle Away from Trajectory of Initial Acoustic Wave Path', units='deg')
-        self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
-        self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
-
-        self.height_canvas.setLimits(xMin=17000, xMax=50000, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
-
-        self.setLayout(layout)
+        for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
+            z = self.normed_dat[ii]
+            p.setBrush(pg.mkBrush(self.gradient(z)))
+            p.setPen(pg.mkPen(self.gradient(z)))
+            l = c_x - w/2
+            t = c_y + h/2
+            p.drawRect(QtCore.QRectF(l, t, w, h))
+        p.end()
+    
+    def paint(self, p, *args):
+        p.drawPicture(0, 0, self.picture)
+    
+    def boundingRect(self):
+        ## boundingRect _must_ indicate the entire area that will be drawn on
+        ## or else we will get artifacts and possibly crashing.
+        ## (in this case, QPicture does all the work of computing the bouning rect for us)
+        return QtCore.QRectF(self.picture.boundingRect())
 
 # Main Window
 class SolutionGUI(QMainWindow):
@@ -725,6 +178,8 @@ class SolutionGUI(QMainWindow):
 
         self.colors = [(0, 255, 26), (3, 252, 219), (252, 3, 3), (223, 252, 3), (255, 133, 3),
                       (149, 0, 255), (76, 128, 4), (82, 27, 27), (101, 128, 125), (255, 230, 249)]
+
+        self.contour_data = None
 
         self.slider_scale = 0.25
         self.bandpass_scale = 0.1
@@ -1158,10 +613,10 @@ class SolutionGUI(QMainWindow):
             z_profile, _ = getWeather(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), \
                     self.setup.weather_type, A, copy.copy(sounding_p))
 
-            #z_profile = zInterp(B.z, A.z, z_profile, div=100)
+            z_profile = zInterp(B.z, A.z, z_profile, div=100)
 
-            a, b, c, E, trace_data = slowscan(A.xyz, B.xyz, z_profile, wind=True, n_theta=100, n_phi=100, h_tol=1e-10, v_tol=1000)
-            
+            a, b, c, E, trace_data = slowscan(A.xyz, B.xyz, z_profile, wind=True, n_theta=self.setup.n_theta, n_phi=self.setup.n_theta, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+
             if trace_data == trace_data:
                 if self.ray_enable_vars.isChecked():
 
@@ -1285,7 +740,7 @@ class SolutionGUI(QMainWindow):
                     yline = []
                     zline = []
 
-                    max_mag = np.nanmax(mags)/2500
+                    max_mag = np.nanmax(mags)/1000
 
 
                     for ii, line in enumerate(trace_data):
@@ -1300,26 +755,7 @@ class SolutionGUI(QMainWindow):
                         except:
                             pass
 
-            #     _, t_arrival, err = slowscan(A.xyz, B.xyz, z_profile,\
-            #             wind=True, n_theta=self.setup.n_theta, n_phi=self.setup.n_theta, precision=self.setup.h_tol, tol=1000)
-            #     t_arrival_cy, _, _ = cyscan(np.array([A.x, A.y, A.z]), np.array([B.x, B.y, B.z]), z_profile,\
-            #             wind=True, n_theta=self.setup.n_theta, n_phi=self.setup.n_theta, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-            #     error_list.append(abs(t_arrival - t_arrival_cy))
-            #     if ptb_n == 0:
-
-
-            #         if len(trace_data) > 1:
-            #             last_x, last_y, last_z = trace_data[-1][0], trace_data[-1][1], trace_data[-1][2]
-
-            #             print('Final point error {:4.2f}: {:4.2f} m x {:4.2f} m y {:4.2f} m z at {:6.2f} s'.format(errors[0], last_x, last_y, last_z, t_arrival))
-            #         else:
-            #             print('Cannot find final point! E_h = {:4.2f} m E_v = {:4.2f}'.format(errors[1], errors[2]))
-            # else:
-            #     print('Error in ray tracing')
-
-                    
-
-                
+        
         avg_error = np.mean(error_list)
         print("Mean error in computation from loss in speed: {:5.2f}".format(avg_error))
 
@@ -1335,6 +771,65 @@ class SolutionGUI(QMainWindow):
 
         ax.mouse_init()
         SolutionGUI.update(self)
+
+
+
+    def showContour(self, setup):
+
+        print('Working on contour - This could take a while...')
+
+        GRID_SIZE = self.grid_spacing.value()
+
+        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+        self.setup.pos_min.pos_loc(ref_pos)
+        self.setup.pos_max.pos_loc(ref_pos)
+
+        dx = (self.setup.pos_max.lon - self.setup.pos_min.lon)/(GRID_SIZE - 1)
+        dy = (self.setup.pos_max.lat - self.setup.pos_min.lat)/(GRID_SIZE - 1)
+
+        X = np.linspace(self.setup.pos_min.x, self.setup.pos_max.x, GRID_SIZE)
+        Y = np.linspace(self.setup.pos_min.y, self.setup.pos_max.y, GRID_SIZE)
+
+        sounding = parseWeather(self.setup)
+        points = findPoints(self.setup)
+        # max_steps = len(X)*len(Y)
+        # count = 0
+
+        pool = multiprocessing.Pool(multiprocessing.cpu_count())
+        XX, YY = np.meshgrid(X, Y)
+        XX = np.ravel(XX)
+        YY = np.ravel(YY)
+        iterable = range(len(XX))
+
+        func = partial(contourLoop, self.setup, XX, YY, ref_pos, dy, dx, sounding, points) 
+        
+        data = pool.map(func, iterable)
+
+        self.make_picks_map_graph_canvas.addItem(RectangleItem(data))
+        
+        self.contour_data = np.array(data)
+
+        pool.close()
+        pool.join()
+        print('Done contour!')
+
+    def saveContour(self):
+        filename = QFileDialog.getSaveFileName(self, 'Save File')
+
+        np.save(filename[0], self.contour_data)
+
+    def loadContour(self):
+        dlg = QFileDialog()
+        dlg.setFileMode(QFileDialog.AnyFile)
+        dlg.setNameFilters(['Contour Numpy File (*.npy)'])
+        #filenames = QStringList()
+
+        dlg.exec_()
+
+        filename = dlg.selectedFiles()
+        self.contour_data = np.load(filename[0])
+
+        self.make_picks_map_graph_canvas.addItem(RectangleItem(self.contour_data))
 
     def loadRayGraph(self):
 
@@ -2103,7 +1598,8 @@ class SolutionGUI(QMainWindow):
             self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
             txt = pg.TextItem("{:}".format(stn.code))
             txt.setPos(stn.position.lon, stn.position.lat)
-            self.make_picks_map_graph_canvas.addItem(txt)
+            #self.make_picks_map_graph_canvas.addItem(txt)
+            
             # # Plot stations
             # if stn.code in setup.high_f:
             #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='g', s=2)
@@ -2534,7 +2030,7 @@ class SolutionGUI(QMainWindow):
 
             self.make_picks_waveform_canvas.scatterPlot(x=[mousePoint.x()], y=[0], pen=self.colors[self.group_no], brush=self.colors[self.group_no], update=True)
 
-            pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station].channel)
+            pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station].channel, self.group_no)
             self.pick_list.append(pick)
             print("New pick object made: {:} {:} {:}".format(mousePoint.x(), self.stn_list[self.current_station].code, self.current_station))
 
@@ -2545,7 +2041,7 @@ class SolutionGUI(QMainWindow):
                         stat_picks.append(pick)
 
 
-                self.w = MyPopup(self.setup, [self.arrTimes, self.current_station, stat_picks])
+                self.w = FragmentationStaff(self.setup, [self.arrTimes, self.current_station, stat_picks])
                 self.w.setGeometry(QRect(100, 100, 900, 900))
                 self.w.show()
 
@@ -2556,10 +2052,19 @@ class SolutionGUI(QMainWindow):
                 stn = self.stn_list[self.current_station]
                 stn.position.pos_loc(ref_pos)
                 dataset = parseWeather(self.setup)
-                A = []
+                C = []
                 max_steps = len(P)*self.setup.perturb_times
                 count = 0
                 loadingBar("Trying Heights", 0, max_steps)
+                A = self.setup.trajectory.pos_i
+                B = self.setup.trajectory.pos_f
+
+                A.pos_loc(B)
+                B.pos_loc(B)
+
+                # Get prediction of time of the meteor, so the timing of each fragmentation can be known
+                length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+                time_of_meteor = length_of_meteor/self.setup.trajectory.v
                 for ii, point in enumerate(P):
                     point.pos_loc(ref_pos)
                     for ptb_n in range(self.setup.perturb_times):
@@ -2572,19 +2077,21 @@ class SolutionGUI(QMainWindow):
 
                         f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
                             n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
-                        A.append(f_time)
+
+                        correction = time_of_meteor - A.z/self.setup.trajectory.pos_i.elev*(time_of_meteor)
+                        C.append(f_time + correction)
                         count += 1
                         loadingBar("Trying Heights", count, max_steps)
-                A = np.array(A)
+                C = np.array(C)
 
-                idx = np.nanargmin(np.abs(A - pick.time))
-                print("Error in time: {:.2f} s".format(np.abs(A - pick.time)[idx]))
+                idx = np.nanargmin(np.abs(C - pick.time))
+                print("Error in time: {:.2f} s".format(np.abs(C - pick.time)[idx]))
                 height_idx = idx//self.setup.perturb_times
                 pert_idx = idx%self.setup.perturb_times
 
                 self.position.append(P[height_idx])
 
-                self.x = MyPopup2(self.setup, self.stn_list, self.position, pert_idx)
+                self.x = AllWaveformViewer(self.setup, self.stn_list, self.position, pert_idx)
                 self.x.setGeometry(QRect(100, 100, 900, 900))
                 self.x.show()
 
@@ -2961,11 +2468,14 @@ class SolutionGUI(QMainWindow):
         self.inverted = not self.inverted
         
     def showTitle(self):
-        stn = self.station_list[self.current_station]
+        stn = self.stn_list[self.current_station]
         if self.showtitled:
-            self.make_picks_waveform_canvas.setTitle('{:}-{:}'.format(stn.network, stn.code))
-        else:
             self.make_picks_waveform_canvas.setTitle('')
+        else:
+            if self.inverted:
+                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.network, stn.code, stn.channel, stn.position), color=(0, 0, 0))
+            else:
+                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.network, stn.code, stn.channel, stn.position), color=(255, 255, 255))
 
         self.showtitled = not self.showtitled
 

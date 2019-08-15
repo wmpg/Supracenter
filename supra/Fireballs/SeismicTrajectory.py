@@ -260,7 +260,7 @@ def wrapRaDec(ra, dec):
 
 
 def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sounding=[], ref_loc=Position(0, 0, 0), \
-                        travel=False, fast=False, theo=False):
+                        travel=False, fast=False, theo=False, div=37):
     """ Calculate the time of arrival at given coordinates in the local coordinate system for the given
         parameters of the fireball.
 
@@ -298,36 +298,36 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
     # Calculate the distance perpendicular to the trajectory
     dp = math.sqrt(abs(vectMag(b)**2 - dt**2))
 
-    # No winds
-    if setup.weather_type == 'none':
+    # # No winds
+    # if setup.weather_type == 'none':
 
-        if travel:
-            # travel from trajectory only
-            ti = (dp*beta)/setup.v_sound
-        else:
-            if theo:
-                # Calculate the time of arrival
-                ti = t0 + dt/v + (dp*beta)/setup.v_sound
-            else:
-                # Calculate the time of arrival
-                ti = t0 - dt/v + (dp*beta)/setup.v_sound   
+    #     if travel:
+    #         # travel from trajectory only
+    #         ti = (dp*beta)/setup.v_sound
+    #     else:
+    #         if theo:
+    #             # Calculate the time of arrival
+    #             ti = t0 + dt/v + (dp*beta)/setup.v_sound
+    #         else:
+    #             # Calculate the time of arrival
+    #             ti = t0 - dt/v + (dp*beta)/setup.v_sound   
 
-    # Winds
+    # # Winds
+    # else:
+
+    R = waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=div)
+
+    if travel:
+        # travel from trajectory only
+        ti = R[3]*beta
+
     else:
-
-        R = waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u)
-
-        if travel:
-            # travel from trajectory only
-            ti = R[3]*beta
-
+        if theo:
+            # Calculate time of arrival
+            ti = t0 +dt/v + R[3]*beta
         else:
-            if theo:
-                # Calculate time of arrival
-                ti = t0 +dt/v + R[3]*beta
-            else:
-                # Calculate time of arrival
-                ti = t0 -dt/v + R[3]*beta
+            # Calculate time of arrival
+            ti = t0 -dt/v + R[3]*beta
 
     return ti
 
@@ -343,11 +343,11 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 # def angle(v1, v2):
 #   return math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
 
-def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u):
+def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=37):
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
 
-    #ANGLE_TOL = 25 #deg
+    ANGLE_TOL = 30 #deg
 
 
     # Trajectory vector
@@ -371,7 +371,7 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u):
         S = np.array(points[i])
 
         zProfile = zInteg(D[2], S[2], z_profile)
-        zProfile = zInterp(D[2], S[2], zProfile, div=37)
+        zProfile = zInterp(D[2], S[2], zProfile, div=div)
         cyscan_res.append(cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol))
 
     cyscan_res = np.array(cyscan_res)
@@ -400,8 +400,10 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u):
 
     try:
         best_indx = np.nanargmin(prop_mag)
-        #best_indx = np.nanargmax(diff)
     except:
+        return np.array([np.nan, np.nan, np.nan, np.nan])
+       
+    if np.absolute(90 - np.degrees(np.arccos(prop_mag[best_indx]))) > ANGLE_TOL:
         return np.array([np.nan, np.nan, np.nan, np.nan])
 
     S = np.array(points[best_indx])

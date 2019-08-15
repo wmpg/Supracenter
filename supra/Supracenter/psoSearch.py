@@ -15,7 +15,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.AngleConv import loc2Geo, geo2Loc, trajRestriction, point2LineDist3D, angle2NDE
 from supra.Utils.Classes import Position
 from supra.Utils.Formatting import loadingBar, meteorspinny
@@ -87,9 +87,8 @@ def timeFunction(x, *args):
 
 
             # Use distance and atmospheric data to find path time
-            time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
-                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                                precision=setup.angle_precision, tol=setup.angle_error_tol)
+            time3D[j], _, _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
+                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
             # Residual time for each station
             sotc[j] = tobs[j] - time3D[j]
 
@@ -161,9 +160,8 @@ def timeConstraints(x, *args):
 
 
             # Use distance and atmospheric data to find path time
-            time3D[j], _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
-                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                                precision=setup.angle_precision, tol=setup.angle_error_tol)
+            time3D[j], _, _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
+                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
             # Residual time for each station
             sotc[j] = tobs[j] - time3D[j]
 
