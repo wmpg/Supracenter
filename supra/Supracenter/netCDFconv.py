@@ -286,11 +286,11 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
 
     # print(file_name)
     # print(dataset)
-    #print(dataset.variables)
+    # print(dataset.variables)
+    # exit()
 
     lon_index = int(np.around((lon%360)*4))
     lat_index = int(np.around(-(lat+90)*4) - 1)# - 90*4
-
 
     longitude = np.array(dataset.variables['longitude'][lon_index-20:lon_index+21])
     latitude = np.array(dataset.variables['latitude'][lat_index-20:lat_index+21])
@@ -302,7 +302,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #not known
 
     start_time = int(start_time)
-    
+
     # time, (number), level, lat, lon
     temperature = np.array(dataset.variables['t'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
 

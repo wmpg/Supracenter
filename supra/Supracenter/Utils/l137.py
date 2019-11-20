@@ -2,7 +2,7 @@ import numpy as np
 
 def getData(height):
 	#n, a[Pa], b, ph[hPa], pf[hPa], Geopotential Altitude[m], Geometric Altitide[m], T[k], Density [kg/m^3]
-	dataset = np.array(
+	dataset = np.array( 
 	[[ 1,	    2.000365,	0.000000,	  0.0200,	  0.0100,	79301.79,	80301.65,	198.05,	0.000018],
 	[  2,	    3.102241,	0.000000,	  0.0310,	  0.0255,	73721.58,	74584.91,	209.21,	0.000042],
 	[  3,	    4.666084,	0.000000,	  0.0467,	  0.0388,	71115.75,	71918.79,	214.42,	0.000063],
@@ -158,7 +158,31 @@ def getData(height):
 	val = []
 
 	for i in range(9):
-		print("{:} = {:}".format(term[i], f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i]))
+		
+		# print("{:} = {:}".format(term[i], f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i]))
 		val.append(f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i])
 
 	return val
+
+def estPressure(height):
+	return getData(height)[3]*100
+
+
+if __name__ == '__main__':
+	n = 100
+	min_height =  1000
+	max_height =  30000
+	r = max_height - min_height
+	dr = r/n
+
+	p = []
+	h = []
+
+	for i in range(n + 1):
+		height = min_height + i*dr
+		p.append(getData(height)[3]*100)
+		h.append(height)
+
+	print("{:}{:}{:}".format("p = np.array(", p, ")"))
+	print("{:}{:}{:}".format("h = np.array(", h, ")"))
+	# getData(32400)

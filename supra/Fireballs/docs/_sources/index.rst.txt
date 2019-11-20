@@ -29,4 +29,5 @@ Welcome to the Western Meteor Physics Group (WMPG) Seismic and Infrasonic Meteor
    docs/Errors
    docs/Files
    docs/Code
+   docs/Changelog
 

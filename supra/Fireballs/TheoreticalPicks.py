@@ -6,6 +6,7 @@ import os
 import sys
 import datetime
 import argparse
+import pickle
 
 import obspy
 import numpy as np
@@ -25,24 +26,13 @@ from matplotlib.widgets import Slider
 DATA_FILE = 'data.txt'
 OUTPUT_CSV = 'data_picks.csv'
 
-import pyximport
-pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, \
     plotAllWaveforms, convolutionDifferenceFilter
-from supra.Fireballs.SeismicTrajectory import latLon2Local, local2LatLon, timeOfArrival, waveReleasePoint, waveReleasePointWinds, \
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePointWinds, \
     parseWeather, Constants
-from supra.Fireballs.Program import configRead, configParse, position, station
-from supra.Supracenter.Utils.Formatting import loadingBar
-from supra.Supracenter.angleConv import geo2Loc, loc2Geo
-from supra.Supracenter.cyscan import cyscan
-from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.SPPT import perturb
-from supra.Supracenter.weatherGraph import graphWeather
-from wmpl.Utils.Earth import greatCircleDistance
-from wmpl.Utils.PlotMap import GroundMap
-from wmpl.Utils.Math import rotateVector
-from wmpl.Utils.TrajConversions import datetime2JD
+from supra.Utils.Classes import Position, Station
+
 
 global arrTimes 
 global sounding
@@ -120,7 +110,7 @@ def calcAllTimes(stn_list, setup, sounding):
         allDists = [0]*setup.perturb_times
 
         # Ballistic Prediction
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
         #lat0, lon0, elev0 = data_list[0][2], data_list[0][3], data_list[0][4]
         # if setup.fragmentation_point == '':
         #     setup.fragmentation_point = []
@@ -193,8 +183,6 @@ def calcAllTimes(stn_list, setup, sounding):
                             bTimes = [0]*no_of_frags
                             bDist = [0]*no_of_frags
                             for i in range(no_of_frags):
-                                count += 1
-                                loadingBar("Calculating All Times", count, d_time)
 
                                 #need filler values to make this a numpy array with fragmentation
                                 if i == 0:
@@ -202,8 +190,8 @@ def calcAllTimes(stn_list, setup, sounding):
                                     setup.zangle = ZE
                                     setup.v = V
                                     A, B = trajCalc(setup)
-                                    setup.traj_i = position(A[0], A[1], A[2])
-                                    setup.traj_f = position(B[0], B[1], B[2])
+                                    setup.traj_i = Position(A[0], A[1], A[2])
+                                    setup.traj_f = Position(B[0], B[1], B[2])
 
                                     stn.position.pos_loc(ref_pos)
                                     setup.traj_f.pos_loc(ref_pos)
@@ -253,27 +241,8 @@ def calcAllTimes(stn_list, setup, sounding):
 
 if __name__ == "__main__":  
 
-        ### COMMAND LINE ARGUMENTS
-
-    # Init the command line arguments parser
-    arg_parser = argparse.ArgumentParser(description="""
-            ~~MakeIRISPicks~~ 
-    Tool for marking times of arrival of 
-    seismic/infrasound data in IRIS data. 
-
-    Denis Vida
-    """,
-        formatter_class=argparse.RawTextHelpFormatter)
-
-    arg_parser.add_argument('input_file', type=str, help='Path to Supracenter input file.')
-
-    # Parse the command line arguments
-    cml_args = arg_parser.parse_args()
-
-    #################
-
-    setup = configRead(cml_args.input_file)
-    configParse(setup, 'picks')
+    with open('/home/luke/Desktop/pkl/Theoretical.pkl', 'rb') as f:
+        setup = pickle.load(f)
 
     ##########################################################################################################
     if not os.path.exists(setup.working_directory):
@@ -287,7 +256,7 @@ if __name__ == "__main__":
         for ii, line in enumerate(f):
             if ii > 0:
                 line = line.split(',')
-                stn = station(line[1], line[2], position(float(line[3]), float(line[4]), float(line[5])), '...', '...', '...')
+                stn = Station(line[1], line[2], Position(float(line[3]), float(line[4]), float(line[5])), '...', '...', '...')
                 stn_list.append(stn)
 
     # Remove duplicate lines recieved from different sources
@@ -306,15 +275,15 @@ if __name__ == "__main__":
     setup.search_area[2] = setup.lon_centre - setup.deg_radius
     setup.search_area[3] = setup.lon_centre + setup.deg_radius
 
-    sounding = parseWeather(setup, consts)
+    sounding = parseWeather(setup)
 
     if setup.weather_type != 'none':
-        S = position(setup.lat_centre, setup.lon_centre, 45000)
-        D = position(setup.lat_centre, setup.lon_centre,     0)
-        try:
-            graphWeather(setup.weather_name, setup.weather_type, [S.lat, S.lon, S.elev], [D.lat, D.lon, D.elev], 'spread_r', 100, spread_file=setup.spread_file, setup=setup)
-        except:
-            pass
+        S = Position(setup.lat_centre, setup.lon_centre, 45000)
+        D = Position(setup.lat_centre, setup.lon_centre,     0)
+        # try:
+        #     graphWeather(setup.weather_name, setup.weather_type, [S.lat, S.lon, S.elev], [D.lat, D.lon, D.elev], 'spread_r', 100, spread_file=setup.spread_file, setup=setup)
+        # except:
+        #     pass
     arrTimes = np.array([])
 
     if len(stn_list) == 0:

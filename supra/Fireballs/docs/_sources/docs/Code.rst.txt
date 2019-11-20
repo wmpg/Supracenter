@@ -7,31 +7,8 @@
 Code
 ####
 
-W.I.P. Documentation of functions in the code
+W. I. P. section for anyone working on the code
 
-.. function:: cyscan(supra_pos, detec_pos, z_profile, 
-                  wind=True, n_theta=45, n_phi=90, precision=1e-25, tol=1):
-
-   Calculates time of arrival between two points in 3-D space with an atmosphere.
-
-   :param supra_pos: Local coordinates of the higher point (supracenter)
-   :type supra_pos: ndarray 
-   :param detec_pos: Local coordinates of the lower point (detector)
-   :type detec_pos: ndarray
-   :param z_profile: 2-D slice of the atmosphere between supra_pos and detec_pos
-   :type z_profile: ndarray
-   :param wind: Switch to enable winds in z_profile.
-   :type wind: Boolean
-   :param n_theta: Angle grid spacing of the zenith angle
-   :type n_theta: int
-   :param n_phi: Angle grid spacing of the azimuth angle
-   :type n_phi: int
-   :param precision: Angular resolution of the solution
-   :type precision: float
-   :param tol: Allowed error in final ray-tracing position (m)
-   :type tol: float
-
-   :rtype: array (time of arrival, initial azimuth angle, initial takeoff angle)
 
 .. class:: Position(self, lat, lon, elev):
 

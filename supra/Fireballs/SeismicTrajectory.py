@@ -43,7 +43,8 @@ import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Supracenter.fetchECMWF import fetchECMWF
 from supra.Supracenter.fetchMERRA import fetchMERRA
-from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc
+from supra.Supracenter.anglescan import anglescan
+from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
 from supra.Utils.Classes import Position, Constants
@@ -56,9 +57,9 @@ from wmpl.Utils.PlotMap import GroundMap
 from wmpl.Utils.PlotCelestial import CelestialPlot
 
 def findPoints(setup):    
-    GRID_SPACE = 50
-    MIN_HEIGHT = 15000
-    MAX_HEIGHT = 60000
+    GRID_SPACE = 100
+    MIN_HEIGHT = 0
+    MAX_HEIGHT = 85920
 
     u = setup.trajectory.vector.xyz
     ground_point = setup.trajectory.pos_f.xyz
@@ -89,6 +90,7 @@ def findPoints(setup):
     return points
 
 def parseWeather(setup, t=0):
+
     consts = Constants()
      # Parse weather type
     setup.weather_type = setup.weather_type.lower()
@@ -148,6 +150,7 @@ def parseWeather(setup, t=0):
 
             #Get closest hour
             start_time = (setup.fireball_datetime.hour + np.round(setup.fireball_datetime.minute/60) + t)%24
+
             sounding = storeNetCDFECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, consts, start_time=start_time)
 
         # SeismicTrajectory
@@ -342,12 +345,62 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
 # def angle(v1, v2):
 #   return math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
+def waveReleasePointWindsContour(setup, sounding, ref_loc, points, u, div=37, mode='ballistic'):
+    steps = 90
+    alpha = np.linspace(0, 360*((steps-1)/steps), steps)
+    alpha = np.radians(alpha)
+    theta = setup.azimuth.rad
+    phi = setup.zenith.rad
+    # beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha))
+
+
+    v = [0]*(steps**2)
+
+    # for i in range(len(beta)):
+
+
+    results = []
+    if mode == 'ballistic':
+        beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha))
+        beta = np.radians(beta)
+        for p in points:
+            for i in range(steps):
+                # print(np.degrees(beta[i]))
+
+                v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
+                                 np.cos(alpha[i])*np.sin(beta[i]),\
+                                                -np.cos(beta[i])]) 
+                s = p + p[2]/np.cos(beta[i])*v[i]
+                z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
+                     ref_loc, copy.copy(sounding), convert=True)
+                res = anglescan(p, np.degrees(alpha[i]), 180-np.degrees(beta[i]), z_profile, wind=True)
+                results.append(res)
+    else:
+        beta = np.linspace(90 + 0.01, 180, steps)
+        beta = np.radians(beta)
+        p = points[1]
+        p[2] = 50000
+
+        for i in range(steps):
+            for j in range(steps):
+                # print(np.degrees(beta[i]))
+
+                v[i*steps + j] = np.array([np.sin(alpha[i])*np.sin(beta[j]),\
+                                 np.cos(alpha[i])*np.sin(beta[j]),\
+                                                -np.cos(beta[j])]) 
+                s = p + p[2]/np.cos(beta[j])*v[i*steps + j]
+                z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
+                     ref_loc, copy.copy(sounding), convert=True)
+                res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[j]), z_profile, wind=True)
+                results.append(res)
+
+    return results
 
 def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=37):
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
 
-    ANGLE_TOL = 30 #deg
+    ANGLE_TOL = 1 #deg
 
 
     # Trajectory vector
@@ -356,7 +409,7 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
     T = [0]*a
     az = [0]*a
     tf = [0]*a
-    prop_mag = [0]*a
+    angle = [999]*a
 
     # Cut down atmospheric profile to the correct heights, and interp
     z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(points[0], stat_coord, setup.weather_type, \
@@ -370,9 +423,15 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
     for i in range(a):
         S = np.array(points[i])
 
-        zProfile = zInteg(D[2], S[2], z_profile)
-        zProfile = zInterp(D[2], S[2], zProfile, div=div)
-        cyscan_res.append(cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol))
+        # zProfile = zInteg(D[2], S[2], z_profile)
+        # zProfile = zInterp(D[2], S[2], zProfile, div=div)
+
+        # A = cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+        A = np.array([1, 
+            angle2NDE(np.degrees(np.arctan2((D[1]-S[1]),(D[0]-S[0])))), 
+            np.degrees(np.arccos((D[2]-S[2])/np.sqrt((D[1]-S[1])**2 + (D[0]-S[0])**2)))])
+        cyscan_res.append(A)
+
 
     cyscan_res = np.array(cyscan_res)
     T = cyscan_res[:, 0]
@@ -383,31 +442,37 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
     tf = np.radians(180 - tf)
 
     v = [0]*a
+
     for ii in range(a):
-        v[ii] = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
-        prop_mag[ii] = np.dot(u, v[ii])
+        #v[ii] = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
+        v[ii] = (D-points[ii])/np.sqrt(np.dot(D-points[ii], D-points[ii]))
+        angle[ii] = angleBetweenVect(u, v[ii])
+        angle[ii] = np.absolute(90 - angle[ii])
+
 
     # Minimize angle to 90 degrees from trajectory
 
     # plt.plot(points[:, 2], np.degrees(np.arccos(prop_mag)))
     # plt.show()
     #np.save(setup.working_directory + str(stat_coord), prop_mag_raw)
-    prop_mag = np.absolute(prop_mag)
+    # prop_mag = np.absolute(prop_mag)
 
     # for ii, element in enumerate(prop_mag):
     #     if element > np.cos(np.radians(ANGLE_TOL)):
     #         prop_mag[ii] = np.nan
 
     try:
-        best_indx = np.nanargmin(prop_mag)
+        best_indx = np.nanargmin(angle)
     except:
         return np.array([np.nan, np.nan, np.nan, np.nan])
-       
-    if np.absolute(90 - np.degrees(np.arccos(prop_mag[best_indx]))) > ANGLE_TOL:
+
+
+    if np.absolute(angle[best_indx]) > ANGLE_TOL:
         return np.array([np.nan, np.nan, np.nan, np.nan])
 
     S = np.array(points[best_indx])
     T = np.array(T[best_indx])
+
     # Return point
     return np.append(S, T)
 

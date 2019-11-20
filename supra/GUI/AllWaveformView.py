@@ -5,11 +5,30 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 
-from supra.Utils.Classes import Position
+import obspy
+import os
+from functools import partial
 
-from supra.GUI.ExportWindow import ExportWindow
+import scipy.signal
+import pyqtgraph.exporters
 
+
+import pyximport
+pyximport.install(setup_args={'include_dirs':[np.get_include()]})
+
+
+from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyweatherInterp import getWeather
+
+from supra.GUI.GUITools import *
+from supra.GUI.WidgetBuilder import *
+
+from supra.Utils.Formatting import *
+from supra.Utils.TryObj import *
+
+from supra.Fireballs.GetIRISData import butterworthBandpassFilter
 from supra.Fireballs.SeismicTrajectory import parseWeather
+from supra.GUI.ExportWindow import ExportWindow
 
 HEIGHT_SOLVER_DIV = 100
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
@@ -47,7 +66,7 @@ class AllWaveformViewer(QScrollArea):
 
         select_all = QAction("Select All", self)
         select_all.setShortcut('Ctrl+A')
-        select_all.sfindetStatusTip('Selects all')
+        select_all.setStatusTip('Selects all')
         select_all.triggered.connect(self.select)
         select_menu.addAction(select_all)
 

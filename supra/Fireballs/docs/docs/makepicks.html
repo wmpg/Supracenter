@@ -97,6 +97,7 @@
 <li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#shortcuts">Shortcuts</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#station-navigation">Station Navigation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contour">Contour</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#bandpass-filter">Bandpass Filter</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#spectrogram-view">Spectrogram View</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#convolution-filter">Convolution Filter</a></li>
@@ -125,6 +126,7 @@
 <li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
 </ul>
 
             
@@ -213,6 +215,27 @@
 <div class="section" id="station-navigation">
 <h2>Station Navigation<a class="headerlink" href="#station-navigation" title="Permalink to this headline">¶</a></h2>
 <p>The stations can be navigated most easily by “A” and “D” to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.</p>
+</div>
+<div class="section" id="contour">
+<h2>Contour<a class="headerlink" href="#contour" title="Permalink to this headline">¶</a></h2>
+<p>Makes a contour of the arrivals from the ballistic trajectory to the ground level. Different colours represent the scaled gradient in arrival times. Contours take a long time to create, so it is recommended to use the saving and loading features to quickly reproduce contours.</p>
+<p>The region calculated for is the rectangle defined by lat_min, lat_max, lon_min, lon_max.</p>
+<div class="section" id="show-contour">
+<h3>Show Contour<a class="headerlink" href="#show-contour" title="Permalink to this headline">¶</a></h3>
+<p>Begins calculating the ray-tracing for the contour. Does not save the final product</p>
+</div>
+<div class="section" id="grid-spacing">
+<h3>Grid Spacing<a class="headerlink" href="#grid-spacing" title="Permalink to this headline">¶</a></h3>
+<p>The number of grid spaces within the region to calculate arrival times for. The fewer points, the faster the calculation, but the more pixelated the result is.</p>
+</div>
+<div class="section" id="save-contour">
+<h3>Save Contour<a class="headerlink" href="#save-contour" title="Permalink to this headline">¶</a></h3>
+<p>Saves the last created contour in memory</p>
+</div>
+<div class="section" id="load-contour">
+<h3>Load Contour<a class="headerlink" href="#load-contour" title="Permalink to this headline">¶</a></h3>
+<p>Loads and displays a contour</p>
+</div>
 </div>
 <div class="section" id="bandpass-filter">
 <h2>Bandpass Filter<a class="headerlink" href="#bandpass-filter" title="Permalink to this headline">¶</a></h2>

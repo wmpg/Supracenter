@@ -1,6 +1,7 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
+from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView
 
 from functools import partial
 
@@ -143,6 +144,10 @@ def addMakePicksWidgets(obj):
     obj.make_picks_top_graphs.addWidget(obj.make_picks_map_graph_view)
     obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+    obj.make_picks_gmap_view = QWebView()
+    obj.make_picks_top_graphs.addWidget(obj.make_picks_gmap_view)
+    obj.make_picks_gmap_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
     obj.make_picks_bottom_graphs.addWidget(obj.make_picks_waveform_view)
@@ -208,12 +213,20 @@ def addMakePicksWidgets(obj):
     pick_group_layout.addWidget(obj.export_to_image)
     obj.export_to_image.clicked.connect(obj.exportImage)
 
+    obj.W_est = QPushButton('Yield Estimate')
+    pick_group_layout.addWidget(obj.W_est)
+    obj.W_est.clicked.connect(obj.W_estGUI)
+
+    obj.W_est_label = QLabel('Frag Height')
+    obj.W_est_edits = QLineEdit('')
+    pick_group_layout.addWidget(obj.W_est_label)
+    pick_group_layout.addWidget(obj.W_est_edits)
+
     make_picks_check_group = QGroupBox("Toggles")
     make_picks_control_panel.addWidget(make_picks_check_group)
 
     check_group_layout = QVBoxLayout()
     make_picks_check_group.setLayout(check_group_layout)
-
 
     obj.show_frags = QCheckBox('Show Fragmentations')
     check_group_layout.addWidget(obj.show_frags)
@@ -247,15 +260,13 @@ def addMakePicksWidgets(obj):
     plot_tweaks_layout.addWidget(obj.show_title)
     obj.show_title.stateChanged.connect(obj.showTitle)
 
-    obj.show_contour = QPushButton('Show Contour')
+    obj.show_contour = QPushButton('Show Ballistic Contour')
     plot_tweaks_layout.addWidget(obj.show_contour)
-    obj.show_contour.clicked.connect(obj.showContour)
+    obj.show_contour.clicked.connect(partial(obj.showContour, 'ballistic'))
 
-    obj.grid_spacing = QSpinBox()
-    obj.grid_spacing.setMinimum(2)
-    obj.grid_spacing.setMaximum(1337)
-    obj.grid_spacing.setValue(25)
-    plot_tweaks_layout.addWidget(obj.grid_spacing)
+    obj.show_f_contour = QPushButton('Show Fragmentation Contour')
+    plot_tweaks_layout.addWidget(obj.show_f_contour)
+    obj.show_f_contour.clicked.connect(partial(obj.showContour, 'fragmentation'))
 
     obj.save_contour = QPushButton('Save Contour')
     plot_tweaks_layout.addWidget(obj.save_contour)
@@ -265,7 +276,9 @@ def addMakePicksWidgets(obj):
     plot_tweaks_layout.addWidget(obj.load_contour)
     obj.load_contour.clicked.connect(obj.loadContour)
 
-
+    obj.clear_contour = QPushButton('Clear Contour')
+    plot_tweaks_layout.addWidget(obj.clear_contour)
+    obj.clear_contour.clicked.connect(obj.clearContour)
 
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 
@@ -363,12 +376,13 @@ def addFetchATMWidgets(obj):
     fetch_content.addWidget(obj.fatm_datetime_edits, 2, 2)
     obj.fatm_datetime_edits.setCalendarPopup(True)
 
-    obj.fatm_variable_group = QGroupBox("Variables")
-    fetch_content.addWidget(obj.fatm_variable_group, 4, 1, 1, 2)
-
     #############################
+
+    indep_group = QGroupBox('Inependant Variables (x)')
+    fetch_content.addWidget(indep_group, 4, 1, 1, 2)
+
     group_box = QGridLayout()
-    obj.fatm_variable_group.setLayout(group_box)
+    indep_group.setLayout(group_box)
 
     obj.fatm_temp = QCheckBox('Temperature')
     group_box.addWidget(obj.fatm_temp, 1, 1)
@@ -378,39 +392,83 @@ def addFetchATMWidgets(obj):
 
     obj.fatm_v_wind = QCheckBox('V Wind')
     group_box.addWidget(obj.fatm_v_wind, 1, 3)
+
     ##############################
 
+    dep_group = QGroupBox('Dependant Variables (y)')
+    fetch_content.addWidget(dep_group, 5, 1, 1, 2)
+
+    dgroup_box = QGridLayout()
+    dep_group.setLayout(dgroup_box)
+
+    obj.fatm_geo_height = QCheckBox('Geopotential Height')
+    dgroup_box.addWidget(obj.fatm_geo_height, 1, 1)
+
+    obj.fatm_pressure = QCheckBox('Pressure')
+    dgroup_box.addWidget(obj.fatm_pressure, 1, 2)
+
+    ###############################
+    op_group = QGroupBox('Options')
+    fetch_content.addWidget(op_group, 6, 1, 1, 2)
+
+    opgroup_box = QGridLayout()
+    op_group.setLayout(opgroup_box)
+
+    obj.fatm_perts = QCheckBox('Perturbations')
+    opgroup_box.addWidget(obj.fatm_perts, 2, 1)
+    #############################################
+
     obj.fatm_fetch = QPushButton("Download")
-    fetch_content.addWidget(obj.fatm_fetch, 5, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_fetch, 7, 1, 1, 2)
     obj.fatm_fetch.clicked.connect(partial(obj.fatmFetch, True))
 
     obj.fatm_open = QPushButton("Open")
-    fetch_content.addWidget(obj.fatm_open, 6, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_open, 8, 1, 1, 2)
     obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
 
     obj.fatm_print = QPushButton("Print")
-    fetch_content.addWidget(obj.fatm_print, 9, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_print, 15, 1, 1, 2)
     obj.fatm_print.clicked.connect(obj.fatmPrint)
 
-    obj.fatm_lat_label = QLabel("Latitude: 0")
-    obj.fatm_lat_slide = QSlider(Qt.Horizontal)
-    fetch_content.addWidget(obj.fatm_lat_label, 7, 1)
-    fetch_content.addWidget(obj.fatm_lat_slide, 7, 2)
-    obj.fatm_lat_slide.setMinimum(-90/obj.slider_scale)
-    obj.fatm_lat_slide.setMaximum(90/obj.slider_scale)
-    obj.fatm_lat_slide.setValue(0)
-    obj.fatm_lat_slide.setTickInterval(0.5)
-    obj.fatm_lat_slide.valueChanged.connect(partial(obj.fatmValueChange, obj.fatm_lat_label, obj.fatm_lat_slide))
+    obj.fatm_start_label = QLabel("Start lat/lon/elev")
+    obj.fatm_start_lat = QLineEdit()
+    obj.fatm_start_lon = QLineEdit()
+    obj.fatm_start_elev = QLineEdit()
+    fetch_content.addWidget(obj.fatm_start_label, 9, 1)
+    fetch_content.addWidget(obj.fatm_start_lat, 9, 2)
+    fetch_content.addWidget(obj.fatm_start_lon, 10, 2)
+    fetch_content.addWidget(obj.fatm_start_elev, 11, 2)
 
-    obj.fatm_lon_label = QLabel("Longitude: 0")
-    obj.fatm_lon_slide = QSlider(Qt.Horizontal)
-    fetch_content.addWidget(obj.fatm_lon_label, 8, 1)
-    fetch_content.addWidget(obj.fatm_lon_slide, 8, 2)
-    obj.fatm_lon_slide.setMinimum(-180/obj.slider_scale)
-    obj.fatm_lon_slide.setMaximum(180/obj.slider_scale)
-    obj.fatm_lon_slide.setValue(0)
-    obj.fatm_lon_slide.setTickInterval(0.5)
-    obj.fatm_lon_slide.valueChanged.connect(partial(obj.fatmValueChange, obj.fatm_lon_label, obj.fatm_lon_slide))
+    obj.fatm_end_label = QLabel("End lat/lon/elev")
+    obj.fatm_end_lat = QLineEdit()
+    obj.fatm_end_lon = QLineEdit()
+    obj.fatm_end_elev = QLineEdit()
+    fetch_content.addWidget(obj.fatm_end_label, 12, 1)
+    fetch_content.addWidget(obj.fatm_end_lat, 12, 2)
+    fetch_content.addWidget(obj.fatm_end_lon, 13, 2)
+    fetch_content.addWidget(obj.fatm_end_elev,14, 2)
+
+
+
+    # obj.fatm_lat_label = QLabel("Latitude: 0")
+    # obj.fatm_lat_slide = QSlider(Qt.Horizontal)
+    # fetch_content.addWidget(obj.fatm_lat_label, 7, 1)
+    # fetch_content.addWidget(obj.fatm_lat_slide, 7, 2)
+    # obj.fatm_lat_slide.setMinimum(-90/obj.slider_scale)
+    # obj.fatm_lat_slide.setMaximum(90/obj.slider_scale)
+    # obj.fatm_lat_slide.setValue(0)
+    # obj.fatm_lat_slide.setTickInterval(0.5)
+    # obj.fatm_lat_slide.valueChanged.connect(partial(obj.fatmValueChange, obj.fatm_lat_label, obj.fatm_lat_slide))
+
+    # obj.fatm_lon_label = QLabel("Longitude: 0")
+    # obj.fatm_lon_slide = QSlider(Qt.Horizontal)
+    # fetch_content.addWidget(obj.fatm_lon_label, 8, 1)
+    # fetch_content.addWidget(obj.fatm_lon_slide, 8, 2)
+    # obj.fatm_lon_slide.setMinimum(-180/obj.slider_scale)
+    # obj.fatm_lon_slide.setMaximum(180/obj.slider_scale)
+    # obj.fatm_lon_slide.setValue(0)
+    # obj.fatm_lon_slide.setTickInterval(0.5)
+    # obj.fatm_lon_slide.valueChanged.connect(partial(obj.fatmValueChange, obj.fatm_lon_label, obj.fatm_lon_slide))
 
 def addProfileWidgets(obj):
     profile_tab = QWidget()
@@ -446,6 +504,9 @@ def addProfileWidgets(obj):
 
     profile_tab_content_graph.addWidget(obj.atm_view)
     obj.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+    obj.atm_view.setBackground((255, 255, 255))
+    obj.atm_canvas.getAxis('bottom').setPen((0, 0, 0)) 
+    obj.atm_canvas.getAxis('left').setPen((0, 0, 0))
 
     obj.atm_T_button = QPushButton('Temperature')
     profile_tab_content_graph.addWidget(obj.atm_T_button)

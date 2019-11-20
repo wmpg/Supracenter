@@ -1,10 +1,20 @@
+################################################
+# Credits:
+# Peter Brown - Supervisor
+# Luke McFadden - General coding
+# Denis Vida - Ballistic code, WMPL
+# Wayne Edwards - Supracenter code
+# Elizabeth Silber - Updated Supracenter code
+# Gunter Stober - Advice on atmospheric profiles
+# Western Meteor Python Group
+#################################################
+
 import os
 import time
 import datetime
 import copy
 import webbrowser
 import pickle
-import warnings
 import multiprocessing
 
 from netCDF4 import Dataset
@@ -30,7 +40,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
-from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, timeOfArrival
+from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, timeOfArrival, waveReleasePointWindsContour
 
 from supra.Supracenter.cyzInteg import zInterp
 from supra.Supracenter.slowscan2 import cyscan as slowscan
@@ -42,25 +52,27 @@ from supra.Supracenter.fetchCopernicus import copernicusAPI
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
-from supra.Supracenter.CalcAllTimes import calcAllTimes, findPoints
+from supra.Supracenter.CalcAllTimes2 import calcAllTimes, findPoints
+from supra.Supracenter.cyscanIntegration import cyscan as intscan
 
 from supra.GUI.GUITools import *
 from supra.GUI.WidgetBuilder import *
 from supra.GUI.FragStaff import FragmentationStaff
 from supra.GUI.AllWaveformView import AllWaveformViewer
+from supra.GUI.htmlLoader import htmlBuilder
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
 
-from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE, invertColor
+from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE
 from supra.Utils.Formatting import *
 from supra.Utils.Classes import Position, Station, Config, Constants, Pick
 from supra.Utils.TryObj import *
 
-global arrTimes 
-global sounding
+from supra.Supracenter.Utils.l137 import estPressure
 
 HEIGHT_SOLVER_DIV = 100
+THEO = False
 DATA_FILE = 'data.txt'
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
        (0.8500*255, 0.3250*255, 0.0980*255),            
@@ -70,46 +82,68 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.3010*255, 0.7450*255, 0.9330*255),                
        (0.6350*255, 0.0780*255, 0.1840*255)]
 
-def contourLoop(setup, XX, YY, ref_pos, dy, dx, sounding, points, i):
+def contourLoop(X, Y, ref_pos, dy, dx, T, i):
+    # Loop which is used in multiprocessing for creating contours
+    # loadingBar('Loading Contour', i, GRID_SIZE**2)
+    # Calculate time in each square
+    #setup.trajectory.pos_f.x, setup.trajectory.pos_f.y
 
-    Z = timeOfArrival(np.array([XX[i], YY[i], 0]), setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
-                setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding, \
-                travel=False, fast=False, ref_loc=ref_pos, div=1)
+    # Z = timeOfArrival(np.array([XX[i], YY[i], 0]), 0, 0, setup.trajectory.t, setup.trajectory.v, \
+    #             setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding, \
+    #             travel=False, fast=False, ref_loc=ref_pos, div=2, contour=True)
+
+    # # Convert local position of square to geometric
+    # A = Position(0, 0, 0)
+    # A.x = XX[i]
+    # A.y = YY[i]
+    # A.z = 0
+    # A.pos_geo(ref_pos)
+    # print(A.lon, A.lat, dy, dx, Z)
     A = Position(0, 0, 0)
-    A.x = XX[i]
-    A.y = YY[i]
+    A.x = X[i]
+    A.y = Y[i]
     A.z = 0
     A.pos_geo(ref_pos)
 
-    data = (A.lon, A.lat, dy, dx, Z)
-
-    return data
-
-
-
-# Fragmentation Viewer
-
+    # return data in a form readable by Rectangle Object
+    return (A.lon, A.lat, dy, dx, T[i]) 
 
 class RectangleItem(pg.GraphicsObject):
     def __init__(self, data):
         pg.GraphicsObject.__init__(self)
+
         self.data = data
         self.normed_dat = self.normData()
         self.generatePicture()
     
     def normData(self):
-        data = np.array(self.data)
-        data = data[:, 4]
+        a = np.array(self.data)
+        a = a[:, 4]
         
-        max_data = np.nanmax(data)
-        min_data = np.nanmin(data)
+        max_data = np.nanmax(a)
+        min_data = np.nanmin(a)
 
         r = max_data - min_data 
 
-        data = (data - min_data)/r
-        return data
+        a = (a - min_data)/r
 
-    def gradient(self, weight):
+        return a**0.09
+
+    def weightedNormData(self):
+        a = np.array(self.data)
+        a = a[:, 4]
+        
+        max_data = np.nanmax(a)
+        min_data = np.nanmin(a)
+
+        r = max_data - min_data 
+
+        a = (a - min_data)/r
+
+        return a
+
+
+    def gradient(self, weight, alpha):
         if weight == weight:
             c_ender = (7, 65, 112)
             c_end = (111, 255, 0)
@@ -129,7 +163,7 @@ class RectangleItem(pg.GraphicsObject):
                 g = c_starter[1] + 3*(weight)*(c_start[1] - c_starter[1])
                 b = c_starter[2] + 3*(weight)*(c_start[2] - c_starter[2])
 
-            return (r, g, b, 50)
+            return (r, g, b, alpha)
         else:
             return (0, 0, 0, 0)
 
@@ -141,8 +175,8 @@ class RectangleItem(pg.GraphicsObject):
 
         for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
             z = self.normed_dat[ii]
-            p.setBrush(pg.mkBrush(self.gradient(z)))
-            p.setPen(pg.mkPen(self.gradient(z)))
+            p.setBrush(pg.mkBrush(self.gradient(z, 150)))
+            p.setPen(pg.mkPen(self.gradient(z, 0)))
             l = c_x - w/2
             t = c_y + h/2
             p.drawRect(QtCore.QRectF(l, t, w, h))
@@ -162,16 +196,21 @@ class SolutionGUI(QMainWindow):
     def __init__(self):
         super().__init__()
 
+        # Initialize Variables
+
+        # User defined tweaks
         self.setup = Config()
 
         self._main = QWidget()
         self.setCentralWidget(self._main)
         layout = QGridLayout(self._main)
 
-        self.setWindowTitle('WMPG Seismic and Infrasound Meteor Program')
+        self.setWindowTitle('Bolide Acoustic Modelling')
+       
         app_icon = QtGui.QIcon()
         app_icon.addFile('wmpl.png', QtCore.QSize(16, 16))
         self.setWindowIcon(app_icon)
+       
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.black)
         self.setPalette(p)
@@ -197,6 +236,9 @@ class SolutionGUI(QMainWindow):
         self.group_no = 0
         self.position = []
 
+        self.contour_data_squares = None
+
+        # Add widgets to each tab
         self.addIniDockWidgets()
         addStationsWidgets(self)
         addPicksReadWidgets(self)
@@ -213,6 +255,7 @@ class SolutionGUI(QMainWindow):
         self.tab_widget.blockSignals(False)
         layout.addWidget(self.tab_widget, 1, 1)
 
+        # Menu Bar set up
         menu_bar = self.menuBar() 
         layout.addWidget(menu_bar, 0, 1)
         file_menu = menu_bar.addMenu('&File')
@@ -301,7 +344,6 @@ class SolutionGUI(QMainWindow):
         else:
             return None
         
-
     def openGit(self):
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
 
@@ -577,7 +619,7 @@ class SolutionGUI(QMainWindow):
         t_arrival_cy =  [None]*self.setup.perturb_times
         err =           [None]*self.setup.perturb_times
 
-        plt.style.use('dark_background')
+        #plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
         fig.set_size_inches(5, 5)
         ax = fig.add_subplot(1, 1, 1, projection='3d')
@@ -661,18 +703,18 @@ class SolutionGUI(QMainWindow):
                             yline.append(line[1])
                             zline.append(line[2])
 
-                        ax.plot3D(xline, yline, zline, 'white')
+                        ax.plot3D(np.array(xline)/1000, np.array(yline)/1000, np.array(zline)/1000, 'black')
                         #ax.scatter(xline, yline, zline, 'blue', marker='o')
-                        ax.scatter(0, 0, 0, 'orange', marker='^')
+                        #ax.scatter(0, 0, 0, 'orange', marker='^')
                     except IndexError:
                         pass
                     except TypeError:
                         pass
       
 
-                    ax.set_xlim3d(B.x, A.x)
-                    ax.set_ylim3d(B.y, A.y)
-                    ax.set_zlim3d(B.z, A.z)
+                    # ax.set_xlim3d(B.x, A.x)
+                    # ax.set_ylim3d(B.y, A.y)
+                    # ax.set_zlim3d(B.z, A.z)
 
                     x_pts = [None]*len(xline)
                     y_pts = [None]*len(xline)
@@ -695,7 +737,7 @@ class SolutionGUI(QMainWindow):
                             yline.append(line[1])
                             zline.append(line[2])
                         try:
-                            ax.plot3D(xline, yline, zline, '#15ff00')
+                            ax.plot3D(np.array(xline)/1000, np.array(yline)/1000, np.array(zline)/1000)#'#15ff00')
                         except:
                             pass
                         x_pts = [None]*len(xline)
@@ -751,7 +793,7 @@ class SolutionGUI(QMainWindow):
                         zline = line[2]
 
                         try:
-                            ax.quiver(xline, yline, zline, u[ii]/max_mag, v[ii]/max_mag, 0, color=c)
+                            ax.quiver(np.array(xline)/1000, np.array(yline)/1000, np.array(zline)/1000, u[ii]/max_mag, v[ii]/max_mag, 0, color=c)
                         except:
                             pass
 
@@ -759,6 +801,15 @@ class SolutionGUI(QMainWindow):
         avg_error = np.mean(error_list)
         print("Mean error in computation from loss in speed: {:5.2f}".format(avg_error))
 
+        # ax.set_xlim3d(B.x, A.x)
+        # ax.set_ylim3d(B.y, A.y)
+        # ax.set_zlim3d(B.z, A.z)
+
+        ax.set_xlabel('x (km +East)')
+        ax.set_ylabel('y (km +North)')
+        ax.set_zlabel('z (km +Up)')
+
+        ax.set_title('Ray Trace from {:} km to \n {:}'.format(A.z/1000, B))
 
         self.ray_graphs.removeWidget(self.ray_line_canvas)
         self.ray_line_canvas = FigureCanvas(Figure(figsize=(3, 3)))
@@ -772,46 +823,83 @@ class SolutionGUI(QMainWindow):
         ax.mouse_init()
         SolutionGUI.update(self)
 
+    def W_estGUI(self):
+        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+        height = float(self.W_est_edits.text())
+        point = self.setup.trajectory.findGeo(height)
+        point.pos_loc(self.setup.ref_pos)
+        dataset = parseWeather(self.setup)
 
+        for ptb_n in range(self.setup.perturb_times):
+            stn = self.stn_list[self.current_station]
+            stn.position.pos_loc(self.setup.ref_pos)
+            self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+            zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
 
-    def showContour(self, setup):
+            f, g = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+                                n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            print("PTB {:}: f = {:} g = {:}".format(ptb_n, f, g))
+            # if f == f:
+            #     print(zProfile)
 
-        print('Working on contour - This could take a while...')
+    def showContour(self, setup, mode):
 
-        GRID_SIZE = self.grid_spacing.value()
+        # print('Working on contour - This could take a while...')
+        self.clearContour()
 
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        self.setup.pos_min.pos_loc(ref_pos)
-        self.setup.pos_max.pos_loc(ref_pos)
-
-        dx = (self.setup.pos_max.lon - self.setup.pos_min.lon)/(GRID_SIZE - 1)
-        dy = (self.setup.pos_max.lat - self.setup.pos_min.lat)/(GRID_SIZE - 1)
-
-        X = np.linspace(self.setup.pos_min.x, self.setup.pos_max.x, GRID_SIZE)
-        Y = np.linspace(self.setup.pos_min.y, self.setup.pos_max.y, GRID_SIZE)
-
         sounding = parseWeather(self.setup)
+        if self.setup.weather_type != 'none':
+            sounding = self.perturbGenerate(8, sounding, self.perturbSetup())
         points = findPoints(self.setup)
-        # max_steps = len(X)*len(Y)
-        # count = 0
+        results = waveReleasePointWindsContour(self.setup, sounding, ref_pos, points, self.setup.trajectory.vector.xyz, mode=mode)
+
+        results = np.array(results)
+        # self.setup.pos_min.pos_loc(ref_pos)
+        # self.setup.pos_max.pos_loc(ref_pos)
+
+        dx = 0.02
+        dy = 0.02
+
+        X = results[:, 0]
+        Y = results[:, 1]
+        T = results[:, 3]
+
+        # X = np.linspace(self.setup.pos_min.x, self.setup.pos_max.x, GRID_SIZE)
+        # Y = np.linspace(self.setup.pos_min.y, self.setup.pos_max.y, GRID_SIZE)
+
+        # sounding = parseWeather(self.setup)
+        # points = findPoints(self.setup)
+
+        # # max_steps = len(X)*len(Y)
+        # # count = 0
 
         pool = multiprocessing.Pool(multiprocessing.cpu_count())
-        XX, YY = np.meshgrid(X, Y)
-        XX = np.ravel(XX)
-        YY = np.ravel(YY)
-        iterable = range(len(XX))
+        # XX, YY = np.meshgrid(X, Y)
+        # XX = np.ravel(XX)
+        # YY = np.ravel(YY)
+        iterable = range(len(X))
 
-        func = partial(contourLoop, self.setup, XX, YY, ref_pos, dy, dx, sounding, points) 
+        func = partial(contourLoop, X, Y, ref_pos, dy, dx, T) 
         
         data = pool.map(func, iterable)
 
-        self.make_picks_map_graph_canvas.addItem(RectangleItem(data))
-        
-        self.contour_data = np.array(data)
+        self.contour_data_squares = RectangleItem(data)
+        self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
+        print('Contour Finished!')
+        # self.contour_data = np.array(data)
 
-        pool.close()
-        pool.join()
-        print('Done contour!')
+        # pool.close()
+        # pool.join()
+        # print('Done contour!')
+        # Z = timeOfArrival(np.array([XX[i], YY[i], 0]), 0, 0, setup.trajectory.t, setup.trajectory.v, \
+        #     setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding, \
+        #     travel=False, fast=False, ref_loc=ref_pos, div=2, contour=True)
+
+    def clearContour(self):
+
+        self.make_picks_map_graph_canvas.removeItem(self.contour_data_squares)
 
     def saveContour(self):
         filename = QFileDialog.getSaveFileName(self, 'Save File')
@@ -928,20 +1016,24 @@ class SolutionGUI(QMainWindow):
 
     def fatmPlot(self):
 
-        consts = Constants()
-
-        self.setup.lat_centre = self.fatm_lat_slide.value()*self.slider_scale
-        self.setup.lon_centre = self.fatm_lon_slide.value()*self.slider_scale
+        #This resaves setup, fix this
+        self.setup.lat_centre = tryFloat(self.fatm_end_lat.text())
+        self.setup.lon_centre = tryFloat(self.fatm_end_lon.text())
         self.setup.sounding_file = self.fatm_name_edits.text()
-        self.setup.weather_type = 'ecmwf'
+        self.setup.fireball_datetime = self.fatm_datetime_edits.dateTime().toPyDateTime()
+
+        # try:
+        dataset = parseWeather(self.setup)
+        # except:
+        #     errorMessage('Error reading weather profile in fatmPlotProfile: parsing', 2)
+        #     return None
 
         try:
-            dataset = parseWeather(self.setup, consts)
             sounding = findECMWFSound(self.setup.lat_centre, self.setup.lon_centre, dataset)
         except:
-            errorMessage('Error reading weather profile in fatmPlotProfile', 2)
+            errorMessage('Error reading weather profile in fatmPlotProfile: sounding', 2)
             return None
-
+            
         self.atm_canvas.setLabel('left', "Height", units='m')
         if self.fatm_variable_combo.currentText() == 'Temperature':
             X = sounding[:, 1]
@@ -1008,16 +1100,6 @@ class SolutionGUI(QMainWindow):
         else:
             self.fatmPlot()
 
-    def fatmValueChange(self, obj, slider):
-        
-        if obj == self.fatm_lat_label:
-            obj.setText('Latitude: {:8.2f}'.format(slider.value()*self.slider_scale))
-        elif obj == self.fatm_lon_label:
-            obj.setText('Longitude: {:8.2f}'.format(slider.value()*self.slider_scale))
-        else:
-            errorMessage('Bad atm slider pass in fatmValueChange', 2)
-
-        #self.atmPlotProfile(self.atm_lat_slide.value(), self.atm_lon_slide.value(), self.var_typ)
     
     def parseGeneralECMWF(self, file_name, lat, lon, time_of, variables):
 
@@ -1033,7 +1115,11 @@ class SolutionGUI(QMainWindow):
         time_index = int(time_of)
 
         sounding = []
-        pressures = np.array(dataset.variables['level'])
+
+        if self.setup.weather_type == 'ecmwf':
+            pressures = np.array(dataset.variables['level'])
+        elif self.setup.weather_type == 'merra':
+            pressures = np.array(dataset.variables['lev'])
 
         sounding.append(pressures)
 
@@ -1052,24 +1138,31 @@ class SolutionGUI(QMainWindow):
         
         filename = QFileDialog.getSaveFileName(self, 'Save File', '', 'Text File (*.txt)')
 
-        setup = self.saveINI(False)
-
-        setup.lat_centre = self.fatm_lat_slide.value()*self.slider_scale
-        setup.lon_centre = self.fatm_lon_slide.value()*self.slider_scale
-        setup.sounding_file = self.fatm_name_edits.text()
+        self.setup.lat_centre = tryFloat(self.fatm_end_lat.text())
+        self.setup.lon_centre = tryFloat(self.fatm_end_lon.text())
+        self.setup.sounding_file = self.fatm_name_edits.text()
         atm_time = self.fatm_datetime_edits.dateTime().time().hour()
-        setup.weather_type = 'ecmwf'
 
         variables = []
 
-        if self.fatm_temp.isChecked():
-            variables.append('t')
-        if self.fatm_u_wind.isChecked():
-            variables.append('u')
-        if self.fatm_v_wind.isChecked():
-            variables.append('v')
-            
-        sounding = self.parseGeneralECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, atm_time, variables)
+        if self.setup.weather_type == 'ecmwf':
+            if self.fatm_temp.isChecked():
+                variables.append('t')
+            if self.fatm_u_wind.isChecked():
+                variables.append('u')
+            if self.fatm_v_wind.isChecked():
+                variables.append('v')
+        elif self.setup.weather_type == 'merra':
+            if self.fatm_temp.isChecked():
+                variables.append('T')
+            if self.fatm_u_wind.isChecked():
+                variables.append('U')
+            if self.fatm_v_wind.isChecked():
+                variables.append('V')
+        
+        sounding = self.parseGeneralECMWF(self.setup.sounding_file, self.setup.lat_centre, \
+                        self.setup.lon_centre, atm_time, variables)
+
 
         if '.txt' not in filename[0]:
             filename[0] = filename[0] + '.txt'
@@ -1086,7 +1179,7 @@ class SolutionGUI(QMainWindow):
 
 
 
-        with open(str(filename[0]), 'w') as f:
+        with open(str(filename[0]), 'w+') as f:
             
             f.write(header)
 
@@ -1098,6 +1191,34 @@ class SolutionGUI(QMainWindow):
                     else:
                         info = info + str(element) + ','
                 f.write(info)
+
+        if self.fatm_perts.isChecked():
+            dataset = parseWeather(self.setup)
+            for ptb_n in range(self.setup.perturb_times):
+                sounding_p = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+                zProfile, _ = getWeather(np.array([self.setup.lat_centre, self.setup.lon_centre, 73721.58]), \
+                                         np.array([self.setup.lat_centre, self.setup.lon_centre, 100]), \
+                                         self.setup.weather_type, \
+                                        [self.setup.lat_centre, self.setup.lon_centre, 100], \
+                                        copy.copy(sounding_p), convert=False)
+                zProfile = zInterp(100, 73721.58, zProfile, div=100)
+                zProfile_ext = []
+                for line in zProfile:
+                    zProfile_ext.append((line[0]/1000, line[1], line[2], line[3], estPressure(line[0])/100))
+                    
+                    with open(str(filename[0]) + str(ptb_n), 'w+') as f:
+            
+                        f.write(header)
+
+                        for line in zProfile_ext:
+                            info = ''
+                            for element in line:
+                                if element == line[-1]:
+                                    info = info + str(element) + '\n'
+                                else:
+                                    info = info + str(element) + ','
+                            f.write(info)
+
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
 
@@ -1336,7 +1457,7 @@ class SolutionGUI(QMainWindow):
             return None
 
         self.atm_canvas.clear()
-        self.atm_canvas.plot(x=X, y=Y, pen='w')
+        self.atm_canvas.plot(x=X, y=Y, pen='k')
         SolutionGUI.update(self)
 
         if self.setup.perturb_method == 'temporal':
@@ -1493,9 +1614,9 @@ class SolutionGUI(QMainWindow):
             if os.path.isfile(mseed_file_path) and stn.code not in self.setup.rm_stat:
                 filtered_stn_list.append(stn)
 
-            else:
-                if self.setup.debug:
-                    print('mseed file does not exist:', mseed_file_path)
+            # else:
+            #     if self.setup.debug:
+            #         print('mseed file does not exist:', mseed_file_path)
 
         self.stn_list = filtered_stn_list
 
@@ -1588,6 +1709,8 @@ class SolutionGUI(QMainWindow):
         #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
 
         # Extract coordinates of the reference station
+        gmap_filename = htmlBuilder(setup, self.stn_list)
+        self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
 
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
@@ -1598,7 +1721,7 @@ class SolutionGUI(QMainWindow):
             self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
             txt = pg.TextItem("{:}".format(stn.code))
             txt.setPos(stn.position.lon, stn.position.lat)
-            #self.make_picks_map_graph_canvas.addItem(txt)
+            self.make_picks_map_graph_canvas.addItem(txt)
             
             # # Plot stations
             # if stn.code in setup.high_f:
@@ -1639,10 +1762,10 @@ class SolutionGUI(QMainWindow):
                 self.arrTimes = np.load(self.setup.arrival_times_file)
             except:
                 errorMessage("WARNING: Unable to load allTimes_file {:} . Please check that file exists".format(self.setup.arrival_times_file), 1)
-                self.arrTimes = calcAllTimes(self.stn_list, setup, sounding)
+                self.arrTimes = calcAllTimes(self.stn_list, setup, sounding, theo=THEO)
         else:  
             # Calculate all arrival times
-            self.arrTimes = calcAllTimes(self.stn_list, setup, sounding)
+            self.arrTimes = calcAllTimes(self.stn_list, setup, sounding, theo=THEO)
     
         SolutionGUI.update(self)
 
@@ -1837,8 +1960,11 @@ class SolutionGUI(QMainWindow):
             # Cut the waveforms around the time of arrival, if the window for cutting was given.
             if self.waveform_window is not None:
 
-                # Time of arrival
-                toa = station_dist/(setup.v_sound/1000) + setup.t0
+                try:
+                    # Time of arrival
+                    toa = station_dist/(setup.v_sound/1000) + setup.t0
+                except:
+                    toa = station_dist/(310/1000)
 
                 # Cut the waveform around the time of arrival
                 crop_indices = (time_data >= toa - self.waveform_window/2 - 300) & (time_data <= toa + self.waveform_window/2 - 300)
@@ -1874,8 +2000,10 @@ class SolutionGUI(QMainWindow):
         toa_line_time = np.linspace(0, max_time, 10)
 
         # Plot the constant sound speed line (assumption is that the release happened at t = 0)
-        self.make_picks_station_graph_canvas.plot((toa_line_time)*setup.v_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
-
+        try:
+            self.make_picks_station_graph_canvas.plot((toa_line_time)*setup.v_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
+        except:
+            self.make_picks_station_graph_canvas.plot((toa_line_time)*310, (toa_line_time), pen=(255, 0, 0))
         print('')
         
         self.make_picks_station_graph_canvas.setLabel('bottom', "Distance", units='m')
@@ -2053,7 +2181,7 @@ class SolutionGUI(QMainWindow):
                 stn.position.pos_loc(ref_pos)
                 dataset = parseWeather(self.setup)
                 C = []
-                max_steps = len(P)*self.setup.perturb_times
+                max_steps = len(P)*self.setup.perturb_times + 1
                 count = 0
                 loadingBar("Trying Heights", 0, max_steps)
                 A = self.setup.trajectory.pos_i
@@ -2175,14 +2303,19 @@ class SolutionGUI(QMainWindow):
         self.current_waveform_processed = waveform_data
 
         # Calculate the time of arrival assuming constant propagation with the given speed of sound
-        t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
-
+        try:
+            t_arrival = self.source_dists[self.current_station]/(self.v_sound/1000) + self.t0
+        except:
+            t_arrival = self.source_dists[self.current_station]/(310/1000)
+        
         # Plot the waveform
         self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
         self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+        self.make_picks_waveform_canvas.plot(x=[t_arrival, t_arrival], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(255, 0, 0), width=2))
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
-        self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:}".format(setup.fireball_datetime), units='s')
+        self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(setup.fireball_datetime))
         self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
+        self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
 
         for pick in self.pick_list:
             if pick.stn_no == self.current_station:
@@ -2196,12 +2329,16 @@ class SolutionGUI(QMainWindow):
         ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
 
         # Calculate ground distances
-        stn.stn_ground_distance(ref_pos)
+        try:
+            stn.stn_ground_distance(setup.trajectory.pos_f)
 
-        print('####################')
-        print("Current Station: {:}-{:}".format(stn.network, stn.code))
-        print("Channel: {:}".format(stn.channel))
-        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+            print('####################')
+            print("Current Station: {:}-{:}".format(stn.network, stn.code))
+            print("Channel: {:}".format(stn.channel))
+            print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+        except:
+
+            pass
 
         # If manual ballistic search is on
         if setup.show_ballistic_waveform and self.show_ball.isChecked():
@@ -2271,6 +2408,7 @@ class SolutionGUI(QMainWindow):
                     if j >= 1 and self.show_perts.isChecked():
                         #try:
                             if j == 1:
+                                
                                 data, remove = chauvenet(self.arrTimes[:, self.current_station, 1, i])
                                 try:
                                     print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
@@ -2285,7 +2423,6 @@ class SolutionGUI(QMainWindow):
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
                         #except:
-                        #    pass
 
 
     def showSpectrogram(self, event=None):
@@ -2297,20 +2434,42 @@ class SolutionGUI(QMainWindow):
 
         # Extract the time and waveform
         #crop_window = (self.current_waveform_time >= x_min) & (self.current_waveform_time <= x_max)
-        wave_arr = self.current_waveform_raw#[crop_window]
+        # wave_arr = self.current_waveform_raw[8400:8504]
 
 
-        ### Show the spectrogram ###
+        # ### Show the spectrogram ###
         
         fig = plt.figure()
         ax_spec = fig.add_subplot(111)
 
-        ax_spec.specgram(wave_arr, Fs=1.0/self.current_waveform_delta, cmap=plt.cm.inferno)
-
+        ax_spec.specgram(wave_arr, Fs=20, cmap=plt.cm.inferno)
+   
         ax_spec.set_xlabel('Time (s)')
         ax_spec.set_ylabel('Frequency (Hz)')
 
         fig.show()
+
+
+        # f_s = 20  # Sampling rate, or number of measurements per second
+
+        # x = wave_arr
+        # t = np.linspace(0, 5.2, 5.2 * f_s)
+        # plt.plot(t, x)
+        
+        # from scipy import fftpack
+        
+        # X = fftpack.fft(x)
+
+        # freqs = fftpack.fftfreq(len(x)) * f_s
+
+        # fig, ax = plt.subplots()
+
+        # ax.scatter(freqs, np.abs(X))
+        # ax.set_xlabel('Frequency in Hertz [Hz]')
+        # ax.set_ylabel('Frequency Domain (Spectrum) Magnitude')
+        # ax.set_ylim(0, 50000)
+        # ax.set_xlim(0, 10)
+        # plt.show()
 
         ###
 
@@ -2390,6 +2549,8 @@ class SolutionGUI(QMainWindow):
         # Plot the waveform from the current station
         if draw_waveform:
             self.drawWaveform(station_no=self.current_station)
+
+        self.showTitle()
 
         SolutionGUI.update(self)
 
@@ -2506,7 +2667,7 @@ class SolutionGUI(QMainWindow):
         return np.array([sounding_l, sounding_u, ensemble_file])
 
     def perturbGenerate(self, ptb_n, dataset, perturb_data):
-        
+
         sounding_l, sounding_u, ensemble_file = perturb_data[0], perturb_data[1], perturb_data[2]
 
         if ptb_n > 0:
@@ -2706,7 +2867,18 @@ class SolutionGUI(QMainWindow):
         self.setup.pos_i = tryPosition(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
         self.setup.pos_f = tryPosition(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
 
-        self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, tryAngle(self.setup.azimuth), tryAngle(self.setup.zenith), self.setup.pos_i, self.setup.pos_f)
+        self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
+
+        # self.t0_edits.setText(str(self.setup.trajectory.t))
+        # self.v_edits.setText(str(self.setup.trajectory.v))
+        # self.azim_edits.setText(str(self.setup.trajectory.azimuth.deg))
+        # self.zangle_edits.setText(str(self.setup.trajectory.zenith.deg))
+        # self.lat_i_edits.setText(str(self.setup.trajectory.pos_i.lat))
+        # self.lon_i_edits.setText(str(self.setup.trajectory.pos_i.lon))
+        # self.elev_i_edits.setText(str(self.setup.trajectory.pos_i.elev))
+        # self.lat_f_edits.setText(str(self.setup.trajectory.pos_f.lat))
+        # self.lon_f_edits.setText(str(self.setup.trajectory.pos_f.lon))
+        # self.elev_f_edits.setText(str(self.setup.trajectory.pos_f.elev))
 
         self.setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
@@ -2973,7 +3145,7 @@ class SolutionGUI(QMainWindow):
             # Add station names
             ax.text(xstn[h, 0], xstn[h, 1], xstn[h, 2],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
 
-        for ptb in range(setup.perturb_times):
+        for ptb in range(self.setup.perturb_times):
             for h in range(n_stations):
 
                 xline = []
@@ -3017,11 +3189,13 @@ class SolutionGUI(QMainWindow):
         ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
 
         
-
-        ax.plot3D([self.setup.trajectory.pos_f.lat,  self.setup.trajectory.pos_i.lat ],\
-                  [self.setup.trajectory.pos_f.lon,  self.setup.trajectory.pos_i.lon ],\
-                  [self.setup.trajectory.pos_f.elev, self.setup.trajectory.pos_i.elev],
-                  'blue')
+        try:
+            ax.plot3D([self.setup.trajectory.pos_f.lat,  self.setup.trajectory.pos_i.lat ],\
+                      [self.setup.trajectory.pos_f.lon,  self.setup.trajectory.pos_i.lon ],\
+                      [self.setup.trajectory.pos_f.elev, self.setup.trajectory.pos_i.elev],
+                      'blue')
+        except:
+            pass
 
         for ptb in range(setup.perturb_times):
             
@@ -3054,32 +3228,32 @@ class SolutionGUI(QMainWindow):
             a = plt.colorbar(sc, ax=ax)
             a.set_label("Error in Supracenter (s)")
 
-        if manual:
-            try:
-                self.plots.removeWidget(self.threelbar)
-            except:
-                pass
-            self.plots.removeWidget(self.three_canvas)
-            #self.three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
-            self.three_canvas = FigureCanvas(fig)
-            self.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-            self.threelbar = NavigationToolbar(self.three_canvas, self)
-            self.plots.addWidget(self.three_canvas)
-            self.plots.addWidget(self.threelbar)
-            self.three_canvas.draw()
-        else:
-            try:
-                self.sup_plots.removeWidget(self.sup_threelbar)
-            except:
-                pass
-            self.sup_plots.removeWidget(self.sup_three_canvas)
-            #self.sup_three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
-            self.sup_three_canvas = FigureCanvas(fig)
-            self.sup_three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-            self.sup_threelbar = NavigationToolbar(self.sup_three_canvas, self)
-            self.sup_plots.addWidget(self.sup_three_canvas)
-            self.sup_plots.addWidget(self.sup_threelbar)
-            self.sup_three_canvas.draw()
+        # if manual:
+        #     try:
+        #         self.plots.removeWidget(self.threelbar)
+        #     except:
+        #         pass
+        #     self.plots.removeWidget(self.three_canvas)
+        #     #self.three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
+        #     self.three_canvas = FigureCanvas(fig)
+        #     self.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        #     self.threelbar = NavigationToolbar(self.three_canvas, self)
+        #     self.plots.addWidget(self.three_canvas)
+        #     self.plots.addWidget(self.threelbar)
+        #     self.three_canvas.draw()
+        # else:
+        #     try:
+        #         self.sup_plots.removeWidget(self.sup_threelbar)
+        #     except:
+        #         pass
+        #     self.sup_plots.removeWidget(self.sup_three_canvas)
+        #     #self.sup_three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
+        #     self.sup_three_canvas = FigureCanvas(fig)
+        #     self.sup_three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+        #     self.sup_threelbar = NavigationToolbar(self.sup_three_canvas, self)
+        #     self.sup_plots.addWidget(self.sup_three_canvas)
+        #     self.sup_plots.addWidget(self.sup_threelbar)
+        #     self.sup_three_canvas.draw()
 
         ax.mouse_init()
         SolutionGUI.update(self)
@@ -3192,12 +3366,13 @@ if __name__ == '__main__':
 
     print('#########################################')
     print('#     Western Meteor Python Library     #')
-    print('# Seismic and Infrasonic Meteor Program #')
+    print('#       Bolide Acoustic Modelling       #')
     print('#            Luke McFadden,             #')
     print('#              Denis Vida,              #') 
     print('#              Peter Brown              #')
     print('#                 2019                  #')
     print('#########################################')
+
     app = QApplication(sys.argv)
 
     gui = SolutionGUI()

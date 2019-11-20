@@ -6,8 +6,10 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Utils.AngleConv import loc2Geo
-from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound, findAus
+from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound, findAus, storeNetCDFECMWF
 from supra.Supracenter.cyzInteg import zInteg
+from supra.Utils.Classes import Position, Constants
+from supra.Supracenter.Utils.l137 import getData 
 
 def nearestPoint2D(points_list, point):
     """ HELPER FUNCTION: finds the index of the closest point to point out of a grid of points (points_list)
@@ -225,4 +227,36 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
         # interp weather from grid between s and d
         return interpWeather(s, d, weather_type, dataset)    
 
+if __name__ == '__main__':
     
+    consts = Constants()
+    file_name = '/home/luke/Desktop/atmospheric data/StubenbergReanalysis.nc'
+    S = [48.0598, 13.1085, 85920] 
+    D = [48.846135, 13.71793, 1141.1]
+    ref_pos = Position(48.3314, 13.0706, 0.0)
+    dataset = storeNetCDFECMWF(file_name, ref_pos.lat, ref_pos.lon, consts, start_time=0)
+
+    result = np.array(getWeather(S, D, 'ecmwf', ref_pos, dataset, convert=False)[0])
+
+    pressure = []
+    for height in result[:, 0]:
+        pressure.append(getData(height)[3])
+    pressure = np.array(pressure)
+
+    result = np.hstack((result, np.expand_dims(pressure, axis=1)))
+
+    h = result[:, 0]
+    t = result[:, 1]
+    m = result[:, 2]
+    d = result[:, 3]
+    p = result[:, 4]
+
+    H = h/1000
+    T = t**2/consts.GAMMA/consts.R*consts.M_0 - 273.15
+    U = m*np.cos(d)
+    V = m*np.sin(d)
+    P = p
+
+    A = np.array([H, T, U, V, P]).T
+
+    np.savetxt("/home/luke/Desktop/atm.csv", A, delimiter=",")

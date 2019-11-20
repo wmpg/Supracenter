@@ -50,7 +50,7 @@ def findPoints(setup):
 
     return points
 
-def calcAllTimes(stn_list, setup, sounding):
+def calcAllTimes(stn_list, setup, sounding, theo=False):
     """ 
     Method to calculate all arrival times and place them into an array, so that they are not recalculated every
     time a new waveform is opened
@@ -153,7 +153,7 @@ def calcAllTimes(stn_list, setup, sounding):
                         # Time to travel from trajectory to station
                         b_time = timeOfArrival(stn.position.xyz, setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
                                                     setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding_p, \
-                                                    travel=False, fast=False, ref_loc=ref_pos)# + setup.t 
+                                                    travel=False, fast=False, ref_loc=ref_pos, theo=theo, div=37)# + setup.t 
                         bTimes[i] = b_time
                     else:
                         bTimes[i] = np.nan

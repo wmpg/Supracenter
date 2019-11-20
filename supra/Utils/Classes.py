@@ -109,6 +109,9 @@ class Constants:
         # Molar mass of the air
         self.M_0 = 0.0289644 #kg/mol
 
+        # standard gravity at mean sea level
+        self.g_0 = 9.80665 #m/s^2
+
 class Pick:
     def __init__(self, t, stn, stn_no, channel, group):
         self.time = t
@@ -212,6 +215,22 @@ class Position:
 
         return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
 
+    def line_between_2d(self, other, show_error=False):
+
+        m = (other.y - self.y)/(other.x - self.x) 
+
+        b_1 = other.y - m*other.x
+        b_2 = self.y - m*self.x
+
+        if show_error:
+            print("Intercept Error: {:}".format(b_1 - b_2))
+
+        print("y = mx + b")
+        print("m = {:}".format(m))
+        print("b = {:}".format((b_1 + b_2)/2))
+
+
+
 class Vector3D:
 
     def __init__(self, x, y, z):
@@ -235,7 +254,7 @@ class Vector3D:
         return result
 
     def __str__(self):
-        return '[ {:.2f}, {:.2f}, {:.2f}]'.format(self.x, self.y, self.z)
+        return '[ {:.4f}, {:.4f}, {:.4f}]'.format(self.x, self.y, self.z)
 
 
 class Station:
@@ -301,13 +320,12 @@ class Trajectory:
         self.t = t
 
         # Find vector from angles
-        if zenith != None and azimuth != None:
+        try:
 
             self.vector = Vector3D(np.sin(azimuth.rad)*np.sin(zenith.rad), \
                                    np.cos(azimuth.rad)*np.sin(zenith.rad), \
                                                       -np.cos(zenith.rad))
-        else:
-
+        except:
             self.vector = None
 
         # Case 1: everything is given
@@ -465,6 +483,17 @@ class Trajectory:
 
         return frac*time_of_meteor
 
+    def findLength(self):
+
+        self.pos_i.pos_loc(self.pos_f)
+        self.pos_f.pos_loc(self.pos_f)
+
+        A = self.pos_i
+        B = self.pos_f
+
+        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+        return length_of_meteor
+
     def getRanges(self, stat_pos, div=100, write=False):
 
         P = self.trajInterp(div=div)
@@ -479,14 +508,61 @@ class Trajectory:
 
         return pos_list
 
+class Color:
+    def __init__(self):
+        self.nominal = (255, 0, 238)
+        self.ballistic = (0, 0, 255)
+        self.fragmentation = [(0, 255, 0)]
+        self.perturb = [([(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
+                        (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)])]
+
 if __name__ == '__main__':
 
     pass
+    # D = Position(48.2282, 13.0850, 0)
+    # S = Position(48.8461, 13.7179, 0)
+    ref = Position(48.3314, 13.0706, 0)
+
+    # D.pos_loc(ref)
+    # S.pos_loc(ref)
+    # print("S", S.xyz)
+    # print("D", D.xyz)
+    # print("Line")
+    # D.line_between_2d(S, show_error=True)
+    # print("Dist", D.ground_distance(S))    
+    # m = 1.483894107652387
+    # b = -13062.851161267856
+    # R = 73460.63
+    # print((-m*b + np.sqrt(m**2*R**2 + b**2 - R**2))/(m**2 + 1))
+
+    S_p = Position(0, 0, 0)
+    S_m = Position(0, 0, 0)
+    S_p.x = 42122.68
+    S_p.y = 49443.00
+    S_p.z = 0
+    S_m.x = 54260.14
+    S_m.y = 67453.77
+    S_m.z = 0
+
+    S_p.pos_geo(ref)
+    S_m.pos_geo(ref)
+
+    print(S_p)
+    print(S_m)
 
     # A = Position()
-    # A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    #A = Trajectory(0, 13913, pos_i=Position(48.2042, 13.0884, 39946.8), pos_f=Position(48.8461, 13.7179, 1098))
+    #A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    #A = Trajectory(0, 13913, pos_f=Position(43.6783, -80.0647, 72386), pos_i=Position(43.5327, -80.2335, 95901))
+    #A = Trajectory(0, 13913, pos_i=Position(42.0142, -81.2926, 100486), \
+    #                         pos_f=Position(41.9168, -81.3655,  71666))
     # A.getRanges(Position(48.846135, 13.71793, 1141.1), write=True, div=1000)
     #A = Trajectory(0, 13913, pos_i=Position(-23.5742415562, 132.712445759, 100000), pos_f=Position(-23.616963, 132.902681, 0))
+    # print(A.vector)
+    #A = Trajectory(0, 13913, pos_i=Position(42.8408, -81.9617, 119216), pos_f=Position(43.1930, -81.3163, 298))
+    #print(A)
+    #A = Trajectory(0, 13913, pos_i=Position(42.8408, -81.9617, 119216), pos_f=Position(43.7675, -82.4195, 88458))
+
     #P = A.trajInterp(div=500, write=True)
     # A = Trajectory(0, 13913, pos_i=Position(43.721, -78.680, 95536), pos_f=Position(44.734, -78.212, 29307))#pos_f=Position(44.828, -78.153, 28866))
     # print(A.azimuth)

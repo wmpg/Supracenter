@@ -7,8 +7,12 @@
 About
 #####
 
+
 Denis Vida, Peter Brown, Luke McFadden
-(Manual Last Changed July 10, 2019)
+(Manual Last Changed November 7, 2019)
+
+Note: If you're seeing this, that means the docs aren't finished yet. If you have any questions,
+email Luke: lmcfadd6@uwo.ca
 
 Supracenter updated from Wayne Edwards (2003)
 Ballistic Trajectory taken from the Western Meteor Python Library (2018)

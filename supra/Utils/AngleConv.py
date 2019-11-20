@@ -3,8 +3,20 @@
 import numpy as np
 from scipy.special import erfc
 
-from wmpl.Utils.Math import rotateVector
 from wmpl.Utils.TrajConversions import latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
+
+def angleBetweenVect(u, v, unit='deg'):
+
+    #normalize
+    u = u/np.sqrt(np.dot(u, u))
+    v = v/np.sqrt(np.dot(v, v))
+
+    angle = np.arccos(np.dot(u, v))
+
+    if unit == 'rad':
+        return angle
+
+    return np.degrees(angle)
 
 def invertColor(color):
     color[0] = 255 - color[0]
@@ -210,6 +222,7 @@ def chauvenet(data):
 
 
 
-if __name__ == "__main__":
-    a = [1, 2, 3]
-    print(chauvenet(a))
+# if __name__ == "__main__":
+    # u = np.array([0, 0, 1])
+    # v = np.array([1, 0, 1])
+    # print(angleBetweenVect(u, v))

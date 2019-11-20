@@ -33,6 +33,12 @@ class FragmentationStaff(QWidget):
         self.plot_view.nextRow()
         self.angle_canvas = self.plot_view.addPlot()
 
+        self.plot_view.setBackground((255, 255, 255))
+        self.angle_canvas.getAxis('bottom').setPen((0, 0, 0)) 
+        self.angle_canvas.getAxis('left').setPen((0, 0, 0))
+        self.height_canvas.getAxis('bottom').setPen((0, 0, 0)) 
+        self.height_canvas.getAxis('left').setPen((0, 0, 0)) 
+
         # Force x-axes to stay aligned
         self.angle_canvas.setXLink(self.height_canvas)   
         layout.addWidget(self.plot_view)
@@ -41,6 +47,7 @@ class FragmentationStaff(QWidget):
         export_button = QPushButton('Export')
         layout.addWidget(export_button)
         export_button.clicked.connect(self.export)
+
 
         guess = True
         X = []
@@ -66,18 +73,18 @@ class FragmentationStaff(QWidget):
         X = np.array(X)
         Y_M = np.array(Y_M)
         Y = np.array(Y)
-        ptb_colors = [(0, 255, 26, 150), (3, 252, 219, 150), (252, 3, 3, 150), (223, 252, 3, 150), (255, 133, 3, 150),
-                      (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (255, 230, 249, 150)]
+        ptb_colors = [(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
+                      (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)]
         base_points = pg.ScatterPlotItem()
         base_points.addPoints(x=X, y=Y_M + X/self.setup.trajectory.pos_i.elev*(Y - Y_M), pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
-        for i in range(len(self.setup.fragmentation_point)):
-            try:
-                txt = pg.TextItem("{:.2f}".format(self.arrTimes[0, self.current_station, 4, i]), color=(255, 0, 238))
-                txt.setPos(X[i], Y[i])
-                self.height_canvas.addItem(txt)
+        # for i in range(len(self.setup.fragmentation_point)):
+        #     try:
+        #         txt = pg.TextItem("{:.2f}".format(self.arrTimes[0, self.current_station, 4, i]), color=(255, 0, 238))
+        #         txt.setPos(X[i], Y[i])
+        #         self.height_canvas.addItem(txt)
 
-            except:
-                pass
+        #     except:
+        #         pass
         
         err = pg.ErrorBarItem(x=X, y=(Y + Y_M)/2, top=abs(Y_M - (Y + Y_M)/2), bottom=abs(Y_M - (Y + Y_M)/2), beam=0.5, pen=(255, 0, 238))
         self.height_canvas.addItem(err) 
@@ -101,13 +108,13 @@ class FragmentationStaff(QWidget):
 
             err = pg.ErrorBarItem(x=X, y=(y_p + y_p_M)/2, top=abs(y_p_M-(y_p + y_p_M)/2), bottom=abs(y_p_M-(y_p + y_p_M)/2), beam=0.5, pen=ptb_colors[ptb])
             self.height_canvas.addItem(err)
-            for i in range(len(self.setup.fragmentation_point)):
-                try:
-                    txt = pg.TextItem("{:.2f}".format(self.arrTimes[ptb, self.current_station, 4, i]), color=ptb_colors[ptb])
-                    txt.setPos(X[i], y_p[i])
-                    self.height_canvas.addItem(txt)
-                except:
-                    pass
+            # for i in range(len(self.setup.fragmentation_point)):
+            #     try:
+            #         txt = pg.TextItem("{:.2f}".format(self.arrTimes[ptb, self.current_station, 4, i]), color=ptb_colors[ptb])
+            #         txt.setPos(X[i], y_p[i])
+            #         self.height_canvas.addItem(txt)
+            #     except:
+            #         pass
 
                
             Y_P[ptb].append(y_p)
@@ -245,8 +252,8 @@ class FragmentationStaff(QWidget):
         # self.height_canvas.plot(x=[30400, 30400], y=[-40, 100], pen=(255, 255, 255))
 
 
-        self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick')
-        self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path')
+        self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick', color=(0, 0, 0))
+        self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path', color=(0, 0, 0))
         self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(nom_pick.time), units='s')
         self.angle_canvas.setLabel('left', 'Angle Away from Trajectory of Initial Acoustic Wave Path', units='deg')
         self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
@@ -255,6 +262,7 @@ class FragmentationStaff(QWidget):
         self.height_canvas.setLimits(xMin=17000, xMax=50000, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
 
         self.setLayout(layout)
+
 
     def export(self):
 

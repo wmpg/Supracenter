@@ -51,8 +51,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     """
 
     # Azimuths and Wind directions are measured as angles from north, and increasing clockwise to the East
-    
-    
+
     # Switch to turn off winds
     if not wind:
         z_profile[:, 2] = 0
@@ -133,7 +132,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     ### Scan Loop ###
     while not found:
-        
+        count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
         for i in range(n_layers - 1):
@@ -178,7 +177,12 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
-
+        
+        # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
+        # print('pos', supra_pos, detec_pos)
+        # print('x_diff', a*X - b*Y-dx)
+        # print('y_diff', b*X + a*Y-dy)
+        # print('z_diff', (z[n_layers - last_z - 1] - detec_pos[2]))
         # Ignore all nan slices - not interested in these points
         # Find the position of the smallest value
         with warnings.catch_warnings():
@@ -188,12 +192,13 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # Check for all nan error function
         if k.shape == (0, ):
             # As handled in original Supracenter
+
             return np.array([np.nan, np.nan, np.nan, np.nan])
 
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):
             k, l = k[len(k)//2], l[len(l)//2]
-        
+
         new_error = E[k, l]
         # #print(abs(new_error - last_error)/(last_error + 1e-6))
         # if (abs(new_error - last_error)/(last_error + 1e-25) < 1) or (new_error > last_error):
@@ -207,9 +212,11 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
+
             if E[k, l] < v_tol:
                 found = True
             else:
+
                 return np.array([np.nan, np.nan, np.nan, np.nan])
 
         else:

@@ -30,6 +30,30 @@ Station Navigation
 
 The stations can be navigated most easily by "A" and "D" to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.
 
+Contour
+^^^^^^^
+
+Makes a contour of the arrivals from the ballistic trajectory to the ground level. Different colours represent the scaled gradient in arrival times. Contours take a long time to create, so it is recommended to use the saving and loading features to quickly reproduce contours. 
+
+The region calculated for is the rectangle defined by lat_min, lat_max, lon_min, lon_max.
+
+Show Contour
+""""""""""""
+Begins calculating the ray-tracing for the contour. Does not save the final product
+
+Grid Spacing
+""""""""""""
+The number of grid spaces within the region to calculate arrival times for. The fewer points, the faster the calculation, but the more pixelated the result is.
+
+Save Contour
+""""""""""""
+Saves the last created contour in memory
+
+Load Contour
+""""""""""""
+Loads and displays a contour
+
+
 Bandpass Filter
 ^^^^^^^^^^^^^^^
 
