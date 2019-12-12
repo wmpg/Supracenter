@@ -11,7 +11,7 @@ Theory
 Overview
 ********
 
-Infrasonics is the study of sound waves, infrasound, with a frequency below the range of human hearing, from 20 Hz down to the order of :math: 10^{-3}. This is analogous to how infrared is light with a frequency below the wavelength visible to humans. Low-frequency waves can be  produced by volcanoes, earthquakes, avalanches, meteors, nuclear explosions, and from some large animals, such as whales, and are able to propagate far away from the source before dissipation, often further than audible sounds. Because of their long-range, infrasound can provide some information about its source that may be otherwise unobtainable.\par
+Infrasonics is the study of sound waves, infrasound, with a frequency below the range of human hearing, from 20 Hz down to the order of :math: '10^{-3}'. This is analogous to how infrared is light with a frequency below the wavelength visible to humans. Low-frequency waves can be  produced by volcanoes, earthquakes, avalanches, meteors, nuclear explosions, and from some large animals, such as whales, and are able to propagate far away from the source before dissipation, often further than audible sounds. Because of their long-range, infrasound can provide some information about its source that may be otherwise unobtainable.\par
 When a meteor falls, it travels much faster than the speed of sound, and interacting with the atmosphere, creates a Mach cone. At speeds ranging from Mach 35 to Mach 240, the Mach cone will have a small angle, and can be effectively approximated as a line source. In this picture, the blast produces a cylindrical shock wave moving radially outward, which decays at long distances to infrasound.
 
 Additionally, a meteor may also fragment during its flight releasing a quasi-spherical shock wave independent of the Mach cone. The optically luminous part of the meteor flight, termed the fireball, is the section of interest for this study. This lasts for a time on the order of seconds. Normally, the meteoroid does not reach the ground, unless the mass is sufficiently large and speed sufficiently low. Since the meteor is luminous for such a short time, and travels at hypersonic speeds, external forces such as gravity and winds, can be ignored and the trajectory can be approximated as a straight line.
@@ -26,6 +26,24 @@ Sources
 
 Ballistic vs. Fragmentation anaylsis
 
+Ballistic
+---------
+
+The launch angle of every ray from the ballistic source must be :math: '90^{\circ}' from the trajectory. Defining the trajectory vector to be :math: '\vec{u} = [sin(\theta)sin(\phi), cos(\theta)sin(\phi), -cos(\phi)]', where :math: '\theta' is the azimuth angle and :math: '\phi' is the zenith angle of the trajectory, and a ray leaving the trajectory as :math: '\vec{v} = [sin(\alpha)sin(\beta), cos(\alpha)sin(\beta), -cos(\beta)]', where :math: '\alpha' and :math: '\beta' correspond to :math: '\theta' and :math: '\phi', then letting :math: '\alpha' freely vary:
+
+.. math::
+	\beta = arctan(\frac{-1}{tan(\phi)cos(\theta - \alpha)})
+
+adding in a tolerance angle of :math: '\gamma':
+
+.. math::
+	\beta = 2 arctan(\frac{a - d}{b + c}), where:
+	a = sin(\phi)cos(\theta - \alpha)
+	b = cos(\phi)
+	c = cos(\gamma)
+	d = \sqrt(a^2 + b^2 - c^2)
+
+It is possible that a :math: '\beta' value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored. 
 .. toctree::
    :maxdepth: 2
 

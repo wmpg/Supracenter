@@ -3,6 +3,9 @@ import numpy as np
 
 from supra.Utils.AngleConv import geo2Loc, loc2Geo, angle2NDE
 
+import pyqtgraph as pg
+from pyqtgraph.Qt import QtGui, QtCore
+
 class Config:
 
     def __init__(self):
@@ -516,17 +519,110 @@ class Color:
         self.perturb = [([(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
                         (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)])]
 
+class RectangleItem(pg.GraphicsObject):
+    def __init__(self, data):
+        pg.GraphicsObject.__init__(self)
+
+        self.data = data
+        self.normed_dat = self.normData()
+        self.generatePicture()
+    
+    def normData(self):
+        a = np.array(self.data)
+        a = a[:, 4]
+        
+        max_data = np.nanmax(a)
+        min_data = np.nanmin(a)
+
+        r = max_data - min_data 
+
+        a = (a - min_data)/r
+
+        return a**0.09
+
+    def weightedNormData(self):
+        a = np.array(self.data)
+        a = a[:, 4]
+        
+        max_data = np.nanmax(a)
+        min_data = np.nanmin(a)
+
+        r = max_data - min_data 
+
+        a = (a - min_data)/r
+
+        return a
+
+
+    def gradient(self, weight, alpha):
+        if weight == weight:
+            c_ender = (7, 65, 112)
+            c_end = (111, 255, 0)
+            c_start   = (224, 245, 66)
+            c_starter = (232, 72, 9)
+
+            if weight > (2/3):
+                r = c_end[0] + 3*(weight - (2/3))*(c_ender[0] - c_end[0])
+                g = c_end[1] + 3*(weight - (2/3))*(c_ender[1] - c_end[1])
+                b = c_end[2] + 3*(weight - (2/3))*(c_ender[2] - c_end[2])
+            elif weight > (1/3):
+                r = c_start[0] + 3*(weight - (1/3))*(c_end[0] - c_start[0])
+                g = c_start[1] + 3*(weight - (1/3))*(c_end[1] - c_start[1])
+                b = c_start[2] + 3*(weight - (1/3))*(c_end[2] - c_start[2])
+            else:
+                r = c_starter[0] + 3*(weight)*(c_start[0] - c_starter[0])
+                g = c_starter[1] + 3*(weight)*(c_start[1] - c_starter[1])
+                b = c_starter[2] + 3*(weight)*(c_start[2] - c_starter[2])
+
+            return (r, g, b, alpha)
+        else:
+            return (0, 0, 0, 0)
+
+    def generatePicture(self):
+        ## pre-computing a QPicture object allows paint() to run much more quickly, 
+        ## rather than re-drawing the shapes every time.
+        self.picture = QtGui.QPicture()
+        p = QtGui.QPainter(self.picture)
+
+        for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
+            z = self.normed_dat[ii]
+            p.setBrush(pg.mkBrush(self.gradient(z, 150)))
+            p.setPen(pg.mkPen(self.gradient(z, 0)))
+            l = c_x - w/2
+            t = c_y + h/2
+            p.drawRect(QtCore.QRectF(l, t, w, h))
+        p.end()
+    
+    def paint(self, p, *args):
+        p.drawPicture(0, 0, self.picture)
+    
+    def boundingRect(self):
+        ## boundingRect _must_ indicate the entire area that will be drawn on
+        ## or else we will get artifacts and possibly crashing.
+        ## (in this case, QPicture does all the work of computing the bouning rect for us)
+        return QtCore.QRectF(self.picture.boundingRect())
+
 if __name__ == '__main__':
 
     pass
-    # D = Position(48.2282, 13.0850, 0)
-    # S = Position(48.8461, 13.7179, 0)
     ref = Position(48.3314, 13.0706, 0)
+    D_1 = [38158.66623057,  43672.3120398 , 0]
+    D_2 = [48817.82990316,  59361.99386328, 0]
+    D_3 = [38270.85426044,  44259.41571411, 0]
+    D_4 = [50598.81673897,  61842.3628467 , 0]
+    D_5 = [38102.27501089,  44299.0882369 , 0]
+    D_6 = [52267.58095995,  64080.75697245, 0]
+    D_7 = [38006.20726851,  44247.86390211, 0]
+    D_8 = [52810.11802868,  64792.13695008, 0]
 
-    # D.pos_loc(ref)
-    # S.pos_loc(ref)
-    # print("S", S.xyz)
-    # print("D", D.xyz)
+    D = Position(0, 0, 0)
+    D.x = D_8[0]
+    D.y = D_8[1]
+    D.z = D_8[2]
+    D.pos_geo(ref)
+    print(D)
+    # S = Position(48.8461, 13.7179, 0)
+
     # print("Line")
     # D.line_between_2d(S, show_error=True)
     # print("Dist", D.ground_distance(S))    
@@ -535,24 +631,24 @@ if __name__ == '__main__':
     # R = 73460.63
     # print((-m*b + np.sqrt(m**2*R**2 + b**2 - R**2))/(m**2 + 1))
 
-    S_p = Position(0, 0, 0)
-    S_m = Position(0, 0, 0)
-    S_p.x = 42122.68
-    S_p.y = 49443.00
-    S_p.z = 0
-    S_m.x = 54260.14
-    S_m.y = 67453.77
-    S_m.z = 0
+    # S_p = Position(0, 0, 0)
+    # S_m = Position(0, 0, 0)
+    # S_p.x = 42122.68
+    # S_p.y = 49443.00
+    # S_p.z = 0
+    # S_m.x = 54260.14
+    # S_m.y = 67453.77
+    # S_m.z = 0
 
-    S_p.pos_geo(ref)
-    S_m.pos_geo(ref)
+    # S_p.pos_geo(ref)
+    # S_m.pos_geo(ref)
 
-    print(S_p)
-    print(S_m)
+    # print(S_p)
+    # print(S_m)
 
     # A = Position()
     #A = Trajectory(0, 13913, pos_i=Position(48.2042, 13.0884, 39946.8), pos_f=Position(48.8461, 13.7179, 1098))
-    #A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
+    # A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))
     #A = Trajectory(0, 13913, pos_f=Position(43.6783, -80.0647, 72386), pos_i=Position(43.5327, -80.2335, 95901))
     #A = Trajectory(0, 13913, pos_i=Position(42.0142, -81.2926, 100486), \
     #                         pos_f=Position(41.9168, -81.3655,  71666))
@@ -563,6 +659,6 @@ if __name__ == '__main__':
     #print(A)
     #A = Trajectory(0, 13913, pos_i=Position(42.8408, -81.9617, 119216), pos_f=Position(43.7675, -82.4195, 88458))
 
-    #P = A.trajInterp(div=500, write=True)
+    # P = A.trajInterp(div=500, write=True)
     # A = Trajectory(0, 13913, pos_i=Position(43.721, -78.680, 95536), pos_f=Position(44.734, -78.212, 29307))#pos_f=Position(44.828, -78.153, 28866))
     # print(A.azimuth)

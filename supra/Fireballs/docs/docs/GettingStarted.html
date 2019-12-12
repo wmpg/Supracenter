@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Requirements &mdash; Western Meteor Physics Group Bolide Acoustic Modeling  documentation</title>
+  <title>Getting Started &mdash; Western Meteor Physics Group Bolide Acoustic Modeling  documentation</title>
   
 
   
@@ -38,8 +38,8 @@
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Getting Started" href="GettingStarted.html" />
-    <link rel="prev" title="Methods" href="Methods.html" /> 
+    <link rel="next" title="Usage" href="Usage.html" />
+    <link rel="prev" title="Requirements" href="Installation.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -89,10 +89,11 @@
 <li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Requirements</a><ul class="simple">
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#setting-up-an-event">Setting Up an Event</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
 <li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
@@ -146,13 +147,13 @@
     
       <li><a href="../index.html">Docs</a> &raquo;</li>
         
-      <li>Requirements</li>
+      <li>Getting Started</li>
     
     
       <li class="wy-breadcrumbs-aside">
         
             
-            <a href="../_sources/docs/Installation.rst.txt" rel="nofollow"> View page source</a>
+            <a href="../_sources/docs/GettingStarted.rst.txt" rel="nofollow"> View page source</a>
           
         
       </li>
@@ -165,21 +166,13 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
             
-  <div class="section" id="requirements">
-<h1>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h1>
-<p>Python 3</p>
-<p>This library:
-<a class="reference external" href="https://github.com/wmpg/WesternMeteorPyLib">https://github.com/wmpg/WesternMeteorPyLib</a></p>
-<p>These libraries:
-pyhdf
-obspy
-simplekml
-netcdf4
-pyqt5
-pyswarm</p>
-<p>See here for installation:
-<a class="reference external" href="https://github.com/dvida/Supracenter">https://github.com/dvida/Supracenter</a></p>
-<div class="toctree-wrapper compound">
+  <div class="section" id="getting-started">
+<h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="setting-up-an-event">
+<h2>Setting Up an Event<a class="headerlink" href="#setting-up-an-event" title="Permalink to this headline">¶</a></h2>
+<img alt="../_images/BAM.png" src="../_images/BAM.png" />
+<p>An individual event is defined by its .pkl file. It is recommended that every simulation that you run should be on a separate .pkl file. The parameters of the event should be entered in the “variables” toolbar on the left side. This toolbar is dragable, dockable, and can be shown/hidden by pressing “v” (thanks to the wonderful PYQT GUI Library). It is not necessary to completely fill in every entry, the program actually has enough defaults in place to run without needing much filled in.</p>
+<p>If you are just starting with an event, the key is to fill in as much of the “General” section as known. The program will fill in the rest of the defaults in this section, and calculate the other parameters of the trajectory if not filled in. If either of the fragmentation or ballistic searches are being done, then it is important to fill in the “Sources” tab with your search area, specifically the bottom half. The “Atmosphere” tab should set to “False” or “None”, and the two editable boxes should be set to “1” (Hopefully these will be more user-friendly in the future), if weather is not being used. The “Tweaks” tab is already defaulted to about what they should be, and should only really be edited for speed or graphing purposes. The “Misc” tab should not be touched unless you know exactly what you are doing, (hopefully this will also be more user-friendly in the future).</p>
 </div>
 </div>
 
@@ -191,10 +184,10 @@ pyswarm</p>
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="GettingStarted.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="Usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="Methods.html" class="btn btn-neutral float-left" title="Methods" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="Installation.html" class="btn btn-neutral float-left" title="Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   

@@ -351,30 +351,33 @@ def waveReleasePointWindsContour(setup, sounding, ref_loc, points, u, div=37, mo
     alpha = np.radians(alpha)
     theta = setup.azimuth.rad
     phi = setup.zenith.rad
-    # beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha))
-
-
+    tol = 25 #deg
+    tol_fact = np.radians(np.linspace(-tol, tol, 10))
     v = [0]*(steps**2)
-
-    # for i in range(len(beta)):
-
 
     results = []
     if mode == 'ballistic':
-        beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha))
-        beta = np.radians(beta)
-        for p in points:
-            for i in range(steps):
-                # print(np.degrees(beta[i]))
-
-                v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
-                                 np.cos(alpha[i])*np.sin(beta[i]),\
-                                                -np.cos(beta[i])]) 
-                s = p + p[2]/np.cos(beta[i])*v[i]
-                z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
-                     ref_loc, copy.copy(sounding), convert=True)
-                res = anglescan(p, np.degrees(alpha[i]), 180-np.degrees(beta[i]), z_profile, wind=True)
-                results.append(res)
+        for t in tol_fact:
+            # restriction on beta for initial launch angle to be 90 deg to trajectory
+            beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha)) + t
+            # a = np.sin(phi)*np.cos(theta - alpha)
+            # b = np.cos(phi)
+            # c = np.cos(t)
+            # d = np.sqrt(a**2 + b**2 - c**2)
+            # beta = 2*np.arctan((a - d)/(b + c))
+            for p in points:
+                for i in range(steps):
+                    try:
+                        v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
+                                         np.cos(alpha[i])*np.sin(beta[i]),\
+                                                        -np.cos(beta[i])]) 
+                        s = p + p[2]/np.cos(beta[i])*v[i]
+                        z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
+                             ref_loc, copy.copy(sounding), convert=True)
+                        res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True)
+                        results.append(res)
+                    except:
+                        pass
     else:
         beta = np.linspace(90 + 0.01, 180, steps)
         beta = np.radians(beta)

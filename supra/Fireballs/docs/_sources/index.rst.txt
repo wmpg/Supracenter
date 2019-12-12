@@ -5,13 +5,14 @@
 
 
 
-Western Meteor Physics Group Seismic and Infrasonic Meteor Program
-******************************************************************
+Western Meteor Physics Group Bolide Acoustic Modelling
+******************************************************
 
 .. figure::  docs/wmpl.png
    :align:   center
 
-Welcome to the Western Meteor Physics Group (WMPG) Seismic and Infrasonic Meteor Program User Manual.
+Welcome to the Western Meteor Physics Group (WMPG) Bolide Acoustic Modelling (BAM) Program User Manual.
+This expansion to the Western Meteor Python Library (WMPL) has been in development since May 2018. Any bugs, concerns, questions, etc. may be sent to Luke at lmcfadd6@uwo.ca
 
 .. toctree::
    :maxdepth: 2
@@ -22,6 +23,7 @@ Welcome to the Western Meteor Physics Group (WMPG) Seismic and Infrasonic Meteor
    docs/Theory
    docs/Methods
    docs/Installation
+   docs/GettingStarted
    docs/Usage
    docs/Atmosphere
    docs/References

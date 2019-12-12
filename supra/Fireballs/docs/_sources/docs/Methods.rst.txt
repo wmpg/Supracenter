@@ -28,6 +28,8 @@ The angle tolerance may be adjusted to allow more ballistic arrivals at stations
 Slicing Atmospheric Data
 ************************
 
+The path between the source and the detector are assumed to be linear for atmospheric purposes only. The linear path is divided up into X (default=10) points. Each point is moved to the closest 0.25x0.25 degree grid point. At each grid point, the Xth fraction of the atmospheric profile is taken from that point. The atmospheric profile fractions are then merged into the final atmospheric profile for the sound wave. The boundaries between atmospheric sections are interpolated in order to maintain a smooth atmospheric profile.
+
 ***********************
 Finding the Supracenter
 ***********************

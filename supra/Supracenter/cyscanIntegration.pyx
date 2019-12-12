@@ -135,8 +135,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     ### Scan Loop ###
     while not found:
-        f = 0
-        g = 0
+
         count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
@@ -184,14 +183,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # print("Y", b*(p2 + s2*U)*A + a*s2*V*A)
             # print("Z", delz)
 
-            snell_c = np.sqrt((a*(p2 + s2*U)*A - b*s2*V*A)**2 + (b*(p2 + s2*U)*A + a*s2*V*A)**2)/np.sqrt(delz**2 + (a*(p2 + s2*U)*A - b*s2*V*A)**2 + (b*(p2 + s2*U)*A + a*s2*V*A)**2)
-            snell = delz / np.sqrt(delz**2 + (a*(p2 + s2*U)*A - b*s2*V*A)**2 + (b*(p2 + s2*U)*A + a*s2*V*A)**2)
-            f += np.sqrt(delz**2 + (a*(p2 + s2*U)*A - b*s2*V*A)**2 + (b*(p2 + s2*U)*A + a*s2*V*A)**2)/np.log(pres_1/pres)*(1/pres_1 - 1/pres)*10
-            # print('pres', pres, pres_1)
-            # print('z', z[i], z[i+1])
-            # A_new = 1/pres_1/s[i]*(s[i] - s[i+1])*delz/snell_z
-            
-            g += (np.exp(b_const*z[i+1]) - np.exp(b_const*z[i]))/snell
+
 
             
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
@@ -237,6 +229,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 L = 0
                 f=0
                 # print(g[k, l])
+                G = 0
                 g = 0
                 for i in range(n_layers - 1):
             
@@ -290,8 +283,12 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                     # f += delz/snell/np.log(pres_1/pres)*(1/pres_1 - 1/pres)*10
                     # print('pres', pres, pres_1)
                     # print('z', z[i], z[i+1])
-                    f += np.sqrt(delz**2 + (a*(p2 + s2*U)*A - b*s2*V*A)**2 + (b*(p2 + s2*U)*A + a*s2*V*A)**2)/np.log(pres_1/pres)*(1/pres_1 - 1/pres)*10
+                    f += delz/snell[k, l]/np.log(pres_1/pres)*(1/pres_1 - 1/pres)
+
                     G = (np.exp(b_const*z[i+1]) - np.exp(b_const*z[i]))/snell[k, l]
+                    # print(z[i+1]-z[i])
+                    # print(np.degrees(np.arcsin(snell[k, l])))
+                    # print(pres_1)
                     # print("##########################")
                     # print("LEVEL: ", z[i+1])
                     # print("  TO : ", z[i])
@@ -388,7 +385,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     p1 = p[k, l]
     p2 = p[k, l]**2
-    # Find sum of travel times between layers (z)
+    # Find sum of travel times between layers (z)v
     for i in range(n_layers - 1):# - n_layers + last_z):
 
 
@@ -397,4 +394,4 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])
     
     ##########################
-    return np.array([f[k, l], g])
+    return np.array([f, g])

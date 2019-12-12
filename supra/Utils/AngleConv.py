@@ -223,6 +223,4 @@ def chauvenet(data):
 
 
 # if __name__ == "__main__":
-    # u = np.array([0, 0, 1])
-    # v = np.array([1, 0, 1])
-    # print(angleBetweenVect(u, v))
+#     print('Done!')

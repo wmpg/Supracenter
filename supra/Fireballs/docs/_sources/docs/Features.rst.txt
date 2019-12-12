@@ -25,6 +25,12 @@ Acoustic Ray Tracer
 
 An direct-arrival acoustic wave may be traced through the atmosphere given winds and temperatures in the given region.
 
+***************
+Yield Estimater
+***************
+
+In progress... From a given overpressure recieved at a station from a blast a range, height, and pressure, the fragmentation yield can be estimated.
+
 .. toctree::
    :maxdepth: 2
 

@@ -26,6 +26,7 @@ To open the program, navigate to your Supracenter folder and type the following 
    :caption: Contents:
 
    inibuilder
+   stations
    makepicks
    fetchatmosphere
    atmosphereviewer
@@ -34,6 +35,12 @@ To open the program, navigate to your Supracenter folder and type the following 
    supracentermanual
    seismictraj
 
+Controls:
+* Fullscreen Toggle: F11
+* INI Toolbar Toggle: V
+* Save: CTRL+S
+* Save As: CTRL+SHIFT+S
+* Quit: CTRL+Q
 
 Other Functions
 ===============

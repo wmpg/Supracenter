@@ -169,20 +169,21 @@ def estPressure(height):
 
 
 if __name__ == '__main__':
-	n = 100
-	min_height =  1000
-	max_height =  30000
-	r = max_height - min_height
-	dr = r/n
+	print(estPressure(35000))
+	# n = 100
+	# min_height =  1000
+	# max_height =  30000
+	# r = max_height - min_height
+	# dr = r/n
 
-	p = []
-	h = []
+	# p = []
+	# h = []
 
-	for i in range(n + 1):
-		height = min_height + i*dr
-		p.append(getData(height)[3]*100)
-		h.append(height)
+	# for i in range(n + 1):
+	# 	height = min_height + i*dr
+	# 	p.append(getData(height)[3]*100)
+	# 	h.append(height)
 
-	print("{:}{:}{:}".format("p = np.array(", p, ")"))
-	print("{:}{:}{:}".format("h = np.array(", h, ")"))
+	# print("{:}{:}{:}".format("p = np.array(", p, ")"))
+	# print("{:}{:}{:}".format("h = np.array(", h, ")"))
 	# getData(32400)
