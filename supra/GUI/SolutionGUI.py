@@ -58,6 +58,7 @@ from supra.Supracenter.cyscanIntegration import cyscan as intscan
 
 from supra.GUI.GUITools import *
 from supra.GUI.WidgetBuilder import *
+from supra.GUI.Yields import Yield
 from supra.GUI.FragStaff import FragmentationStaff
 from supra.GUI.AllWaveformView import AllWaveformViewer
 from supra.GUI.htmlLoader import htmlBuilder
@@ -727,23 +728,28 @@ class SolutionGUI(QMainWindow):
         SolutionGUI.update(self)
 
     def W_estGUI(self):
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        height = float(self.W_est_edits.text())
-        point = self.setup.trajectory.findGeo(height)
-        point.pos_loc(self.setup.ref_pos)
-        dataset = parseWeather(self.setup)
 
-        for ptb_n in range(self.setup.perturb_times):
-            stn = self.stn_list[self.current_station]
-            stn.position.pos_loc(self.setup.ref_pos)
-            self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-            zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+        self.w = Yield(self.setup, self.stn_list, self.current_station)
+        self.w.setGeometry(QRect(100, 100, 800, 200))
+        self.w.show()
 
-            f, g = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                                n_theta=1000, n_phi=1000, h_tol=1e-15, v_tol=330)
-            print("PTB {:}: f = {:} g = {:}".format(ptb_n, f, g))
-            # if f == f:
+        # ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+        # height = float(self.W_est_edits.text())
+        # point = self.setup.trajectory.findGeo(height)
+        # point.pos_loc(self.setup.ref_pos)
+        # dataset = parseWeather(self.setup)
+
+        # for ptb_n in range(self.setup.perturb_times):
+        #     stn = self.stn_list[self.current_station]
+        #     stn.position.pos_loc(self.setup.ref_pos)
+        #     self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+        #     zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+        #             [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+
+        #     f, g = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+        #                         n_theta=1000, n_phi=1000, h_tol=1e-15, v_tol=330)
+        #     print("PTB {:}: f = {:} g = {:}".format(ptb_n, f, g))
+        #     # if f == f:
             #     print(zProfile)
 
     def showContour(self, mode):
@@ -1619,47 +1625,41 @@ class SolutionGUI(QMainWindow):
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
         ### ADJUST
-        # for ii, stn in enumerate(self.stn_list):
+        for ii, stn in enumerate(self.stn_list):
 
-        #     self.station_marker[ii].setPoints(x=[stn.position.lon], y=[stn.position.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='t')
-        #     self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
-        #     txt = pg.TextItem("{:}".format(stn.code))
-        #     txt.setPos(stn.position.lon, stn.position.lat)
-        #     self.make_picks_map_graph_canvas.addItem(txt)
+            self.station_marker[ii].setPoints(x=[stn.position.lon], y=[stn.position.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='t')
+            self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
+            txt = pg.TextItem("{:}".format(stn.code))
+            txt.setPos(stn.position.lon, stn.position.lat)
+            self.make_picks_map_graph_canvas.addItem(txt)
             
-            # # Plot stations
-            # if stn.code in setup.high_f:
-            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='g', s=2)
-            # elif stn.code in setup.high_b:
-            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='b', s=2)
-            # else:
-            #     self.m.scatter(stn.position.lat_r, stn.position.lon_r, c='k', s=2)
+
         
         ### ADJUST
-        # Manual Supracenter search
-        # if self.setup.show_fragmentation_waveform:
+
+        if self.setup.show_fragmentation_waveform:
             
-        #     # Fragmentation plot
-        #     for i, line in enumerate(self.setup.fragmentation_point):
-        #         self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
-        #             pen=(0 + i*255/len(self.setup.fragmentation_point), 255 - i*255/len(self.setup.fragmentation_point), 0), symbol='+')
+            # Fragmentation plot
+            for i, line in enumerate(self.setup.fragmentation_point):
+                self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
+                    pen=(0 + i*255/len(self.setup.fragmentation_point), 255 - i*255/len(self.setup.fragmentation_point), 0), symbol='+')
 
         ### ADJUST
-        # # Plot source location
-        # self.make_picks_map_graph_canvas.scatterPlot(x=[setup.lon_centre], y=[setup.lat_centre], symbol='+', pen=(255, 255, 0))
+        # Plot source location
+        self.make_picks_map_graph_canvas.scatterPlot(x=[setup.lon_centre], y=[setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
-        # # Manual trajectory search
-        # if self.setup.show_ballistic_waveform:
+        # Manual trajectory search
+        if self.setup.show_ballistic_waveform:
 
-        #     # Plot the trajectory with the bottom point known
-        #     self.make_picks_map_graph_canvas.plot([self.setup.trajectory.pos_i.lon, self.setup.trajectory.pos_f.lon],\
-        #                                           [self.setup.trajectory.pos_i.lat, self.setup.trajectory.pos_f.lat],\
-        #                                             pen=(0, 0, 255))
+            # Plot the trajectory with the bottom point known
+            self.make_picks_map_graph_canvas.plot([self.setup.trajectory.pos_i.lon, self.setup.trajectory.pos_f.lon],\
+                                                  [self.setup.trajectory.pos_i.lat, self.setup.trajectory.pos_f.lat],\
+                                                    pen=(0, 0, 255))
 
-        #     # Plot intersection with the ground
-        #     self.make_picks_map_graph_canvas.scatterPlot(x=[self.setup.trajectory.pos_f.lon], \
-        #                                                  y=[self.setup.trajectory.pos_f.lat], \
-        #                                                     symbol='+', pen=(0, 0, 255))
+            # Plot intersection with the ground
+            self.make_picks_map_graph_canvas.scatterPlot(x=[self.setup.trajectory.pos_f.lon], \
+                                                         y=[self.setup.trajectory.pos_f.lat], \
+                                                            symbol='+', pen=(0, 0, 255))
 
 
         if self.setup.arrival_times_file != '':

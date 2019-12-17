@@ -5,6 +5,8 @@
 
 Atmosphere Viewer
 -----------------
+.. image:: atmosslice.png
+
 Allows an atmospheric slice to be analysed from the information given in the pkl file.
 
 .. toctree::

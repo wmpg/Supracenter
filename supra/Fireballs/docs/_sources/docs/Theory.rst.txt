@@ -29,21 +29,32 @@ Ballistic vs. Fragmentation anaylsis
 Ballistic
 ---------
 
-The launch angle of every ray from the ballistic source must be :math: '90^{\circ}' from the trajectory. Defining the trajectory vector to be :math: '\vec{u} = [sin(\theta)sin(\phi), cos(\theta)sin(\phi), -cos(\phi)]', where :math: '\theta' is the azimuth angle and :math: '\phi' is the zenith angle of the trajectory, and a ray leaving the trajectory as :math: '\vec{v} = [sin(\alpha)sin(\beta), cos(\alpha)sin(\beta), -cos(\beta)]', where :math: '\alpha' and :math: '\beta' correspond to :math: '\theta' and :math: '\phi', then letting :math: '\alpha' freely vary:
+The launch angle of every ray from the ballistic source must be :math:`90^{\circ}` from the trajectory. Defining the trajectory vector to be :math:`\vec{u} = [sin(\theta)sin(\phi), cos(\theta)sin(\phi), -cos(\phi)]`, where :math:`\theta` is the azimuth angle and :math:`\phi` is the zenith angle of the trajectory, and a ray leaving the trajectory as :math:`\vec{v} = [sin(\alpha)sin(\beta), cos(\alpha)sin(\beta), -cos(\beta)]`, where :math:`\alpha` and :math:`\beta` correspond to :math:`\theta` and :math:`\phi`, then letting :math:`\alpha` freely vary:
 
 .. math::
 	\beta = arctan(\frac{-1}{tan(\phi)cos(\theta - \alpha)})
 
-adding in a tolerance angle of :math: '\gamma':
+adding in a tolerance angle of :math:`\gamma`:
 
 .. math::
-	\beta = 2 arctan(\frac{a - d}{b + c}), where:
-	a = sin(\phi)cos(\theta - \alpha)
-	b = cos(\phi)
-	c = cos(\gamma)
-	d = \sqrt(a^2 + b^2 - c^2)
+	\beta = 2 arctan(\frac{a - d}{b + c}), 
 
-It is possible that a :math: '\beta' value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored. 
+where:
+
+.. math::
+	a = sin(\phi)cos(\theta - \alpha)
+
+.. math::
+	b = cos(\phi)
+
+.. math::
+	c = cos(\gamma)
+
+.. math::
+	d = \sqrt{a^2 + b^2 - c^2}
+
+It is possible that a :math:`\beta` value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored. 
+
 .. toctree::
    :maxdepth: 2
 

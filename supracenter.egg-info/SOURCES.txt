@@ -1,0 +1,7 @@
+README.md
+setup.py
+supracenter.egg-info/PKG-INFO
+supracenter.egg-info/SOURCES.txt
+supracenter.egg-info/dependency_links.txt
+supracenter.egg-info/requires.txt
+supracenter.egg-info/top_level.txt

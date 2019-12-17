@@ -115,6 +115,10 @@ class Constants:
         # standard gravity at mean sea level
         self.g_0 = 9.80665 #m/s^2
 
+        self.k = 2e-4
+
+        self.b = 1.19e-4
+
 class Pick:
     def __init__(self, t, stn, stn_no, channel, group):
         self.time = t
@@ -510,6 +514,7 @@ class Trajectory:
                 print(element, r)
 
         return pos_list
+
 
 class Color:
     def __init__(self):

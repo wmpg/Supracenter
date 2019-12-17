@@ -217,11 +217,6 @@ def addMakePicksWidgets(obj):
     pick_group_layout.addWidget(obj.W_est)
     obj.W_est.clicked.connect(obj.W_estGUI)
 
-    obj.W_est_label = QLabel('Frag Height')
-    obj.W_est_edits = QLineEdit('')
-    pick_group_layout.addWidget(obj.W_est_label)
-    pick_group_layout.addWidget(obj.W_est_edits)
-
     make_picks_check_group = QGroupBox("Toggles")
     make_picks_control_panel.addWidget(make_picks_check_group)
 
@@ -504,9 +499,9 @@ def addProfileWidgets(obj):
 
     profile_tab_content_graph.addWidget(obj.atm_view)
     obj.atm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-    obj.atm_view.setBackground((255, 255, 255))
-    obj.atm_canvas.getAxis('bottom').setPen((0, 0, 0)) 
-    obj.atm_canvas.getAxis('left').setPen((0, 0, 0))
+    obj.atm_view.setBackground((0, 0, 0))
+    obj.atm_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+    obj.atm_canvas.getAxis('left').setPen((255, 255, 255))
 
     obj.atm_T_button = QPushButton('Temperature')
     profile_tab_content_graph.addWidget(obj.atm_T_button)

@@ -60,7 +60,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
 
     found = False
-    print('Temperature: {:} K, Pressure: {:} Pa'.format(z_profile[-1, 1], estPressure(z_profile[-1, 0])))
+    T = z_profile[-1, 1]
+    P = estPressure(z_profile[-1, 0])
     ### Initialize variables ###
     cdef:
         # Initial grid spacing
@@ -204,7 +205,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         if k.shape == (0, ):
             # As handled in original Supracenter
 
-            return np.array([np.nan, np.nan])
+            return np.array([np.nan, np.nan, np.nan, np.nan])
 
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):
@@ -303,7 +304,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 found = True
             else:
-                return np.array([np.nan, np.nan])
+                return np.array([np.nan, np.nan, np.nan, np.nan])
 
         else:
             ### FAST PART ###
@@ -394,4 +395,4 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])
     
     ##########################
-    return np.array([f, g])
+    return np.array([f, g, T, P])

@@ -12,6 +12,11 @@ November 7, 2019
 
 * Created changelog
 
+December 12, 2019
+-----------------
+
+* Groundwork for Yield Estimation
+* Docs update
    
 .. toctree::
    :maxdepth: 2

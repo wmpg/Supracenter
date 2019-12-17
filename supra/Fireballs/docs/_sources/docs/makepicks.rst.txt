@@ -7,6 +7,8 @@
 Make Picks
 ----------
 
+.. image:: makepicksdemo.png
+
 The make picks window allows the user to analyze the waveforms at each station. The intended purpose of this screen is to have the user identify where each pick is on the waveform and export the station picks file (.csv) for use in other parts of the program. This allows the user to search for fragmentation and ballistic solutions with the picks that they have created.
 
 Usage
@@ -99,6 +101,20 @@ Then load the .csv containing the frags into the fragmentation points of the .pk
 
 The top view shows both the nominal and perturbed arrival times relative to the time of the pick made. The '+' symbols show the fitted best height that a given data set's fragmentation would occour at to arrive at that time. The blue sloped lines represent the fitted maximum and minimum arrival times of the data, accounting only for the time of the fireball. The pink and green sloped lines represent the fit for the nominal and perturbed data respectively.
 
+Yield Estimater
+^^^^^^^^^^^^^^^
+
+.. image:: yield.png
+
+A window which will estimate the yield of a fragmentation from the data provided from a given station. In order to use, select the required station from the Make Picks tab, and make sure that the correct waveform is shown, that will be analyzed. Click "Yield Estimater" to bring up the yield estimation window. 
+
+Fill in the nominal height of the burst that is to be estimated. If this is not known, use the "Show Height Prediction" or "Solve Heights" options on the waveform. The minimum and maximum heights can be estimated by the user looking at the graph produced by "Show Height Prediction", and estimating what the upper and lower bounds on the possible explosions are.
+
+After filling in the heights, the user can click "Integrate", and the program will fill in as much information as it can for the other factors (eventually this will be ALL of the data). The user must fill in the rest of each column being used for Calculate Yield to work. This part of the program may be used with either only the "Nominal" column, or all three columns.
+
+The user may ignore the Geometric Factor, by using values of 1. If overpressure is not known, a value of 1 can be input, the blast curves will still show, but the point plotted will not be accurate.
+
+Calculate yield will show the "blast curve" of the parameters entered. The point plotted on the curve represents the yield for the overpressure entered in.  
 
 .. toctree::
    :maxdepth: 2

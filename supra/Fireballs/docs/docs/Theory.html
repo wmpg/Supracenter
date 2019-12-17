@@ -90,7 +90,9 @@
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Theory</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#sources">Sources</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#ballistic">Ballistic</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ballistic">Ballistic</a><ul class="simple">
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -185,20 +187,23 @@ When a meteor falls, it travels much faster than the speed of sound, and interac
 <p>Ballistic vs. Fragmentation anaylsis</p>
 <div class="section" id="ballistic">
 <h3>Ballistic<a class="headerlink" href="#ballistic" title="Permalink to this headline">¶</a></h3>
-<p>The launch angle of every ray from the ballistic source must be :math: ‘90^{circ}’ from the trajectory. Defining the trajectory vector to be :math: ‘vec{u} = [sin(theta)sin(phi), cos(theta)sin(phi), -cos(phi)]’, where :math: ‘theta’ is the azimuth angle and :math: ‘phi’ is the zenith angle of the trajectory, and a ray leaving the trajectory as :math: ‘vec{v} = [sin(alpha)sin(beta), cos(alpha)sin(beta), -cos(beta)]’, where :math: ‘alpha’ and :math: ‘beta’ correspond to :math: ‘theta’ and :math: ‘phi’, then letting :math: ‘alpha’ freely vary:</p>
+<p>The launch angle of every ray from the ballistic source must be <span class="math notranslate nohighlight">\(90^{\circ}\)</span> from the trajectory. Defining the trajectory vector to be <span class="math notranslate nohighlight">\(\vec{u} = [sin(\theta)sin(\phi), cos(\theta)sin(\phi), -cos(\phi)]\)</span>, where <span class="math notranslate nohighlight">\(\theta\)</span> is the azimuth angle and <span class="math notranslate nohighlight">\(\phi\)</span> is the zenith angle of the trajectory, and a ray leaving the trajectory as <span class="math notranslate nohighlight">\(\vec{v} = [sin(\alpha)sin(\beta), cos(\alpha)sin(\beta), -cos(\beta)]\)</span>, where <span class="math notranslate nohighlight">\(\alpha\)</span> and <span class="math notranslate nohighlight">\(\beta\)</span> correspond to <span class="math notranslate nohighlight">\(\theta\)</span> and <span class="math notranslate nohighlight">\(\phi\)</span>, then letting <span class="math notranslate nohighlight">\(\alpha\)</span> freely vary:</p>
 <div class="math notranslate nohighlight">
 \[\beta = arctan(\frac{-1}{tan(\phi)cos(\theta - \alpha)})\]</div>
-<p>adding in a tolerance angle of :math: ‘gamma’:</p>
+<p>adding in a tolerance angle of <span class="math notranslate nohighlight">\(\gamma\)</span>:</p>
 <div class="math notranslate nohighlight">
-\[\beta = 2 arctan(\frac{a - d}{b + c}), where:
-a = sin(\phi)cos(\theta - \alpha)
-b = cos(\phi)
-c = cos(\gamma)
-d = \sqrt(a^2 + b^2 - c^2)\]</div>
-<p>It is possible that a :math: ‘beta’ value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored.
-.. toctree:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">:</span><span class="n">maxdepth</span><span class="p">:</span> <span class="mi">2</span>
-</pre></div>
+\[\beta = 2 arctan(\frac{a - d}{b + c}),\]</div>
+<p>where:</p>
+<div class="math notranslate nohighlight">
+\[a = sin(\phi)cos(\theta - \alpha)\]</div>
+<div class="math notranslate nohighlight">
+\[b = cos(\phi)\]</div>
+<div class="math notranslate nohighlight">
+\[c = cos(\gamma)\]</div>
+<div class="math notranslate nohighlight">
+\[d = \sqrt{a^2 + b^2 - c^2}\]</div>
+<p>It is possible that a <span class="math notranslate nohighlight">\(\beta\)</span> value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored.</p>
+<div class="toctree-wrapper compound">
 </div>
 </div>
 </div>

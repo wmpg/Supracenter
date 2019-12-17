@@ -53,7 +53,7 @@ def phi(f_d, d, W, W_0):
 
 P_a = 101325
 
-z = np.linspace(np.log10(0.01), np.log10(20000000), num=100)
+z = np.linspace(np.log10(100), np.log10(20000000), num=100)
 Z = 10**z
 
 p_ratio = chem_func(Z)*P_a
@@ -64,8 +64,8 @@ plt.loglog()
 # plt.plot(KG85[:, 0], KG85[:, 1])
 # plt.plot(KGSCALED[:, 0], KGSCALED[:, 1])
 plt.plot(Z, p_ratio, label='KG85 1kT')
-plt.plot(Z/1000**(1/3), p_ratio, label='KG85 1T')
-plt.plot(Z/1e6**(1/3), p_ratio, label='KG85 1kg')
+plt.plot(Z*1000**(1/3), p_ratio, label='KG85 1T')
+plt.plot(Z*1e6**(1/3), p_ratio, label='KG85 1kg')
 
 # plt.plot(Z/(W_0/W)**(1/3), p_ratio, label='KG85 {:.2E} J'.format((W)))
 plt.xlabel('Scaled Distance (m/kg^1/3)')
@@ -109,35 +109,54 @@ p_ratio = chem_func(Z)*P_a*integration(k, v, b, P_0, h, Z, h_0=h_0)
 plt.loglog()
 # plt.plot(KG85[:, 0], KG85[:, 1])
 # plt.plot(KGSCALED[:, 0], KGSCALED[:, 1])
-plt.plot(Z, p_ratio, label='KG85 1kT att')
-plt.plot(Z/1000**(1/3), p_ratio, label='KG85 1T att')
-plt.plot(Z/1e6**(1/3), p_ratio, label='KG85 1kg att')
+plt.plot(Z, p_ratio, label='KG85 1kT Attenuation Correction')
+plt.plot(Z*1000**(1/3), p_ratio, label='KG85 1T Attenuation Correction')
+plt.plot(Z*1e6**(1/3), p_ratio, label='KG85 1kg Attenuation Correction')
 
 p_ratio = chem_func(Z)*P_a*cf
-plt.plot(Z, p_ratio, label='KG85 1kT geo')
-plt.plot(Z/1000**(1/3), p_ratio, label='KG85 1T geo')
-plt.plot(Z/1e6**(1/3), p_ratio, label='KG85 1kg geo')
+plt.plot(Z, p_ratio, label='KG85 1kT Geometric Correction')
+plt.plot(Z*1000**(1/3), p_ratio, label='KG85 1T Geometric Correction')
+plt.plot(Z*1e6**(1/3), p_ratio, label='KG85 1kg Geometric Correction')
 
 p_ratio = chem_func(Z)*P_a*cf*integration(k, v, b, P_0, h, Z, h_0=h_0)
-plt.plot(Z, p_ratio, label='KG85 1kT geo att')
-plt.plot(Z/1000**(1/3), p_ratio, label='KG85 1T geo att')
-plt.plot(Z/1e6**(1/3), p_ratio, label='KG85 1kg geo att')
+plt.plot(Z, p_ratio, label='KG85 1kT Combined Correction')
+plt.plot(Z*1000**(1/3), p_ratio, label='KG85 1T Geometric Correction')
+plt.plot(Z*1e6**(1/3), p_ratio, label='KG85 1kg Geometric Correction')
 
-# plt.plot(Z/(W_0/W)**(1/3), p_ratio, label='KG85 {:.2E} J att'.format((W)))
-plt.xlabel('Scaled Distance, z (m/kg^1/3)')
-plt.ylabel('Overpressure, del_p (Pa)')
-plt.title("Effects of the Attenuation on Overpressure for Far-Field Scaled Distances")
+#plt.plot(Z/(W_0/W)**(1/3), p_ratio, label='KG85 {:.2E} J att'.format((W)))
+plt.xlabel(r'Scaled Distance, Z (m kg^{-1/3})')
+plt.ylabel(r'Overpressure, $\Delta$p (Pa)')
+# plt.title("Effects of the Attenuation on Overpressure for Scaled Distances")
 plt.axhline(y=0.28)
-plt.gca().set_ylim(bottom=1e-4, top=1e4)
+plt.gca().set_ylim(bottom=1e-3, top=1e4)
 plt.legend()
 plt.show()
 
-w = np.linspace(np.log10(1e8), np.log10(1e12))
+
+w = np.linspace(np.log10(1e4), np.log10(1e12))
 W = 10**w
+
 d = R
 P_s = 88800
-v = 1/2/J_m*(W_0*P_0/W/P_a)**(1/3)*(c/c_m)
+# v = 1/2/J_m*(W_0*P_0/W/P_a)**(1/3)*(c/c_m)
 
+# p_nuc = func(phi(f_d, d, W, W_0))*P_s
+# p_chem = chem_func(phi(f_d, d, W, W_0))*P_s
+
+plt.loglog()
+plt.plot(W, phi(f_d, d, W, W_0))
+plt.plot(W, phi(f_d, d, W, W_0))
+plt.show()
+
+
+# p_nuc = func(Z)
+# p_chem = chem_func(Z)
+
+# plt.loglog()
+# plt.plot(Z, p_nuc)
+# plt.plot(Z, p_chem)
+# plt.show()
+exit()
 
 p_ratio = chem_func(phi(f_d, d, W, W_0))*P_a
 plt.loglog()
@@ -174,7 +193,7 @@ cf = np.array([1/3.3333, 1/3.1623, 1/2.3570, 1/1.4086, 1/1.2762])
 sol = np.array([5.97e8, 5.89e8, 1.58e9, 1.048e10, 4.26e10])
 for i in range(5):
 	v = 1/2/J_m*(W_0*P_0[i]/W/P_a)**(1/3)*(c[i]/c_m)
-	p_ratio = chem_func(phi(f_d, R[i], W, W_0))*P_a*(integration_full(k, v, b, I[i], P_s))*cf[i]
+	p_ratio = chem_func(phi(f_d, R[i], W, W_0))*P_s*(integration_full(k, v, b, I[i], P_a))*cf[i]
 	plt.plot(p_ratio, W, label='Fragmentation {:d}, Height {:.2f} km'.format(i+1, h[i]/1000), c=color[i])
 	plt.axvline(x=p[i], c=color[i])
 	plt.text(p[i], 1e12/(i+1), "{:.2f} Pa".format(p[i]))
