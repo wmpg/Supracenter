@@ -186,7 +186,7 @@ class Yield(QWidget):
                     [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
 
             f, g, T, P = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                                n_theta=1000, n_phi=1000, h_tol=1e-15, v_tol=330)
+                                n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
             ints.append(g)
             ts.append(T)
             ps.append(P)
@@ -297,7 +297,7 @@ class Yield(QWidget):
     def yieldPlot(self, p_ratio, W, unc='none'):
         if unc == 'none':
             self.count += 1
-        self.p_rat = tryFloat(self.overpressure_edits.text())
+        
         colour = [(0, 255, 26), (3, 252, 176), (252, 3, 3), (176, 252, 3), (255, 133, 3),
                       (149, 0, 255), (76, 128, 4), (82, 27, 27), (101, 128, 125), (5, 176, 249)]
         ptb_colour = [(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
@@ -307,12 +307,15 @@ class Yield(QWidget):
         if unc == 'none':
             self.nominal = pg.PlotCurveItem(x=p_ratio, y=np.log10(W), pen=colour[self.count-1], name='Fragmentation {:}'.format(self.count))
             self.blastline_canvas.addItem(self.nominal)
+            self.p_rat = tryFloat(self.overpressure_edits.text())
         if unc == 'min':
             self.min = pg.PlotCurveItem(x=p_ratio, y=np.log10(W), pen=ptb_colour[self.count-1], name='Fragmentation {:}'.format(self.count))
             self.blastline_canvas.addItem(self.min)
+            self.p_rat = tryFloat(self.overpressure_min_edits.text())
         if unc == 'max':
             self.max = pg.PlotCurveItem(x=p_ratio, y=np.log10(W), pen=ptb_colour[self.count-1], name='Fragmentation {:}'.format(self.count))
             self.blastline_canvas.addItem(self.max)
+            self.p_rat = tryFloat(self.overpressure_max_edits.text())
         try:
             pfill = pg.FillBetweenItem(self.min, self.max, brush=ptb_colour[self.count-1])
             self.blastline_canvas.addItem(pfill)
