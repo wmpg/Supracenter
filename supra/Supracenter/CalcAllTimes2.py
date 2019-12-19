@@ -58,8 +58,9 @@ def loop(setup, station_list, sounding_p, no_of_frags, points, ref_pos, theo, n)
 
     # convert station coordinates to local coordinates based on the ref_pos
     stn.position.pos_loc(ref_pos)
-    setup.pos_f.pos_loc(ref_pos)
+
     if setup.show_ballistic_waveform:
+        setup.pos_f.pos_loc(ref_pos)
         bTimes = [0]*no_of_frags
         for i in range(no_of_frags):
             # count += 1
@@ -161,7 +162,6 @@ def calcAllTimes(stn_list, setup, sounding, theo=False, file_name='all_pick_time
 
     # Ballistic Prediction
     ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
-
     no_of_frags = len(setup.fragmentation_point)
 
     # array of frags and ballistic arrivals have to be the same size. So, minimum can be 1
