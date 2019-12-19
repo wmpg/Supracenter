@@ -1663,7 +1663,6 @@ class SolutionGUI(QMainWindow):
                                                          y=[self.setup.trajectory.pos_f.lat], \
                                                             symbol='+', pen=(0, 0, 255))
 
-
         if self.setup.arrival_times_file != '':
             try:
                 self.arrTimes = np.load(self.setup.arrival_times_file)

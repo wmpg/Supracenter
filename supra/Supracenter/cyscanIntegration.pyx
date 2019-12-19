@@ -15,6 +15,8 @@ from libc.math cimport sqrt, M_PI, M_PI_2, atan2
 
 from supra.Supracenter.cynwDir import nwDir
 from supra.Supracenter.Utils.l137 import estPressure
+
+from supra.Utils.Classes import Constants
  
 # Define cython types for numpy arrays
 FLOAT_TYPE = np.float64
@@ -284,7 +286,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                     # f += delz/snell/np.log(pres_1/pres)*(1/pres_1 - 1/pres)*10
                     # print('pres', pres, pres_1)
                     # print('z', z[i], z[i+1])
-                    f += delz/snell[k, l]/np.log(pres_1/pres)*(1/pres_1 - 1/pres)
+                    
 
                     G = (np.exp(b_const*z[i+1]) - np.exp(b_const*z[i]))/snell[k, l]
                     # print(z[i+1]-z[i])
@@ -386,13 +388,30 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     p1 = p[k, l]
     p2 = p[k, l]**2
+
+    T_0 = 300
+    P_0 = 101325
+
+    consts = Constants()
+
+    z_2 = z_profile[-1, 0]
+    z_1 = z_profile[0, 0]
+
+    P_2 = estPressure(z_2)
+    P_1 = estPressure(z_1)
+
+    T_2 = z_profile[-1, 1]**2*consts.M_0/consts.GAMMA/consts.R
+    T_1 = z_profile[1, 1]**2*consts.M_0/consts.GAMMA/consts.R
+
+    # needs to be average f_d
+    f = ((T_0/P_0)**(0.33)*(((P_2/T_2)**(0.33)*z_2 - (P_1/T_1)**(0.33)*z_1)/(z_2 - z_1)) + 1)/2
+    
     # Find sum of travel times between layers (z)v
     for i in range(n_layers - 1):# - n_layers + last_z):
-
 
         s2 = s[i]**2
         # Equation (9)
         t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])
-    
+
     ##########################
     return np.array([f, g, T, P])

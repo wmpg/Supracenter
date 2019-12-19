@@ -99,6 +99,7 @@ class Yield(QWidget):
         self.geo_label, self.geo_edits = createLabelEditObj('Geometric Factor', pane1, 6)
         self.p_a_label, self.p_a_edits = createLabelEditObj('Ambient Pressure', pane1, 7)
         self.c_label, self.c_edits = createLabelEditObj('Speed of Sound', pane1, 8)
+        self.fd_label, self.fd_edits = createLabelEditObj('Transmission Factor', pane1, 9)
 
         self.height_min_edits = QLineEdit('')
         pane1.addWidget(self.height_min_edits, 1, 3, 1, 1)
@@ -116,6 +117,8 @@ class Yield(QWidget):
         pane1.addWidget(self.p_a_min_edits, 7, 3, 1, 1)
         self.c_min_edits = QLineEdit('')
         pane1.addWidget(self.c_min_edits, 8, 3, 1, 1)
+        self.fd_min_edits = QLineEdit('')
+        pane1.addWidget(self.fd_min_edits, 9, 3, 1, 1)
 
         self.height_max_edits = QLineEdit('')
         pane1.addWidget(self.height_max_edits, 1, 4, 1, 1)
@@ -133,17 +136,19 @@ class Yield(QWidget):
         pane1.addWidget(self.p_a_max_edits, 7, 4, 1, 1)
         self.c_max_edits = QLineEdit('')
         pane1.addWidget(self.c_max_edits, 8, 4, 1, 1)
+        self.fd_max_edits = QLineEdit('')
+        pane1.addWidget(self.fd_max_edits, 9, 4, 1, 1)
 
 
         self.yield_button = QPushButton('Calculate Yield')
-        pane1.addWidget(self.yield_button, 10, 1, 1, 4)
+        pane1.addWidget(self.yield_button, 11, 1, 1, 4)
         self.yield_button.clicked.connect(self.yieldCalc)
 
         self.integrate_button = QPushButton('Integrate')
-        pane1.addWidget(self.integrate_button, 9, 1, 1, 4)
+        pane1.addWidget(self.integrate_button, 10, 1, 1, 4)
         self.integrate_button.clicked.connect(self.intCalc)
 
-        self.f_d = 0.573
+
         self.W_0 = 4.2e12
         self.P_0 = 101325
         self.k = 2e-4
@@ -174,6 +179,7 @@ class Yield(QWidget):
         point.pos_loc(self.setup.ref_pos)
         dataset = parseWeather(self.setup)
 
+        trans = []
         ints = []
         ts = []
         ps = []
@@ -187,24 +193,27 @@ class Yield(QWidget):
 
             f, g, T, P = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
                                 n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            trans.append(f)
             ints.append(g)
             ts.append(T)
             ps.append(P)
             # if self.setup.debug:
             #     print(zProfile)
 
-        return ints, ts, ps
+        return trans, ints, ts, ps
 
     def intCalc(self):
         stn = self.stn_list[self.current_station]
         if tryFloat(self.height_edits.text()) != None:
             height = tryFloat(self.height_edits.text())
-            ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps = self.integrate(height)
 
+            f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
 
+            self.fd_edits.setText('{:.4f}'.format(f_val))
             self.afi_edits.setText('{:.4f}'.format(g_val))
             self.c_edits.setText('{:.4f}'.format(t_val))
             self.pressure_edits.setText('{:.4f}'.format(p_val))
@@ -217,12 +226,14 @@ class Yield(QWidget):
         if tryFloat(self.height_min_edits.text()) != None:
             height = tryFloat(self.height_min_edits.text())
 
-            ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps = self.integrate(height)
 
+            f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
 
+            self.fd_min_edits.setText('{:.4f}'.format(f_val))
             self.afi_min_edits.setText('{:.4f}'.format(g_val))
             self.c_min_edits.setText('{:.4f}'.format(t_val))
             self.pressure_min_edits.setText('{:.4f}'.format(p_val))
@@ -235,12 +246,14 @@ class Yield(QWidget):
         if tryFloat(self.height_max_edits.text()) != None:
             height = tryFloat(self.height_max_edits.text())
 
-            ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps = self.integrate(height)
 
+            f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
 
+            self.fd_max_edits.setText('{:.4f}'.format(f_val))
             self.afi_max_edits.setText('{:.4f}'.format(g_val))
             self.c_max_edits.setText('{:.4f}'.format(t_val))
             self.pressure_max_edits.setText('{:.4f}'.format(p_val))
@@ -262,6 +275,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_edits.text())
             self.P = tryFloat(self.pressure_edits.text())
             self.c = tryFloat(self.c_edits.text())
+            self.fd = tryFloat(self.fd_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
@@ -275,6 +289,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_min_edits.text())
             self.P = tryFloat(self.pressure_min_edits.text())
             self.c = tryFloat(self.c_min_edits.text())
+            self.fd = tryFloat(self.fd_min_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
@@ -288,6 +303,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_max_edits.text())
             self.P = tryFloat(self.pressure_max_edits.text())
             self.c = tryFloat(self.c_max_edits.text())
+            self.fd = tryFloat(self.fd_max_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
