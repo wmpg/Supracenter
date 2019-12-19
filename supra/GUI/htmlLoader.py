@@ -79,7 +79,7 @@ def htmlBuilder(setup, stn_list):
     m = addStations(setup, stn_list, m)
     m = addTrajectory(setup, m)
 
-    filename = '/home/luke/Desktop/index.html'
+    filename = os.path.join(setup.working_directory, 'index.html')
     m.save(filename)
 
     return filename

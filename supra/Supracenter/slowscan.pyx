@@ -219,7 +219,8 @@ def slowscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=37, n_phi=73, p
                     x = supra_pos[0] + np.cos(Phi)*X
                     y = supra_pos[1] + np.sin(Phi)*X
 
-                trace.append([x[k, l] - detec_pos[0], y[k, l] - detec_pos[1], z[n_layers - i - 1]])
+                #trace.append([x[k, l] - detec_pos[0], y[k, l] - detec_pos[1], z[n_layers - i - 1]])
+                trace.append([x[k, l] + supra_pos[0], y[k, l] + supra_pos[1], z[n_layers - i - 1]])
             #trace.append([supra_pos[0], supra_pos[1], supra_pos[2]])
                 # print([x[k, l], y[k, l], z_profile[i, 0]])
                 # pass on the azimuth & ray parameter information for use in traveltime calculation

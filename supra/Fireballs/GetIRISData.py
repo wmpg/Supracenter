@@ -91,7 +91,7 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
 
     try:
         # Construct IRIS URL
-        iris_url2 = ("http://service.iris.edu/fdsnws/station/1/query?net={:s}&latitude={:.3f}&longitude={:.3f}" \
+        iris_url2 = ("http://service.iris.edu/fdsnws/git statusstation/1/query?net={:s}&latitude={:.3f}&longitude={:.3f}" \
             "&maxradius={:.3f}&start={:s}&end={:s}&cha={:s}&nodata=404&format=text" \
             "&matchtimeseries=true").format(network, lat_centre, lon_centre, deg_radius, start_date, \
             end_date, channel)

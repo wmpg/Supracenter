@@ -842,6 +842,7 @@ class SolutionGUI(QMainWindow):
 
         # Load the station and waveform files list
         data_file_path = os.path.join(dir_path, DATA_FILE)
+
         if os.path.isfile(data_file_path):
             
             stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=self.setup.rm_stat, debug=self.setup.debug)
@@ -853,11 +854,12 @@ class SolutionGUI(QMainWindow):
         stn_list = stn_list + self.setup.stations
 
         for stn in stn_list:
-            text = pg.TextItem(text='{:}-{:}'.format(stn.network, stn.code),\
-             border='w', color=(255, 255, 255), fill=(255, 255, 255, 100))
-            
-            text.setPos(stn.position.lon, stn.position.lat)
-            self.ray_canvas.addItem(text)
+            if stn.code not in self.setup.rm_stat:
+                text = pg.TextItem(text='{:}-{:}'.format(stn.network, stn.code),\
+                 border='w', color=(255, 255, 255), fill=(255, 255, 255, 100))
+                
+                text.setPos(stn.position.lon, stn.position.lat)
+                self.ray_canvas.addItem(text)
 
         end_point = pg.ScatterPlotItem()
         end_point.addPoints(x=[self.setup.lon_f], y=[self.setup.lat_f], pen=(66, 232, 244), symbol='+')
