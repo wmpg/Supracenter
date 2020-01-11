@@ -120,7 +120,7 @@ def runDarkflight(params, mass, uncertainty=False):
     drg = str(params.drag)
 
     # Directory of Darkflight
-    darkflight_dir = "/local4/fireballs/darkflight"
+    darkflight_dir = "/srv/meteor/fireballs/darkflight"
     
     # Run Darkflight through terminal calls
 
