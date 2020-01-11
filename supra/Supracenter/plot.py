@@ -8,9 +8,11 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from supra.Supracenter.angleConv import loc2Geo, geo2Loc, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, geo2Loc, angle2NDE
+from supra.Utils.Classes import Constants
 from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.cyscan import cyscan
+from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.slowscan2 import cyscan as slowscan
 
 def pointsList(sounding, points):
     """ Helper function: Divides list sounding into 'length of points' divisions and expands each point into 
@@ -44,7 +46,7 @@ def pointsList(sounding, points):
     return locs
 
 
-def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, output_name, s_name, kotc, w):
+def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name, s_name, kotc, w):
     """ Function to calculate the results of the optimal Supracenter and export interpolated weather data
         from each station.
 
@@ -70,6 +72,7 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
         r: [list] residuals to each station            
     
     """
+    consts = Constants()
     # Station Times
     tobs = stns[0:n_stations, 4]
 
@@ -91,15 +94,17 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
     #difference in theoretical and simulated travel times
     r = np.zeros_like(tobs)
 
+    trace = []
+
     # Find parameters of optimal location
     print('Exporting weather profiles...')
     for j in range(n_stations):
         #print(np.array(x_opt), np.array(xstn[j, :]))
         # get interpolated weather profile
-        sounding, points = getWeather(np.array(x_opt), np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
+        sounding, points = getWeather(x_opt.xyz, np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
 
         # Rotate winds to match with coordinate system
-        sounding[:, 3] = angle2NDE(sounding[:, 3])
+        #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
 
         # If weather interp was used
         if len(points) != 0:
@@ -142,20 +147,21 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
                             .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
 
         # ray tracing function
-        time3D[j], az[j], tf[j] = cyscan(np.array(x_opt), np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                            precision=setup.angle_precision, tol=setup.angle_error_tol)
+        _, _, _, _, temp_trace = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+        time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+        trace.append(temp_trace)
 
         # find residuals
         sotc[j] = tobs[j] - time3D[j]
 
-        if time3D[j] == np.nan:
-            print('ERROR: Cannot find optimal solution!')
-            exit()
+    # for ii, element in enumerate(time3D):
+    #     if np.isnan(element):
+    #         w[ii] = 0
 
-    print(setup.manual_fragmentation_search)
     # User defined occurrence time
     if kotc != None:
         motc = kotc
+        index = []
 
 
     # elif setup.manual_fragmentation_search != '' and len(setup.manual_fragmentation_search) > 0:
@@ -163,12 +169,16 @@ def outputWeather(n_stations, x_opt, stns, setup, consts, ref_pos, dataset, outp
 
     # Unknown occurrence time
     else:
+        index = np.isnan(sotc)
+        sotc[index] = 0
         motc = np.dot(w, sotc)/sum(w)
 
     # Station residuals (from average)
-    r = sotc - motc
 
-    return time3D, az, tf, r, motc, sotc
+    r = sotc - motc
+    r[index] = np.nan
+
+    return time3D, az, tf, r, motc, sotc, trace
 
 
 def outputText(min_search, max_search, setup, results_arr, n_stations, s_name, xstn, tstn, w):
@@ -353,6 +363,7 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
         min_search: [list] min lat, lon and height of the search area
         max_search: [list] max lat, lon and height of the search area
     """
+
     single_point = setup.manual_fragmentation_search
     r = results_arr[0].r
     x_opt = results_arr[0].x_opt
@@ -411,10 +422,11 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
 
     # Get the limits of the plot
 
-    x_min, y_min, _ = min_search[0], min_search[1], min_search[2]
-    x_max, y_max, _ = max_search[0], max_search[1], max_search[2]
+    x_min, y_min = search[0], search[2]
+    x_max, y_max = search[1], search[3]
 
     img_dim = 30
+
     x_data = np.linspace(x_min, x_max, img_dim)
     y_data = np.linspace(y_min, y_max, img_dim)
     xx, yy = np.meshgrid(x_data, y_data)
@@ -430,17 +442,17 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
     # Calculate times of arrival for each point on the reference plane
     for i, plane_coords in enumerate(plane_coordinates):
 
-        plane_coords = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], plane_coords[0], plane_coords[1], plane_coords[2])
-
+        #plane_coords = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], plane_coords[0], plane_coords[1], plane_coords[2])
+        
         # Create interpolated atmospheric profile for use with cyscan
         sounding, points = getWeather(x_opt, plane_coords, setup.weather_type, ref_pos, copy.copy(dataset))
 
         # Use distance and atmospheric data to find path time
         ti, _, _ = cyscan(np.array(x_opt), np.array(plane_coords), sounding, \
                                 wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, \
-                                precision=setup.angle_precision, tol=setup.angle_error_tol)
-
+                                precision=setup.angle_precision)
         if np.isnan(ti):
+            #Make blank contour
             ti = -1
         times_of_arrival[i] = ti
 

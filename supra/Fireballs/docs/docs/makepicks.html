@@ -1,0 +1,342 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Make Picks &mdash; Western Meteor Physics Group Bolide Acoustic Modeling  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Fetch Atmosphere" href="fetchatmosphere.html" />
+    <link rel="prev" title="Stations" href="stations.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="Usage.html">Usage</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="Usage.html#main-program">Main Program</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="inibuilder.html">Variables Toolbar</a></li>
+<li class="toctree-l3"><a class="reference internal" href="stations.html">Stations</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">Make Picks</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#usage">Usage</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#shortcuts">Shortcuts</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#station-navigation">Station Navigation</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#contour">Contour</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#bandpass-filter">Bandpass Filter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#spectrogram-view">Spectrogram View</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#convolution-filter">Convolution Filter</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#waveform-window">Waveform Window</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#map-window">Map Window</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#all-station-waveforms-window">All Station Waveforms Window</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#exporting-picks">Exporting Picks</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#exporting-all-times-files">Exporting All Times Files</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#fragentation-viewer">Fragentation Viewer</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#yield-estimater">Yield Estimater</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="fetchatmosphere.html">Fetch Atmosphere</a></li>
+<li class="toctree-l3"><a class="reference internal" href="atmosphereviewer.html">Atmosphere Viewer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="pickviewer.html">Pick Viewer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="supracentersearch.html">Supracenter PSO Search</a></li>
+<li class="toctree-l3"><a class="reference internal" href="supracentermanual.html">Supracenter Manual Search</a></li>
+<li class="toctree-l3"><a class="reference internal" href="seismictraj.html">Seismic Trajectory</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="Usage.html#other-functions">Other Functions</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Western Meteor Physics Group Bolide Acoustic Modeling</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="Usage.html">Usage</a> &raquo;</li>
+        
+      <li>Make Picks</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/docs/makepicks.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="make-picks">
+<h1>Make Picks<a class="headerlink" href="#make-picks" title="Permalink to this headline">¶</a></h1>
+<img alt="../_images/makepicksdemo.png" src="../_images/makepicksdemo.png" />
+<p>The make picks window allows the user to analyze the waveforms at each station. The intended purpose of this screen is to have the user identify where each pick is on the waveform and export the station picks file (.csv) for use in other parts of the program. This allows the user to search for fragmentation and ballistic solutions with the picks that they have created.</p>
+<div class="section" id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Permalink to this headline">¶</a></h2>
+<p>Once an .ini file has been loaded into the INI Builder, navigate to the Make Picks tab and click “Load Station Data”. If the .mseed station data can be read in properly, then three figures should appear on screen.</p>
+</div>
+<div class="section" id="shortcuts">
+<h2>Shortcuts<a class="headerlink" href="#shortcuts" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li><p>Make Pick: Ctrl + M1</p></li>
+<li><p>Delete Pick: Shift + M1</p></li>
+<li><p>Next Waveform: D</p></li>
+<li><p>Previous Waveform: A</p></li>
+<li><p>Bandpass Current Waveform: W</p></li>
+<li><p>Spectrogram of Current Waveform: S</p></li>
+<li><p>Convolution Filter of Current Waveform: C</p></li>
+</ul>
+</div>
+<div class="section" id="station-navigation">
+<h2>Station Navigation<a class="headerlink" href="#station-navigation" title="Permalink to this headline">¶</a></h2>
+<p>The stations can be navigated most easily by “A” and “D” to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.</p>
+</div>
+<div class="section" id="contour">
+<h2>Contour<a class="headerlink" href="#contour" title="Permalink to this headline">¶</a></h2>
+<p>Makes a contour of the arrivals from the ballistic trajectory to the ground level. Different colours represent the scaled gradient in arrival times. Contours take a long time to create, so it is recommended to use the saving and loading features to quickly reproduce contours.</p>
+<p>The region calculated for is the rectangle defined by lat_min, lat_max, lon_min, lon_max.</p>
+<div class="section" id="show-contour">
+<h3>Show Contour<a class="headerlink" href="#show-contour" title="Permalink to this headline">¶</a></h3>
+<p>Begins calculating the ray-tracing for the contour. Does not save the final product</p>
+</div>
+<div class="section" id="grid-spacing">
+<h3>Grid Spacing<a class="headerlink" href="#grid-spacing" title="Permalink to this headline">¶</a></h3>
+<p>The number of grid spaces within the region to calculate arrival times for. The fewer points, the faster the calculation, but the more pixelated the result is.</p>
+</div>
+<div class="section" id="save-contour">
+<h3>Save Contour<a class="headerlink" href="#save-contour" title="Permalink to this headline">¶</a></h3>
+<p>Saves the last created contour in memory</p>
+</div>
+<div class="section" id="load-contour">
+<h3>Load Contour<a class="headerlink" href="#load-contour" title="Permalink to this headline">¶</a></h3>
+<p>Loads and displays a contour</p>
+</div>
+</div>
+<div class="section" id="bandpass-filter">
+<h2>Bandpass Filter<a class="headerlink" href="#bandpass-filter" title="Permalink to this headline">¶</a></h2>
+<p>Bandpasses the current waveform between the two values given. Also helpful for reseting the GUI’s display of the waveform.</p>
+</div>
+<div class="section" id="spectrogram-view">
+<h2>Spectrogram View<a class="headerlink" href="#spectrogram-view" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="convolution-filter">
+<h2>Convolution Filter<a class="headerlink" href="#convolution-filter" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="waveform-window">
+<h2>Waveform Window<a class="headerlink" href="#waveform-window" title="Permalink to this headline">¶</a></h2>
+<p>You can make picks directly onto the waveform by moving the mouse to the desired location and hitting ‘Ctrl+M1’</p>
+</div>
+<div class="section" id="map-window">
+<h2>Map Window<a class="headerlink" href="#map-window" title="Permalink to this headline">¶</a></h2>
+<p>Shows the stations and the inputted trajectory and fragmentation points</p>
+</div>
+<div class="section" id="all-station-waveforms-window">
+<h2>All Station Waveforms Window<a class="headerlink" href="#all-station-waveforms-window" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="exporting-picks">
+<h2>Exporting Picks<a class="headerlink" href="#exporting-picks" title="Permalink to this headline">¶</a></h2>
+<p>Once all of the user picks have been made on the waveforms, the “Export CSV” button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.</p>
+</div>
+<div class="section" id="exporting-all-times-files">
+<h2>Exporting All Times Files<a class="headerlink" href="#exporting-all-times-files" title="Permalink to this headline">¶</a></h2>
+<p>The calculations of the arrival times can be saved as a .npy to be input back into the program at a later time. This way, the lengthy calculations to find the perturbations and everything else only need to be done once for a given configuration. If anything is changed, this WILL need to be recalculated.</p>
+</div>
+<div class="section" id="fragentation-viewer">
+<h2>Fragentation Viewer<a class="headerlink" href="#fragentation-viewer" title="Permalink to this headline">¶</a></h2>
+<p>The fragmentation viewer can be accessed by checking the Show Height Prediction box on the MakePicks window and creating a pick on the waveform with Ctrl+M1. Once clicked, a new window will pop up after a calculation. This will show the estimate in the height of a fragmentation that would have arrived at this time, and the optimal height of the ballistic arrival. This viewer is meant for predicting heights and is used well with the Trajectory Interp found in Classes.</p>
+<p>The intended method of using the Fragmentation Viewer is with a large number of fragmentation points along the trajectory. Take the starting and ending points of the trajectory and use the interpolation method in the Trajectory Class found in Classes.py. Once you have a large number of fragmentation points, edit the output into a .csv (in the form: lat, lon, elev) and add a “, 0.0” at the end of each line, representing the time after the starting point the fragmentation happened (which is taken account for by the viewer, so this should be left at 0.0 for it to work properly).</p>
+<p>Then load the .csv containing the frags into the fragmentation points of the .pkl file. And load all of the station values in the Make Picks window (all of the calculations have to be done for ALL of the fragmentation points). It is recommended that weather and perturbations be turned on for this, as they may give a better indication of where the fragmentation and ballistic arrivals are.</p>
+<p>The top view shows both the nominal and perturbed arrival times relative to the time of the pick made. The ‘+’ symbols show the fitted best height that a given data set’s fragmentation would occour at to arrive at that time. The blue sloped lines represent the fitted maximum and minimum arrival times of the data, accounting only for the time of the fireball. The pink and green sloped lines represent the fit for the nominal and perturbed data respectively.</p>
+</div>
+<div class="section" id="yield-estimater">
+<h2>Yield Estimater<a class="headerlink" href="#yield-estimater" title="Permalink to this headline">¶</a></h2>
+<img alt="../_images/yield.png" src="../_images/yield.png" />
+<p>A window which will estimate the yield of a fragmentation from the data provided from a given station. In order to use, select the required station from the Make Picks tab, and make sure that the correct waveform is shown, that will be analyzed. Click “Yield Estimater” to bring up the yield estimation window.</p>
+<p>Fill in the nominal height of the burst that is to be estimated. If this is not known, use the “Show Height Prediction” or “Solve Heights” options on the waveform. The minimum and maximum heights can be estimated by the user looking at the graph produced by “Show Height Prediction”, and estimating what the upper and lower bounds on the possible explosions are.</p>
+<p>After filling in the heights, the user can click “Integrate”, and the program will fill in as much information as it can for the other factors (eventually this will be ALL of the data). The user must fill in the rest of each column being used for Calculate Yield to work. This part of the program may be used with either only the “Nominal” column, or all three columns.</p>
+<p>The user may ignore the Geometric Factor, by using values of 1. If overpressure is not known, a value of 1 can be input, the blast curves will still show, but the point plotted will not be accurate.</p>
+<p>Calculate yield will show the “blast curve” of the parameters entered. The point plotted on the curve represents the yield for the overpressure entered in.</p>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="fetchatmosphere.html" class="btn btn-neutral float-right" title="Fetch Atmosphere" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="stations.html" class="btn btn-neutral float-left" title="Stations" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Luke McFadden, Denis Vida, Peter Brown
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

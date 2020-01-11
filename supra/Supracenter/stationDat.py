@@ -4,9 +4,9 @@ import numpy as np
 import sys
 sys.path.insert(0,'..')
 
-from supra.Supracenter.angleConv import geo2Loc
-from wmpl.Utils.TrajConversions import date2JD
-from supra.Fireballs.Program import position
+from supra.Utils.AngleConv import geo2Loc
+# from wmpl.Utils.TrajConversions import date2JD
+# from supra.Fireballs.Program import position
 
 def readStationDat(station_name):
     """ Reads the station data .txt file for use with convStationDat (made from the template)
@@ -77,7 +77,7 @@ def readStationCSV(station_name):
 
             # Split the line by the delimiter
             line = line.split(',')
-            names.append(str(line[1]) + '-' + str(line[2]))
+            names.append(str(line[1]).strip() + '-' + str(line[2]).strip())
             # weights.append(float(line[-1]))
             line = line[3:]
 
@@ -131,7 +131,7 @@ def dweight(data, d_min, d_max):
         dists[i] = np.sqrt((data[i, 0] - data[fs, 0])**2 + (data[i, 1] - data[fs, 1])**2)
         
         # after d_max, no weight
-        if dists[i] > d_max:
+        if dists[i] > float(d_max):
             w[i] = 0
 
         # between d_min and d_max
@@ -147,7 +147,7 @@ def dweight(data, d_min, d_max):
     return w
 
 
-def convStationDat(station_name, d_min, d_max, ref_time, setup):
+def convStationDat(station_name, setup, d_min=0, d_max=100000):
     """ Reads and converts the station data, and returns it in a usable format
     
     Arguments:
@@ -179,9 +179,7 @@ def convStationDat(station_name, d_min, d_max, ref_time, setup):
     ref_pos = np.array([0.0, 0.0, 0.0])
 
     # Choose reference position to be the average coordinate (for least error), and at ground level
-    # for i in range(2):
-    #     #ref_pos[i] = np.mean(data[:, i],axis=0)
-    #     ref_pos[i] = data[0, i]
+
     ref_pos[0] = setup.lat_centre
     ref_pos[1] = setup.lon_centre
     ref_pos[2] = 0
@@ -191,6 +189,9 @@ def convStationDat(station_name, d_min, d_max, ref_time, setup):
         data[i, 0], data[i, 1], data[i, 2] = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], data[i,0], data[i,1], data[i,2])       
 
     # weighting scheme
+    if (d_min == None) or (d_max == None):
+        d_max = 0
+
     weights = dweight(data, d_min, d_max)
 
     return data, names, weights, ref_pos

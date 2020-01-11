@@ -1,0 +1,260 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Methods &mdash; Western Meteor Physics Group Bolide Acoustic Modeling  documentation</title>
+  
+
+  
+  
+    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../_static/jquery.js"></script>
+        <script type="text/javascript" src="../_static/underscore.js"></script>
+        <script type="text/javascript" src="../_static/doctools.js"></script>
+        <script type="text/javascript" src="../_static/language_data.js"></script>
+        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    
+    <script type="text/javascript" src="../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Requirements" href="Installation.html" />
+    <link rel="prev" title="Theory" href="Theory.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Methods</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#ray-tracing">Ray-Tracing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-the-wave-release-point">Finding the Wave Release Point</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#slicing-atmospheric-data">Slicing Atmospheric Data</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-the-supracenter">Finding the Supracenter</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#finding-the-trajectory">Finding the Trajectory</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#perturbing-the-weather">Perturbing the Weather</a><ul class="simple">
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">Western Meteor Physics Group Bolide Acoustic Modeling</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../index.html">Docs</a> &raquo;</li>
+        
+      <li>Methods</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../_sources/docs/Methods.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="methods">
+<h1>Methods<a class="headerlink" href="#methods" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="ray-tracing">
+<h2>Ray-Tracing<a class="headerlink" href="#ray-tracing" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="finding-the-wave-release-point">
+<h2>Finding the Wave Release Point<a class="headerlink" href="#finding-the-wave-release-point" title="Permalink to this headline">¶</a></h2>
+<p>To find the wave release point for a given station, many points are taken along the trajectory, and a ray-trace is calculated from every one of these points to the station. The initial direction of the acoustic path is then compared to the trajectory vector. Ideally, the initial direction of the path must be perpendicular to the trajectory vector in order for that ray to be the true acoustic path, but a tolerence is used in finding this.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>If there are no winds or temperature gradients, the ray is a straight line from the trajectory to the station, and therefore is a lot easier to calculate where the ray is perpendicular to the trajectory vector. When winds are added, the acoustic path becomes curved, (and may not even arrive at the station), so the path is calculated, and if it hits the station (within a tolerence), the initial direction of this ray is used.</p>
+</div>
+<p>The angle tolerance may be adjusted to allow more ballistic arrivals at stations if none seem to be showing up. The minimum and maximum heights of wave release points may be adjusted to restrict to the known start and finish of the meteor.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>When the minimum height of the wave release points is set too low, the lower points along the meteor tend to release perpendicular to the trajectories, which may be unphysical. Tweaking these parameters per meteor is suggested.</p>
+</div>
+</div>
+<div class="section" id="slicing-atmospheric-data">
+<h2>Slicing Atmospheric Data<a class="headerlink" href="#slicing-atmospheric-data" title="Permalink to this headline">¶</a></h2>
+<p>The path between the source and the detector are assumed to be linear for atmospheric purposes only. The linear path is divided up into X (default=10) points. Each point is moved to the closest 0.25x0.25 degree grid point. At each grid point, the Xth fraction of the atmospheric profile is taken from that point. The atmospheric profile fractions are then merged into the final atmospheric profile for the sound wave. The boundaries between atmospheric sections are interpolated in order to maintain a smooth atmospheric profile.</p>
+</div>
+<div class="section" id="finding-the-supracenter">
+<h2>Finding the Supracenter<a class="headerlink" href="#finding-the-supracenter" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="finding-the-trajectory">
+<h2>Finding the Trajectory<a class="headerlink" href="#finding-the-trajectory" title="Permalink to this headline">¶</a></h2>
+</div>
+<div class="section" id="perturbing-the-weather">
+<h2>Perturbing the Weather<a class="headerlink" href="#perturbing-the-weather" title="Permalink to this headline">¶</a></h2>
+<div class="toctree-wrapper compound">
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="Installation.html" class="btn btn-neutral float-right" title="Requirements" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="Theory.html" class="btn btn-neutral float-left" title="Theory" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Luke McFadden, Denis Vida, Peter Brown
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

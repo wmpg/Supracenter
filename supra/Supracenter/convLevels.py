@@ -2,7 +2,7 @@
 
 import numpy as np
 
-def readLevels(file_name='wmpl/Supracenter/level_conversion_ECMWF_37.txt', header=2):
+def readLevels(file_name='supra/Supracenter/level_conversion_ECMWF_37.txt', header=2):
     """ Gets the conversion of heights from a .txt file, for use with convLevels().
 
     Arguments:

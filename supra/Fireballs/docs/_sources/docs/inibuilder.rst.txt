@@ -1,0 +1,23 @@
+.. Supracenter documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 11:53:56 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Variables Toolbar
+-----------------
+
+.. image:: VariablesToolbar.png
+
+The variables toolbar is the tool used to specify the parameters of a fileball. Each fireball to be analyzed should have a separate file describing their parameters. The variables toolbar allows for fireballs to be loaded and saved from the computer. When any event is run anywhere in this program, it will use data from the text edit boxes in the variables toolbar. A varible that is located in a tab and in the variables toolbar will use the tab value if that tab is run, and the variables toolbar value in any other tab.
+
+For the tabs to use the values set in the variables toolbar, it must be first saved. If the .pkl file already exists which you are working on, this can be done with a quick CTRL+S before running any part of the program.
+
+.. toctree::
+   :maxdepth: 2
+
+   
+
+
+
+
+

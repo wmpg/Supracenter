@@ -1,4 +1,4 @@
-P Geopotential_Altitude[m] Geometric_Altitude[m]
+P[hPa] Geopotential_Altitude[m] Geometric_Altitude[m]
 ======================================
 1 48048.70 48413.94
 2 43440.23 43738.55

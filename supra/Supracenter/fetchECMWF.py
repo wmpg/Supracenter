@@ -1,5 +1,5 @@
 from supra.Supracenter.ecmwfapi import ECMWFDataServer
-import supra.Supracenter.angleConv
+from supra.Utils.AngleConv import roundToNearest
 
 def fetchECMWF(setup, file_name):
     print('Getting data...')
@@ -7,10 +7,10 @@ def fetchECMWF(setup, file_name):
     # Convert variables to be read by ECMWF script
     grid = str(setup.grid_size) + "/" + str(setup.grid_size)
     atm_hour = str(setup.atm_hour) + ":00:00"
-    area = str(supra.Supracenter.angleConv.roundToNearest(setup.search_area[1] + 2*setup.grid_size, setup.grid_size)) + \
-     "/" + str(supra.Supracenter.angleConv.roundToNearest(setup.search_area[2] - 2*setup.grid_size, setup.grid_size)) + \
-     "/" + str(supra.Supracenter.angleConv.roundToNearest(setup.search_area[0] - 2*setup.grid_size, setup.grid_size)) + \
-     "/" + str(supra.Supracenter.angleConv.roundToNearest(setup.search_area[3] + 2*setup.grid_size, setup.grid_size))
+    area = str(roundToNearest(setup.search_area[1] + 2*setup.grid_size, setup.grid_size)) + \
+     "/" + str(roundToNearest(setup.search_area[2] - 2*setup.grid_size, setup.grid_size)) + \
+     "/" + str(roundToNearest(setup.search_area[0] - 2*setup.grid_size, setup.grid_size)) + \
+     "/" + str(roundToNearest(setup.search_area[3] + 2*setup.grid_size, setup.grid_size))
     date = str(setup.ref_time.year)+ "-" + str(setup.ref_time.month).zfill(2) + "-" + str(setup.ref_time.day).zfill(2)
     
     # ECMWF script

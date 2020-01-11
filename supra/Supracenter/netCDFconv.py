@@ -8,7 +8,7 @@ from netCDF4 import Dataset
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-import supra.Supracenter.angleConv 
+from supra.Utils.AngleConv import angle2NDE
 from supra.Supracenter.convLevels import convLevels
 from supra.Supracenter.bisearch import bisearch
 
@@ -39,16 +39,17 @@ def readCustAtm(file_name, consts):
             line = line.replace('\n', '').replace('\r', '')
 
             # Split the line by the delimiter
-            line = line.split()
+            line = line.split(',')
             
             # Strip whitespaces from individual entries in the line
             for i, entry in enumerate(line):
                 line[i] = float(entry.strip())
 
             # Transform Temperature to Speed of Sound (m/s)
-            line[1] += consts.K
+            #line[1] += consts.K
             line[1] = (consts.GAMMA*consts.R/consts.M_0*line[1])**0.5
-            line[3] = line[3]*np.pi/180
+            line[3] = (line[3] + 180)%360
+            #line[3] = line[3]*np.pi/180
             
             # Add the contents of the line to the data list
             data = np.vstack((data, line))
@@ -87,12 +88,15 @@ def findECMWFSound(lat, lon, dataset):
     # Wind, positive from S to N, height, lat, lon
     y_wind = dataset[4]
 
-    # pressure levels in hPa
-    height = dataset[5]
 
     # Find the closest data point to the requested lat, lon
-    lat_i = bisearch(latitude, lat%360)
-    lon_i = bisearch(longitude, lon%360)
+    try:
+        lat_i = bisearch(latitude, lat%360)
+        lon_i = bisearch(longitude, lon%360)
+    except:
+        print('ERROR: Cannot find given latitude/longitude in atmospheric profile range! (netCDFconv.py)')
+        exit()
+
 
     # Create sounding array of all levels from the closest lat and lon
     # Initialize arrays
@@ -250,65 +254,6 @@ def findUKMOSound(lat, lon, dataset):
 
     return sounding
 
-
-# def storeNetCDFECMWF(file_name, consts):
-#     """ HELPER FUNCTION: Reads ECMWF netCDF file and stores it in memory for reuse later in the program 
-
-#     Arguments:
-#         file_name: [String] name of file
-#         consts: [object] physical constants
-
-#     Returns:
-#         store_data: [list[ndarray]] atmospheric profile for the search area
-#     """
-
-#     print('Converting weather data. This may take a while...')
-
-#     # Read the file
-#     dataset = Dataset(file_name, "r+", format="NETCDF4")
-
-#     # Check file type
-#     if not (set(['t', 'u', 'v', 'latitude', 'longitude']) < set(dataset.variables.keys())):
-#         print('FILE ERROR: File does not contain the correct parameters! Variables Required: t, u, v, latitude, longitude')
-#         sys.exit()
-
-#     # Check against UKMO files
-#     elif not (set(['level']) < set(dataset.variables.keys())):
-#         a = input('WARNING: File is an unrecognized .nc! May be old ECMWF or UKMO file. Running may cause program to crash.\
-#                                                                                                  Bypass? (y/n) ')
-#         if a.lower() != 'y': 
-#             sys.exit()
-
-#     # Pull variables from the file
-#     latitude = dataset.variables['latitude']
-#     longitude = dataset.variables['longitude']
-#     temperature = dataset.variables['t']
-
-#     # Wind, positive from W to E
-#     x_wind = dataset.variables['u']
-
-#     # Wind, positive from S to N
-#     y_wind = dataset.variables['v']
-
-#     # Transform Temperature to Speed of Sound (m/s)
-#     temps = (consts.GAMMA*consts.R/consts.M_0*temperature[:])**0.5
-
-#     # Magnitude of winds (m/s)
-#     mags = np.sqrt(x_wind[:]**2 + y_wind[:]**2)
-
-#     # Direction the winds are coming from, angle in radians from North due East
-#     dirs = (np.arctan2(-y_wind[:], -x_wind[:]))%(2*np.pi)*180/np.pi
-#     dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
-
-#     # Store data in a list of arrays
-#     store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temps), np.array(mags), np.array(dirs)]
-    
-#     # Store data in a list of ndarrays
-#     # store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temperature[:]), np.array(x_wind[:]), np.array(y_wind[:])]
-#     dataset.close()
-
-#     return store_data
-
 def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     """ HELPER FUNCTION: Reads ECMWF netCDF file and stores it in memory for reuse later in the program 
 
@@ -319,8 +264,6 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     Returns:
         store_data: [list[ndarray]] atmospheric profile for the search area
     """
-
-    print('Converting weather data. This may take a while...')
 
     try:
         # Read the file
@@ -343,10 +286,12 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
 
     # print(file_name)
     # print(dataset)
-    #print(dataset.variables)
+    # print(dataset.variables)
+    # exit()
 
-    lon_index = int((lon%360)*4)
-    lat_index = int(-(lat+90)*4)# - 90*4
+    lon_index = int(np.around((lon%360)*4))
+    lat_index = int(np.around(-(lat+90)*4) - 1)# - 90*4
+
     longitude = np.array(dataset.variables['longitude'][lon_index-20:lon_index+21])
     latitude = np.array(dataset.variables['latitude'][lat_index-20:lat_index+21])
 
@@ -360,8 +305,10 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
 
     # time, (number), level, lat, lon
     temperature = np.array(dataset.variables['t'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
-    x_wind = -np.array(dataset.variables['u'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
-    y_wind = -np.array(dataset.variables['v'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
+
+    # Keep these positive
+    x_wind = np.array(dataset.variables['u'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
+    y_wind = np.array(dataset.variables['v'][start_time, :, lat_index-20:lat_index+21, lon_index-20:lon_index+21])
 
     # Transform Temperature to Speed of Sound (m/s)
     temps = (consts.GAMMA*consts.R/consts.M_0*temperature[:])**0.5
@@ -374,10 +321,11 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     #                                               o--> +u
     #https://confluence.ecmwf.int/pages/viewpage.action?pageId=111155337
     # Direction the winds are coming from, angle in radians from North due East
-
+    # The correct way of this
+    #dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
     dirs = (np.arctan2(y_wind[:], x_wind[:]))%(2*np.pi)
-    dirs = supra.Supracenter.angleConv.angle2NDE(np.degrees(dirs))
-
+    dirs = angle2NDE(np.degrees(dirs))
+    
     level = convLevels()
     level = np.flipud(np.array(level))
 
@@ -442,7 +390,7 @@ def storeHDF(file_name, consts):
 
     # Direction the winds are coming from, angle in radians from North due East
     dirs = (np.arctan2(-y_wind, -x_wind))%(2*np.pi)*180/np.pi
-    dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
+    dirs = angle2NDE(dirs)*np.pi/180
 
     # Store data in a list of arrays
     store_data = [latitude, longitude, temps, mags, dirs, height]
@@ -519,10 +467,10 @@ def storeNetCDFUKMO(file_name, area, consts):
 
     # Direction the winds are coming from, angle in radians from North due East
     dirs = (np.arctan2(-y_wind, -x_wind))%(2*np.pi)*180/np.pi
-    dirs = supra.Supracenter.angleConv.angle2NDE(dirs)*np.pi/180
+    dirs = angle2NDE(dirs)*np.pi/180
 
     # convert heights from geopotential to geometric
-    height = supra.Supracenter.angleConv.geopot2Geomet(ht)
+    height = geopot2Geomet(ht)
 
     # data is needed in reverse order
     temps = np.flipud(np.array(temps))
@@ -537,3 +485,110 @@ def storeNetCDFUKMO(file_name, area, consts):
 
     return store_data
 
+def storeAus(consts):
+
+    # This is meant for WRF files
+
+    dataset = Dataset('/home/luke/Desktop/AliceSprings', "r+", format="NETCDF4")
+
+
+    # print(dataset.variables['PB'])
+    # exit()
+    #Times, XLAT, XLON, U, V, T, PB
+    p =         np.array(dataset.variables['PB'][0, :, 0:270:10, 0:270:10])
+    P =         np.array(dataset.variables['P'][0, :, 0:270:10, 0:270:10])
+    ptot = p + P
+    T =         np.array(dataset.variables['T'][0, :, 0:270:10, 0:270:10])
+    u =         np.array(dataset.variables['U'][0, :, 0:270:10, 0:270:10])
+    v =         np.array(dataset.variables['V'][0, :, 0:270:10, 0:270:10])
+    lat =       np.array(dataset.variables['XLAT'][0, 0::10, 0])
+    lon =       np.array(dataset.variables['XLONG'][0, 0::10, 0])
+
+    dataset.close()
+
+    theta = T + 300
+    temp = theta*(ptot/100000)**(2/7)
+
+    h = np.empty_like(p)
+    for x in range(len(lat)):
+        for y in range(len(lon)):
+            P_0 = ptot[0, x, y]
+            for l in range(len(p[:, 0, 0])):
+                P_i = ptot[l, x, y]
+                TEMP = temp[l, x, y]
+                h[l, x, y] = ((P_0/P_i)**(0.1902) - 1)*TEMP/0.0065
+
+    speed = (consts.GAMMA*consts.R/consts.M_0*temp)**0.5
+
+    mags = np.sqrt(u**2 + v**2)
+
+    dirs = np.degrees((np.arctan2(v, u))%(2*np.pi))
+
+    sounding = [lat, lon, speed, mags, dirs, h]
+
+    return sounding
+
+def findAus(lat, lon, dataset):
+    """ Finds the atmospheric profile from a given lat/lon, from ECMWF archive data, to the closest grid point 
+
+    Arguments:
+        lat, lon: [float] latitude, longitude of the atmospheric profile needed
+        grid_size: [float] the grid_size requested to ECMWF
+        dataset: [ndarray] array of atmospheric profiles for each lat/lon grid point
+
+
+    Returns:
+        sounding: [ndarray] atmospheric profile to be used by ascan, in the form of 
+                [height (m), speed of sound (m/s), wind speed (m/s), wind direction (radians from North due East)] 
+    """
+
+    ### Pull variables from the file
+    # range of lat/lons used
+    latitude = dataset[0]%360
+    longitude = dataset[1]%360
+
+    # Temperature, K, with height, lat, lon
+    temperature = dataset[2]
+
+    # Wind, positive from W to E, height, lat, lon
+    x_wind = dataset[3]
+
+    # Wind, positive from S to N, height, lat, lon
+    y_wind = dataset[4]
+
+    # pressure levels in hPa
+    height = dataset[5]
+
+
+    # Find the closest data point to the requested lat, lon
+    try:
+        lat_i = bisearch(latitude, lat%360)
+        lon_i = bisearch(longitude, lon%360)
+    except:
+        print('ERROR: Cannot find given latitude/longitude in atmospheric profile range! (netCDFconv.py)')
+        exit()
+
+
+    # Create sounding array of all levels from the closest lat and lon
+    # Initialize arrays
+    sounding = np.array([0, 0, 0, 0])
+    row = np.array([0, 0, 0, 0])
+
+    # find total number of height layers
+    LAYERS = len(height[:, 0, 0])
+
+    # build atmospheric profile
+    for i in range(LAYERS):
+
+        # Add each row of the atmospheric profile
+        # Negative signs are because ECMWF defines direction from where wind is blowing TO, where cyscan defines it 
+        # as where it is blowing FROM, (needed for wind angles) 
+        row = np.array((float(height[i, lat_i, lon_i]), float(temperature[i, lat_i, lon_i]), float(x_wind[i, lat_i, lon_i]), float(y_wind[i, lat_i, lon_i])))
+        
+        # Append row to sounding
+        sounding = np.vstack((sounding, row))
+
+    # First row was all zeroes
+    sounding = np.delete(sounding, 0, 0)
+    
+    return sounding

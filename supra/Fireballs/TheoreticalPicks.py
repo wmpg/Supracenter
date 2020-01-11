@@ -6,6 +6,7 @@ import os
 import sys
 import datetime
 import argparse
+import pickle
 
 import obspy
 import numpy as np
@@ -25,23 +26,13 @@ from matplotlib.widgets import Slider
 DATA_FILE = 'data.txt'
 OUTPUT_CSV = 'data_picks.csv'
 
-import pyximport
-pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, \
     plotAllWaveforms, convolutionDifferenceFilter
-from supra.Fireballs.SeismicTrajectory import latLon2Local, local2LatLon, timeOfArrival, waveReleasePoint, waveReleasePointWinds, \
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePointWinds, \
     parseWeather, Constants
-from supra.Fireballs.Program import configRead, configParse, position, station
-from supra.Supracenter.angleConv import geo2Loc, loc2Geo
-from supra.Supracenter.cyscan import cyscan
-from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.SPPT import perturb
-from supra.Supracenter.weatherGraph import graphWeather
-from wmpl.Utils.Earth import greatCircleDistance
-from wmpl.Utils.PlotMap import GroundMap
-from wmpl.Utils.Math import rotateVector
-from wmpl.Utils.TrajConversions import datetime2JD
+from supra.Utils.Classes import Position, Station
+
 
 global arrTimes 
 global sounding
@@ -69,7 +60,7 @@ def trajCalc(setup):
     traj = np.array([np.sin(az)*np.sin(ze), np.cos(az)*np.sin(ze), -np.cos(ze)])
 
     # backwards propegate the trajectory until it reaches 100000 m up
-    n = 100000/traj[2]
+    n = 85920/traj[2]
 
     # B is the intersection between the trajectory vector and the ground
     A = n*traj
@@ -78,9 +69,9 @@ def trajCalc(setup):
     B = np.array(loc2Geo(setup.lat_centre, setup.lon_centre, 0, B))
     A = np.array(loc2Geo(setup.lat_centre, setup.lon_centre, 0, A))
 
-    print("Created Trajectory between A and B:")
-    print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
-    print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
+    # print("Created Trajectory between A and B:")
+    # print("     A = {:10.4f}N {:10.4f}E {:10.2f}m".format(A[0], A[1], A[2]))
+    # print("     B = {:10.4f}N {:10.4f}E {:10.2f}m".format(B[0], B[1], B[2]))
 
     A[2] /= 1000
     B[2] /= 1000
@@ -107,8 +98,8 @@ def calcAllTimes(stn_list, setup, sounding):
         [perturbation, station, 0 - ballistic/ 1 - fragmentation, frag number (0 for ballistic)]
         """
 
-        zenith_list = [5, 25, 45, 65, 85]
-        velocity_list = [11, 16, 21, 26, 31]
+        zenith_list = [5, 45, 85]
+        velocity_list = [11, 15, 19, 23, 27, 31]
         ze_array = [0]*len(zenith_list)
         ze_array_dist = [0]*len(zenith_list)
         v_array = [0]*len(velocity_list)
@@ -119,7 +110,7 @@ def calcAllTimes(stn_list, setup, sounding):
         allDists = [0]*setup.perturb_times
 
         # Ballistic Prediction
-        ref_pos = position(setup.lat_centre, setup.lon_centre, 0)
+        ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
         #lat0, lon0, elev0 = data_list[0][2], data_list[0][3], data_list[0][4]
         # if setup.fragmentation_point == '':
         #     setup.fragmentation_point = []
@@ -156,11 +147,14 @@ def calcAllTimes(stn_list, setup, sounding):
             sounding_u = []
             sounding_l = []
 
-        d_time = 2*(setup.perturb_times*len(stn_list)*no_of_frags)
+        if setup.perturb_method == 'ensemble':
+            ensemble_file = setup.perturbation_spread_file
+
+        d_time = (setup.perturb_times*len(stn_list)*no_of_frags*len(zenith_list)*len(velocity_list))
         count = 0
 
         #number of perturbations
-        for ptb_n in range(setup.perturb_times):
+        for ptb_n in range(setup.perturb_times-1):
 
             if ptb_n > 0:
                 
@@ -170,7 +164,7 @@ def calcAllTimes(stn_list, setup, sounding):
                 # generate a perturbed sounding profile
                 sounding_p = perturb(setup, sounding, setup.perturb_method, \
                     sounding_u=sounding_u, sounding_l=sounding_l, \
-                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre)
+                    spread_file=setup.perturbation_spread_file, lat=setup.lat_centre, lon=setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
             else:
 
                 # if not using perturbations on this current step, then return the original sounding profile
@@ -189,35 +183,35 @@ def calcAllTimes(stn_list, setup, sounding):
                             bTimes = [0]*no_of_frags
                             bDist = [0]*no_of_frags
                             for i in range(no_of_frags):
-                                count += 1
-                                sys.stdout.write("\rCalculating all times: {:5.2f} % ".format(count/d_time * 100))
-                                sys.stdout.flush()
-                                time.sleep(0.001)
+
                                 #need filler values to make this a numpy array with fragmentation
                                 if i == 0:
 
                                     setup.zangle = ZE
                                     setup.v = V
                                     A, B = trajCalc(setup)
-                                    setup.traj_i = position(A[0], A[1], A[2])
-                                    setup.traj_f = position(B[0], B[1], B[2])
+                                    setup.traj_i = Position(A[0], A[1], A[2])
+                                    setup.traj_f = Position(B[0], B[1], B[2])
 
                                     stn.position.pos_loc(ref_pos)
                                     setup.traj_f.pos_loc(ref_pos)
                                     # Station location in local coordinates
                                     # xx, yy, zz  = geo2Loc(lat0, lon0, elev0, \
                                     #                             stat_lat, stat_lon, stat_elev)
-
                                     #xx, yy, zz = rotateVector(np.array([xx, yy, zz]), np.array([0, 0, 1]), -np.pi/2)
 
                                     # Time to travel from trajectory to station
                                     b_time = timeOfArrival([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
-                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding=sounding_p, travel=False, fast=False, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev])# + setup.t 
+                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding=sounding_p, travel=False, fast=True, ref_loc=[ref_pos.lat, ref_pos.lon, ref_pos.elev], theo=True)# + setup.t 
                                     S = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
-                                                                np.radians(setup.azim), np.radians(ZE), setup, sounding_p, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
+                                                               np.radians(setup.azim), np.radians(ZE), setup, sounding_p, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
+                                   
+                                    # S = waveReleasePoint([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*V, \
+                                    #                             np.radians(setup.azim), np.radians(ZE), 310)
                                     # Distance from the source location to the station
                                     #b_dist = ((stn.position.x)**2 + (stn.position.y)**2)**0.5
-                                    bDist[i] = ((S[0] - stn.position.x)**2 + (S[1] - stn.position.y)**2 + (S[2] - stn.position.z)**2)**0.5
+                                    #bDist[i] = ((S[0] - stn.position.x)**2 + (S[1] - stn.position.y)**2 + (S[2] - stn.position.z)**2)**0.5
+                                    bDist[i] = S[2]
                                     bTimes[i] = b_time
                                 else:
                                     bDist[i] = np.nan
@@ -247,44 +241,23 @@ def calcAllTimes(stn_list, setup, sounding):
 
 if __name__ == "__main__":  
 
-        ### COMMAND LINE ARGUMENTS
-
-    # Init the command line arguments parser
-    arg_parser = argparse.ArgumentParser(description="""
-            ~~MakeIRISPicks~~ 
-    Tool for marking times of arrival of 
-    seismic/infrasound data in IRIS data. 
-
-    Denis Vida
-    """,
-        formatter_class=argparse.RawTextHelpFormatter)
-
-    arg_parser.add_argument('input_file', type=str, help='Path to Supracenter input file.')
-
-    # Parse the command line arguments
-    cml_args = arg_parser.parse_args()
-
-    #################
-
-    setup = configRead(cml_args.input_file)
-    configParse(setup, 'picks')
+    with open('/home/luke/Desktop/pkl/Theoretical.pkl', 'rb') as f:
+        setup = pickle.load(f)
 
     ##########################################################################################################
     if not os.path.exists(setup.working_directory):
         os.makedirs(setup.working_directory)
 
-        #Build seismic data path
-    dir_path = os.path.join(setup.working_directory, setup.fireball_name)
+    picks_name = setup.station_picks_file
+    
+    stn_list = []
 
-    # Load the station and waveform files list
-    data_file_path = os.path.join(dir_path, DATA_FILE)
-    if os.path.isfile(data_file_path):
-        
-        stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=setup.rm_stat)
-
-    else:
-        print('Station and waveform data file not found! Download the waveform files first!')
-        sys.exit()
+    with open(picks_name) as f:
+        for ii, line in enumerate(f):
+            if ii > 0:
+                line = line.split(',')
+                stn = Station(line[1], line[2], Position(float(line[3]), float(line[4]), float(line[5])), '...', '...', '...')
+                stn_list.append(stn)
 
     # Remove duplicate lines recieved from different sources
     # stn_list = set(tuple(element) for element in stn_list)
@@ -302,15 +275,15 @@ if __name__ == "__main__":
     setup.search_area[2] = setup.lon_centre - setup.deg_radius
     setup.search_area[3] = setup.lon_centre + setup.deg_radius
 
-    sounding = parseWeather(setup, consts)
+    sounding = parseWeather(setup)
 
     if setup.weather_type != 'none':
-        S = position(setup.lat_centre, setup.lon_centre, 45000)
-        D = position(setup.lat_centre, setup.lon_centre,     0)
-        try:
-            graphWeather(setup.weather_name, setup.weather_type, [S.lat, S.lon, S.elev], [D.lat, D.lon, D.elev], 'spread_r', 100, spread_file=setup.spread_file, setup=setup)
-        except:
-            pass
+        S = Position(setup.lat_centre, setup.lon_centre, 45000)
+        D = Position(setup.lat_centre, setup.lon_centre,     0)
+        # try:
+        #     graphWeather(setup.weather_name, setup.weather_type, [S.lat, S.lon, S.elev], [D.lat, D.lon, D.elev], 'spread_r', 100, spread_file=setup.spread_file, setup=setup)
+        # except:
+        #     pass
     arrTimes = np.array([])
 
     if len(stn_list) == 0:

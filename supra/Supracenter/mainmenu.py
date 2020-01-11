@@ -50,21 +50,22 @@ def main(setup):
     if setup.max_error <= 0:
         print('VARIABLE ERROR: Incorrect max_error, must be a float greater than 0!')
 
+    setup.grid_size = float(setup.grid_size)
     if setup.grid_size <= 0 or setup.grid_size > 10:
         print('VARIABLE ERROR: Incorrect grid_size, must be float greater than 0, and must give enough spaces in the search area!')
         sys.exit()
 
-    if setup.weather_type == 'merra' and setup.start_datetime.year < 1980 and setup.get_data == True:
+    if setup.weather_type == 'merra' and setup.fireball_datetime.year < 1980 and setup.get_data == True:
         a = input('WARNING: MERRA-2 data unavailable earlier than 1980! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()
 
-    if setup.weather_type == 'ecmwf' and setup.start_datetime.year < 2008 and setup.get_data == True:
+    if setup.weather_type == 'ecmwf' and setup.fireball_datetime.year < 2008 and setup.get_data == True:
         a = input('WARNING: ECMWF data unavailable earlier than 2008! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()
 
-    if setup.weather_type == 'ukmo' and setup.start_datetime.year < 1991 and setup.get_data == True:
+    if setup.weather_type == 'ukmo' and setup.fireball_datetime.year < 1991 and setup.get_data == True:
         a = input('WARNING: UKMO data unavailable earlier than 1991! Bypass? (y/n) ')
         if a.lower() != 'y': 
             sys.exit()
@@ -123,10 +124,7 @@ def main(setup):
         setup.restricted_time = None
 
     # time is restriced
-    else:
-        setup.restricted_time = setup.restricted_time.hour*3600 + setup.restricted_time.minute*60 \
-                        + setup.restricted_time.second + setup.restricted_time.microsecond/1e6
-
+    
     # key setting for if not using a manual search
     if setup.manual_fragmentation_search == '':
         setup.manual_fragmentation_search = []
@@ -199,7 +197,8 @@ def main(setup):
     ##########################
     
     # Grab station info from file
-    s_info, s_name, weights, ref_pos = convStationDat(setup.station_name, setup.weight_distance_min, setup.weight_distance_max, setup.start_datetime, setup)
+    s_info, s_name, weights, ref_pos = convStationDat(setup.station_name, setup=setup, \
+        d_min=setup.weight_distance_min, d_max=setup.weight_distance_max)
     station_no = s_info[:, 5]
 
     ref_pos = position(ref_pos[0], ref_pos[1], ref_pos[2])
@@ -237,7 +236,7 @@ def main(setup):
         if i != 0:
             if setup.perturb:
                 for j in range(len(station_no)):
-                    s_info[j, 4] = allTimes[i-1, int(station_no[j]), 1, setup.fragno-1]
+                    s_info[j, 4] = allTimes[i-1, int(station_no[j]), 1, setup.observe_frag_no-1]
 
         #if setup.search_type == 'pso':
         results_arr[i] = psoSearch(s_info, weights, s_name, setup, dataset, consts)

@@ -2,15 +2,14 @@
 
 import numpy as np
 
-import copy
-import time
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Supracenter.angleConv import loc2Geo, roundToNearest
-from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound
+from supra.Utils.AngleConv import loc2Geo
+from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound, findAus, storeNetCDFECMWF
 from supra.Supracenter.cyzInteg import zInteg
-from supra.Supracenter.bisearch import bisearch
+from supra.Utils.Classes import Position, Constants
+from supra.Supracenter.Utils.l137 import getData 
 
 def nearestPoint2D(points_list, point):
     """ HELPER FUNCTION: finds the index of the closest point to point out of a grid of points (points_list)
@@ -25,7 +24,7 @@ def nearestPoint2D(points_list, point):
     """
 
     # Initialize grid of points
-    dists = np.zeros((len(points_list[0]), len(points_list[1])))
+    dists = np.empty((len(points_list[0]), len(points_list[1])))
 
     # x-values
     for i in range(len(points_list[0])):
@@ -57,7 +56,7 @@ def divLine(a, b, div, points_x,  points_y):
     dy = (b[1] - a[1])/(div - 1)
 
     # initialize array
-    p = np.array([[0.0, 0.0]])
+    p = [[0.0, 0.0]]
 
     x_opt = 0
     y_opt = 0 
@@ -67,13 +66,14 @@ def divLine(a, b, div, points_x,  points_y):
         # round each division to the usable points
         # x_opt = bisearch(np.flip(points_x, 0), a[0] + i*dx)
         # y_opt = bisearch(np.flip(points_y, 0), b[0] + i*dy) 
-        x_opt, y_opt = nearestPoint2D([points_x, points_y], [a[0] + i*dx, b[0] + i*dy])
+
+        x_opt, y_opt = nearestPoint2D([points_x, points_y], [a[0] + i*dx, a[1] + i*dy])
 
         # add points to usable points list
-        p = np.vstack((p, [points_x[x_opt], points_y[y_opt]]))
+        p.append([points_x[x_opt], points_y[y_opt]])
 
     # remove dupes
-    p = np.unique(p, axis=0)
+    p = np.unique(np.array(p), axis=0)
 
     # First row was all zeroes
     p = np.delete(p, 0, 0)
@@ -99,9 +99,9 @@ def interpWeather(s, d, weather_type, dataset):
     merged_list = np.array([0, 0, 0, 0])
 
     # initial points to be used between s and d
-    div = 100
+    div = 10
 
-    # Try 100 points first, duplicates will be removed
+    # Try 10 points first, duplicates will be removed
     points = divLine(s, d, div, dataset[0], dataset[1])
 
     # remove duplicate points, divisions can round to the same point
@@ -120,7 +120,7 @@ def interpWeather(s, d, weather_type, dataset):
 
         # ECMWF
         elif weather_type == 'ecmwf':
-            
+
             # find atmospheric profile for given lat/lon
             loc_sounding = np.array(findECMWFSound(points[i][0], points[i][1], dataset))
 
@@ -130,6 +130,10 @@ def interpWeather(s, d, weather_type, dataset):
 
             # find atmospheric profile for given lat/lon
             loc_sounding = np.array(findUKMOSound(points[i][0], points[i][1], dataset))
+
+        elif weather_type == 'binary':
+
+            loc_sounding = np.array(findAus(points[i][0], points[i][1], dataset))
 
         # Fix heights to limit between source and detector
         loc_sounding = zInteg(d[2], s[2], loc_sounding)
@@ -168,6 +172,10 @@ def interpWeather(s, d, weather_type, dataset):
     # remove duplicate rows
     merged_list = np.delete(merged_list, tuple(a), 0)   
 
+    merged_list[:, 3] = np.radians(merged_list[:, 3])
+
+    merged_list[:, ]
+
     return merged_list, points
 
 
@@ -201,26 +209,54 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
 
         # Only return interval between heights
         sounding = zInteg(D[2], S[2], dataset)
-        points = []
 
-        return sounding, points
+        return sounding, []
     
     else:
 
         if convert:
             # convert to unrounded lat/lon
-            s = np.array(loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], S))
-            d = np.array(loc2Geo(ref_pos[0], ref_pos[1], ref_pos[2], D))
-            s[2] = S[2]
-            d[2] = D[2]
+            s = np.array(loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, S))
+            d = np.array(loc2Geo(ref_pos.lat, ref_pos.lon, ref_pos.elev, D))
+
         else:
             s = S
             d = D
 
         # s and d are in lat/lon, S and D are in local
         # interp weather from grid between s and d
-        merged_list, points = interpWeather(s, d, weather_type, dataset)    
+        return interpWeather(s, d, weather_type, dataset)    
 
-        return merged_list, points
-
+if __name__ == '__main__':
     
+    consts = Constants()
+    file_name = '/home/luke/Desktop/atmospheric data/StubenbergReanalysis.nc'
+    S = [48.0598, 13.1085, 85920] 
+    D = [48.846135, 13.71793, 1141.1]
+    ref_pos = Position(48.3314, 13.0706, 0.0)
+    dataset = storeNetCDFECMWF(file_name, ref_pos.lat, ref_pos.lon, consts, start_time=0)
+
+    result = np.array(getWeather(S, D, 'ecmwf', ref_pos, dataset, convert=False)[0])
+
+    pressure = []
+    for height in result[:, 0]:
+        pressure.append(getData(height)[3])
+    pressure = np.array(pressure)
+
+    result = np.hstack((result, np.expand_dims(pressure, axis=1)))
+
+    h = result[:, 0]
+    t = result[:, 1]
+    m = result[:, 2]
+    d = result[:, 3]
+    p = result[:, 4]
+
+    H = h/1000
+    T = t**2/consts.GAMMA/consts.R*consts.M_0 - 273.15
+    U = m*np.cos(d)
+    V = m*np.sin(d)
+    P = p
+
+    A = np.array([H, T, U, V, P]).T
+
+    np.savetxt("/home/luke/Desktop/atm.csv", A, delimiter=",")

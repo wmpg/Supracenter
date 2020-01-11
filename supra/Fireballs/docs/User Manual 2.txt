@@ -1,0 +1,219 @@
+==================================================================================================================================================================================================================================================
+Western Meteor Physics Group Seismic and Infrasonic Meteor Program User Manual
+==================================================================================================================================================================================================================================================
+
+=====================
+About
+=====================
+
+Denis Vida, Peter Brown, Luke McFadden
+(Manual Last Changed May 23, 2019)
+
+Supracenter updated from Wayne Edwards (2003)
+Thanks to Gunter Stober for advice on atmospheric profiles
+
+Made by the Western Meteor Physics Group 
+
+=====================
+Requirements
+=====================
+
+Python 3
+
+This library:
+https://github.com/wmpg/WesternMeteorPyLib
+
+These libraries:
+pyhdf
+obspy
+simplekml
+netcdf4
+pyqt5 
+pyswarm
+
+See here for installation:
+https://github.com/dvida/Supracenter
+
+=====================
+Usage
+=====================
+
+To open the program, navigate to your Supracenter folder and type the following command:
+
+    python -m supra.Fireballs.SolutionGUI
+
+---------------------
+INI Builder
+---------------------
+
+The INI builder is the tool used to specify the parameters of a fileball. Each fireball to be analyzed should have a separate file describing their parameters. The INI Builder allows for fireballs to be loaded and saved from the computer. When any event is run anywhere in this program, it will use data from the text edit boxes in the INI Builder, but will be overwritten by any text edit box in the tab that is being run. The text edit boxes in other tabs are linked to the INI Builder tabs, but the INI Builder text edits cannot be changed by other tabs unless "Copy To INI Builder" is clicked. 
+
+Recommended use of the INI Builder is to create a fireball, and save it to an ini file so that it may be used later. This ini can be run in any tabs, and can be tweaked in the text edit boxes in each tab. Once the user is finished tweaking the variables, "Copy To INI Builder" may be clicked to overwrite the INI Builder. Then the INI Builder must be saved to an ini file to update the ini file.
+
+---------------------
+Pick Viewer
+---------------------
+
+Pick viewer allows the user to edit station pick files created by Make Picks. Station pick files are CSV files with information about the station that was picked, and the time of the pick. The pick viewer allows the user to load in a station pick file, and edit the values inside. The CSV file may then be saved to a file for further use with other parts of the program.
+
+Recommended use of the Pick Viewer is to delete picks manually after running Supracenter or Ballistic solutions, if it is found that one pick does not belong. It is also useful for fine tuning the times of arrivals at stations if it is easier than clicking the time of arrival. Finally, the Pick Viewer may also be used to create fake arrival time data, if theoretically created fireballs are being used, as a control.
+
+---------------------
+Fetch Atmosphere
+---------------------
+
+This window allows the user to choose a time and the weather data will be downloaded for that time. The variables used are Temperature, U-Component of Wind (wind from West to East), and V-Component of Wind (wind from South to North). Once opened, a weather profile can be made at a specific latitude and longitude for analysis.
+
+You can either download a file under the name specified by clicking "download", or you can open an existing weather profile under the name specified on your computer by clicking "open".
+
+---------------------
+Atmosphere Viewer
+---------------------
+Usable
+
+---------------------
+Make Picks
+---------------------
+
+The make picks window allows the user to analyze the waveforms at each station. The intended purpose of this screen is to have the user identify where each pick is on the waveform and export the station picks file (.csv) for use in other parts of the program. This allows the user to search for fragmentation and ballistic solutions with the picks that they have created.
+
+Usage:
+______
+
+Once an .ini file has been loaded into the INI Builder, navigate to the Make Picks tab and click "Load Station Data". If the .mseed station data can be read in properly, then three figures should appear on screen.
+
+Shortcuts:
+__________
+
+Make Pick: Ctrl + M1
+Delete Pick: *Not yet implemented*
+Next Waveform: D
+Previous Waveform: A
+Bandpass Current Waveform: W
+Spectrogram of Current Waveform: S 
+Convolution Filter of Current Waveform: C
+
+Station Navigation:
+___________________
+
+The stations can be navigated most easily by "A" and "D" to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.
+
+Bandpass Filter:
+________________
+
+
+Spectrogram View:
+_________________
+
+
+Convolution Filter:
+___________________
+
+
+Waveform Window:
+________________
+
+
+Map Window:
+___________
+
+
+All Station Waveforms Window:
+_____________________________
+
+
+Exporting Picks:
+________________
+
+Once all of the user picks have been made on the waveforms, the "Export CSV" button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.
+
+---------------------
+Supracenter Manual Search
+---------------------
+Chose the 4-D fragmentation point, and input the station data and picks, created by the Make Picks window, and hit search. The program will return the error in that point, as well as the residuals to each station, based off of the difference in arrival times from the manual Supracenter to the expected pick arrival time.
+
+---------------------
+Supracenter PSO Search
+---------------------
+Chose a 4-D bounding box to search in, giving the 3-D spatial barrier and a 1-D temporal barrier. Give the station picks file, created by the Make Picks window. The program will search for the optimal Supracenter within the 3-D bounding box, and try to optimize the for the best solution with the lowest residuals. The residuals are calculated by the difference between the expected arrival time of a trial point, and the arrival time given in the picks file.
+
+---------------------
+Seismic Trajectory
+---------------------
+Functional, but not thouroughly tested, use at your own risk!
+
+====================
+Files
+====================
+
+--------------------
+INI Files
+--------------------
+
+ini files contain the information for a given fireball event. These are loaded into each part of the program with the parameters of the fireball. For most parts of the program, not all of the variables in the ini files need to be set. For example, in the Supracenter solver, the ballistic search parameters do not need to be filled out.
+
+If the terminal returns an "INI ERROR" while running the code, try setting [General] debug = True, which will print out what variables are being detected by the program.
+
+--------------------
+Station Picks
+--------------------
+
+
+--------------------
+Atmosphere Files
+--------------------
+
+
+--------------------
+All Times Files
+--------------------
+
+These files contain the estimated arrival times for each perturbation at each station for all fragmentation and ballistic arrivals. This .npy file is used to quickly save and load data and prevent long loading times. The data can be called from a numpy array with the data loaded in as follows:
+
+[perturbation #, station #, 0 - ballistic/ 1 - fragmentation, frag number (0 if using ballistic)]
+
+The intended use of this is to save estimates for arrival times that take a long time to load, such as perturbation calculations. It is recommended that each .npy file which contains perturbations is saved in a proper place so that it may be reused.
+
+====================
+Setting Up Atmospheric Fetching
+====================
+
+Setting up atmospheric fetching is a one-time setup which will allow data to be downloaded from the Copernicus Climate Change Store automatically.
+
+Follow the instructions given here, with the given exceptions below:
+https://cds.climate.copernicus.eu/api-how-to
+
+Step 1: Needs to be done locally, since the url and key depend on the users login
+
+Step 2: Proceed as normal
+
+Step 3: Does not need to be done, the Fetch Atmosphere tab does this for you, and will request the data, and display it automatically. 
+
+====================
+Errors
+====================
+
+There definitely are a bunch, but this section is a WIP
+
+====================
+Extra Stations
+====================
+
+To add a station manually, the station name, location and mseed file must be input into the .ini file. Most seismic waveform databases online will allow for an mseed file to be downloaded. The file must be put in with the rest of the mseed files, which is located in: output_folder/fireball_name
+
+Most data sources also allow for .kml files to be downloaded. It may be useful to compile all seismic stations into a single kml file for use with Google Earth Pro, and using the circle measure tool to find stations within 150 km of an event.
+
+Sites that stations can be downloaded from:
+
+North Carolina - http://service.ncedc.org/fdsnws/dataselect/1/
+South Carolina - https://service.scedc.caltech.edu/fdsnws/dataselect/1/
+Turkey - http://tdvm.afad.gov.tr/
+Europe - http://udim.koeri.boun.edu.tr/mseed/
+Europe - http://eida.gfz-potsdam.de/webdc3/
+IRIS - http://service.iris.edu/fdsnws/dataselect/docs/1/builder/
+
+Others may be found by searching for .mseed files online
+
+====================
+References
+====================

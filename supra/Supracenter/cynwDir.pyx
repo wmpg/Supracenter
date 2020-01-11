@@ -19,7 +19,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
 
     Arguments:
         w: [ndarray] Wind Magnitude for each level in the atmosphere
-        wd: [ndarray] Wind direction (angle). Direction (from the north) the wind is blowing to
+        wd: [ndarray] Wind direction (angle). Direction (from the north) the wind is blowing to (Radians)
         phi: [ndarray] Azimuthal angles (NDE)
 
     Returns:
@@ -30,20 +30,4 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
         int m = len(w)
         int n = len(phi)
 
-        # Calculate unit normals in direction phi
-        np.ndarray[FLOAT_TYPE_t, ndim=1] nx = np.cos(phi) #changed from cos
-        np.ndarray[FLOAT_TYPE_t, ndim=1] ny = np.sin(phi) #changed from sin
-        np.ndarray[FLOAT_TYPE_t, ndim=1] wx = w*np.sin(wd) #changed back to positive, cyscan equations are defined on the direction wind is blowing from
-        np.ndarray[FLOAT_TYPE_t, ndim=1] wy = w*np.cos(wd) 
-
-        np.ndarray[FLOAT_TYPE_t, ndim=2] nx_t = np.tile(nx, (m, 1))
-        np.ndarray[FLOAT_TYPE_t, ndim=2] ny_t = np.tile(ny, (m, 1))
-
-        # Calculate wind components x-y
-        np.ndarray[FLOAT_TYPE_t, ndim=2] wx_t = np.tile(wx, (n, 1)).T   
-        np.ndarray[FLOAT_TYPE_t, ndim=2] wy_t = np.tile(wy, (n, 1)).T
-
-        # Find component of wind velocity in the direction of phi for each level z
-        np.ndarray[FLOAT_TYPE_t, ndim=2] x = wx_t*nx_t + wy_t*ny_t
-    
-    return x
+    return np.tile(w*np.sin(wd), (n, 1)).T*np.tile(np.cos(phi), (m, 1)) + np.tile(w*np.cos(wd), (n, 1)).T*np.tile(np.sin(phi), (m, 1))

@@ -1,0 +1,42 @@
+.. Supracenter documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 11:53:56 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+########
+Features
+########
+
+*************************
+Atmosphere Profile Viewer
+*************************
+
+An one-dimensional atmosphere profile slice can be viewed at a specific latitude and longitude for temperature and winds. Perturbations may also be generated for this data.
+
+**************************
+Inversion of Arrival Times
+**************************
+
+Seismic and infrasonic data can be inverted to find a fragmentation or trajectory solution.
+
+*******************
+Acoustic Ray Tracer
+*******************
+
+An direct-arrival acoustic wave may be traced through the atmosphere given winds and temperatures in the given region.
+
+***************
+Yield Estimater
+***************
+
+In progress... From a given overpressure recieved at a station from a blast a range, height, and pressure, the fragmentation yield can be estimated.
+
+.. toctree::
+   :maxdepth: 2
+
+   
+
+
+
+
+

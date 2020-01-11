@@ -1,0 +1,127 @@
+.. Supracenter documentation master file, created by
+   sphinx-quickstart on Mon Jun  3 11:53:56 2019.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+
+Make Picks
+----------
+
+.. image:: makepicksdemo.png
+
+The make picks window allows the user to analyze the waveforms at each station. The intended purpose of this screen is to have the user identify where each pick is on the waveform and export the station picks file (.csv) for use in other parts of the program. This allows the user to search for fragmentation and ballistic solutions with the picks that they have created.
+
+Usage
+^^^^^
+
+Once an .ini file has been loaded into the INI Builder, navigate to the Make Picks tab and click "Load Station Data". If the .mseed station data can be read in properly, then three figures should appear on screen.
+
+Shortcuts
+^^^^^^^^^
+
+* Make Pick: Ctrl + M1
+* Delete Pick: Shift + M1
+* Next Waveform: D
+* Previous Waveform: A
+* Bandpass Current Waveform: W
+* Spectrogram of Current Waveform: S 
+* Convolution Filter of Current Waveform: C
+
+Station Navigation
+^^^^^^^^^^^^^^^^^^
+
+The stations can be navigated most easily by "A" and "D" to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.
+
+Contour
+^^^^^^^
+
+Makes a contour of the arrivals from the ballistic trajectory to the ground level. Different colours represent the scaled gradient in arrival times. Contours take a long time to create, so it is recommended to use the saving and loading features to quickly reproduce contours. 
+
+The region calculated for is the rectangle defined by lat_min, lat_max, lon_min, lon_max.
+
+Show Contour
+""""""""""""
+Begins calculating the ray-tracing for the contour. Does not save the final product
+
+Grid Spacing
+""""""""""""
+The number of grid spaces within the region to calculate arrival times for. The fewer points, the faster the calculation, but the more pixelated the result is.
+
+Save Contour
+""""""""""""
+Saves the last created contour in memory
+
+Load Contour
+""""""""""""
+Loads and displays a contour
+
+
+Bandpass Filter
+^^^^^^^^^^^^^^^
+
+Bandpasses the current waveform between the two values given. Also helpful for reseting the GUI's display of the waveform.
+
+Spectrogram View
+^^^^^^^^^^^^^^^^
+
+Convolution Filter
+^^^^^^^^^^^^^^^^^^
+
+Waveform Window
+^^^^^^^^^^^^^^^
+
+You can make picks directly onto the waveform by moving the mouse to the desired location and hitting 'Ctrl+M1'
+
+Map Window
+^^^^^^^^^^
+
+Shows the stations and the inputted trajectory and fragmentation points
+
+All Station Waveforms Window
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Exporting Picks
+^^^^^^^^^^^^^^^
+
+Once all of the user picks have been made on the waveforms, the "Export CSV" button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.
+
+Exporting All Times Files
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The calculations of the arrival times can be saved as a .npy to be input back into the program at a later time. This way, the lengthy calculations to find the perturbations and everything else only need to be done once for a given configuration. If anything is changed, this WILL need to be recalculated.
+
+Fragentation Viewer
+^^^^^^^^^^^^^^^^^^^
+
+The fragmentation viewer can be accessed by checking the Show Height Prediction box on the MakePicks window and creating a pick on the waveform with Ctrl+M1. Once clicked, a new window will pop up after a calculation. This will show the estimate in the height of a fragmentation that would have arrived at this time, and the optimal height of the ballistic arrival. This viewer is meant for predicting heights and is used well with the Trajectory Interp found in Classes.
+
+The intended method of using the Fragmentation Viewer is with a large number of fragmentation points along the trajectory. Take the starting and ending points of the trajectory and use the interpolation method in the Trajectory Class found in Classes.py. Once you have a large number of fragmentation points, edit the output into a .csv (in the form: lat, lon, elev) and add a ", 0.0" at the end of each line, representing the time after the starting point the fragmentation happened (which is taken account for by the viewer, so this should be left at 0.0 for it to work properly). 
+
+Then load the .csv containing the frags into the fragmentation points of the .pkl file. And load all of the station values in the Make Picks window (all of the calculations have to be done for ALL of the fragmentation points). It is recommended that weather and perturbations be turned on for this, as they may give a better indication of where the fragmentation and ballistic arrivals are.
+
+The top view shows both the nominal and perturbed arrival times relative to the time of the pick made. The '+' symbols show the fitted best height that a given data set's fragmentation would occour at to arrive at that time. The blue sloped lines represent the fitted maximum and minimum arrival times of the data, accounting only for the time of the fireball. The pink and green sloped lines represent the fit for the nominal and perturbed data respectively.
+
+Yield Estimater
+^^^^^^^^^^^^^^^
+
+.. image:: yield.png
+
+A window which will estimate the yield of a fragmentation from the data provided from a given station. In order to use, select the required station from the Make Picks tab, and make sure that the correct waveform is shown, that will be analyzed. Click "Yield Estimater" to bring up the yield estimation window. 
+
+Fill in the nominal height of the burst that is to be estimated. If this is not known, use the "Show Height Prediction" or "Solve Heights" options on the waveform. The minimum and maximum heights can be estimated by the user looking at the graph produced by "Show Height Prediction", and estimating what the upper and lower bounds on the possible explosions are.
+
+After filling in the heights, the user can click "Integrate", and the program will fill in as much information as it can for the other factors (eventually this will be ALL of the data). The user must fill in the rest of each column being used for Calculate Yield to work. This part of the program may be used with either only the "Nominal" column, or all three columns.
+
+The user may ignore the Geometric Factor, by using values of 1. If overpressure is not known, a value of 1 can be input, the blast curves will still show, but the point plotted will not be accurate.
+
+Calculate yield will show the "blast curve" of the parameters entered. The point plotted on the curve represents the yield for the overpressure entered in.  
+
+.. toctree::
+   :maxdepth: 2
+
+   
+
+
+
+
+
