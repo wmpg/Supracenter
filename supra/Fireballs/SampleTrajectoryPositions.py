@@ -16,7 +16,7 @@ import scipy.interpolate
 import scipy.signal
 
 from wmpl.Config import config
-from wmpl.Utils.TrajConversions import cartesian2Geo, eci2RaDec, raDec2AltAz
+from wmpl.Utils.TrajConversions import cartesian2Geo, eci2RaDec, raDec2AltAz, altAz2RADec
 from wmpl.Utils.Math import lineAndSphereIntersections, vectMag, vectNorm
 from wmpl.Utils.Pickling import loadPickle
 
@@ -189,7 +189,8 @@ def sampleTrajectory(dir_path, file_name, beg_ht, end_ht, sample_step):
     print('    Lat: {:.6f}'.format(np.degrees(traj.rbeg_lat)))
     print('    Lon: {:.6f}'.format(np.degrees(traj.rbeg_lon)))
     print('    Elev: {:.1f}'.format(traj.rbeg_ele))
-
+    print()
+    print("Ground-fixed azimuth and altitude:")
     print(' Time(s), Sample ht (m),  Lat (deg),   Lon (deg), Height (m), Azim (deg), Elev (deg)')
 
     # Go through every distance from the Earth centre and compute the geo coordinates at the given distance,
@@ -229,22 +230,54 @@ def sampleTrajectory(dir_path, file_name, beg_ht, end_ht, sample_step):
         if prev_eci is not None:
 
             # Compute the vector pointing from the previous point to the current point
-            direction_vect = prev_eci - height_eci
+            direction_vect = vectNorm(prev_eci - height_eci)
 
-            # Compute RA, Dec of the the pointing
-            ra, dec = eci2RaDec(vectNorm(direction_vect))
 
-            # Calculate the apparent azimuth and altitude (geodetic latitude, because ra/dec are calculated from ECI,
-            #   which is calculated from WGS84 coordinates)
-            azim, elev = raDec2AltAz(ra, dec, jd, lat, lon)
+            ### Compute the ground-fixed alt/az
+
+            eci_x, eci_y, eci_z = height_eci
+
+            # Calculate the geocentric latitude (latitude which considers the Earth as an elipsoid) of the reference 
+            # trajectory point
+            lat_geocentric = np.arctan2(eci_z, np.sqrt(eci_x**2 + eci_y**2))
+
+
+            # Calculate the velocity of the Earth rotation at the position of the reference trajectory point (m/s)
+            v_e = 2*np.pi*vectMag(height_eci)*np.cos(lat_geocentric)/86164.09053
+
+            
+            # Calculate the equatorial coordinates of east from the reference position on the trajectory
+            azimuth_east = np.pi/2
+            altitude_east = 0
+            ra_east, dec_east = altAz2RADec(azimuth_east, altitude_east, jd, lat, lon)
+
+
+            # The reference velocity vector has the average velocity and the given direction
+            # Note that ideally this would be the instantaneous velocity
+            v_ref_vect = traj.orbit.v_avg_norot*direction_vect
+
+            v_ref_nocorr = np.zeros(3)
+
+            # Calculate the derotated reference velocity vector/radiant
+            v_ref_nocorr[0] = v_ref_vect[0] + v_e*np.cos(ra_east)
+            v_ref_nocorr[1] = v_ref_vect[1] + v_e*np.sin(ra_east)
+            v_ref_nocorr[2] = v_ref_vect[2]
+
+            # Compute the radiant without Earth's rotation included
+            ra_norot, dec_norot = eci2RaDec(vectNorm(v_ref_nocorr))
+            azim_norot, elev_norot = raDec2AltAz(ra_norot, dec_norot, jd, lat, lon)
+
+
+            ### 
+
 
         else:
-            azim = -np.inf
-            elev = -np.inf
+            azim_norot = -np.inf
+            elev_norot = -np.inf
 
         prev_eci = np.copy(height_eci)
 
-        print("{:s}{:7.3f}, {:13.1f}, {:10.6f}, {:11.6f}, {:10.1f}, {:10.6f}, {:10.6f}".format(time_marker, t_est, ht, np.degrees(lat), np.degrees(lon), ele_geo, np.degrees(azim), np.degrees(elev)))
+        print("{:s}{:7.3f}, {:13.1f}, {:10.6f}, {:11.6f}, {:10.1f}, {:10.6f}, {:10.6f}".format(time_marker, t_est, ht, np.degrees(lat), np.degrees(lon), ele_geo, np.degrees(azim_norot), np.degrees(elev_norot)))
 
     print('The star * denotes heights extrapolated after the end of the fireball, with the fixed velocity of 3 km/s.')
 
