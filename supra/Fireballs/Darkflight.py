@@ -104,7 +104,7 @@ def runDarkflight(params, mass, uncertainty=False):
     elev = str(params.z)
     v = str(params.v)
     az = str(params.az)
-    alt = str(params.ze)
+    ze = str(params.ze)
     mass = str(mass)
     tan = str(params.tan)
     sig = str(params.sig)
@@ -121,8 +121,8 @@ def runDarkflight(params, mass, uncertainty=False):
     drg = str(params.drag)
 
     # Directory of Darkflight
-    darkflight_dir = "/local4/fireballs/darkflight"
-
+    darkflight_dir = "/srv/meteor/fireballs/darkflight"
+    
     # Run Darkflight through terminal calls
 
     # darkflight.c help menu
@@ -134,7 +134,7 @@ def runDarkflight(params, mass, uncertainty=False):
     if uncertainty:
         # Fragmentation simulation
         if params.frag:
-            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--alt', alt, '--mas', mass, \
+            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -144,7 +144,7 @@ def runDarkflight(params, mass, uncertainty=False):
         
         # no fragmentation
         else:
-            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--alt', alt, '--mas', mass, \
+            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -154,7 +154,7 @@ def runDarkflight(params, mass, uncertainty=False):
 
     # Best trajectory points
     else:
-        p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--alt', alt, '--mas', mass, \
+        p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        #'--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        #'--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
