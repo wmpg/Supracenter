@@ -1,9 +1,11 @@
 import numpy as np
 from supra.Supracenter.anglescan import anglescan
+from supra.Utils.Classes import Position
 
 S = np.array([1069.86, -11475.30, 32400])
-phi = 32.15317
-theta = 110.3900985
+#az, tf
+phi, theta = 32.1531715393, 110.390098572 
+
 z_profile = np.array(
 [[  1.09800000e+03,   3.33249621e+02,   6.39769967e+00,   8.15753052e-01],
  [  1.32870000e+03,   3.32245814e+02,   7.46880547e+00,   8.21841037e-01],
@@ -40,4 +42,14 @@ z_profile = np.array(
  [  3.13309600e+04,   2.96627600e+02,   4.80634166e+01,   1.57133120e+00],
  [  3.24000000e+04,   2.96627600e+02,   4.80634166e+01,   1.57133120e+00]]
 )
-print(anglescan(S, phi, theta, z_profile, wind=True))
+z_profile[:, 1] = 330
+D = anglescan(S, phi, theta, z_profile, wind=False)
+print(D)
+ref_pos = Position(48.3314, 13.0706, 0)
+a = Position(0, 0, 0)
+a.x = D[0]
+a.y = D[1]
+a.z = D[2]
+
+a.pos_geo(ref_pos)
+print(a)
