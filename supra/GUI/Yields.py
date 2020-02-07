@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import multiprocessing
+import warnings
+from functools import partial
 
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -10,12 +12,16 @@ import pyqtgraph as pg
 from supra.Utils.pso import pso
 from supra.GUI.GUITools import createLabelEditObj
 from supra.Utils.TryObj import *
+from supra.Utils.EigenRay import eigenError, eigenAngleError, eigenConsistancy
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscanIntegration import cyscan as intscan
+from supra.Supracenter.anglescan import anglescan
+from supra.Supracenter.cyscan2 import cyscan
 from supra.Fireballs.SeismicTrajectory import parseWeather
 from supra.Utils.Classes import Position
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.Utils.l137 import estPressure
+
 
 def nuc_func(Z):
     # KG85
@@ -161,6 +167,15 @@ class Yield(QWidget):
         pane2.addWidget(self.blastline_view)
         self.blastline_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+
+        h = np.linspace(20000, 50000, 301)
+        D_angle = [1.0]
+        for d in D_angle:
+            for height in h:
+                _,_,_,_,rf = self.integrate(height, D_ANGLE=d)
+                print(height, np.nanmean(rf), d)
+
+
     def integration_full(self, k, v, b, I, P_a):
         return np.exp(-k*v**2/b/P_a*I)
 
@@ -173,7 +188,7 @@ class Yield(QWidget):
 
         return 10**a[0]
 
-    def integrate(self, height):
+    def integrate(self, height, D_ANGLE=1.5):
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         point = self.setup.trajectory.findGeo(height)
         point.pos_loc(self.setup.ref_pos)
@@ -183,35 +198,42 @@ class Yield(QWidget):
         ints = []
         ts = []
         ps = []
+        rfs = []
 
         for ptb_n in range(self.setup.perturb_times):
             stn = self.stn_list[self.current_station]
             stn.position.pos_loc(self.setup.ref_pos)
-            self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+            sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
             zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], sounding, convert=False)
 
-            f, g, T, P = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+            S = np.array([point.x, point.y, point.z])
+            D = np.array([stn.position.x, stn.position.y, stn.position.z])
+            f, g, T, P = intscan(S, D, zProfile, wind=True, \
                                 n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+
+            rf = self.refractiveFactor(S, D, zProfile, D_ANGLE=D_ANGLE)
             trans.append(f)
             ints.append(g)
             ts.append(T)
             ps.append(P)
-            # if self.setup.debug:
-            #     print(zProfile)
 
-        return trans, ints, ts, ps
+            rfs.append(rf)
+
+        return trans, ints, ts, ps, rfs
 
     def intCalc(self):
+
         stn = self.stn_list[self.current_station]
         if tryFloat(self.height_edits.text()) != None:
             height = tryFloat(self.height_edits.text())
-            trans, ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps, rfs = self.integrate(height)
 
             f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
+            r_val = np.nanmean(rfs)
 
             self.fd_edits.setText('{:.4f}'.format(f_val))
             self.afi_edits.setText('{:.4f}'.format(g_val))
@@ -219,6 +241,7 @@ class Yield(QWidget):
             self.pressure_edits.setText('{:.4f}'.format(p_val))
             self.p_a_edits.setText('{:.4f}'.format(estPressure(stn.position.elev)))
             frag_pos = self.setup.trajectory.findGeo(height)
+            self.geo_edits.setText('{:.4f}'.format(r_val))
             stn_pos = stn.position
             dist = stn_pos.pos_distance(frag_pos)
             self.range_edits.setText('{:.4f}'.format(dist))
@@ -226,12 +249,13 @@ class Yield(QWidget):
         if tryFloat(self.height_min_edits.text()) != None:
             height = tryFloat(self.height_min_edits.text())
 
-            trans, ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps, rfs = self.integrate(height)
 
             f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
+            r_val = np.nanmean(rfs)
 
             self.fd_min_edits.setText('{:.4f}'.format(f_val))
             self.afi_min_edits.setText('{:.4f}'.format(g_val))
@@ -239,6 +263,7 @@ class Yield(QWidget):
             self.pressure_min_edits.setText('{:.4f}'.format(p_val))
             self.p_a_min_edits.setText('{:.4f}'.format(estPressure(stn.position.elev)))
             frag_pos = self.setup.trajectory.findGeo(height)
+            self.geo_min_edits.setText('{:.4f}'.format(r_val))
             stn_pos = stn.position
             dist = stn_pos.pos_distance(frag_pos)
             self.range_min_edits.setText('{:.4f}'.format(dist))
@@ -246,12 +271,13 @@ class Yield(QWidget):
         if tryFloat(self.height_max_edits.text()) != None:
             height = tryFloat(self.height_max_edits.text())
 
-            trans, ints, ts, ps = self.integrate(height)
+            trans, ints, ts, ps, rfs = self.integrate(height)
 
             f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
             p_val = np.nanmean(ps)
+            r_val = np.nanmean(rfs)
 
             self.fd_max_edits.setText('{:.4f}'.format(f_val))
             self.afi_max_edits.setText('{:.4f}'.format(g_val))
@@ -259,6 +285,7 @@ class Yield(QWidget):
             self.pressure_max_edits.setText('{:.4f}'.format(p_val))
             self.p_a_max_edits.setText('{:.4f}'.format(estPressure(stn.position.elev)))
             frag_pos = self.setup.trajectory.findGeo(height)
+            self.geo_max_edits.setText('{:.4f}'.format(r_val))
             stn_pos = stn.position
             dist = stn_pos.pos_distance(frag_pos)
             self.range_max_edits.setText('{:.4f}'.format(dist))
@@ -275,7 +302,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_edits.text())
             self.P = tryFloat(self.pressure_edits.text())
             self.c = tryFloat(self.c_edits.text())
-            self.fd = tryFloat(self.fd_edits.text())
+            self.f_d = tryFloat(self.fd_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
@@ -289,7 +316,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_min_edits.text())
             self.P = tryFloat(self.pressure_min_edits.text())
             self.c = tryFloat(self.c_min_edits.text())
-            self.fd = tryFloat(self.fd_min_edits.text())
+            self.f_d = tryFloat(self.fd_min_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
@@ -303,7 +330,7 @@ class Yield(QWidget):
             self.I = tryFloat(self.afi_max_edits.text())
             self.P = tryFloat(self.pressure_max_edits.text())
             self.c = tryFloat(self.c_max_edits.text())
-            self.fd = tryFloat(self.fd_max_edits.text())
+            self.f_d = tryFloat(self.fd_max_edits.text())
 
             v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
             p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
@@ -400,3 +427,44 @@ class Yield(QWidget):
             sounding_p = dataset
 
         return sounding_p
+
+    def addAngleComp(self, ang1, ang2, deg=False):
+        if deg:
+            return np.degrees(np.arccos(np.cos(np.radians(ang1))*np.cos(np.radians(ang2))))
+        else:
+            return np.arccos(np.cos(ang1)*np.cos(ang2))
+
+    def refractiveFactor(self, S, D, zProfile, D_ANGLE=1.5):
+    
+        dx, dy, dz = D - S
+        tf_ideal_n = np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))
+        az_ideal_n = np.degrees(np.arctan2(dx, dy))
+
+        _, az_n, tf_n, _ = cyscan(S, D, zProfile, wind=True, n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+
+        if not eigenConsistancy(S, D, az_n, tf_n, zProfile, n_angle=self.setup.n_theta):
+            return np.nan
+
+        d_angle_ideal = [np.nan]
+
+        for i in range(4):
+            d_az = np.degrees(np.arctan(np.cos(i*np.pi/2)*np.tan(np.radians(D_ANGLE))))
+            d_tf = np.degrees(np.arctan(np.sin(i*np.pi/2)*np.tan(np.radians(D_ANGLE))))
+
+            D_n = anglescan(S, az_n + d_az, tf_n + d_tf, zProfile, wind=True)
+
+            dx, dy, dz = D_n[0:3] - S
+
+            if eigenConsistancy(S, D_n[:3], az_n + d_az, tf_n + d_tf, zProfile, n_angle=self.setup.n_theta):
+
+                tf = (np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))) - tf_ideal_n
+                az = (np.degrees(np.arctan2(dx, dy))) - az_ideal_n
+
+                d_angle_ideal.append(self.addAngleComp(tf, az, deg=True))
+
+
+        d_angle_ideal = np.nanmean(d_angle_ideal)
+
+        rf = np.sqrt(D_ANGLE/d_angle_ideal)
+
+        return rf

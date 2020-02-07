@@ -55,6 +55,41 @@ where:
 
 It is possible that a :math:`\beta` value might not exist for a given tolerance angle due to the geometry of the vectors, so these are ignored. 
 
+************
+Attenuations
+************
+
+BAM provides analysis of three pressure wave attenuations which may be studied: Transmission Factor, Acoustic Attenuation, and Geometric Attenuation
+
+Transmission Factor
+-------------------
+
+The transmission factor is calculated as follows:
+(See KG85)
+
+.. math::
+	f_d = \frac{1}{h_2 - h_1} \frac{T_0}{P_0}\int^{h_2}_{h_1} \left(\frac{P}{T}\right)^{1/3} dh 
+
+Acoustic Attenuation
+--------------------
+
+The attenuation factor is calculated as follows:
+(See Latunde-Dada 2013)
+
+.. math::
+	af = \exp \left({\sum^{n-1}_{i=0} - \frac{k \nu^2}{bP_0 \sin{\theta_i}} [e^{bh_i+1} - e^{bh_i}]} \right)
+
+Geometric Attenuation
+---------------------
+
+The geometric factor is calculated as follows:
+(See Latunde-Dada 2013)
+
+.. math::
+	rf = \sqrt{\frac{1.5^{\circ}}{d \theta_{0, ideal}}}
+
+with :math:`1.5^{\circ}` as a hardcoded value, still under investigation
+
 .. toctree::
    :maxdepth: 2
 

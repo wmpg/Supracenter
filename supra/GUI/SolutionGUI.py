@@ -112,7 +112,10 @@ class SolutionGUI(QMainWindow):
         self.setWindowTitle('Bolide Acoustic Modelling')
        
         app_icon = QtGui.QIcon()
-        app_icon.addFile('wmpl.png', QtCore.QSize(16, 16))
+
+        self.doc_file = os.path.join('supra', 'Fireballs', 'docs', 'index.html')
+
+        app_icon.addFile(os.path.join('Fireballs','docs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
         self.setWindowIcon(app_icon)
        
         p = self.palette()
@@ -153,6 +156,7 @@ class SolutionGUI(QMainWindow):
         addFetchATMWidgets(self)
         addProfileWidgets(self)
         addRayTracerWidgets(self)
+        addDocWidgets(self)
 
         self.var_typ = 't'
 
@@ -195,6 +199,7 @@ class SolutionGUI(QMainWindow):
         about_menu.addAction(about_github)
 
         about_docs = QAction("Documentation", self)
+        about_docs.setShortcut('Ctrl+D')
         about_docs.triggered.connect(self.openDocs)
         about_menu.addAction(about_docs)
 
@@ -225,6 +230,8 @@ class SolutionGUI(QMainWindow):
 
         self.setStyleSheet(stylesheet)
 
+        self.doc_view.load(QUrl.fromLocalFile(os.path.abspath(self.doc_file)))
+
         pg.setConfigOptions(antialias=True)
         self.ray_pick = pg.ScatterPlotItem()
         self.ray_pick_traj = pg.ScatterPlotItem()
@@ -252,7 +259,7 @@ class SolutionGUI(QMainWindow):
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
 
     def openDocs(self):
-        webbrowser.open_new_tab("supra/Fireballs/docs/index.html")
+        webbrowser.open_new_tab(self.doc_file)
 
     def csvLoad(self):
         
@@ -1831,6 +1838,7 @@ class SolutionGUI(QMainWindow):
             delta = mseed[stream].stats.delta
             waveform_data = mseed[stream].data
 
+
             # Extract time
             start_datetime = mseed[stream].stats.starttime.datetime
             end_datetime = mseed[stream].stats.endtime.datetime
@@ -3276,7 +3284,7 @@ if __name__ == '__main__':
     print('#            Luke McFadden,             #')
     print('#              Denis Vida,              #') 
     print('#              Peter Brown              #')
-    print('#                 2019                  #')
+    print('#              2018 - 2020              #')
     print('#########################################')
 
     app = QApplication(sys.argv)

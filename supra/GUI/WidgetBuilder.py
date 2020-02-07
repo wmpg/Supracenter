@@ -124,10 +124,22 @@ def addSupWidgets(obj):
     sup_tab.setLayout(obj.master_sup)
     obj.tab_widget.addTab(sup_tab, "Supracenter PSO Search")
 
+def addDocWidgets(obj):
+    doc_master_tab = QWidget()
+    doc_master = QVBoxLayout()
+    doc_master_tab.setLayout(doc_master)
+
+    obj.doc_view = QWebView()
+    doc_master.addWidget(obj.doc_view)
+    obj.doc_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+    obj.tab_widget.addTab(doc_master_tab, 'Documentation')  
+
 def addMakePicksWidgets(obj):
     make_picks_master_tab = QWidget()
     make_picks_master = QVBoxLayout()
     make_picks_master_tab.setLayout(make_picks_master)
+
 
     obj.make_picks_top_graphs = QHBoxLayout()
     obj.make_picks_bottom_graphs = QVBoxLayout()

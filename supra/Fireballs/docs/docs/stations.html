@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>Stations &mdash; Western Meteor Physics Group Bolide Acoustic Modeling  documentation</title>
+  <title>Stations &mdash; Western Meteor Physics Group Bolide Acoustic Modeling Program  documentation</title>
   
 
   
@@ -39,7 +39,7 @@
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
     <link rel="next" title="Make Picks" href="makepicks.html" />
-    <link rel="prev" title="INI Builder" href="inibuilder.html" /> 
+    <link rel="prev" title="Variables Toolbar" href="inibuilder.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -53,7 +53,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling
+            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
           
 
           
@@ -93,7 +93,7 @@
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
 <li class="toctree-l1 current"><a class="reference internal" href="Usage.html">Usage</a><ul class="current">
 <li class="toctree-l2 current"><a class="reference internal" href="Usage.html#main-program">Main Program</a><ul class="current">
-<li class="toctree-l3"><a class="reference internal" href="inibuilder.html">INI Builder</a></li>
+<li class="toctree-l3"><a class="reference internal" href="inibuilder.html">Variables Toolbar</a></li>
 <li class="toctree-l3 current"><a class="current reference internal" href="#">Stations</a><ul>
 <li class="toctree-l4"><a class="reference internal" href="#if-get-data-true">If Get Data == True:</a></li>
 <li class="toctree-l4"><a class="reference internal" href="#if-get-data-false">If Get Data == False:</a></li>
@@ -132,7 +132,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../index.html">Western Meteor Physics Group Bolide Acoustic Modeling</a>
+          <a href="../index.html">Western Meteor Physics Group Bolide Acoustic Modeling Program</a>
         
       </nav>
 
@@ -193,7 +193,10 @@
 <h2>If Get Data == True:<a class="headerlink" href="#if-get-data-true" title="Permalink to this headline">¶</a></h2>
 <p>The program will search both IRIS and ORFEUS for stations within the Degrees in Search Radius variable range from the Latitude and Longitude Center. The data will be from the Fireball Datetime to about an hour after, with a few minutes before and after for padding. Channels included in this search are BDF, HHZ, BHZ, EHZ, SHZ. The .mseed files will be downloaded into the working directory automatically, and can be used by the program without any user interaction. All stations listed in this table will be used in the simulation.</p>
 <p>This table will also include any manually added stations from the “Misc” tab in the variables tab.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
 <p>Once the stations have all been succesfully downloaded, it is recommended to turn Get Data to False, since otherwise, the stations will be redownloaded again. If the search radius needs to be increased, then Get Data should be turned back on to get the extra stations.</p>
+</div>
 </div>
 <div class="section" id="if-get-data-false">
 <h2>If Get Data == False:<a class="headerlink" href="#if-get-data-false" title="Permalink to this headline">¶</a></h2>
@@ -214,7 +217,7 @@
         <a href="makepicks.html" class="btn btn-neutral float-right" title="Make Picks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="inibuilder.html" class="btn btn-neutral float-left" title="INI Builder" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="inibuilder.html" class="btn btn-neutral float-left" title="Variables Toolbar" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -223,7 +226,7 @@
 
   <div role="contentinfo">
     <p>
-        &copy; Copyright 2019, Luke McFadden, Denis Vida, Peter Brown
+        &copy; Copyright 2020, Luke McFadden, Denis Vida, Peter Brown
 
     </p>
   </div>

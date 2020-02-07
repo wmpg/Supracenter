@@ -51,6 +51,7 @@ def anglescan(S, phi, theta, z_profile, wind=True):
     # Switch to turn off winds
     if not wind:
         z_profile[:, 2] = 0
+        z_profile[:, 1] = 330
 
     # The number of layers in the integration region
     n_layers = len(z_profile)
@@ -101,7 +102,7 @@ def anglescan(S, phi, theta, z_profile, wind=True):
 
             if np.isnan(A).all():
 
-                break
+                return np.nan, np.nan, np.nan, np.nan
 
             # Equation (10)
             X += (p2 + s2*U)*A
@@ -120,12 +121,12 @@ def anglescan(S, phi, theta, z_profile, wind=True):
             X += p*(delz)/(np.sqrt(s2 - p**2))
             last_z = i + 1
             # Calculate true destination positions (transform back)
-        
+
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*(z[i + 1] - z[i])
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
     # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 
-    D = [(a*X - b*Y), (b*X + a*Y), z[n_layers - last_z - 1], t_arrival]
+    D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival]
 
     ##########################
     return np.array(D)
@@ -137,7 +138,7 @@ if __name__ == '__main__':
     theta = 175
 
     #azimuth
-    phi = 45
+    phi = 0
 
     z_profile = np.array([[    0, 330, 0, 0],
                           [11500, 330, 0, 0],

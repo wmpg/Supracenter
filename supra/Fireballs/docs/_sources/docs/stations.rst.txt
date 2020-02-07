@@ -19,8 +19,7 @@ The program will search both IRIS and ORFEUS for stations within the Degrees in 
 
 This table will also include any manually added stations from the "Misc" tab in the variables tab.
 
-.. note::
-Once the stations have all been succesfully downloaded, it is recommended to turn Get Data to False, since otherwise, the stations will be redownloaded again. If the search radius needs to be increased, then Get Data should be turned back on to get the extra stations.
+.. note:: Once the stations have all been succesfully downloaded, it is recommended to turn Get Data to False, since otherwise, the stations will be redownloaded again. If the search radius needs to be increased, then Get Data should be turned back on to get the extra stations.
 
 If Get Data == False:
 """""""""""""""""""""

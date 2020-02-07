@@ -12,7 +12,9 @@ Western Meteor Physics Group Bolide Acoustic Modelling
    :align:   center
 
 Welcome to the Western Meteor Physics Group (WMPG) Bolide Acoustic Modelling (BAM) Program User Manual.
-This expansion to the Western Meteor Python Library (WMPL) has been in development since May 2018. Any bugs, concerns, questions, etc. may be sent to Luke at lmcfadd6@uwo.ca
+This expansion to the Western Meteor Python Library (WMPL) has been in development since May 2018. Any bugs, concerns, questions, etc. may be sent to Luke at lmcfadd6@uwo.ca.
+
+Users may use the built in program version, or access the HTML via browser by 'CTRL + D' while in the program.
 
 .. toctree::
    :maxdepth: 2

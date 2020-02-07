@@ -11,25 +11,29 @@ Features
 Atmosphere Profile Viewer
 *************************
 
-An one-dimensional atmosphere profile slice can be viewed at a specific latitude and longitude for temperature and winds. Perturbations may also be generated for this data.
+An one-dimensional atmosphere profile slice can be viewed at a specific latitude and longitude for temperature and winds. Perturbations may also be generated for this data. 
+
+This section acts as a GUI interface for the ECMWF (European Centre for Medium-Range Weather Forecasts) ERA-5 (Fifth generation of ECMWF atmospheric reanalyses of the global climate) data found here: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels?tab=overview, which may be used to download an area of atmospheric data, observe, and export slices. 
+
+Once the Copernicus API key is installed, the user no longer needs to directly download weather data from the Copernicus webpages.
 
 **************************
 Inversion of Arrival Times
 **************************
 
-Seismic and infrasonic data can be inverted to find a fragmentation or trajectory solution.
+Seismic and infrasonic data can be inverted to find a fragmentation or trajectory solution, either in an isotropic or a defined atmosphere or atmospheric realizations. The user may directly search for a fragmentation or a trajectory solution after indicating potential signals in station waveforms. 
 
 *******************
 Acoustic Ray Tracer
 *******************
 
-An direct-arrival acoustic wave may be traced through the atmosphere given winds and temperatures in the given region.
+An direct-arrival acoustic wave may be traced through the atmosphere (or several atmospheres) given winds and temperatures in the given region. A 3-D model will be displayed showing the simulated path the acoustic wave moves through the atmosphere.
 
 ***************
 Yield Estimater
 ***************
 
-In progress... From a given overpressure recieved at a station from a blast a range, height, and pressure, the fragmentation yield can be estimated.
+In testing... From a given overpressure recieved at a station from a blast a range, height, and pressure, the fragmentation yield can be estimated.
 
 .. toctree::
    :maxdepth: 2
