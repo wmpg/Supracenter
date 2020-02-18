@@ -41,7 +41,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
-from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, timeOfArrival, waveReleasePointWindsContour
+from supra.Fireballs.SeismicTrajectory import parseWeather, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
 
 from supra.Supracenter.cyzInteg import zInterp
 from supra.Supracenter.slowscan2 import cyscan as slowscan
@@ -54,7 +54,6 @@ from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.SPPT import perturb
 from supra.Supracenter.CalcAllTimes2 import calcAllTimes, findPoints
-from supra.Supracenter.cyscanIntegration import cyscan as intscan
 
 from supra.GUI.GUITools import *
 from supra.GUI.WidgetBuilder import *
@@ -71,7 +70,7 @@ from supra.Utils.Formatting import *
 from supra.Utils.Classes import Position, Station, Config, Constants, Pick, RectangleItem
 from supra.Utils.TryObj import *
 
-from supra.Supracenter.Utils.l137 import estPressure
+from supra.Supracenter.l137 import estPressure
 
 HEIGHT_SOLVER_DIV = 100
 THEO = False
@@ -101,147 +100,20 @@ class SolutionGUI(QMainWindow):
         super().__init__()
 
         # Initialize Variables
-
-        # User defined tweaks
         self.setup = Config()
-
-        self._main = QWidget()
-        self.setCentralWidget(self._main)
-        layout = QGridLayout(self._main)
-
-        self.setWindowTitle('Bolide Acoustic Modelling')
-       
-        app_icon = QtGui.QIcon()
-
-        self.doc_file = os.path.join('supra', 'Fireballs', 'docs', 'index.html')
-
-        app_icon.addFile(os.path.join('Fireballs','docs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
-        self.setWindowIcon(app_icon)
-       
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.black)
-        self.setPalette(p)
-
-        self.colors = [(0, 255, 26), (3, 252, 219), (252, 3, 3), (223, 252, 3), (255, 133, 3),
-                      (149, 0, 255), (76, 128, 4), (82, 27, 27), (101, 128, 125), (255, 230, 249)]
-
-        self.contour_data = None
-
-        self.slider_scale = 0.25
-        self.bandpass_scale = 0.1
-
-        self.tab_widget = QTabWidget()
-        self.tab_widget.blockSignals(True)
         
-        self.inverted = False
-        self.showtitled = False
+        initMainGUI(self)
+        initMainGUICosmetic(self)
 
-        self.ini_dock = QDockWidget("Variables", self)
-        self.addDockWidget(Qt.LeftDockWidgetArea, self.ini_dock)
-        self.ini_dock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
-        
-        self.group_no = 0
-        self.position = []
-
-        self.contour_data_squares = None
-
-        # Add widgets to each tab
+        # Add widgets to the floating box
         self.addIniDockWidgets()
-        addStationsWidgets(self)
-        addPicksReadWidgets(self)
-        addSupraWidgets(self)
-        addSupWidgets(self)
-        addMakePicksWidgets(self)
-        addSeisTrajWidgets(self)
-        addFetchATMWidgets(self)
-        addProfileWidgets(self)
-        addRayTracerWidgets(self)
-        addDocWidgets(self)
-
-        self.var_typ = 't'
-
-        self.tab_widget.blockSignals(False)
-        layout.addWidget(self.tab_widget, 1, 1)
-
-        # Menu Bar set up
-        menu_bar = self.menuBar() 
-        layout.addWidget(menu_bar, 0, 1)
-        file_menu = menu_bar.addMenu('&File')
-        about_menu = menu_bar.addMenu('&About')
-        view_menu = menu_bar.addMenu('&View')
-
-        file_qsave = QAction("Quick Save", self)
-        file_qsave.setShortcut('Ctrl+S')
-        file_qsave.setStatusTip('Saves setup file')
-        file_qsave.triggered.connect(partial(self.saveINI, True, True))
-        file_menu.addAction(file_qsave)
-
-        file_save = QAction("Save", self)
-        file_save.setShortcut('Ctrl+Shift+S')
-        file_save.setStatusTip('Saves setup file')
-        file_save.triggered.connect(partial(self.saveINI, True))
-        file_menu.addAction(file_save)
-
-        file_load = QAction("Load", self)
-        file_load.setShortcut('Ctrl+L')
-        file_load.setStatusTip('Loads setup file')
-        file_load.triggered.connect(self.loadINI)
-        file_menu.addAction(file_load)
-
-        file_exit = QAction("Exit", self)
-        file_exit.setShortcut('Ctrl+Q')
-        file_exit.setStatusTip('Exit application')
-        file_exit.triggered.connect(self.quitApp)
-        file_menu.addAction(file_exit)
-
-        about_github = QAction("GitHub", self)
-        about_github.triggered.connect(self.openGit)
-        about_menu.addAction(about_github)
-
-        about_docs = QAction("Documentation", self)
-        about_docs.setShortcut('Ctrl+D')
-        about_docs.triggered.connect(self.openDocs)
-        about_menu.addAction(about_docs)
-
-        view_vartools = QAction("Show/Hide Toolbar", self)
-        view_vartools.setShortcut('V')
-        view_vartools.setStatusTip('Toggle if the variable toolbar is visible')
-        view_vartools.triggered.connect(self.viewToolbar)
-        view_menu.addAction(view_vartools)
-
-        view_fullscreen = QAction("Fullscreen", self)
-        view_fullscreen.setShortcut('F11')
-        view_fullscreen.setStatusTip('Toggles fullscreen')
-        view_fullscreen.triggered.connect(self.viewFullscreen)
-        view_menu.addAction(view_fullscreen)
-
-        stylesheet = """ 
-        QTabWidget>QWidget>QWidget{background: gray;}
-        QLabel{color: white;}
-        QCheckBox{color: white;}
-        QDockWidget{color: white; background: black;}
-        QGroupBox{color: white;}
-        QGroupBox{ 
-        border: 2px white; 
-        border-radius: 0px; }
-        QMessageBox{color: white; background: black;} 
-        QTableWidget{color: white; background: black;}
-        """
-
-        self.setStyleSheet(stylesheet)
-
-        self.doc_view.load(QUrl.fromLocalFile(os.path.abspath(self.doc_file)))
-
-        pg.setConfigOptions(antialias=True)
-        self.ray_pick = pg.ScatterPlotItem()
-        self.ray_pick_traj = pg.ScatterPlotItem()
-        self.ray_pick_point = [0, 0, 0]
-        self.ctrl_pressed = False
 
     def viewToolbar(self):
+        
         self.ini_dock.toggleViewAction().trigger()
 
     def viewFullscreen(self):
+
         if self.windowState() & QtCore.Qt.WindowFullScreen:
             self.showNormal()
         else:
@@ -256,9 +128,11 @@ class SolutionGUI(QMainWindow):
             return None
         
     def openGit(self):
+
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
 
     def openDocs(self):
+
         webbrowser.open_new_tab(self.doc_file)
 
     def csvLoad(self):
@@ -286,11 +160,7 @@ class SolutionGUI(QMainWindow):
 
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
-
-        if '.csv' not in dlg[0]:
-            file_name = dlg[0] + '.csv'
-        else:
-            file_name = dlg[0]
+        checkExt(dlg[0], '.csv')
 
         data_set = fromTable(self.csv_table)
         # Open the output CSV
@@ -411,30 +281,16 @@ class SolutionGUI(QMainWindow):
             errorMessage('Invalid mode! Use search, replot, or manual', 2)
             return None
         
-        # fig.set_facecolor("none")
-        # self.seis_tab_output.removeWidget(self.seis_three_canvas)
-        # self.seis_three_canvas = FigureCanvas(Figure(figsize=(15, 15)))
-        # self.seis_three_canvas = FigureCanvas(fig)
-        # self.seis_three_canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
-        # self.seis_tab_output.addWidget(self.seis_three_canvas)    
-        # self.seis_three_canvas.draw()
-        # self.seis_traj_ax.mouse_init()
         SolutionGUI.update(self)
 
-        self.seis_two_lat_canvas.scatterPlot(x=sup[:, 0], y=sup[:, 1], pen='r', update=True)
-        self.seis_two_lat_canvas.setTitle('Position of Geometric Landing Point')
-        self.seis_two_lat_canvas.setLabel('bottom', "x (+ East)", units='m')
-        self.seis_two_lat_canvas.setLabel('left', "y (+ North)", units='m')
+        createScatter(self.seis_two_lat_canvas, sup[:, 0], sup[:, 1], title='Position of Geometric \
+            Landing Point', xlabel='x (+ East)', ylabel='y (+ North)', xunit='m', yunit='m')
 
-        self.seis_two_time_canvas.scatterPlot(x=sup[:, 2], y=sup[:, 3]*1000, pen='r', update=True)
-        self.seis_two_time_canvas.setTitle('Velocty and Time of Fireball')
-        self.seis_two_time_canvas.setLabel('bottom', "Time after Reference", units='s')
-        self.seis_two_time_canvas.setLabel('left', "Velocity", units='m/s')
+        createScatter(self.seis_two_time_canvas, sup[:, 2], sup[:, 3]*1000, title='Velocty and Time \
+            of Fireball', xlabel='Time after Reference', ylabel='Velocity', xunit='s', yunit='m/s')
 
-        self.seis_two_angle_canvas.scatterPlot(x=sup[:, 4], y=sup[:, 5], pen='r', update=True)
-        self.seis_two_angle_canvas.setTitle('Angles of Trajectory')
-        self.seis_two_angle_canvas.setLabel('bottom', "Azimuth Angle", units='deg')
-        self.seis_two_angle_canvas.setLabel('left', "Zenith Angle", units='deg')
+        createScatter(self.seis_two_angle_canvas, sup[:, 4], sup[:, 5], title='Angles of Trajectory', \
+            xlabel='Azimuth Angle', ylabel='Zenith Angle', xunit='deg', yunit='deg')
 
         X = [None]*len(sup[:, 0])
         Y = [None]*len(sup[:, 0])
@@ -442,10 +298,8 @@ class SolutionGUI(QMainWindow):
         for i in range(len(sup[0::10, 0])):
             X[i], Y[i], _ = loc2Geo(self.setup.lat_centre, self.setup.lon_centre, 0, [sup[i*10, 0], sup[i*10, 1], 0])
 
-        self.seis_two_plot_canvas.scatterPlot(x=X, y=Y, pen='r', update=True)
-        self.seis_two_plot_canvas.setTitle('Position of Geometric Landing Point')
-        self.seis_two_plot_canvas.setLabel('bottom', "Latitude", units='deg N')
-        self.seis_two_plot_canvas.setLabel('left', "Longitiude", units='deg E')
+        createScatter(self.seis_two_plot_canvas, X, Y, title='Position of Geometric Landing Point', \
+            xlabel='Latitude', ylabel='Longitiude', xunit='deg N', yunit='deg E')
 
         final_lat = results[0, 0]
         final_lon = results[0, 1]
@@ -460,47 +314,6 @@ class SolutionGUI(QMainWindow):
         self.seis_table.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Time', 'Velocity', 'Azimuth', 'Zenith'])
         header = self.seis_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.Stretch)
-
-        # toTable(self.seis_resids, residuals)
-        # self.seis_resids.setHorizontalHeaderLabels(['Station', 'Residual'])
-        # header2 = self.seis_resids.horizontalHeader()
-        # header2.setSectionResizeMode(QHeaderView.Stretch)
-
-    def trajSolver(self):
-
-        try:
-            A = Position(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
-            B = Position(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
-        except:
-            errorMessage("I didn't program this one yet!", 2, detail="SolutionGui (trajSolver)")
-
-        A.pos_loc(B)
-        B.pos_loc(B)
-
-        v = np.array([B.x - A.x, B.y - A.y, B.z - A.z])
-
-        n = (tryFloat(self.ray_height_edits.text()) - A.z)/v[2]
-
-        P = n*v + np.array([A.x, A.y, A.z])
-
-        pt = Position(0, 0, 0)
-        pt.x = P[0]
-        pt.y = P[1]
-        pt.z = P[2]
-        pt.pos_geo(B)
-
-        if self.setup.debug:
-            print("Solved Point:")
-            print(pt)
-
-        self.ray_lat_edits.setText(str(pt.lat))
-        self.ray_lon_edits.setText(str(pt.lon))
-
-        self.ray_pick_traj.setPoints(x=[pt.lon], y=[pt.lat], pen=(255, 0, 110))
-        self.ray_canvas.addItem(self.ray_pick_traj, update=True)
-
-        if self.ray_pick_point != [0, 0, 0]:
-            self.rayTrace()
 
     def rayTrace(self):
 
@@ -734,30 +547,47 @@ class SolutionGUI(QMainWindow):
         ax.mouse_init()
         SolutionGUI.update(self)
 
+    def trajSolver(self):
+
+        try:
+            A = Position(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
+            B = Position(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
+        except:
+            errorMessage("I didn't program this one yet!", 2, detail="SolutionGui (trajSolver)")
+
+        A.pos_loc(B)
+        B.pos_loc(B)
+
+        v = np.array([B.x - A.x, B.y - A.y, B.z - A.z])
+
+        n = (tryFloat(self.ray_height_edits.text()) - A.z)/v[2]
+
+        P = n*v + np.array([A.x, A.y, A.z])
+
+        pt = Position(0, 0, 0)
+        pt.x = P[0]
+        pt.y = P[1]
+        pt.z = P[2]
+        pt.pos_geo(B)
+
+        if self.setup.debug:
+            print("Solved Point:")
+            print(pt)
+
+        self.ray_lat_edits.setText(str(pt.lat))
+        self.ray_lon_edits.setText(str(pt.lon))
+
+        self.ray_pick_traj.setPoints(x=[pt.lon], y=[pt.lat], pen=(255, 0, 110))
+        self.ray_canvas.addItem(self.ray_pick_traj, update=True)
+
+        if self.ray_pick_point != [0, 0, 0]:
+            self.rayTrace()
+
     def W_estGUI(self):
 
         self.w = Yield(self.setup, self.stn_list, self.current_station)
         self.w.setGeometry(QRect(100, 100, 800, 200))
         self.w.show()
-
-        # ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        # height = float(self.W_est_edits.text())
-        # point = self.setup.trajectory.findGeo(height)
-        # point.pos_loc(self.setup.ref_pos)
-        # dataset = parseWeather(self.setup)
-
-        # for ptb_n in range(self.setup.perturb_times):
-        #     stn = self.stn_list[self.current_station]
-        #     stn.position.pos_loc(self.setup.ref_pos)
-        #     self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-        #     zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-        #             [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
-
-        #     f, g = intscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-        #                         n_theta=1000, n_phi=1000, h_tol=1e-15, v_tol=330)
-        #     print("PTB {:}: f = {:} g = {:}".format(ptb_n, f, g))
-        #     # if f == f:
-            #     print(zProfile)
 
     def showContour(self, mode):
 
@@ -772,29 +602,15 @@ class SolutionGUI(QMainWindow):
         results = waveReleasePointWindsContour(self.setup, sounding, ref_pos, points, self.setup.trajectory.vector.xyz, mode=mode)
 
         results = np.array(results)
-        # self.setup.pos_min.pos_loc(ref_pos)
-        # self.setup.pos_max.pos_loc(ref_pos)
 
-        dx = 0.01
-        dy = 0.01
+        dx, dy = 0.01, 0.01
 
         X = results[:, 0]
         Y = results[:, 1]
         T = results[:, 3]
 
-        # X = np.linspace(self.setup.pos_min.x, self.setup.pos_max.x, GRID_SIZE)
-        # Y = np.linspace(self.setup.pos_min.y, self.setup.pos_max.y, GRID_SIZE)
-
-        # sounding = parseWeather(self.setup)
-        # points = findPoints(self.setup)
-
-        # # max_steps = len(X)*len(Y)
-        # # count = 0
-
         pool = multiprocessing.Pool(multiprocessing.cpu_count())
-        # XX, YY = np.meshgrid(X, Y)
-        # XX = np.ravel(XX)
-        # YY = np.ravel(YY)
+ 
         iterable = range(len(X))
 
         func = partial(contourLoop, X, Y, ref_pos, dy, dx, T) 
@@ -804,14 +620,6 @@ class SolutionGUI(QMainWindow):
         self.contour_data_squares = RectangleItem(data)
         self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
         print('Contour Finished!')
-        # self.contour_data = np.array(data)
-
-        # pool.close()
-        # pool.join()
-        # print('Done contour!')
-        # Z = timeOfArrival(np.array([XX[i], YY[i], 0]), 0, 0, setup.trajectory.t, setup.trajectory.v, \
-        #     setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding, \
-        #     travel=False, fast=False, ref_loc=ref_pos, div=2, contour=True)
 
     def clearContour(self):
 
@@ -826,7 +634,6 @@ class SolutionGUI(QMainWindow):
         dlg = QFileDialog()
         dlg.setFileMode(QFileDialog.AnyFile)
         dlg.setNameFilters(['Contour Numpy File (*.npy)'])
-        #filenames = QStringList()
 
         dlg.exec_()
 
@@ -881,8 +688,6 @@ class SolutionGUI(QMainWindow):
     def rayMouseClicked(self, evt):
 
         if self.ctrl_pressed:
-
-            #self.ray_canvas.removeItem(self.ray_pick, update=True)
 
             mousePoint = self.ray_canvas.vb.mapToView(evt.pos())
             
@@ -940,12 +745,7 @@ class SolutionGUI(QMainWindow):
         self.setup.sounding_file = self.fatm_name_edits.text()
         self.setup.fireball_datetime = self.fatm_datetime_edits.dateTime().toPyDateTime()
 
-        # try:
         dataset = parseWeather(self.setup)
-        # except:
-        #     errorMessage('Error reading weather profile in fatmPlotProfile: parsing', 2)
-        #     return None
-
         try:
             sounding = findECMWFSound(self.setup.lat_centre, self.setup.lon_centre, dataset)
         except:
@@ -955,30 +755,26 @@ class SolutionGUI(QMainWindow):
         self.atm_canvas.setLabel('left', "Height", units='m')
         if self.fatm_variable_combo.currentText() == 'Temperature':
             X = sounding[:, 1]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Temperature", units='K')
         elif self.fatm_variable_combo.currentText() == 'Wind Magnitude':
             X = sounding[:, 2]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s')
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = sounding[:, 3]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Direction", units='deg from N')
         elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
             X = mags*np.cos(np.radians(dirs))
-            Y = sounding[:, 0]
         elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
             X = mags*np.sin(np.radians(dirs))
-            Y = sounding[:, 0]
         else:
             errorMessage('Error reading fatmPlotProfile combo box', 2, detail=self.fatm_variable_combo.currentText())
             X = []
             Y = []
+        Y = sounding[:, 0]
 
         self.fatm_canvas.clear()
         self.fatm_canvas.plot(x=X, y=Y, pen='w')
@@ -1360,19 +1156,17 @@ class SolutionGUI(QMainWindow):
         if self.var_typ == 't':
             #(consts.GAMMA*consts.R/consts.M_0*temperature[:])**0.5
             X = sounding[:, 1]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Speed of Sound", units='m/s')
         elif self.var_typ == 'm':
             X = sounding[:, 2]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s')
         elif self.var_typ == 'd':
             X = sounding[:, 3]
-            Y = sounding[:, 0]
             self.atm_canvas.setLabel('bottom', "Wind Direction", units='deg E from N')
         else:
             errorMessage('Error reading var_typ in atmPlotProfile', 2)
             return None
+        Y = sounding[:, 0]
 
         self.atm_canvas.clear()
         self.atm_canvas.plot(x=X, y=Y, pen='k')
@@ -1396,33 +1190,30 @@ class SolutionGUI(QMainWindow):
             ensemble_file = ''
 
         if self.setup.perturb_method != 'none':
-            for ptb_n in range(self.setup.perturb_times):
+            for ptb_n in range(1, self.setup.perturb_times):
 
-                if ptb_n > 0:
-                    
-                    if self.setup.debug:
-                        print("STATUS: Perturbation {:}".format(ptb_n))
+                if self.setup.debug:
+                    print("STATUS: Perturbation {:}".format(ptb_n))
 
-                    # generate a perturbed sounding profile
-                    sounding_p = perturbation_method(self.setup, dataset, self.setup.perturb_method, \
-                        sounding_u=sounding_u, sounding_l=sounding_l, \
-                        spread_file=self.setup.perturbation_spread_file, lat=self.setup.lat_centre, lon=self.setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
-                    sounding_p = findECMWFSound(lat, lon, sounding_p)
-                    
-                    if self.var_typ == 't':
-                        X = sounding_p[:, 1]
-                        Y = sounding_p[:, 0]
-                    elif self.var_typ == 'm':
-                        X = sounding_p[:, 2]
-                        Y = sounding_p[:, 0]
-                    elif self.var_typ == 'd':
-                        X = sounding_p[:, 3]
-                        Y = sounding_p[:, 0]
-                    else:
-                        print('error, atmPlotProfile')
-
-                    self.atm_canvas.plot(x=X, y=Y, pen='g')
-                    SolutionGUI.update(self)
+                # generate a perturbed sounding profile
+                sounding_p = perturbation_method(self.setup, dataset, self.setup.perturb_method, \
+                    sounding_u=sounding_u, sounding_l=sounding_l, \
+                    spread_file=self.setup.perturbation_spread_file, lat=self.setup.lat_centre, lon=self.setup.lon_centre, ensemble_file=ensemble_file, ensemble_no=ptb_n)
+                sounding_p = findECMWFSound(lat, lon, sounding_p)
+                
+                if self.var_typ == 't':
+                    X = sounding_p[:, 1]
+                elif self.var_typ == 'm':
+                    X = sounding_p[:, 2]
+                elif self.var_typ == 'd':
+                    X = sounding_p[:, 3]
+                else:
+                    print('error, atmPlotProfile')
+                
+                Y = sounding_p[:, 0]
+                
+                self.atm_canvas.plot(x=X, y=Y, pen='g')
+                SolutionGUI.update(self)
 
     def atmValueChange(self, obj, slider):
         
@@ -1436,6 +1227,16 @@ class SolutionGUI(QMainWindow):
         self.atmPlotProfile(self.atm_lat_slide.value()*self.slider_scale, self.atm_lon_slide.value()*self.slider_scale, self.var_typ)
     
     
+    def makeValueChange(self, obj, slider):
+        
+        if obj == self.low_bandpass_label:
+            obj.setText('Low: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
+        elif obj == self.high_bandpass_label:
+            obj.setText('High: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
+        else:
+            errorMessage('Bad atm slider pass in makeValueChange', 2)
+
+        self.updatePlot()
 
     def makeStationObj(self, lst):
 
@@ -1614,18 +1415,6 @@ class SolutionGUI(QMainWindow):
         # Init the plot framework
         self.initPlot(setup, sounding)
 
-        # Extract the list of station locations
-        # self.lat_list = [stn.position.lat_r for stn in stn_list]
-        # self.lon_list = [stn.position.lon_r for stn in stn_list]
-
-        # plt.style.use('dark_background')
-        # fig = plt.figure(figsize=plt.figaspect(0.5))
-        # fig.set_size_inches(8, 5)
-        # self.map_ax = fig.add_subplot(1, 1, 1)
-
-        # Init ground map
-        #self.m = GroundMap(self.lat_list, self.lon_list, ax=self.map_ax, color_scheme='light')
-
         # Extract coordinates of the reference station
         gmap_filename = htmlBuilder(setup, self.stn_list)
         self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
@@ -1633,7 +1422,6 @@ class SolutionGUI(QMainWindow):
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
         self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
-        ### ADJUST
         for ii, stn in enumerate(self.stn_list):
 
             self.station_marker[ii].setPoints(x=[stn.position.lon], y=[stn.position.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='t')
@@ -1641,10 +1429,6 @@ class SolutionGUI(QMainWindow):
             txt = pg.TextItem("{:}".format(stn.code))
             txt.setPos(stn.position.lon, stn.position.lat)
             self.make_picks_map_graph_canvas.addItem(txt)
-            
-
-        
-        ### ADJUST
 
         if self.setup.show_fragmentation_waveform:
             
@@ -1653,7 +1437,6 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
                     pen=(0 + i*255/len(self.setup.fragmentation_point), 255 - i*255/len(self.setup.fragmentation_point), 0), symbol='+')
 
-        ### ADJUST
         # Plot source location
         self.make_picks_map_graph_canvas.scatterPlot(x=[setup.lon_centre], y=[setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
@@ -1684,16 +1467,6 @@ class SolutionGUI(QMainWindow):
 
         self.updatePlot(self.setup)
 
-    def makeValueChange(self, obj, slider):
-        
-        if obj == self.low_bandpass_label:
-            obj.setText('Low: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
-        elif obj == self.high_bandpass_label:
-            obj.setText('High: {:8.2f} Hz'.format(slider.value()*self.bandpass_scale))
-        else:
-            errorMessage('Bad atm slider pass in makeValueChange', 2)
-
-        self.updatePlot()
     
     def chooseFilter(self, obj):
 
@@ -2059,12 +1832,6 @@ class SolutionGUI(QMainWindow):
         return True
 
     def mouseClicked(self, evt):
-        # class Pick:
-        #     def __init__(self, time, stn, stn_no, channel):
-        #         self.time = time
-        #         self.stn = stn
-        #         self.stn_no = stn_no
-        #         self.channel = channel
 
 
         if self.ctrl_pressed:
@@ -2257,15 +2024,7 @@ class SolutionGUI(QMainWindow):
         # If manual ballistic search is on
         if setup.show_ballistic_waveform and self.show_ball.isChecked():
 
-            # az = np.radians(setup.azim)
-            # ze = np.radians(setup.zangle)
-            # Plot Ballistic Prediction
-
             b_time = self.arrTimes[0, self.current_station, 0, 0]
-            # sounding = parseWeather(setup, consts)
-            # p = waveReleasePointWinds([stn.position.x, stn.position.y, stn.position.z], setup.traj_f.x, setup.traj_f.y, setup.t0, 1000*setup.v, az, \
-            #                 ze, setup, sounding, [ref_pos.lat, ref_pos.lon, ref_pos.elev])
-            # check if nan
 
             if b_time == b_time:
                 self.make_picks_waveform_canvas.plot(x=[b_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), width=2) , label='Ballistic')
@@ -2343,14 +2102,6 @@ class SolutionGUI(QMainWindow):
         """ Show the spectrogram of the waveform in the current window. """
 
 
-        # Get time limits of the shown waveform
-        #x_min, x_max = self.wave_ax.get_xlim()
-
-        # Extract the time and waveform
-        #crop_window = (self.current_waveform_time >= x_min) & (self.current_waveform_time <= x_max)
-        # wave_arr = self.current_waveform_raw[8400:8504]
-
-
         # ### Show the spectrogram ###
         
         fig = plt.figure()
@@ -2362,31 +2113,6 @@ class SolutionGUI(QMainWindow):
         ax_spec.set_ylabel('Frequency (Hz)')
 
         fig.show()
-
-
-        # f_s = 20  # Sampling rate, or number of measurements per second
-
-        # x = wave_arr
-        # t = np.linspace(0, 5.2, 5.2 * f_s)
-        # plt.plot(t, x)
-        
-        # from scipy import fftpack
-        
-        # X = fftpack.fft(x)
-
-        # freqs = fftpack.fftfreq(len(x)) * f_s
-
-        # fig, ax = plt.subplots()
-
-        # ax.scatter(freqs, np.abs(X))
-        # ax.set_xlabel('Frequency in Hertz [Hz]')
-        # ax.set_ylabel('Frequency Domain (Spectrum) Magnitude')
-        # ax.set_ylim(0, 50000)
-        # ax.set_xlim(0, 10)
-        # plt.show()
-
-        ###
-
 
     def filterBandpass(self, event=None):
         """ Run bandpass filtering using values set on sliders. """
@@ -2473,10 +2199,7 @@ class SolutionGUI(QMainWindow):
 
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
-        if '.csv' not in dlg[0]:
-            file_name = dlg[0] + '.csv'
-        else:
-            file_name = dlg[0]
+        checkExt(dlg[0], '.csv')
 
         # Open the output CSV
         with open(os.path.join(file_name), 'w') as f:
@@ -2659,32 +2382,16 @@ class SolutionGUI(QMainWindow):
                         .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
                             results[ii].x_opt.elev, results[ii].motc))
 
-        # set row count
-        self.sup_results_table.setRowCount(n_stations + 1)
+        defTable(self.sup_results_table, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
 
-        # set column count
-        self.sup_results_table.setColumnCount(5)
-
-        self.sup_results_table.setRowCount(n_stations + 1)
-        self.sup_results_table.setHorizontalHeaderLabels(['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
-        header = self.sup_results_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-
-        self.sup_results_table.setItem(0, 0, QTableWidgetItem("Total (Time = ({:}s)".format(results[0].motc)))
-        self.sup_results_table.setItem(0, 1, QTableWidgetItem(str(results[0].x_opt.lat)))
-        self.sup_results_table.setItem(0, 2, QTableWidgetItem(str(results[0].x_opt.lon)))
-        self.sup_results_table.setItem(0, 3, QTableWidgetItem(str(results[0].x_opt.elev)))
-        self.sup_results_table.setItem(0, 4, QTableWidgetItem(str(results[0].f_opt)))
+        setTableRow(self.sup_results_table, 0, terms=["Total (Time = ({:}s)".format(results[0].motc), results[0].x_opt.lat, results[0].x_opt.lon, results[0].x_opt.elev, results[0].f_opt])
 
         for i in range(n_stations):
-            self.sup_results_table.setItem(i+1, 0, QTableWidgetItem(s_name[i]))
-            self.sup_results_table.setItem(i+1, 1, QTableWidgetItem(str(xstn[i][0])))
-            self.sup_results_table.setItem(i+1, 2, QTableWidgetItem(str(xstn[i][1])))
-            self.sup_results_table.setItem(i+1, 3, QTableWidgetItem(str(xstn[i][2])))
-            self.sup_results_table.setItem(i+1, 4, QTableWidgetItem(str(results[0].r[i])))
+            setTableRow(self.sup_results_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results[0].r[i]])
 
     def supraSearch(self):
 
+        # s_info =  x, y, z, pick_time, pick_time, station_number
         try:
             s_info, s_name, weights, ref_pos = convStationDat(self.setup.station_picks_file, self.setup, d_min=self.setup.weight_distance_min, d_max=self.setup.weight_distance_max)
         except TypeError:
@@ -2709,7 +2416,7 @@ class SolutionGUI(QMainWindow):
 
             results[ptb_n] = psoSearch(s_info, weights, s_name, self.setup, sounding_p, manual=True)
             print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
-            print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
+            print("Opt: Latitude: {:.4f} Longitude: {:.4f} Elevation: {:.2f} Mean Error: {:.4f}"\
                 .format(results[ptb_n].x_opt.lat, results[ptb_n].x_opt.lon, results[ptb_n].x_opt.elev, results[ptb_n].motc))
         
         n_stations = len(s_info)
@@ -2719,27 +2426,12 @@ class SolutionGUI(QMainWindow):
 
         self.residPlot(results, s_name, xstn, self.setup.working_directory, n_stations)
 
-        # set row count
-        self.tableWidget.setRowCount(n_stations + 1)
-        self.tableWidget.setHorizontalHeaderLabels(['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
-        header = self.tableWidget.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-
-        # set column count
-        self.tableWidget.setColumnCount(5)
-
-        self.tableWidget.setItem(0, 0, QTableWidgetItem("Total"))
-        self.tableWidget.setItem(0, 1, QTableWidgetItem(str(results[0].x_opt.lat)))
-        self.tableWidget.setItem(0, 2, QTableWidgetItem(str(results[0].x_opt.lon)))
-        self.tableWidget.setItem(0, 3, QTableWidgetItem(str(results[0].x_opt.elev)))
-        self.tableWidget.setItem(0, 4, QTableWidgetItem(str(results[0].f_opt)))
+        defTable(self.tableWidget, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
+        
+        setTableRow(self.tableWidget, 0, terms=["Total", results[0].x_opt.lat, results[0].x_opt.lon, results[0].x_opt.elev, results[0].f_opt])
 
         for i in range(n_stations):
-            self.tableWidget.setItem(i+1, 0, QTableWidgetItem(s_name[i]))
-            self.tableWidget.setItem(i+1, 1, QTableWidgetItem(str(xstn[i][0])))
-            self.tableWidget.setItem(i+1, 2, QTableWidgetItem(str(xstn[i][1])))
-            self.tableWidget.setItem(i+1, 3, QTableWidgetItem(str(xstn[i][2])))
-            self.tableWidget.setItem(i+1, 4, QTableWidgetItem(str(results[0].r[i])))
+            setTableRow(self.tableWidget, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results[0].r[i]])
 
 
     def saveINI(self, write=True, autosave=False):
@@ -2782,17 +2474,6 @@ class SolutionGUI(QMainWindow):
         self.setup.pos_f = tryPosition(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
 
         self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
-
-        # self.t0_edits.setText(str(self.setup.trajectory.t))
-        # self.v_edits.setText(str(self.setup.trajectory.v))
-        # self.azim_edits.setText(str(self.setup.trajectory.azimuth.deg))
-        # self.zangle_edits.setText(str(self.setup.trajectory.zenith.deg))
-        # self.lat_i_edits.setText(str(self.setup.trajectory.pos_i.lat))
-        # self.lon_i_edits.setText(str(self.setup.trajectory.pos_i.lon))
-        # self.elev_i_edits.setText(str(self.setup.trajectory.pos_i.elev))
-        # self.lat_f_edits.setText(str(self.setup.trajectory.pos_f.lat))
-        # self.lon_f_edits.setText(str(self.setup.trajectory.pos_f.lon))
-        # self.elev_f_edits.setText(str(self.setup.trajectory.pos_f.elev))
 
         self.setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
@@ -3142,32 +2823,6 @@ class SolutionGUI(QMainWindow):
             a = plt.colorbar(sc, ax=ax)
             a.set_label("Error in Supracenter (s)")
 
-        # if manual:
-        #     try:
-        #         self.plots.removeWidget(self.threelbar)
-        #     except:
-        #         pass
-        #     self.plots.removeWidget(self.three_canvas)
-        #     #self.three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
-        #     self.three_canvas = FigureCanvas(fig)
-        #     self.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        #     self.threelbar = NavigationToolbar(self.three_canvas, self)
-        #     self.plots.addWidget(self.three_canvas)
-        #     self.plots.addWidget(self.threelbar)
-        #     self.three_canvas.draw()
-        # else:
-        #     try:
-        #         self.sup_plots.removeWidget(self.sup_threelbar)
-        #     except:
-        #         pass
-        #     self.sup_plots.removeWidget(self.sup_three_canvas)
-        #     #self.sup_three_canvas = FigureCanvas(Figure(figsize=(2, 2)))
-        #     self.sup_three_canvas = FigureCanvas(fig)
-        #     self.sup_three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-        #     self.sup_threelbar = NavigationToolbar(self.sup_three_canvas, self)
-        #     self.sup_plots.addWidget(self.sup_three_canvas)
-        #     self.sup_plots.addWidget(self.sup_threelbar)
-        #     self.sup_three_canvas.draw()
 
         ax.mouse_init()
         SolutionGUI.update(self)
@@ -3278,20 +2933,13 @@ class SolutionGUI(QMainWindow):
 
 if __name__ == '__main__':
 
-    print('#########################################')
-    print('#     Western Meteor Python Library     #')
-    print('#       Bolide Acoustic Modelling       #')
-    print('#            Luke McFadden,             #')
-    print('#              Denis Vida,              #') 
-    print('#              Peter Brown              #')
-    print('#              2018 - 2020              #')
-    print('#########################################')
+    splashMessage()
 
+    # open up the app
     app = QApplication(sys.argv)
 
     gui = SolutionGUI()
 
-    gui.showFullScreen()
     gui.show()
-
+    
     app.exec_()

@@ -9,7 +9,7 @@ from supra.Utils.AngleConv import loc2Geo
 from supra.Supracenter.netCDFconv import findECMWFSound, findMERRASound, findUKMOSound, findAus, storeNetCDFECMWF
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Utils.Classes import Position, Constants
-from supra.Supracenter.Utils.l137 import getData 
+from supra.Supracenter.l137 import getData 
 
 def nearestPoint2D(points_list, point):
     """ HELPER FUNCTION: finds the index of the closest point to point out of a grid of points (points_list)

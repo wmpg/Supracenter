@@ -462,7 +462,7 @@ def scatterPlot(setup, results_arr, n_stations, xstn, s_name, dataset):
     toa_abs_max = np.max([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
     toa_abs_min = np.min([np.abs(np.min(times_of_arrival)), np.max(times_of_arrival)])
     levels = np.linspace(toa_abs_min, toa_abs_max, 50)
-    print(levels)
+
 
     # Plot colorcoded times of arrival on the surface
     toa_conture = ax1.contourf(xx, yy, times_of_arrival, levels, cmap='inferno', alpha=1.0)

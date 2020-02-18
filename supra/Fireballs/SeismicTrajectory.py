@@ -36,13 +36,8 @@ except:
     # Python 3
     import configparser
 
-
-from supra.Supracenter.cyscan2 import cyscan
-from supra.Supracenter.cyzInteg import zInterp
 import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
-from supra.Supracenter.fetchECMWF import fetchECMWF
-from supra.Supracenter.fetchMERRA import fetchMERRA
 from supra.Supracenter.anglescan import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
 from supra.Supracenter.cyzInteg import zInteg

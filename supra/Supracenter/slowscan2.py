@@ -254,8 +254,8 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
                     trace.append([detec_pos[0] - x[k, l], detec_pos[1] - y[k, l], z[last_z]])
 
                     #trace.append([x[k, l], y[k, l], z[n_layers - last_z]])
-                print("Azimuth = {:}".format(np.degrees(np.arctan2(-trace[-1][0], -trace[-1][1]))))
-                print("Elevation = {:}".format(np.degrees(np.arctan2(trace[-1][2], np.sqrt((trace[-1][0])**2 + (trace[-1][1])**2)))))
+                # print("Azimuth = {:}".format(np.degrees(np.arctan2(-trace[-1][0], -trace[-1][1]))))
+                # print("Elevation = {:}".format(np.degrees(np.arctan2(trace[-1][2], np.sqrt((trace[-1][0])**2 + (trace[-1][1])**2)))))
                 found = True
             else:
                 return np.array([np.nan, np.nan, np.nan, np.nan, np.nan])

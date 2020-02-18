@@ -1,3 +1,5 @@
+import os
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -13,6 +15,146 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
 from supra.GUI.GUITools import *
+
+def initTabs(obj):
+
+    addStationsWidgets(obj)
+    addPicksReadWidgets(obj)
+    addSupraWidgets(obj)
+    addSupWidgets(obj)
+    addMakePicksWidgets(obj)
+    addSeisTrajWidgets(obj)
+    addFetchATMWidgets(obj)
+    addProfileWidgets(obj)
+    addRayTracerWidgets(obj)
+    addDocWidgets(obj)
+
+def initMenuBar(obj, layout):
+    menu_bar = obj.menuBar() 
+    layout.addWidget(menu_bar, 0, 1)
+    file_menu = menu_bar.addMenu('&File')
+    about_menu = menu_bar.addMenu('&About')
+    view_menu = menu_bar.addMenu('&View')
+
+    file_qsave = QAction("Quick Save", obj)
+    file_qsave.setShortcut('Ctrl+S')
+    file_qsave.setStatusTip('Saves setup file')
+    file_qsave.triggered.connect(partial(obj.saveINI, True, True))
+    file_menu.addAction(file_qsave)
+
+    file_save = QAction("Save", obj)
+    file_save.setShortcut('Ctrl+Shift+S')
+    file_save.setStatusTip('Saves setup file')
+    file_save.triggered.connect(partial(obj.saveINI, True))
+    file_menu.addAction(file_save)
+
+    file_load = QAction("Load", obj)
+    file_load.setShortcut('Ctrl+L')
+    file_load.setStatusTip('Loads setup file')
+    file_load.triggered.connect(obj.loadINI)
+    file_menu.addAction(file_load)
+
+    file_exit = QAction("Exit", obj)
+    file_exit.setShortcut('Ctrl+Q')
+    file_exit.setStatusTip('Exit application')
+    file_exit.triggered.connect(obj.quitApp)
+    file_menu.addAction(file_exit)
+
+    about_github = QAction("GitHub", obj)
+    about_github.triggered.connect(obj.openGit)
+    about_menu.addAction(about_github)
+
+    about_docs = QAction("Documentation", obj)
+    about_docs.setShortcut('Ctrl+D')
+    about_docs.triggered.connect(obj.openDocs)
+    about_menu.addAction(about_docs)
+
+    view_vartools = QAction("Show/Hide Toolbar", obj)
+    view_vartools.setShortcut('V')
+    view_vartools.setStatusTip('Toggle if the variable toolbar is visible')
+    view_vartools.triggered.connect(obj.viewToolbar)
+    view_menu.addAction(view_vartools)
+
+    view_fullscreen = QAction("Fullscreen", obj)
+    view_fullscreen.setShortcut('F11')
+    view_fullscreen.setStatusTip('Toggles fullscreen')
+    view_fullscreen.triggered.connect(obj.viewFullscreen)
+    view_menu.addAction(view_fullscreen)
+
+def initMainGUI(obj):
+
+    obj._main = QWidget()
+    obj.setCentralWidget(obj._main)
+    layout = QGridLayout(obj._main)
+    initMenuBar(obj, layout)
+
+    obj.tab_widget = QTabWidget()
+    obj.tab_widget.blockSignals(True)
+
+    obj.tab_widget.blockSignals(False)
+    layout.addWidget(obj.tab_widget, 1, 1)
+
+    obj.doc_file = os.path.join('supra', 'Fireballs', 'docs', 'index.html')
+       
+    obj.contour_data = None
+
+    obj.slider_scale = 0.25
+    obj.bandpass_scale = 0.1
+    
+    obj.inverted = False
+    obj.showtitled = False
+
+    obj.ini_dock = QDockWidget("Variables", obj)
+    obj.addDockWidget(Qt.LeftDockWidgetArea, obj.ini_dock)
+    obj.ini_dock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+    
+    obj.group_no = 0
+    obj.position = []
+
+    obj.contour_data_squares = None
+
+    obj.var_typ = 't'
+
+    initTabs(obj)
+
+    obj.doc_view.load(QUrl.fromLocalFile(os.path.abspath(obj.doc_file)))
+
+    pg.setConfigOptions(antialias=True)
+    obj.ray_pick = pg.ScatterPlotItem()
+    obj.ray_pick_traj = pg.ScatterPlotItem()
+    obj.ray_pick_point = [0, 0, 0]
+    obj.ctrl_pressed = False
+
+    
+
+def initMainGUICosmetic(obj):
+
+    obj.setWindowTitle('Bolide Acoustic Modelling')
+    app_icon = QtGui.QIcon()
+    app_icon.addFile(os.path.join('Fireballs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
+    obj.setWindowIcon(app_icon)
+
+    p = obj.palette()
+    p.setColor(obj.backgroundRole(), Qt.black)
+    obj.setPalette(p)
+
+    obj.colors = [(0, 255, 26), (3, 252, 219), (252, 3, 3), (223, 252, 3), (255, 133, 3),
+                  (149, 0, 255), (76, 128, 4), (82, 27, 27), (101, 128, 125), (255, 230, 249)]
+
+    stylesheet = """ 
+    QTabWidget>QWidget>QWidget{background: gray;}
+    QLabel{color: white;}
+    QCheckBox{color: white;}
+    QDockWidget{color: white; background: black;}
+    QGroupBox{color: white;}
+    QGroupBox{ 
+    border: 2px white; 
+    border-radius: 0px; }
+    QMessageBox{color: white; background: black;} 
+    QTableWidget{color: white; background: black;}
+    """
+
+    obj.setStyleSheet(stylesheet)
 
 def addStationsWidgets(obj):
     station_tab = QWidget()

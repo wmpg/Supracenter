@@ -20,7 +20,7 @@ from supra.Supracenter.cyscan2 import cyscan
 from supra.Fireballs.SeismicTrajectory import parseWeather
 from supra.Utils.Classes import Position
 from supra.Supracenter.SPPT import perturb as perturbation_method
-from supra.Supracenter.Utils.l137 import estPressure
+from supra.Supracenter.l137 import estPressure
 
 
 def nuc_func(Z):
@@ -167,13 +167,13 @@ class Yield(QWidget):
         pane2.addWidget(self.blastline_view)
         self.blastline_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+        # D_angle = [1.5]
+        # angles = np.linspace(90.01, 179.99, num=900)
+        # for d in D_angle:
+        #     for tf in angles:
 
-        h = np.linspace(20000, 50000, 301)
-        D_angle = [1.0]
-        for d in D_angle:
-            for height in h:
-                _,_,_,_,rf = self.integrate(height, D_ANGLE=d)
-                print(height, np.nanmean(rf), d)
+        #         _,_,_,_,rf = self.integrate(32400, D_ANGLE=d, tf=tf)
+        #         print(tf, np.nanmean(rf))
 
 
     def integration_full(self, k, v, b, I, P_a):
@@ -188,7 +188,7 @@ class Yield(QWidget):
 
         return 10**a[0]
 
-    def integrate(self, height, D_ANGLE=1.5):
+    def integrate(self, height, D_ANGLE=1.5, tf=1, az=1):
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
         point = self.setup.trajectory.findGeo(height)
         point.pos_loc(self.setup.ref_pos)
@@ -209,6 +209,7 @@ class Yield(QWidget):
 
             S = np.array([point.x, point.y, point.z])
             D = np.array([stn.position.x, stn.position.y, stn.position.z])
+                
             f, g, T, P = intscan(S, D, zProfile, wind=True, \
                                 n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
@@ -447,9 +448,10 @@ class Yield(QWidget):
 
         d_angle_ideal = [np.nan]
 
-        for i in range(4):
-            d_az = np.degrees(np.arctan(np.cos(i*np.pi/2)*np.tan(np.radians(D_ANGLE))))
-            d_tf = np.degrees(np.arctan(np.sin(i*np.pi/2)*np.tan(np.radians(D_ANGLE))))
+        RANGE = 2
+        for i in range(RANGE):
+            d_az = np.degrees(np.arctan(np.cos(i*2*np.pi/RANGE)*np.tan(np.radians(D_ANGLE))))
+            d_tf = np.degrees(np.arctan(np.sin(i*2*np.pi/RANGE)*np.tan(np.radians(D_ANGLE))))
 
             D_n = anglescan(S, az_n + d_az, tf_n + d_tf, zProfile, wind=True)
 

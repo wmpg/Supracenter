@@ -88,7 +88,9 @@ The geometric factor is calculated as follows:
 .. math::
 	rf = \sqrt{\frac{1.5^{\circ}}{d \theta_{0, ideal}}}
 
-with :math:`1.5^{\circ}` as a hardcoded value, still under investigation
+with :math:`1.5^{\circ}` as a hardcoded value, still under investigation, but the difference in angles are shown here:
+
+.. image:: Figure_rf.png
 
 .. toctree::
    :maxdepth: 2

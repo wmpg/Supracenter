@@ -7,8 +7,6 @@
 References
 ##########
 
-.. warning::
-	Organize references
 
 * Anglin FM, Haddon RA. Meteoroid sonic shock-wave-generated seismic signalsobserved at a seismic array.  Nature 1988;328(6131):607–9.
 

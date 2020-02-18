@@ -164,6 +164,29 @@ def toTableFromStn(obj, table):
         obj.setItem(x, 6, QTableWidgetItem(str(stn.name)))
         obj.setItem(x, 7, QTableWidgetItem(str(stn.file_name)))
 
+def defTable(obj, h, w, headers=None):
+
+    obj.setRowCount(h)
+    obj.setColumnCount(w)
+
+    if len(headers) == w:
+        obj.setHorizontalHeaderLabels(headers)
+        header = obj.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+    else:
+        print("ERROR: Number of headers is not the same as number of columns!")
+
+def setTableRow(obj, row, terms=[]):
+
+    for i in range(len(terms)):
+        obj.setItem(row, i, QTableWidgetItem(str(terms[i])))
+
+def createScatter(obj, x, y, title='', xlabel='', ylabel='', xunit='', yunit='', pen='r', update=True):
+    obj.scatterPlot(x=x, y=y, pen=pen, update=update)
+    obj.setTitle(title)
+    obj.setLabel('bottom', xlabel, units=xunit)
+    obj.setLabel('left', ylabel, units=yunit)
+
 def createGrad(resid):
 
     max_error = max(resid)

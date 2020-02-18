@@ -12,7 +12,6 @@ from supra.Utils.Formatting import loadingBar
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
 #from supra.Supracenter.faultscan import cyscan as faultscan
-from supra.Supracenter.pscan import psoRayTrace
 
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})

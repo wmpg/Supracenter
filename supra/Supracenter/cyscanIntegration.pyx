@@ -14,7 +14,7 @@ cimport numpy as np
 from libc.math cimport sqrt, M_PI, M_PI_2, atan2
 
 from supra.Supracenter.cynwDir import nwDir
-from supra.Supracenter.Utils.l137 import estPressure
+from supra.Supracenter.l137 import estPressure
 
 from supra.Utils.Classes import Constants
  
