@@ -1,14 +1,4 @@
-
-# Based off of Wayne Edwards' ray-tracing algorithm (2003)               
-# Finds path between two locations with an atmospheric profile in between #
-###########################################################################
-
-import warnings
-
-import time
-
 import numpy as np
-
 
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})

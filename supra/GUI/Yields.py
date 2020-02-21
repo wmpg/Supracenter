@@ -10,9 +10,10 @@ from PyQt5.QtCore import *
 import pyqtgraph as pg
 
 from supra.Utils.pso import pso
+from supra.GUI.WidgetBuilder import theme
 from supra.GUI.GUITools import createLabelEditObj
 from supra.Utils.TryObj import *
-from supra.Utils.EigenRay import eigenError, eigenAngleError, eigenConsistancy
+from supra.Utils.EigenRay import eigenConsistancy
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscanIntegration import cyscan as intscan
 from supra.Supracenter.anglescan import anglescan
@@ -61,20 +62,8 @@ class Yield(QWidget):
         self.stn_list = stn_list
         self.current_station = current_station
 
-        stylesheet = """ 
-        QTabWidget>QWidget>QWidget{background: gray;}
-        QLabel{color: white;}
-        QCheckBox{color: white;}
-        QDockWidget{color: white; background: black;}
-        QGroupBox{color: white;}
-        QGroupBox{ 
-        border: 2px white; 
-        border-radius: 0px; }
-        QMessageBox{color: white; background: black;} 
-        QTableWidget{color: white; background: black;}
-        """
+        theme(self)
 
-        self.setStyleSheet(stylesheet)
         self.count = 0
         layout = QHBoxLayout()
         self.setLayout(layout)

@@ -12,6 +12,31 @@ from supra.Utils.AngleConv import angle2NDE
 from supra.Supracenter.convLevels import convLevels
 from supra.Supracenter.bisearch import bisearch
 
+def parseGeneralECMWF(weather_type, file_name, lat, lon, time_of, variables):
+
+    dataset = Dataset(file_name, "r+", format="NETCDF4")
+
+    lon_index = int(np.around((lon%360)*4))
+    lat_index = int(np.around(-(lat+90)*4))
+    time_index = int(time_of)
+
+    sounding = []
+
+    if weather_type == 'ecmwf':
+        pressures = np.array(dataset.variables['level'])
+    elif weather_type == 'merra':
+        pressures = np.array(dataset.variables['lev'])
+
+    sounding.append(pressures)
+
+    for var in variables:
+        if (set([var]) < set(dataset.variables.keys())):
+            sounding.append(np.array(dataset.variables[var][time_index, :, lat_index, lon_index]))
+
+    sounding = np.array(sounding).transpose()
+
+    dataset.close()
+    return sounding
 
 def readCustAtm(file_name, consts):
     

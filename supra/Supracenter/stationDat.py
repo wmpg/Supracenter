@@ -167,9 +167,7 @@ def convStationDat(station_name, setup, d_min=0, d_max=100000):
     # Read station file
     if '.csv' in station_name:
         data, names = readStationCSV(station_name)
-        # print(data)
-        # exit()
-        #ref_time = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second, millisecond=ref_time.microsecond/1000)
+
         for i in range(0, len(data)):
             data[i, 3] = data[i, 4]
     else:

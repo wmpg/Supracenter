@@ -3,14 +3,9 @@
 # Finds path between two locations with an atmospheric profile in between #
 ###########################################################################
 
-import cython
-
 import warnings
 
-import time
-
 import numpy as np
-
 
 from supra.Supracenter.cynwDir import nwDir
  

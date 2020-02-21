@@ -1,25 +1,18 @@
 """Finds the optimal Supracenter using particle swarm optimization and graphs and exports the data"""
 
-import os
 import copy
-import time
 import multiprocessing
-import sys
 import datetime
 
 import numpy as np
 from supra.Utils.pso import pso
-from functools import partial
-import matplotlib.pyplot as plt
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
-from supra.Utils.AngleConv import loc2Geo, geo2Loc, trajRestriction, point2LineDist3D, angle2NDE
 from supra.Utils.Classes import Position
-from supra.Utils.Formatting import loadingBar, meteorspinny
-from supra.Supracenter.plot import residPlot, scatterPlot, outputText, outputWeather
+from supra.Supracenter.plot import outputWeather
 
 def timeFunction(x, *args):
     ''' Helper function for PSO
@@ -199,7 +192,7 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, setup, dataset, manual=False):
+def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
@@ -223,8 +216,8 @@ def psoSearch(stns, w, s_name, setup, dataset, manual=False):
     search_min = Position(setup.lat_min, setup.lon_min, setup.elev_min)
     search_max = Position(setup.lat_max, setup.lon_max, setup.elev_max)
 
-    search_min.pos_loc(setup.ref_pos)
-    search_max.pos_loc(setup.ref_pos)
+    search_min.pos_loc(ref_pos)
+    search_max.pos_loc(ref_pos)
 
     output_name = setup.working_directory
     single_point = setup.manual_fragmentation_search[0]

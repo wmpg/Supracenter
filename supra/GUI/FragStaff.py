@@ -6,6 +6,7 @@ from PyQt5.QtCore import *
 import pyqtgraph as pg
 
 from supra.Utils.AngleConv import chauvenet
+from supra.GUI.WidgetBuilder import theme
 
 class FragmentationStaff(QWidget):
 
@@ -17,6 +18,8 @@ class FragmentationStaff(QWidget):
         p.setColor(self.backgroundRole(), Qt.black)
         self.setPalette(p)
         
+        theme(self)
+
         # Take important values from main window class
         self.arrTimes, self.current_station, self.pick_list = pack
 

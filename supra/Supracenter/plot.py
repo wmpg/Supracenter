@@ -8,7 +8,7 @@ import time
 import numpy as np
 import matplotlib.pyplot as plt
 
-from supra.Utils.AngleConv import loc2Geo, geo2Loc, angle2NDE
+from supra.Utils.AngleConv import loc2Geo, geo2Loc
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan

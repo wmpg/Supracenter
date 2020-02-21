@@ -12,9 +12,9 @@ class Config:
 
         # set configuration defaults
         self.fireball_name = 'Untitled Fireball'
-        self.get_data = 'false'
+        self.get_data = False
         self.run_mode = 'search'
-        self.debug = 'false'
+        self.debug = False
 
         self.working_directory = None
         self.arrival_times_file = None
@@ -39,10 +39,10 @@ class Config:
         self.lat_f = None
         self.lon_f = None
         self.elev_f = None
-        self.show_ballistic_waveform = 'false'
+        self.show_ballistic_waveform = False
 
         self.fragmentation_point = None
-        self.show_fragmentation_waveform = 'false'
+        self.show_fragmentation_waveform = False
         self.manual_fragmetnation_search = None
 
         self.v_fixed = 11000
@@ -62,14 +62,14 @@ class Config:
         self.v_max = 30000 
         self.max_error = 1000
         self.restricted_time = None
-        self.enable_restricted_time = 'false'
+        self.enable_restricted_time = False
         self.weight_distance_min = 0
         self.weight_distance_max = 0
 
-        self.enable_winds = 'false'
+        self.enable_winds = False
         self.weather_type = 'none'
 
-        self.perturb = 'false'
+        self.perturb = False
         self.perturb_method = 'none'
         self.perturb_times = 0
         self.observe_frag_no = 0
@@ -85,7 +85,7 @@ class Config:
         self.phip = 0.5
         self.phig = 0.5
         self.omega = 0.5
-        self.pso_debug = 'false'
+        self.pso_debug = False
         self.minfunc = 1e-8
         self.minstep = 1e-8
 
@@ -186,9 +186,16 @@ class Position:
         degree_sign= u'\N{DEGREE SIGN}'
         try:
             result = "Lat: {:8.4f}{:}N, Lon: {:8.4f}{:}E, Elev: {:10.2f} m".format(self.lat, degree_sign, self.lon, degree_sign, self.elev)
-        except:
+        except TypeError:
             result = "Position is None Type"
         return result
+
+    def isNone(self):
+
+        if self.lat == None or self.lon == None or self.elev == None:
+            return True
+
+        return False
     
     def pos_loc(self, ref_pos):
         """
@@ -209,20 +216,25 @@ class Position:
         self.xyz = np.array([self.x, self.y, self.z])
 
     def pos_distance(self, other):
-
+        """ 3D distance between positions 'self' and 'other'
+        """
         self.pos_loc(self)
         other.pos_loc(self)
 
         return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2)
 
     def ground_distance(self, other):
-        
+        """ 2D horizontal distance between positions 'self' and 'other'
+        """
+
         self.pos_loc(self)
         other.pos_loc(self)
 
         return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
 
     def line_between_2d(self, other, show_error=False):
+        """ Generates a 2D line between two positions 
+        """
 
         m = (other.y - self.y)/(other.x - self.x) 
 
@@ -523,6 +535,8 @@ class Color:
         self.fragmentation = [(0, 255, 0)]
         self.perturb = [([(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
                         (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)])]
+        self.BLACK = (0, 0, 0)
+        self.WHITE = (255, 255, 255)
 
 class RectangleItem(pg.GraphicsObject):
     def __init__(self, data):

@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 
+from supra.GUI.WidgetBuilder import theme
+
 class ExportWindow(QScrollArea):
     def __init__(self, invert, setup, stn_list, position):
         self.link = False
@@ -19,6 +21,8 @@ class ExportWindow(QScrollArea):
         count = 0
         max_steps = len(position)*len(stn_list)*setup.perturb_times
         dataset = parseWeather(self.setup)
+
+        theme(self)
         for ii, index in enumerate(invert):
 
             if index:

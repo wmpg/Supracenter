@@ -1,17 +1,7 @@
-import PyQt5
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
-from PyQt5.QtWebEngineWidgets import QWebEnginePage as QWebPage
-from PyQt5.QtWebEngineWidgets import QWebEngineView as QWebView
-from PyQt5.QtNetwork import *
-from OpenGL import GL
-import sys
-from optparse import OptionParser
+
 import os
 
 import folium
-from folium import features
-
 
 
 # tooltip = 'Click me!'

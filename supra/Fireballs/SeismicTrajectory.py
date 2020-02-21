@@ -28,14 +28,6 @@ from functools import partial
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-try:
-    # Python 2  
-    import ConfigParser as configparser
-
-except:
-    # Python 3
-    import configparser
-
 import supra.Supracenter.cyweatherInterp
 from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Supracenter.anglescan import anglescan
@@ -85,6 +77,9 @@ def findPoints(setup):
     return points
 
 def parseWeather(setup, t=0):
+    """ Generates a cubic weather profile of all altitudes within a 5 deg lat/lon area from lat/lon centre. 
+    """
+
 
     consts = Constants()
      # Parse weather type
@@ -340,7 +335,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
 # def angle(v1, v2):
 #   return math.acos(dotproduct(v1, v2) / (length(v1) * length(v2)))
-def waveReleasePointWindsContour(setup, sounding, ref_loc, points, u, div=37, mode='ballistic'):
+def waveReleasePointWindsContour(setup, sounding, ref_loc, points, div=37, mode='ballistic'):
     steps = 90
     alpha = np.linspace(0, 360*((steps-1)/steps), steps)
     alpha = np.radians(alpha)
@@ -376,8 +371,7 @@ def waveReleasePointWindsContour(setup, sounding, ref_loc, points, u, div=37, mo
     else:
         beta = np.linspace(90 + 0.01, 180, steps)
         beta = np.radians(beta)
-        p = points[1]
-        p[2] = 50000
+        p = points
 
         for i in range(steps):
             for j in range(steps):

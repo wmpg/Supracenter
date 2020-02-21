@@ -8,7 +8,6 @@ import sys
 import datetime
 import argparse
 import copy
-import urllib
 import time
 
 # Check version
@@ -35,8 +34,6 @@ from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, w
 from supra.Utils.Classes import Position, Station
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
-from supra.Supracenter.SPPT import perturb
-from supra.Utils.AngleConv import geo2Loc, loc2Geo
 
 DATA_FILE = 'data.txt'
 C = ['r', 'g', 'm', 'k', 'y']
@@ -79,25 +76,21 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
     """
 
     # Use the European ORFEUS data access site
-    try:
-        # Construct ORFEUS URL
-        iris_url = ("http://www.orfeus-eu.org/fdsnws/station/1/query?network={:s}&latitude={:.3f}&longitude={:.3f}" \
-            "&maxradius={:.3f}&start={:s}&end={:s}&channel={:s}&format=text" \
-            "&includerestricted=false&nodata=404").format(network, lat_centre, lon_centre, deg_radius, \
-            start_date, end_date, channel)
-    except:
-        pass
-        #print('Unable to get ORFEUS data!')
 
-    try:
-        # Construct IRIS URL
-        iris_url2 = ("http://service.iris.edu/fdsnws/git statusstation/1/query?net={:s}&latitude={:.3f}&longitude={:.3f}" \
-            "&maxradius={:.3f}&start={:s}&end={:s}&cha={:s}&nodata=404&format=text" \
-            "&matchtimeseries=true").format(network, lat_centre, lon_centre, deg_radius, start_date, \
-            end_date, channel)
-    except:
-        #print('Unable to get IRIS data!')
-        pass
+    # Construct ORFEUS URL
+    iris_url = ("http://www.orfeus-eu.org/fdsnws/station/1/query?network={:s}&latitude={:.3f}&longitude={:.3f}" \
+        "&maxradius={:.3f}&start={:s}&end={:s}&channel={:s}&format=text" \
+        "&includerestricted=false&nodata=404").format(network, lat_centre, lon_centre, deg_radius, \
+        start_date, end_date, channel)
+
+    #print('Unable to get ORFEUS data!')
+
+    # Construct IRIS URL
+    iris_url2 = ("http://service.iris.edu/fdsnws/station/1/query?net={:s}&latitude={:.3f}&longitude={:.3f}" \
+        "&maxradius={:.3f}&start={:s}&end={:s}&cha={:s}&nodata=404&format=text" \
+        "&matchtimeseries=true").format(network, lat_centre, lon_centre, deg_radius, start_date, \
+        end_date, channel)
+
 
     # Initialize station arrays for both IRIS and ORFEUS
     stations_txt_1 = []
@@ -187,24 +180,17 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
     end_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(ed.year, ed.month, ed.day, \
         ed.hour, ed.minute, ed.second, ed.microsecond//1000)
 
-    #start_time = "2010-02-27T06:30:00.000"
-    #end_time = "2010-02-27T10:30:00.000"
 
     # Use the European ORFEUS data access site if specified
-    try:
         # Construct ORFEUS URL
-        iris_url = ("http://www.orfeus-eu.org/fdsnws/dataselect/1/query?network={:s}&station={:s}" \
-                "&channel={:s}&start={:s}&end={:s}").format(network, station_code, channel, start_time, \
-                end_time)
-    except:
-        print('Unable to access ORFEUS!')
+    iris_url = ("http://www.orfeus-eu.org/fdsnws/dataselect/1/query?network={:s}&station={:s}" \
+            "&channel={:s}&start={:s}&end={:s}").format(network, station_code, channel, start_time, \
+            end_time)
 
-    try:
-        # Construct IRIS URL
-        iris_url2 = ("http://service.iris.edu/fdsnws/dataselect/1/query?net={:s}&sta={:s}&cha={:s}" \
+
+    iris_url2 = ("http://service.iris.edu/fdsnws/dataselect/1/query?net={:s}&sta={:s}&cha={:s}" \
                 "&start={:s}&end={:s}").format(network, station_code, channel, start_time, end_time)
-    except:
-        print('Unable to access IRIS!')
+
 
 
     # Construct a file name
@@ -313,7 +299,7 @@ def readStationAndWaveformsListFile(file_path, rm_stat=[], debug=False):
 
 
 def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, fireball_datetime, network='*', \
-    channel='BDF', dir_path='.'):
+    channel='BDF', dir_path='.', obj=None):
     """ Retrieves and saves waveforms as miniSEED files of all seismic stations from the IRIS web service in 
         a radius around given geographical position and for the given range of times.
 
@@ -400,12 +386,19 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, fireball_datetime, n
     data_list = []
 
     no_stats = len(station_list)
+    if obj is not None:
+        obj.station_progress.setTextVisible(True)
     # Go through all stations, retrieve and save waveforms
     for ii, station_data in enumerate(station_list):
+
+        if obj is not None:
+            obj.station_progress.setValue((ii+1)/(no_stats)*100)
 
         # Unpack station info
         network, station_code, stat_lat, stat_lon, stat_elev, station_name = station_data
 
+        if obj is not None:
+            obj.station_progress_label.setText("Downloading Station Data: {:}-{:}".format(network, station_code))
         sys.stdout.write("\rDownloading Station Data: {:5.2f} % {:}-{:}".format((ii+1)/(no_stats)*100, network, station_code))
         sys.stdout.flush()
         time.sleep(0.001)
@@ -437,6 +430,10 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, fireball_datetime, n
         if mseed_file != None:
             station_data.append(mseed_file)
             data_list.append(station_data)
+
+    if obj is not None:
+        obj.station_progress.setTextVisible(False)
+        obj.station_progress_label.setText("Done!")
 
     # Save the list of station parameters and data files to disk
     writeStationAndWaveformsListFile(data_list, os.path.join(dir_path, DATA_FILE))

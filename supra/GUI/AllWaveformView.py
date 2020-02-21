@@ -29,6 +29,7 @@ from supra.Utils.TryObj import *
 from supra.Fireballs.GetIRISData import butterworthBandpassFilter
 from supra.Fireballs.SeismicTrajectory import parseWeather
 from supra.GUI.ExportWindow import ExportWindow
+from supra.GUI.WidgetBuilder import theme
 
 HEIGHT_SOLVER_DIV = 100
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
@@ -70,24 +71,8 @@ class AllWaveformViewer(QScrollArea):
         select_all.triggered.connect(self.select)
         select_menu.addAction(select_all)
 
-        stylesheet = """ 
-        QWindow{background: black;}
-        QWidget{background: black;}
-        QLabel{color: white;}
-        QCheckBox{color: white;}
-        QDockWidget{color: white; background: black;}
-        QGroupBox{color: white;}
-        QGroupBox{ 
-        border: 2px white; 
-        border-radius: 0px; }
-        QMessageBox{color: white; background: black;} 
-        QTableWidget{color: white; background: black;}
-        QScrollArea{color: white; background: black;}
-        QPushButton{color: white; background: black;}
-        QMenuBar{color: white}
-        """
+        theme(self)
 
-        self.setStyleSheet(stylesheet)
         self.position = position
         point = position
         widget = QWidget()

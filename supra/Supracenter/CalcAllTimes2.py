@@ -5,10 +5,8 @@ from functools import partial
 import multiprocessing
 
 from supra.Utils.Classes import Position
-from supra.GUI.GUITools import errorMessage
 from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival
 from supra.Supracenter.SPPT import perturb
-from supra.Utils.Formatting import loadingBar
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
 #from supra.Supracenter.faultscan import cyscan as faultscan
@@ -149,7 +147,10 @@ def calcAllTimes(stn_list, setup, sounding, theo=False, file_name='all_pick_time
 
     # define line bottom boundary
     if setup.show_ballistic_waveform:
-        points = findPoints(setup)
+        try:
+            points = findPoints(setup)
+        except AttributeError:
+            points = []
     else:
         points = []
 

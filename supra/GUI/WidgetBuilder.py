@@ -1,5 +1,6 @@
 import os
 
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -15,6 +16,104 @@ from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
 from supra.GUI.GUITools import *
+from supra.GUI.PKLSave import saveGUI, loadGUI
+
+def theme(obj):
+
+    stylesheet = """ 
+
+    QMainWindow{background: black;}
+    QPushButton{color: white; background-color: rgb(0, 100, 200);}
+    QDateTimeEdit {
+    background: rgb(64, 64, 64);
+    selection-background-color: rgb(0, 100, 200);
+    selection-color: white;
+    color: white;
+    }
+    QCalendarWidget QWidget { alternate-background-color: rgb(128, 128, 128); }
+    QComboBox, QAbstractItemView{
+    background: rgb(64, 64, 64);
+    selection-background-color: rgb(0, 100, 200);
+    selection-color: white;
+    color: white;
+    }
+    QCalendarWidget QAbstractItemView:disabled 
+    { 
+    color: rgb(128, 128, 128); 
+    }
+
+    QCalendarWidget QWidget{
+    color: white;
+    background: rgb(64, 64, 64);
+    }
+    QCalendarWidget QAbstractItemView:enabled 
+    { 
+    color: white;  
+    background-color: black;  
+    selection-background-color: rgb(0, 100, 200); 
+    selection-color: white; 
+    }
+    
+    QCheckBox{color: white;}
+    QTableWidget{color: white; background: rgb(64, 64, 64);}
+    QMenuBar{background-color: black;}
+    QMenuBar::item {color: white;}
+    QMenuBar::item:selected {
+    background: rgb(0, 100, 200);
+    }
+    QMenu{
+    background-color: black;
+    color: white;
+    }
+    QMenu::item:selected{
+    background: rgb(0, 100, 200);
+    }
+
+    QTabWidget>QWidget>QWidget{
+    background: black;}
+    QTabWidget::pane{
+    background: black;
+    }
+    QTabWidget::tab-bar{
+    background: black;
+    }
+    QTabBar::tab{
+    background: black;
+    color: white;
+    }
+    QTabBar::tab:selected {
+    background: rgb(0, 100, 200);
+    }
+    QTabBar::tab:hover {
+    background: rgb(64, 64, 64);
+    }
+    QLabel{color: white;}
+    QLineEdit {
+    background: rgb(64, 64, 64);
+    selection-background-color: rgb(0, 100, 200);
+    selection-color: white;
+    color: white;
+    }
+    QProgressBar {
+    border: 2px solid grey;
+    border-radius: 5px;
+    text-align: center;
+    }
+    QProgressBar::chunk{background-color: rgb(0, 100, 200);}
+    QDockWidget{color: white; background: black;}
+    QGroupBox{color: white;}
+    QGroupBox{ 
+    border: 2px white; 
+    border-radius: 0px; }
+    QMessageBox{color: white; background: black;} 
+
+    QWindow{background: black;}
+    QScrollArea{color: white; background: black;}
+    
+
+    """
+
+    obj.setStyleSheet(stylesheet)
 
 def initTabs(obj):
 
@@ -39,19 +138,19 @@ def initMenuBar(obj, layout):
     file_qsave = QAction("Quick Save", obj)
     file_qsave.setShortcut('Ctrl+S')
     file_qsave.setStatusTip('Saves setup file')
-    file_qsave.triggered.connect(partial(obj.saveINI, True, True))
+    file_qsave.triggered.connect(partial(saveGUI, obj, True, True))
     file_menu.addAction(file_qsave)
 
     file_save = QAction("Save", obj)
     file_save.setShortcut('Ctrl+Shift+S')
     file_save.setStatusTip('Saves setup file')
-    file_save.triggered.connect(partial(obj.saveINI, True))
+    file_save.triggered.connect(partial(saveGUI, obj, True))
     file_menu.addAction(file_save)
 
     file_load = QAction("Load", obj)
     file_load.setShortcut('Ctrl+L')
     file_load.setStatusTip('Loads setup file')
-    file_load.triggered.connect(obj.loadINI)
+    file_load.triggered.connect(partial(loadGUI, obj))
     file_menu.addAction(file_load)
 
     file_exit = QAction("Exit", obj)
@@ -131,7 +230,7 @@ def initMainGUICosmetic(obj):
 
     obj.setWindowTitle('Bolide Acoustic Modelling')
     app_icon = QtGui.QIcon()
-    app_icon.addFile(os.path.join('Fireballs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
+    app_icon.addFile(os.path.join('supra', 'Fireballs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
     obj.setWindowIcon(app_icon)
 
     p = obj.palette()
@@ -141,20 +240,8 @@ def initMainGUICosmetic(obj):
     obj.colors = [(0, 255, 26), (3, 252, 219), (252, 3, 3), (223, 252, 3), (255, 133, 3),
                   (149, 0, 255), (76, 128, 4), (82, 27, 27), (101, 128, 125), (255, 230, 249)]
 
-    stylesheet = """ 
-    QTabWidget>QWidget>QWidget{background: gray;}
-    QLabel{color: white;}
-    QCheckBox{color: white;}
-    QDockWidget{color: white; background: black;}
-    QGroupBox{color: white;}
-    QGroupBox{ 
-    border: 2px white; 
-    border-radius: 0px; }
-    QMessageBox{color: white; background: black;} 
-    QTableWidget{color: white; background: black;}
-    """
 
-    obj.setStyleSheet(stylesheet)
+    theme(obj)
 
 def addStationsWidgets(obj):
     station_tab = QWidget()
@@ -173,6 +260,13 @@ def addStationsWidgets(obj):
     obj.station_layout.addWidget(obj.station_button)
     obj.station_button.clicked.connect(obj.getStations)
 
+    obj.station_progress = QProgressBar()
+    obj.station_progress.setMaximum(100)
+    obj.station_layout.addWidget(obj.station_progress)
+
+    obj.station_progress_label = QLabel('')
+    obj.station_layout.addWidget(obj.station_progress_label)
+
 def addPicksReadWidgets(obj):
     picks_read_tab = QWidget()
     picks_read_tab_content = QGridLayout()
@@ -180,11 +274,9 @@ def addPicksReadWidgets(obj):
 
     obj.tab_widget.addTab(picks_read_tab, "Picks Read")
 
-    obj.csv_table = QTableWidget(0, 9)
+    obj.csv_table = QTableWidget()
     picks_read_tab_content.addWidget(obj.csv_table, 1, 1, 1, 4)
-    obj.csv_table.setHorizontalHeaderLabels(['Pick Group', 'Network', 'Code', 'Latitude', 'Longitude', 'Elevation', 'Pick JD', 'Pick Time', 'station_number'])
-    header = obj.csv_table.horizontalHeader()
-    header.setSectionResizeMode(QHeaderView.Stretch)
+
 
     obj.csv_table_add = QPushButton("+")
     picks_read_tab_content.addWidget(obj.csv_table_add, 2, 2, 1, 1)
@@ -198,11 +290,11 @@ def addPicksReadWidgets(obj):
 
     obj.csv_table_load = QPushButton("Load")
     picks_read_tab_content.addWidget(obj.csv_table_load, 2, 3, 1, 1)
-    obj.csv_table_load.clicked.connect(obj.csvLoad)
+    obj.csv_table_load.clicked.connect(partial(obj.csvLoad, obj.csv_table))
 
     obj.csv_table_save = QPushButton("Save")
     picks_read_tab_content.addWidget(obj.csv_table_save, 2, 4, 1, 1)
-    obj.csv_table_save.clicked.connect(obj.csvSave)
+    obj.csv_table_save.clicked.connect(partial(obj.csvSave, obj.csv_table))
 
 def addSupraWidgets(obj):
 
@@ -298,9 +390,6 @@ def addMakePicksWidgets(obj):
     obj.make_picks_top_graphs.addWidget(obj.make_picks_map_graph_view)
     obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
-    obj.make_picks_gmap_view = QWebView()
-    obj.make_picks_top_graphs.addWidget(obj.make_picks_gmap_view)
-    obj.make_picks_gmap_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
@@ -357,10 +446,10 @@ def addMakePicksWidgets(obj):
     pick_group_layout = QGridLayout()
     make_picks_picks_group.setLayout(pick_group_layout)
 
-    obj.export_to_csv = QPushButton('Export to CSV')
+    obj.export_to_csv = QPushButton('Export Picks to CSV')
     pick_group_layout.addWidget(obj.export_to_csv)
 
-    obj.export_to_all_times = QPushButton('Export All Times')
+    obj.export_to_all_times = QPushButton('Export Arrival Times')
     pick_group_layout.addWidget(obj.export_to_all_times)
 
     obj.export_to_image = QPushButton('Export Image')
@@ -597,7 +686,7 @@ def addFetchATMWidgets(obj):
     fetch_content.addWidget(obj.fatm_end_lon, 13, 2)
     fetch_content.addWidget(obj.fatm_end_elev,14, 2)
 
-
+    # self.LineEdit.setValidator(QIntValidator())
 
     # obj.fatm_lat_label = QLabel("Latitude: 0")
     # obj.fatm_lat_slide = QSlider(Qt.Horizontal)

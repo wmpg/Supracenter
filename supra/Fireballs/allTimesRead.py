@@ -4,7 +4,6 @@ import argparse
 import os
 
 from supra.Fireballs.Program import configRead, configParse, position, station
-from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile
 
 def readAllTimes(file_name, dists_name=[], typ=4, stn_list=[]):
 

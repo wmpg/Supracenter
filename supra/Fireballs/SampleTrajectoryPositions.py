@@ -10,12 +10,10 @@ import os
 import argparse
 
 import numpy as np
-import matplotlib
 import matplotlib.pyplot as plt
 import scipy.interpolate
 import scipy.signal
 
-from wmpl.Config import config
 from wmpl.Utils.TrajConversions import cartesian2Geo, eci2RaDec, raDec2AltAz, altAz2RADec
 from wmpl.Utils.Math import lineAndSphereIntersections, vectMag, vectNorm
 from wmpl.Utils.Pickling import loadPickle

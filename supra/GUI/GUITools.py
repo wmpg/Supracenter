@@ -7,6 +7,10 @@ import numpy as np
 
 def errorMessage(message, level, info='', title='Yikes!', detail=''):
     """
+    message: base text
+    level: 0 - info, 1 - warning, 2 - critical
+    info: more detail
+    detail: even more detail
     """
     msg = QMessageBox()
 
@@ -38,7 +42,7 @@ def toolTime(var):
 
     return tool_time_dict[var]
 
-def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip=''):
+def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='', validate=''):
     """ Creates a label and line edit object beside each other
 
     Arguments:
@@ -54,7 +58,7 @@ def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='')
     Returns:
     label_obj, edits_obj [obj]: the label and lineedit objects
     """
-
+    
     label_obj = QLabel(label_name)
     edits_obj = QLineEdit('')
     parent.addWidget(label_obj, row, 1 + h_shift)
@@ -62,6 +66,13 @@ def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='')
 
     if tool_tip != '':
         label_obj.setToolTip(toolTime(tool_tip))
+
+    if validate == 'int':
+        edits_obj.setValidator(QIntValidator())
+    elif validate == 'float':
+        edits_obj.setValidator(QDoubleValidator())
+    elif validate == 'regexp':
+        edits_obj.setValidator(QRegExpValidator())
 
     return label_obj, edits_obj
 
@@ -253,3 +264,4 @@ def folderSearch(obj):
     filename = dlg.selectedFiles()
 
     obj.setText(filename[0])
+

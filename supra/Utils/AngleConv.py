@@ -56,8 +56,11 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     """
 
     # Convert to radians
-    lat0, lon0 = np.radians(lat0), np.radians(lon0)
-    lat, lon = np.radians(lat), np.radians(lon)
+    try:
+        lat0, lon0 = np.radians(lat0), np.radians(lon0)
+        lat, lon = np.radians(lat), np.radians(lon)
+    except AttributeError:
+        return np.nan, np.nan, np.nan
 
     # Convert to local
         # Calculate the ECEF coordinates of the reference position
@@ -92,7 +95,10 @@ def loc2Geo(lat0, lon0, elev0, local_coord):
     """
 
     # Convert to radians
-    lat0, lon0 = np.radians(lat0), np.radians(lon0)
+    try:
+        lat0, lon0 = np.radians(lat0), np.radians(lon0)
+    except AttributeError:
+        return np.nan, np.nan, np.nan
 
     # Calculate the ECEF coordinates of the reference position
     x0, y0, z0 = latLonAlt2ECEF(lat0, lon0, elev0)
