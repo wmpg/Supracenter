@@ -8,7 +8,7 @@ Computing fireball fragmentation locations and trajectory from seismic or infras
 1) In addition to WesternMeteorPyLib's requirements, you will need to install additional libraries. It is possible to install the libraries using pip, but you will have to manaully compile pyhdf, which is not fun. The easiest way to install everything is through conda:
 
 ```
-conda install -c conda-forge pyhdf obspy simplekml
+conda install -c conda-forge pyhdf obspy simplekml pyopengl pyqtgraph folium
 conda install -c anaconda netcdf4
 pip install pyqt5 pyswarm
 ```
