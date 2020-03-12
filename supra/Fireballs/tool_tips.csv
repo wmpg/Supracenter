@@ -14,8 +14,8 @@ lon_centre: [float] Geo coordinates of the wave release centre, referred to as t
 deg_radius: [float] Search radius to consider when looking for stations (in degrees),
 fireball_datetime: [datetime object] Time of the fireball ground point
 v_sound: [float] speed of sound, used in calculating mach angle, and as the constant speed of sound if no weather data is used,
-t0: [float] time variable of the ballistic trajectory,
-v: [float] velocity variable of the ballistic trajectory,
+t0: [float] time of the fireball from top point to geometric landing point at velocity v (use as an addition to the fireball datetime in such a way that fireball datetime + t0 = time of impact)[seconds],
+v: [float] velocity variable of the ballistic trajectory [meters],
 azim: [float] azimuth variable of the ballistic trajectory, measured from North +E, in degrees,
 zangle: [float] zenith variable of the ballistic trajectory, measured from the vertical, in degrees,
 lat_i: [float] latitude (deg N) of the tail of the fireball,

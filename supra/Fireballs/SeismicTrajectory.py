@@ -29,13 +29,14 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 import supra.Supracenter.cyweatherInterp
-from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Supracenter.anglescan import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
+from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
 from supra.Utils.Classes import Position, Constants
 from supra.Utils.pso import pso
+from supra.Supracenter.cyscan2 import cyscan
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
 from wmpl.Utils.Math import vectMag, vectNorm, rotateVector, meanAngle
@@ -43,145 +44,40 @@ from wmpl.Utils.Plotting import Arrow3D, set3DEqualAxes
 from wmpl.Utils.PlotMap import GroundMap
 from wmpl.Utils.PlotCelestial import CelestialPlot
 
-def findPoints(setup):    
-    GRID_SPACE = 100
-    MIN_HEIGHT = 0
-    MAX_HEIGHT = 85920
+# def findPoints(setup):    
+#     GRID_SPACE = 100
+#     MIN_HEIGHT = 0
+#     MAX_HEIGHT = 100000
 
-    u = setup.trajectory.vector.xyz
-    ground_point = setup.trajectory.pos_f.xyz
-    # find top boundary of line given maximum elevation of trajectory
-    if setup.trajectory.pos_i.elev != None:
-        scale = -setup.trajectory.pos_i.elev/u[2]
+#     u = setup.trajectory.vector.xyz
+#     ground_point = setup.trajectory.pos_f.xyz
+#     # find top boundary of line given maximum elevation of trajectory
+#     if setup.trajectory.pos_i.elev != None:
+#         scale = -setup.trajectory.pos_i.elev/u[2]
 
-    else:
-        scale = -100000/u[2]
+#     else:
+#         scale = -100000/u[2]
 
-    # define line top boundary
-    top_point = ground_point - scale*u
+#     # define line top boundary
+#     top_point = ground_point - scale*u
 
-    ds = scale / (GRID_SPACE)
+#     ds = scale / (GRID_SPACE)
 
-    points = []
+#     points = []
 
-    for i in range(GRID_SPACE + 1):
-        points.append(top_point + i*ds*u)
+#     for i in range(GRID_SPACE + 1):
+#         points.append(top_point + i*ds*u)
 
-    points = np.array(points)
+#     points = np.array(points)
 
-    offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
-    bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
+#     offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
+#     bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
 
-    points = np.array(points[offset:(bottom_offset+1)])
+#     points = np.array(points[offset:(bottom_offset+1)])
 
-    return points
-
-def parseWeather(setup, t=0):
-    """ Generates a cubic weather profile of all altitudes within a 5 deg lat/lon area from lat/lon centre. 
-    """
+#     return points
 
 
-    consts = Constants()
-     # Parse weather type
-    setup.weather_type = setup.weather_type.lower()
-    if setup.weather_type not in ['custom', 'none', 'ecmwf', 'merra', 'ukmo', 'binary']:
-        print('INI ERROR: [Atmospheric] weather_type must be one of: custom, none, ecmwf, merra, ukmo, binary')
-        sys.exit()
-
-    # Custom weather data    
-    if setup.weather_type == 'custom':
-
-        # try:
-        sounding = readCustAtm(setup.sounding_file, consts)
-        # except:
-        #     print('ERROR: Could not read custom atmosphere profile!')
-        #     exit()
-
-        # Check file name
-        if len(sounding) < 2:
-            print('FILE ERROR: file must have at least two data points!')
-            sys.exit()
-
-
-    # MERRA-2
-    elif setup.weather_type == 'merra':
-
-        # Check file type
-        if '.nc' not in setup.sounding_file:
-            print("FILE ERROR: custom data set must be a .nc file!")
-            sys.exit()
-
-        # # Run data fetching script
-        # if setup.get_data == True:
-        #     print('Getting data...')
-        #     fetchMERRA(setup)
-
-        try:
-            sounding = storeHDF(setup.sounding_file, consts)
-        except:
-            print('ERROR: could not read merra atmosphere profile!')
-            exit()
-
-    # ECMWF
-    elif setup.weather_type == 'ecmwf':
-
-        # Check file type
-        if '.nc' not in setup.sounding_file:
-            print("FILE ERROR: custom data set must be a .nc file from ECMWF!")
-            sys.exit()
-
-        # # Run data fetching script
-        # if setup.get_data == True:
-        #     fetchECMWF(setup, setup.sounding_file)
-
-        # GetIRISData/MakeIRISPicks
-
-        try:
-
-            #Get closest hour
-            start_time = (setup.fireball_datetime.hour + np.round(setup.fireball_datetime.minute/60) + t)%24
-
-            sounding = storeNetCDFECMWF(setup.sounding_file, setup.lat_centre, setup.lon_centre, consts, start_time=start_time)
-
-        # SeismicTrajectory
-        except:
-
-            try:
-                start_time = (setup.fireball_datetime.hour + t)%24
-                sounding = storeNetCDFECMWF(setup.sounding_file, setup.x0, setup.y0, consts, start_time=start_time)
-            except:
-                print("ERROR: Unable to use weather file, or setup.start_datetime/setup.atm_hour is set up incorrectly. Try checking if sounding_file exists")
-                print(traceback.format_exc())
-                exit()
-
-        
-
-    # UKMO
-    elif setup.weather_type == 'ukmo':
-        # Check file type
-        if '.nc' not in setup.sounding_file:
-            print("FILE ERROR: custom data set must be a .nc file from UKMO!")
-            sys.exit()
-        
-        try:
-            sounding = storeNetCDFUKMO(setup.sounding_file, setup.search_area, consts)
-        except:
-            print('ERROR: Could not read UKMO atmosphere profile!')
-            exit()
-
-    elif setup.weather_type == 'binary':
-
-        
-        sounding = storeAus(consts)
-
-    else:
-
-        # Sample fake weather profile, the absolute minimum that can be passed
-        sounding = np.array([[    0.0, setup.v_sound, 0.0, 0.0],
-                             [    0.0, setup.v_sound, 0.0, 0.0],
-                             [99999.0, setup.v_sound, 0.0, 0.0]])
-
-    return sounding
 
 def mergeChannels(seismic_data):
     """ Merge seismic data from the same channels which are fragmented into several chunks which start at a
@@ -279,6 +175,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
     # Calculate the mach angle
     #cos(arcsin(x)) = sqrt(1 - x^2)
+    ta = time.time()
 
     beta = math.sqrt(1 - (setup.v_sound/v/1000)**2)
 
@@ -310,6 +207,8 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
     R = waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=div)
 
+    t1 = time.time()
+    print("Time of Arrival: {:.4f}".format(t1-ta))
     if travel:
         # travel from trajectory only
         ti = R[3]*beta
@@ -319,8 +218,9 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
             # Calculate time of arrival
             ti = t0 +dt/v + R[3]*beta
         else:
+
             # Calculate time of arrival
-            ti = t0 -dt/v + R[3]*beta
+            ti = t0 +dt/v + R[3]*beta
 
     return ti
 
@@ -391,7 +291,8 @@ def waveReleasePointWindsContour(setup, sounding, ref_loc, points, div=37, mode=
 def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=37):
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
-
+    ta = time.time()
+    
     ANGLE_TOL = 1 #deg
 
 
@@ -404,26 +305,28 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
     angle = [999]*a
 
     # Cut down atmospheric profile to the correct heights, and interp
-    z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(points[0], stat_coord, setup.weather_type, \
-                     ref_loc, copy.copy(sounding), convert=True)
-    
+    z_profile, _ = getWeather(points[0], stat_coord, setup.weather_type, ref_loc, copy.copy(sounding), convert=True)
+    t1 = time.time()
+    print("Wave Release Point - get weather: {:.4f}".format(t1-ta))
     D = np.array(stat_coord)
 
     cyscan_res = []
 
+    ta = time.time()
     # Compute time of flight residuals for all stations
     for i in range(a):
+
         S = np.array(points[i])
 
-        # zProfile = zInteg(D[2], S[2], z_profile)
-        # zProfile = zInterp(D[2], S[2], zProfile, div=div)
+        zProfile = zInteg(D[2], S[2], z_profile)
 
-        # A = cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
-        A = np.array([1, 
-            angle2NDE(np.degrees(np.arctan2((D[1]-S[1]),(D[0]-S[0])))), 
-            np.degrees(np.arccos((D[2]-S[2])/np.sqrt((D[1]-S[1])**2 + (D[0]-S[0])**2)))])
+        # Bottleneck
+        A = cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+
         cyscan_res.append(A)
 
+    t1 = time.time()
+    print("Wave Release Point - cyscan: {:.4f}".format(t1-ta))
 
     cyscan_res = np.array(cyscan_res)
     T = cyscan_res[:, 0]
@@ -435,24 +338,15 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
 
     v = [0]*a
 
+    ta = time.time()
     for ii in range(a):
         #v[ii] = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
         v[ii] = (D-points[ii])/np.sqrt(np.dot(D-points[ii], D-points[ii]))
         angle[ii] = angleBetweenVect(u, v[ii])
         angle[ii] = np.absolute(90 - angle[ii])
 
-
-    # Minimize angle to 90 degrees from trajectory
-
-    # plt.plot(points[:, 2], np.degrees(np.arccos(prop_mag)))
-    # plt.show()
-    #np.save(setup.working_directory + str(stat_coord), prop_mag_raw)
-    # prop_mag = np.absolute(prop_mag)
-
-    # for ii, element in enumerate(prop_mag):
-    #     if element > np.cos(np.radians(ANGLE_TOL)):
-    #         prop_mag[ii] = np.nan
-
+    t1 = time.time()
+    print("Wave Release Point - calcs: {:.4f}".format(t1-ta))
     try:
         best_indx = np.nanargmin(angle)
     except:
@@ -537,6 +431,8 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
         v_fixed: [float] Use a fixed velocity. Set to None to ignore
 
     """
+    ta = time.time()
+    
     # Unpack estimated parameters
     x0, y0, t0, v, azim, zangle = params
     
@@ -550,7 +446,7 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     ref_pos = Position(setup.lat_centre, setup.lon_centre, 0)
     cost_value = 0
     
-    points = findPoints(setup)
+    points = setup.trajectory.findPoints(gridspace=10)
     u = setup.trajectory.vector.xyz
     
     # Go through all arrival times
@@ -572,7 +468,8 @@ def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding
     # Save points for plotting later
 
     # Save points and errors for plotting
-
+    t1 = time.time()
+    print("Time Residuals Azimuth: {:.4f}".format(t1-ta))
     return cost_value
 
 
@@ -644,6 +541,7 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
 
     """
 
+    t0 = time.time()
     if ax is None:
         ax = plt.gca()
 
@@ -697,44 +595,53 @@ def estimateSeismicTrajectoryAzimuth(station_list, setup, sounding, p0=None, azi
         def __init__(self):
             self.x = None
 
+    t1 = time.time()
+    print("PSO Setup: {:.4f}".format(t1-t0))
     # Run PSO several times and choose the best solution
     solutions = []
+    t0 = time.time()
     for i in range(setup.run_times):
 
         # Use PSO for minimization
         x, fopt, particles, errors = pso(timeResidualsAzimuth, lower_bounds, upper_bounds, args=(stat_coord_list, \
             pick_time, setup, sounding, v_fixed), maxiter=setup.maxiter, swarmsize=setup.swarmsize, \
             phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, \
-            processes=multiprocessing.cpu_count(), particle_output=True)
-
-
+            processes=1, particle_output=True)
+#multiprocessing.cpu_count()
         solutions.append([x, fopt])
+        print('Computational  best estimation', fopt)
 
+    t1 = time.time()
+    print("PSO - Single Run: {:.4f}".format(t1-t0))
+    print('##### Func End')
+    sys.exit()
     if setup.perturb == True:
 
         #allTimes = [perturb_no, station_no, ball/frag, frag_no]
-        perturb_times = allTimes.shape[0]
+        try:
+            perturb_times = allTimes.shape[0]
 
-        p_arrival_times = allTimes[:, station_no, 0, 0] - float(ref_pick_time)
+            p_arrival_times = allTimes[:, station_no, 0, 0] - float(ref_pick_time)
 
-        x_perturb = [0]*perturb_times
-        fopt_perturb = [0]*perturb_times
+            x_perturb = [0]*perturb_times
+            fopt_perturb = [0]*perturb_times
 
-        for i in range(perturb_times):
-            
+            for i in range(1, perturb_times):
+                
 
-            #remove nan
-            #p_arrival_times[i] = [j for j in p_arrival_times[i] if j != j]
+                #remove nan
+                #p_arrival_times[i] = [j for j in p_arrival_times[i] if j != j]
 
-            # Use PSO for minimization, with perturbed arrival times
-            x_perturb[i], fopt_perturb[i] = pso(timeResidualsAzimuth, lower_bounds, upper_bounds, args=(stat_coord_list, \
-                p_arrival_times[i], setup, sounding, v_fixed), maxiter=setup.maxiter, swarmsize=setup.swarmsize, \
-                phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, processes=multiprocessing.cpu_count())
-            
-            if i == 0:
-                print('Computational  best estimation', fopt_perturb[i])
-            else:
+                # Use PSO for minimization, with perturbed arrival times
+                x_perturb[i], fopt_perturb[i] = pso(timeResidualsAzimuth, lower_bounds, upper_bounds, args=(stat_coord_list, \
+                    p_arrival_times[i], setup, sounding, v_fixed), maxiter=setup.maxiter, swarmsize=setup.swarmsize, \
+                    phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, processes=multiprocessing.cpu_count())
+                
+
                 print('Perturbation', i, 'best estimation', fopt_perturb[i])
+        except AttributeError:
+            x_perturb, fopt_perturb = [], []
+            setup.perturb = False
     else:
         x_perturb, fopt_perturb = [], []
 

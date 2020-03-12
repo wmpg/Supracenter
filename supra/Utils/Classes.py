@@ -76,8 +76,8 @@ class Config:
 
         self.n_theta = 45
         self.n_phi = 90
-        self.angle_precision = 1e-5
-        self.angle_error_tol = 1000
+        self.h_tol = 1e-5
+        self.v_tol = 1000
 
         self.maxiter = 100
         self.swarmsize = 100
@@ -119,6 +119,8 @@ class Constants:
 
         self.b = 1.19e-4
 
+        self.R_EARTH = 6378100
+
 class Pick:
     def __init__(self, t, stn, stn_no, channel, group):
         self.time = t
@@ -133,7 +135,7 @@ class Angle:
     def __init__(self, deg):
         
         if deg != None:
-            self.deg = deg%360
+            self.deg = deg
             self.rad = np.radians(deg)
         else:
             self.deg = None
@@ -143,10 +145,10 @@ class Angle:
         return '{:6.2f} deg'.format(self.deg) 
 
     def __add__(self, other):
-        return (self.deg + other.deg)%360
+        return (self.deg + other.deg)
 
     def __sub__(self, other):
-        return (self.deg - other.deg)%360
+        return (self.deg - other.deg)
 
     def __gt__(self, other):
         return self.deg > other.deg
@@ -172,15 +174,13 @@ class Position:
         self.lon  = lon
         self.elev = elev
 
-        if lat != None:
+        try:
             self.lat_r = np.radians(lat)
-        else:
-            self.lat_r = None
-
-        if lon != None:  
             self.lon_r = np.radians(lon)
-        else:
+        except AttributeError:
+            self.lat_r = None
             self.lon_r = None
+
 
     def __str__(self):
         degree_sign= u'\N{DEGREE SIGN}'
@@ -205,6 +205,7 @@ class Position:
             ref_pos: [position Obj] the position of a reference location 
             used to convert another position object to local coordinates
         """
+
         self.x, self.y, self.z = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, self.lat, self.lon, self.elev)
         self.xyz = np.array([self.x, self.y, self.z])
 
@@ -232,6 +233,17 @@ class Position:
 
         return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
 
+    def ground_latlon_distance(self, other):
+        """ longer distances between two points
+        """
+        consts = Constants()
+
+        a = np.sin((self.lat_r - other.lat_r)/2)**2 + np.cos(self.lat_r)*np.cos(other.lat_r)*np.sin((self.lon_r - other.lon_r)/2)**2
+        c = 2*np.arctan2(np.sqrt(a), np.sqrt(1 - a))
+        d = consts.R_EARTH*c
+
+        return d
+
     def line_between_2d(self, other, show_error=False):
         """ Generates a 2D line between two positions 
         """
@@ -247,6 +259,7 @@ class Position:
         print("y = mx + b")
         print("m = {:}".format(m))
         print("b = {:}".format((b_1 + b_2)/2))
+
 
 
 
@@ -348,7 +361,7 @@ class Trajectory:
             self.vector = None
 
         # Case 1: everything is given
-        if pos_i.lat != None and pos_f.lat != None and zenith != None and azimuth != None:
+        if pos_i.lat is not None and pos_f.lat is not None and zenith is not None and azimuth is not None:
 
             pos_i.pos_loc(pos_f)
             pos_f.pos_loc(pos_f)
@@ -356,7 +369,7 @@ class Trajectory:
             scale = (pos_f.z - pos_i.z) / self.vector.z
 
         # Case 2: end points are given
-        elif pos_i.lat != None and pos_f.lat != None:
+        elif pos_i.lat is not None and pos_f.lat is not None:
 
             pos_i.pos_loc(pos_f)
             pos_f.pos_loc(pos_f)
@@ -374,7 +387,7 @@ class Trajectory:
             scale = (pos_f.z - pos_i.z) / self.vector.z
 
         # Case 3: top point and angles are given
-        elif pos_i.lat != None and zenith != None and azimuth != None:
+        elif pos_i.lat is not None and zenith is not None and azimuth is not None:
 
             pos_i.pos_loc(pos_i)
 
@@ -385,7 +398,7 @@ class Trajectory:
             pos_f.pos_geo(pos_i)
 
         # Case 4: bottom point and angles are given
-        elif pos_f.lat != None and zenith != None and azimuth != None:
+        elif pos_f.lat is not None and zenith is not None and azimuth is not None:
 
             pos_f.pos_loc(pos_f)
 
@@ -469,6 +482,40 @@ class Trajectory:
                 print(pt)
 
         return P
+
+    def findPoints(self, gridspace=250):    
+        
+        GRID_SPACE = gridspace
+        MIN_HEIGHT = self.pos_f.elev
+        MAX_HEIGHT = self.pos_i.elev
+
+        u = self.vector.xyz
+        ground_point = np.array([0, 0, 0])
+        # find top boundary of line given maximum elevation of trajectory
+        if self.pos_i.elev != None:
+            scale = -self.pos_i.elev/u[2]
+
+        else:
+            scale = -100000/u[2]
+
+        # define line top boundary
+        top_point = ground_point - scale*u
+
+        ds = scale / (GRID_SPACE)
+
+        points = []
+
+        for i in range(GRID_SPACE + 1):
+            points.append(top_point + i*ds*u)
+
+        points = np.array(points)
+
+        offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
+        bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
+
+        points = np.array(points[offset:(bottom_offset+1)])
+
+        return points
 
     def findGeo(self, height):
         
@@ -557,7 +604,7 @@ class RectangleItem(pg.GraphicsObject):
 
         a = (a - min_data)/r
 
-        return a**0.09
+        return a**0.25
 
     def weightedNormData(self):
         a = np.array(self.data)
@@ -623,23 +670,7 @@ class RectangleItem(pg.GraphicsObject):
 
 if __name__ == '__main__':
 
-    pass
-    ref = Position(48.3314, 13.0706, 0)
-    D_1 = [38158.66623057,  43672.3120398 , 0]
-    D_2 = [48817.82990316,  59361.99386328, 0]
-    D_3 = [38270.85426044,  44259.41571411, 0]
-    D_4 = [50598.81673897,  61842.3628467 , 0]
-    D_5 = [38102.27501089,  44299.0882369 , 0]
-    D_6 = [52267.58095995,  64080.75697245, 0]
-    D_7 = [38006.20726851,  44247.86390211, 0]
-    D_8 = [52810.11802868,  64792.13695008, 0]
 
-    D = Position(0, 0, 0)
-    D.x = D_8[0]
-    D.y = D_8[1]
-    D.z = D_8[2]
-    D.pos_geo(ref)
-    print(D)
     # S = Position(48.8461, 13.7179, 0)
 
     # print("Line")
@@ -664,7 +695,8 @@ if __name__ == '__main__':
 
     # print(S_p)
     # print(S_m)
-
+    A = Trajectory(0, 13910, pos_i=Position(45.2308228643, 15.5458504786, 100000.0), pos_f=Position(45.9686227081, 14.9449686199, 0.0))
+    A.trajInterp(div=500, write=True)
     # A = Position()
     #A = Trajectory(0, 13913, pos_i=Position(48.2042, 13.0884, 39946.8), pos_f=Position(48.8461, 13.7179, 1098))
     # A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))

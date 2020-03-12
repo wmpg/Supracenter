@@ -30,10 +30,11 @@ from wmpl.Utils.Math import subsampleAverage
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, waveReleasePointWinds, parseWeather, Constants
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, waveReleasePoint, waveReleasePointWinds, Constants
 from supra.Utils.Classes import Position, Station
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyweatherInterp import getWeather
+from supra.Atmosphere.Parse import parseWeather
 
 DATA_FILE = 'data.txt'
 C = ['r', 'g', 'm', 'k', 'y']
@@ -76,77 +77,59 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
     """
 
     # Use the European ORFEUS data access site
+    urls = ['http://service.iris.edu/fdsnws/', 
+            'http://service.ncedc.org/fdsnws/',
+            'http://service.scedc.caltech.edu/fdsnws/',
+            'http://rtserve.beg.utexas.edu/fdsnws/',
+            'http://eida.bgr.de/fdsnws/',
+            'http://eida-service.koeri.boun.edu.tr/fdsnws/',
+            'http://eida.ethz.ch/fdsnws/',
+            'http://geofon.gfz-potsdam.de/fdsnws/',
+            'http://ws.icgc.cat/fdsnws/',
+            'http://eida.ipgp.fr/fdsnws/',
+            'http://webservices.ingv.it/fdsnws/',
+            'http://erde.geophysik.uni-muenchen.de/fdsnws/',
+            'http://eida-sc3.infp.ro/fdsnws/',
+            'http://eida.gein.noa.gr/fdsnws/',
+            'http://www.orfeus-eu.org/fdsnws/',
+            'http://ws.resif.fr/fdsnws/',
+            'http://seisrequest.iag.usp.br/fdsnws/',
+            'https://fdsnws.raspberryshakedata.com/fdsnws/',
+            'http://auspass.edu.au:8080/fdsnws/']
 
-    # Construct ORFEUS URL
-    iris_url = ("http://www.orfeus-eu.org/fdsnws/station/1/query?network={:s}&latitude={:.3f}&longitude={:.3f}" \
-        "&maxradius={:.3f}&start={:s}&end={:s}&channel={:s}&format=text" \
-        "&includerestricted=false&nodata=404").format(network, lat_centre, lon_centre, deg_radius, \
-        start_date, end_date, channel)
-
-    #print('Unable to get ORFEUS data!')
-
-    # Construct IRIS URL
-    iris_url2 = ("http://service.iris.edu/fdsnws/station/1/query?net={:s}&latitude={:.3f}&longitude={:.3f}" \
-        "&maxradius={:.3f}&start={:s}&end={:s}&cha={:s}&nodata=404&format=text" \
-        "&matchtimeseries=true").format(network, lat_centre, lon_centre, deg_radius, start_date, \
-        end_date, channel)
-
-
-    # Initialize station arrays for both IRIS and ORFEUS
-    stations_txt_1 = []
-    stations_txt_2 = []
-
+    station_url = [None]*len(urls)
+    stations_txt = [None]*len(urls)
     station_list = []
 
-    # Retrieve station list if there is data available
-    # ORFEUS
-    try:
-        stations_txt_1 = urllibrary.urlopen(iris_url).read().decode('utf-8')
-    except:
-        #print('Unable to get ORFEUS data!')
-        pass
+    for ii, u in enumerate(urls):
+        station_url[ii] = ("{:}station/1/query?network={:s}&latitude={:.3f}&longitude={:.3f}" \
+            "&maxradius={:.3f}&start={:s}&end={:s}&channel={:s}&format=text" \
+            "&includerestricted=false&nodata=404").format(u, network, lat_centre, lon_centre, deg_radius, \
+            start_date, end_date, channel)
+        # print(urllibrary.urlopen(station_url[ii]).read().decode('utf-8'))
 
-    # IRIS
-    try:
-        stations_txt_2 = urllibrary.urlopen(iris_url2).read().decode('utf-8')
-    except:
-        #print('Unable to get IRIS data!')
-        pass
+        try:
+            stations_txt[ii] = urllibrary.urlopen(station_url[ii]).read().decode('utf-8')
+        except:
+            #print('Unable to get ORFEUS data!')
+            pass
+
+        # Parse the ORFEUS stations
+        if stations_txt[ii] is not None:
+            for entry in stations_txt[ii].split('\n')[1:]:
+
+                entry = entry.split('|')
+
+                # Skip empty rows
+                if len(entry) != 8:
+                    continue
+
+                # Unpack the line
+                network, station_code, lat, lon, elev, station_name, start_work, end_work = entry
+
+                station_list.append([network, station_code, float(lat), float(lon), float(elev), station_name])
 
 
-    # Return an empty list if no stations were retrieved
-    if not stations_txt_1 and not stations_txt_2:
-        return station_list
-
-    # Parse the ORFEUS stations
-    if len(stations_txt_1) != 0:
-        for entry in stations_txt_1.split('\n')[1:]:
-
-            entry = entry.split('|')
-
-            # Skip empty rows
-            if len(entry) != 8:
-                continue
-
-            # Unpack the line
-            network, station_code, lat, lon, elev, station_name, start_work, end_work = entry
-
-            station_list.append([network, station_code, float(lat), float(lon), float(elev), station_name])
-
-    # Parse the IRIS stations
-    if len(stations_txt_2) != 0:
-        for entry in stations_txt_2.split('\n')[1:]:
-
-            entry = entry.split('|')
-
-            # Skip empty rows
-            if len(entry) != 8:
-                continue
-            
-            # Unpack the line
-            network, station_code, lat, lon, elev, station_name, start_work, end_work = entry
-
-            station_list.append([network, station_code, float(lat), float(lon), float(elev), station_name])
 
     return station_list
 
@@ -181,16 +164,33 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
         ed.hour, ed.minute, ed.second, ed.microsecond//1000)
 
 
-    # Use the European ORFEUS data access site if specified
-        # Construct ORFEUS URL
-    iris_url = ("http://www.orfeus-eu.org/fdsnws/dataselect/1/query?network={:s}&station={:s}" \
-            "&channel={:s}&start={:s}&end={:s}").format(network, station_code, channel, start_time, \
+    urls = ['http://service.iris.edu/fdsnws/', 
+            'http://service.ncedc.org/fdsnws/',
+            'http://service.scedc.caltech.edu/fdsnws/',
+            'http://rtserve.beg.utexas.edu/fdsnws/',
+            'http://eida.bgr.de/fdsnws/',
+            'http://eida-service.koeri.boun.edu.tr/fdsnws/',
+            'http://eida.ethz.ch/fdsnws/',
+            'http://geofon.gfz-potsdam.de/fdsnws/',
+            'http://ws.icgc.cat/fdsnws/',
+            'http://eida.ipgp.fr/fdsnws/',
+            'http://webservices.ingv.it/fdsnws/',
+            'http://erde.geophysik.uni-muenchen.de/fdsnws/',
+            'http://eida-sc3.infp.ro/fdsnws/',
+            'http://eida.gein.noa.gr/fdsnws/',
+            'http://www.orfeus-eu.org/fdsnws/',
+            'http://ws.resif.fr/fdsnws/',
+            'http://seisrequest.iag.usp.br/fdsnws/',
+            'https://fdsnws.raspberryshakedata.com/fdsnws/',
+            'http://auspass.edu.au:8080/fdsnws/']
+
+
+    station_url = [None]*len(urls)
+    for ii, u in enumerate(urls):
+
+        station_url[ii] = ("{:}dataselect/1/query?network={:s}&station={:s}" \
+            "&channel={:s}&start={:s}&end={:s}").format(u, network, station_code, channel, start_time, \
             end_time)
-
-
-    iris_url2 = ("http://service.iris.edu/fdsnws/dataselect/1/query?net={:s}&sta={:s}&cha={:s}" \
-                "&start={:s}&end={:s}").format(network, station_code, channel, start_time, end_time)
-
 
 
     # Construct a file name
@@ -200,37 +200,27 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
     mseed_file_path = os.path.join(dir_path, mseed_file)
 
     # Get the miniSEED file
+    iris_file = [None]*len(urls)
 
-    # ORFEUS
-    try:
-        iris_file = urllibrary.urlopen(iris_url)
-    except:
-        print('Unable to access ORFEUS!')
-        iris_file = False
+    for ii, u in enumerate(urls):
+        # ORFEUS
+        try:
+            iris_file[ii] = urllibrary.urlopen(station_url[ii])
+        except:
+            print('Unable to access {:}!'.format(u))
+            iris_file[ii] = False
 
-    # IRIS
-    try:
-        iris_file2 = urllibrary.urlopen(iris_url2)
-    except:
-        print('Unable to access IRIS!')
-        iris_file2 = False
-    
 
     # Make sure both contents are not empty
-    if iris_file or iris_file2:
-
         # Save the file if it has any length
         with open(mseed_file_path,'wb') as f:
             
-            try:
-                if iris_file:
-                    f.write(iris_file.read())
-
-                if iris_file2:
-                    f.write(iris_file2.read())
-                    
-            except urllibrary.URLError:
-                print('Connection error! Could not download the waveform!')
+            for ii, u in enumerate(urls):
+                try:
+                    if iris_file[ii]:
+                        f.write(iris_file[ii].read())
+                except urllibrary.URLError:
+                    print('Connection error! Could not download the waveform!')
 
         if os.stat(mseed_file_path).st_size == 0:
                 
@@ -408,24 +398,22 @@ def getAllWaveformFiles(lat_centre, lon_centre, deg_radius, fireball_datetime, n
             mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='BDF', dir_path=dir_path)
             station_data.append('BDF')
-        elif station_data in station_listHHZ:
+        if station_data in station_listHHZ:
             mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='HHZ', dir_path=dir_path)
             station_data.append('HHZ')
-        elif station_data in station_listBHZ:
+        if station_data in station_listBHZ:
             mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='BHZ', dir_path=dir_path)
             station_data.append('BHZ')
-        elif station_data in station_listEHZ:
+        if station_data in station_listEHZ:
             mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='EHZ', dir_path=dir_path)
             station_data.append('EHZ')
-        elif station_data in station_listSHZ:
+        if station_data in station_listSHZ:
             mseed_file = getIRISWaveformFiles(network, station_code, fireball_datetime, \
                 channel='SHZ', dir_path=dir_path)
             station_data.append('SHZ')
-        else:
-            print("WARNING: Cannot find station {:}".format(station_code))
 
         if mseed_file != None:
             station_data.append(mseed_file)

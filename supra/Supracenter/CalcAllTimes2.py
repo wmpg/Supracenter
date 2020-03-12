@@ -5,7 +5,8 @@ from functools import partial
 import multiprocessing
 
 from supra.Utils.Classes import Position
-from supra.Fireballs.SeismicTrajectory import parseWeather, timeOfArrival
+from supra.Fireballs.SeismicTrajectory import timeOfArrival
+from supra.Atmosphere.Parse import parseWeather
 from supra.Supracenter.SPPT import perturb
 from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
@@ -15,38 +16,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 from supra.Supracenter.cyzInteg import zInterp
 
-def findPoints(setup):    
-    GRID_SPACE = 250
-    MIN_HEIGHT = 10
-    MAX_HEIGHT = 50000
 
-    u = setup.trajectory.vector.xyz
-    ground_point = np.array([0, 0, 0])
-    # find top boundary of line given maximum elevation of trajectory
-    if setup.trajectory.pos_i.elev != None:
-        scale = -setup.trajectory.pos_i.elev/u[2]
-
-    else:
-        scale = -100000/u[2]
-
-    # define line top boundary
-    top_point = ground_point - scale*u
-
-    ds = scale / (GRID_SPACE)
-
-    points = []
-
-    for i in range(GRID_SPACE + 1):
-        points.append(top_point + i*ds*u)
-
-    points = np.array(points)
-
-    offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
-    bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
-
-    points = np.array(points[offset:(bottom_offset+1)])
-
-    return points
 
 def loop(setup, station_list, sounding_p, no_of_frags, points, ref_pos, theo, n):
 
@@ -67,12 +37,12 @@ def loop(setup, station_list, sounding_p, no_of_frags, points, ref_pos, theo, n)
             #need filler values to make this a numpy array with fragmentation
             if i == 0:
 
-                
                 # Time to travel from trajectory to station
                 b_time = timeOfArrival(stn.position.xyz, setup.trajectory.pos_f.x, setup.trajectory.pos_f.y, setup.trajectory.t, setup.trajectory.v, \
                                             setup.trajectory.azimuth.rad, setup.trajectory.zenith.rad, setup, points, setup.trajectory.vector.xyz, sounding=sounding_p, \
                                             travel=False, fast=False, ref_loc=ref_pos, theo=theo, div=37)# + setup.t 
                 bTimes[i] = b_time
+
             else:
                 bTimes[i] = np.nan
 
@@ -148,7 +118,7 @@ def calcAllTimes(stn_list, setup, sounding, theo=False, file_name='all_pick_time
     # define line bottom boundary
     if setup.show_ballistic_waveform:
         try:
-            points = findPoints(setup)
+            points = setup.trajectory.findPoints(gridspace=100)
         except AttributeError:
             points = []
     else:

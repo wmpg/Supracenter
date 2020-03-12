@@ -99,10 +99,19 @@ def interpWeather(s, d, weather_type, dataset):
     merged_list = np.array([0, 0, 0, 0])
 
     # initial points to be used between s and d
-    div = 10
+    resolution = dataset[0][1] - dataset[0][0]
+    lat_dif = np.abs(d[0] - s[0])
+    lon_dif = np.abs(d[1] - s[1])
+
+    dlat = lat_dif/resolution
+    dlon = lon_dif/resolution
+
+    # Upper 
+    div = int((dlat - 2)*(dlon - 2) + 2)//3 + 1
 
     # Try 10 points first, duplicates will be removed
     points = divLine(s, d, div, dataset[0], dataset[1])
+
 
     # remove duplicate points, divisions can round to the same point
     # greatly reduces number of points
@@ -205,7 +214,7 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
     """
     # custom weather
 
-    if weather_type == 'custom' or weather_type == 'none':
+    if weather_type == 'custom' or weather_type == 'none' or weather_type == 'radio':
 
         # Only return interval between heights
         sounding = zInteg(D[2], S[2], dataset)
@@ -229,34 +238,35 @@ def getWeather(S, D, weather_type, ref_pos, dataset, convert=True):
 
 if __name__ == '__main__':
     
-    consts = Constants()
-    file_name = '/home/luke/Desktop/atmospheric data/StubenbergReanalysis.nc'
-    S = [48.0598, 13.1085, 85920] 
-    D = [48.846135, 13.71793, 1141.1]
-    ref_pos = Position(48.3314, 13.0706, 0.0)
-    dataset = storeNetCDFECMWF(file_name, ref_pos.lat, ref_pos.lon, consts, start_time=0)
+    pass
+    # consts = Constants()
+    # file_name = '/home/luke/Desktop/atmospheric data/StubenbergReanalysis.nc'
+    # S = [48.0598, 13.1085, 85920] 
+    # D = [48.846135, 13.71793, 1141.1]
+    # ref_pos = Position(48.3314, 13.0706, 0.0)
+    # dataset = storeNetCDFECMWF(file_name, ref_pos.lat, ref_pos.lon, consts, start_time=0)
 
-    result = np.array(getWeather(S, D, 'ecmwf', ref_pos, dataset, convert=False)[0])
+    # result = np.array(getWeather(S, D, 'ecmwf', ref_pos, dataset, convert=False)[0])
 
-    pressure = []
-    for height in result[:, 0]:
-        pressure.append(getData(height)[3])
-    pressure = np.array(pressure)
+    # pressure = []
+    # for height in result[:, 0]:
+    #     pressure.append(getData(height)[3])
+    # pressure = np.array(pressure)
 
-    result = np.hstack((result, np.expand_dims(pressure, axis=1)))
+    # result = np.hstack((result, np.expand_dims(pressure, axis=1)))
 
-    h = result[:, 0]
-    t = result[:, 1]
-    m = result[:, 2]
-    d = result[:, 3]
-    p = result[:, 4]
+    # h = result[:, 0]
+    # t = result[:, 1]
+    # m = result[:, 2]
+    # d = result[:, 3]
+    # p = result[:, 4]
 
-    H = h/1000
-    T = t**2/consts.GAMMA/consts.R*consts.M_0 - 273.15
-    U = m*np.cos(d)
-    V = m*np.sin(d)
-    P = p
+    # H = h/1000
+    # T = t**2/consts.GAMMA/consts.R*consts.M_0 - 273.15
+    # U = m*np.cos(d)
+    # V = m*np.sin(d)
+    # P = p
 
-    A = np.array([H, T, U, V, P]).T
+    # A = np.array([H, T, U, V, P]).T
 
-    np.savetxt("/home/luke/Desktop/atm.csv", A, delimiter=",")
+    # np.savetxt("/home/luke/Desktop/atm.csv", A, delimiter=",")

@@ -55,6 +55,9 @@ def theme(obj):
     }
     
     QCheckBox{color: white;}
+    QCheckBox::indicator:checked{
+    color: black;
+    }
     QTableWidget{color: white; background: rgb(64, 64, 64);}
     QMenuBar{background-color: black;}
     QMenuBar::item {color: white;}
@@ -109,7 +112,12 @@ def theme(obj):
 
     QWindow{background: black;}
     QScrollArea{color: white; background: black;}
-    
+
+    QCheckBox::indicator:checked {
+    image: url(../Supracenter/supra/Fireballs/docs/_images/Fin.png);}
+
+    QCheckBox::indicator:unchecked {
+    image: url(../Supracenter/supra/Fireballs/docs/_images/NoFin.png);}
 
     """
 
@@ -600,7 +608,11 @@ def addFetchATMWidgets(obj):
 
     obj.fatm_variable_combo = QComboBox()
     fetch_plots.addWidget(obj.fatm_variable_combo)
-    obj.fatm_variable_combo.currentTextChanged.connect(obj.fatmPlot)
+
+    try:
+        obj.fatm_variable_combo.currentTextChanged.connect(obj.fatmPlot)
+    except:
+        pass
 
     obj.fatm_name_label, obj.fatm_name_edits = createLabelEditObj('Name:', fetch_content, 1)
 
@@ -613,6 +625,11 @@ def addFetchATMWidgets(obj):
     fetch_content.addWidget(obj.fatm_datetime_label, 2, 1)
     fetch_content.addWidget(obj.fatm_datetime_edits, 2, 2)
     obj.fatm_datetime_edits.setCalendarPopup(True)
+
+    obj.fatm_source_type = QComboBox()
+    obj.fatm_source_type.addItem("Copernicus Climate Change Service")
+    obj.fatm_source_type.addItem("Radiosonde")
+    fetch_content.addWidget(obj.fatm_source_type, 3, 1, 1, 2)
 
     #############################
 

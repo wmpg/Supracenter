@@ -142,8 +142,8 @@ def saveDefaults(setup):
 
         if setup.n_theta == None:                           setup.n_theta = 45
         if setup.n_phi == None:                             setup.n_phi = 90
-        if setup.angle_precision == None:                   setup.angle_precision = 1e-5
-        if setup.angle_error_tol == None:                   setup.angle_error_tol = 1000
+        if setup.h_tol == None:                             setup.h_tol = 1e-5
+        if setup.v_tol == None:                             setup.v_tol = 1000
 
         if setup.maxiter == None:                           setup.maxiter = 100
         if setup.swarmsize == None:                         setup.swarmsize = 100

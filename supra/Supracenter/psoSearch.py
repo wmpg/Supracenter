@@ -256,12 +256,17 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
     # combined weights
     nwn = sum(w)
 
-    try:
-        v = -setup.trajectory.vector.xyz
-        setup.ref_pos = setup.trajectory.pos_f
-        if setup.debug:
-            print("Constraining Trajectory")
-    except:
+    if setup.show_ballistic_waveform:
+        try:
+            v = -setup.trajectory.vector.xyz
+            setup.ref_pos = setup.trajectory.pos_f
+            if setup.debug:
+                print("Constraining Trajectory")
+        except:
+            v = [None]
+            if setup.debug:
+                print("Free Search")
+    else:
         v = [None]
         if setup.debug:
             print("Free Search")

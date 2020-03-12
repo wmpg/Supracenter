@@ -101,8 +101,10 @@ def findECMWFSound(lat, lon, dataset):
 
     ### Pull variables from the file
     # range of lat/lons used
+
     latitude = dataset[0]%360
     longitude = dataset[1]%360
+
 
     # Temperature, K, with height, lat, lon
     temperature = dataset[2]
@@ -290,12 +292,9 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
         store_data: [list[ndarray]] atmospheric profile for the search area
     """
 
-    try:
-        # Read the file
-        dataset = Dataset(file_name, "r+", format="NETCDF4")
-    except:
-        print("ERROR: Unable to read weather file: ", file_name)
-        exit()
+    # Read the file
+    dataset = Dataset(file_name, "r+", format="NETCDF4")
+
 
     # Check file type
     if not (set(['t', 'u', 'v', 'latitude', 'longitude']) < set(dataset.variables.keys())):
@@ -314,8 +313,10 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     # print(dataset.variables)
     # exit()
 
+
     lon_index = int(np.around((lon%360)*4))
     lat_index = int(np.around(-(lat+90)*4) - 1)# - 90*4
+
 
     longitude = np.array(dataset.variables['longitude'][lon_index-20:lon_index+21])
     latitude = np.array(dataset.variables['latitude'][lat_index-20:lat_index+21])
@@ -357,7 +358,7 @@ def storeNetCDFECMWF(file_name, lat, lon, consts, start_time=0):
     # Store data in a list of arrays
     store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temps), np.array(mags), np.array(dirs), np.array(level)]
     
-    # Store data in a list of ndarrays
+    # Store data in a list of ndarraiys
     # store_data = [np.array(latitude[:]), np.array(longitude[:]), np.array(temperature[:]), np.array(x_wind[:]), np.array(y_wind[:])]
     dataset.close()
 

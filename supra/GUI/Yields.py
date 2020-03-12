@@ -18,11 +18,11 @@ from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscanIntegration import cyscan as intscan
 from supra.Supracenter.anglescan import anglescan
 from supra.Supracenter.cyscan2 import cyscan
-from supra.Fireballs.SeismicTrajectory import parseWeather
 from supra.Utils.Classes import Position
 from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.l137 import estPressure
 
+from supra.Atmosphere.Parse import parseWeather
 
 def nuc_func(Z):
     # KG85

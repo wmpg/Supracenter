@@ -239,7 +239,7 @@ def readEnsembleFile(setup, lat, lon, ensemble_file, ensemble_no, line=False):
     y_wind = np.flip(y_wind, axis=0)
 
     dataset.close()
-
+    
     return temperature, x_wind, y_wind
 
 
@@ -352,7 +352,7 @@ def perturb(setup, sounding, method, sounding_u=[], sounding_l=[], spread_file='
         V = spread_r(v, spread_v)
 
     elif method == 'ensemble':
-        T, U, V = readEnsembleFile(setup, lat, lon, ensemble_file, ensemble_no)
+        T, U, V = readEnsembleFile(setup, lat, lon, ensemble_file, ensemble_no, line)
         T = np.flipud(T)
         U = np.flipud(U)
         V = np.flipud(V)

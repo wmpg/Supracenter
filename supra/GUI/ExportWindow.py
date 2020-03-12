@@ -1,4 +1,8 @@
 import numpy as np
+import os
+import obspy
+import scipy
+import warnings
 
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -6,6 +10,16 @@ from PyQt5.QtCore import *
 import pyqtgraph as pg
 
 from supra.GUI.WidgetBuilder import theme
+
+from supra.Supracenter.cyweatherInterp import getWeather
+from supra.Utils.Classes import Position
+from supra.Atmosphere.Parse import parseWeather
+from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.SPPT import perturb as perturbation_method
+from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
+
+from supra.Fireballs.SeismicTrajectory import getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
+from supra.Utils.Formatting import *
 
 class ExportWindow(QScrollArea):
     def __init__(self, invert, setup, stn_list, position):
@@ -38,7 +52,7 @@ class ExportWindow(QScrollArea):
 
                 for p, point in enumerate(position):
                     for ptb_n in range(self.setup.perturb_times):             
-                        dataset = SolutionGUI.perturbGenerate(self, ptb_n, dataset, SolutionGUI.perturbSetup(self))
+                        dataset = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
                         zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
                                             [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
                         point.pos_loc(ref_pos)
@@ -194,3 +208,53 @@ class ExportWindow(QScrollArea):
         canvas.setLabel('left', "Signal Response")
 
         return np.min(waveform_data), np.max(waveform_data)
+
+    def perturbSetup(self):
+        """ Pulls the correct file names for the perturbing function to read, depending on the perturbation type
+        """
+
+        if self.setup.perturb_method == 'temporal':
+
+            # sounding data one hour later
+            sounding_u = parseWeather(self.setup, time= 1)
+
+            # sounding data one hour earlier
+            sounding_l = parseWeather(self.setup, time=-1)
+
+        else:
+            sounding_u = []
+            sounding_l = []
+
+        if self.setup.perturb_method == 'ensemble':
+            ensemble_file = self.setup.perturbation_spread_file
+        else:
+            ensemble_file = ''
+
+        if self.setup.perturb_times == 0: self.setup.perturb_times = 1
+
+        if not self.setup.perturb:
+            self.setup.perturb_times = 1
+
+        return np.array([sounding_l, sounding_u, ensemble_file])
+
+    def perturbGenerate(self, ptb_n, dataset, perturb_data, line=False):
+        """ Generates a perturbed cubic atmospheric profile (similar to 'dataset') based off of the perturb data 
+        """
+
+        sounding_l, sounding_u, ensemble_file = perturb_data[0], perturb_data[1], perturb_data[2]
+
+        # Perturbed soundings
+        if ptb_n > 0:
+            
+
+            sounding_p = perturbation_method(self.setup, dataset, self.setup.perturb_method, \
+                sounding_u=sounding_u, sounding_l=sounding_l, \
+                spread_file=self.setup.perturbation_spread_file, lat=self.setup.lat_centre, lon=self.setup.lon_centre, \
+                ensemble_file=ensemble_file, ensemble_no=ptb_n, line=line)
+
+        # Nominal sounding
+        else:
+            sounding_p = dataset
+
+
+        return sounding_p

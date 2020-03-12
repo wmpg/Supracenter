@@ -56,11 +56,10 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     """
 
     # Convert to radians
-    try:
-        lat0, lon0 = np.radians(lat0), np.radians(lon0)
-        lat, lon = np.radians(lat), np.radians(lon)
-    except AttributeError:
-        return np.nan, np.nan, np.nan
+
+    lat0, lon0 = np.radians(lat0), np.radians(lon0)
+    lat, lon = np.radians(lat), np.radians(lon)
+
 
     # Convert to local
         # Calculate the ECEF coordinates of the reference position
@@ -76,7 +75,6 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
 
     # Rotate the coordinates so the origin point is tangent to the Earth's surface
     local_coord = np.array(ecef2ENU(lat0, lon0, *local_coord))
-
 
     # Ignore height component transformation
     return local_coord[0], local_coord[1], elev

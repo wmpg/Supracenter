@@ -30,6 +30,7 @@ def saveGUI(self, write=True, autosave=False):
     self.setup.lon_centre = tryFloat(self.lon_centre_edits.text())
     self.setup.deg_radius = tryFloat(self.deg_radius_edits.text())
     self.setup.fireball_datetime = self.fireball_datetime_edits.dateTime().toPyDateTime()
+    self.fatm_datetime_edits.setDateTime(self.setup.fireball_datetime)
     self.setup.v_sound = tryFloat(self.v_sound_edits.text())
 
     self.setup.t0 = tryFloat(self.t0_edits.text())
@@ -46,7 +47,10 @@ def saveGUI(self, write=True, autosave=False):
     self.setup.pos_i = tryPosition(self.setup.lat_i, self.setup.lon_i, self.setup.elev_i)
     self.setup.pos_f = tryPosition(self.setup.lat_f, self.setup.lon_f, self.setup.elev_f)
 
-    self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
+    try:
+        self.setup.trajectory = tryTrajectory(self.setup.t0, self.setup.v, self.setup.azimuth, self.setup.zenith, self.setup.pos_i, self.setup.pos_f)
+    except AttributeError as e:
+        errorMessage("Cannot build Trajectory!", 2)
 
     self.setup.show_ballistic_waveform = tryBool(self.show_ballistic_waveform_edits.currentText())
 
@@ -86,10 +90,13 @@ def saveGUI(self, write=True, autosave=False):
     self.setup.supra_min = trySupracenter(self.setup.pos_min, self.setup.t_min)
     self.setup.supra_max = trySupracenter(self.setup.pos_max, self.setup.t_max)
 
-    self.setup.traj_min = tryTrajectory(self.setup.t_min, self.setup.v_min, self.setup.azimuth_min, \
-                                     self.setup.zenith_min, self.setup.pos_min, self.setup.pos_min)
-    self.setup.traj_max = tryTrajectory(self.setup.t_max, self.setup.v_max, self.setup.azimuth_max, \
-                                     self.setup.zenith_max, self.setup.pos_max, self.setup.pos_max)
+    try:
+        self.setup.traj_min = tryTrajectory(self.setup.t_min, self.setup.v_min, self.setup.azimuth_min, \
+                                         self.setup.zenith_min, self.setup.pos_min, self.setup.pos_min)
+        self.setup.traj_max = tryTrajectory(self.setup.t_max, self.setup.v_max, self.setup.azimuth_max, \
+                                         self.setup.zenith_max, self.setup.pos_max, self.setup.pos_max)
+    except AttributeError as e:
+        errorMessage("Unable to build trajectory with given data", 0, info="Ignore if not using minimum or maximum trajectories", detail='{:}'.format(e))
 
     self.setup.enable_winds = tryBool(self.enable_winds_edits.currentText())
     self.setup.weather_type = self.weather_type_edits.currentText()
@@ -198,6 +205,7 @@ def loadGUI(self):
     self.lon_centre_edits.setText(str(self.setup.lon_centre))
     self.deg_radius_edits.setText(str(self.setup.deg_radius))
     self.fireball_datetime_edits.setDateTime(self.setup.fireball_datetime)
+    self.fatm_datetime_edits.setDateTime(self.setup.fireball_datetime)
     self.v_sound_edits.setText(str(self.setup.v_sound))
 
     self.t0_edits.setText(str(self.setup.trajectory.t))
