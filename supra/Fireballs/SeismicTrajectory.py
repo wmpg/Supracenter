@@ -175,7 +175,7 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
     # Calculate the mach angle
     #cos(arcsin(x)) = sqrt(1 - x^2)
-    ta = time.time()
+
 
     beta = math.sqrt(1 - (setup.v_sound/v/1000)**2)
 
@@ -207,8 +207,6 @@ def timeOfArrival(stat_coord, x0, y0, t0, v, azim, zangle, setup, points, u, sou
 
     R = waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=div)
 
-    t1 = time.time()
-    print("Time of Arrival: {:.4f}".format(t1-ta))
     if travel:
         # travel from trajectory only
         ti = R[3]*beta
@@ -291,9 +289,8 @@ def waveReleasePointWindsContour(setup, sounding, ref_loc, points, div=37, mode=
 def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=37):
     #azim = (np.pi - azim)%(2*np.pi)
     # Break up the trajectory into points
-    ta = time.time()
     
-    ANGLE_TOL = 1 #deg
+    ANGLE_TOL = 15 #deg
 
 
     # Trajectory vector
@@ -306,27 +303,23 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
 
     # Cut down atmospheric profile to the correct heights, and interp
     z_profile, _ = getWeather(points[0], stat_coord, setup.weather_type, ref_loc, copy.copy(sounding), convert=True)
-    t1 = time.time()
-    print("Wave Release Point - get weather: {:.4f}".format(t1-ta))
+
     D = np.array(stat_coord)
 
     cyscan_res = []
 
-    ta = time.time()
     # Compute time of flight residuals for all stations
     for i in range(a):
 
         S = np.array(points[i])
 
-        zProfile = zInteg(D[2], S[2], z_profile)
+        zProfile = zInteg(D[2], S[2], z_profile, wind=setup.enable_winds)
 
         # Bottleneck
         A = cyscan(S, D, zProfile, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
 
         cyscan_res.append(A)
 
-    t1 = time.time()
-    print("Wave Release Point - cyscan: {:.4f}".format(t1-ta))
 
     cyscan_res = np.array(cyscan_res)
     T = cyscan_res[:, 0]
@@ -338,15 +331,12 @@ def waveReleasePointWinds(stat_coord, setup, sounding, ref_loc, points, u, div=3
 
     v = [0]*a
 
-    ta = time.time()
     for ii in range(a):
         #v[ii] = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
         v[ii] = (D-points[ii])/np.sqrt(np.dot(D-points[ii], D-points[ii]))
         angle[ii] = angleBetweenVect(u, v[ii])
         angle[ii] = np.absolute(90 - angle[ii])
 
-    t1 = time.time()
-    print("Wave Release Point - calcs: {:.4f}".format(t1-ta))
     try:
         best_indx = np.nanargmin(angle)
     except:

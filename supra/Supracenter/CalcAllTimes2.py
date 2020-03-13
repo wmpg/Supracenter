@@ -118,7 +118,7 @@ def calcAllTimes(stn_list, setup, sounding, theo=False, file_name='all_pick_time
     # define line bottom boundary
     if setup.show_ballistic_waveform:
         try:
-            points = setup.trajectory.findPoints(gridspace=100)
+            points = setup.trajectory.findPoints(gridspace=100, min_p=10000, max_p=50000)
         except AttributeError:
             points = []
     else:

@@ -483,11 +483,18 @@ class Trajectory:
 
         return P
 
-    def findPoints(self, gridspace=250):    
+    def findPoints(self, gridspace=250, min_p=0, max_p=0):    
         
         GRID_SPACE = gridspace
-        MIN_HEIGHT = self.pos_f.elev
-        MAX_HEIGHT = self.pos_i.elev
+        
+        if min_p == 0:
+            MIN_HEIGHT = self.pos_f.elev
+        else:
+            MIN_HEIGHT = min_p
+        if max_p == 0:
+            MAX_HEIGHT = self.pos_i.elev
+        else:
+            MAX_HEIGHT = max_p
 
         u = self.vector.xyz
         ground_point = np.array([0, 0, 0])

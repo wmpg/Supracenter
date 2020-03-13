@@ -206,8 +206,9 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
                 if debug:
                     print('Stopping search: Swarm best objective change less than {:}'\
                         .format(minfunc))
-                mp_pool.close()
-                mp_pool.join()
+                if processes > 1:
+                    mp_pool.close()
+                    mp_pool.join()
                 if particle_output:
                     return p_min, fp[i_min], p, fp
                 else:
@@ -216,8 +217,9 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
                 if debug:
                     print('Stopping search: Swarm best position change less than {:}'\
                         .format(minstep))
-                mp_pool.close()
-                mp_pool.join()
+                if processes > 1:
+                    mp_pool.close()
+                    mp_pool.join()
                 if particle_output:
                     return p_min, fp[i_min], p, fp
                 else:
@@ -235,8 +237,9 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
     
     if not is_feasible(g):
         print("However, the optimization couldn't find a feasible design. Sorry")
-    mp_pool.close()
-    mp_pool.join()
+    if processes > 1:
+        mp_pool.close()
+        mp_pool.join()
     if particle_output:
         return g, fg, p, fp
     else:
