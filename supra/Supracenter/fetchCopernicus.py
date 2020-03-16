@@ -1,5 +1,8 @@
 #!/usr/bin/env python
-import cdsapi
+try:
+    import cdsapi
+except ModuleNotFoundError:
+    print('Not able to find cdsapi - Weather retrieval will not work!')
 
 def copernicusAPI(variables, year, month, day, time, loc, ensemble=False):
 

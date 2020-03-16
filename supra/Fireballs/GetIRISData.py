@@ -85,6 +85,7 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
             'http://eida-service.koeri.boun.edu.tr/fdsnws/',
             'http://eida.ethz.ch/fdsnws/',
             'http://geofon.gfz-potsdam.de/fdsnws/',
+            'http://eida.gfz-potsdam.de/fdsnws/',
             'http://ws.icgc.cat/fdsnws/',
             'http://eida.ipgp.fr/fdsnws/',
             'http://webservices.ingv.it/fdsnws/',
@@ -106,12 +107,11 @@ def getIRISStations(lat_centre, lon_centre, deg_radius, start_date, end_date, ne
             "&maxradius={:.3f}&start={:s}&end={:s}&channel={:s}&format=text" \
             "&includerestricted=false&nodata=404").format(u, network, lat_centre, lon_centre, deg_radius, \
             start_date, end_date, channel)
-        # print(urllibrary.urlopen(station_url[ii]).read().decode('utf-8'))
-
+        
         try:
             stations_txt[ii] = urllibrary.urlopen(station_url[ii]).read().decode('utf-8')
         except:
-            #print('Unable to get ORFEUS data!')
+
             pass
 
         # Parse the ORFEUS stations
@@ -172,6 +172,7 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
             'http://eida-service.koeri.boun.edu.tr/fdsnws/',
             'http://eida.ethz.ch/fdsnws/',
             'http://geofon.gfz-potsdam.de/fdsnws/',
+            'http://eida.gfz-potsdam.de/fdsnws/',
             'http://ws.icgc.cat/fdsnws/',
             'http://eida.ipgp.fr/fdsnws/',
             'http://webservices.ingv.it/fdsnws/',
@@ -184,7 +185,8 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
             'https://fdsnws.raspberryshakedata.com/fdsnws/',
             'http://auspass.edu.au:8080/fdsnws/']
 
-
+    # Get the miniSEED file
+    iris_file = [None]*len(urls)
     station_url = [None]*len(urls)
     for ii, u in enumerate(urls):
 
@@ -193,22 +195,20 @@ def getIRISWaveformFiles(network, station_code, fireball_datetime, dir_path='.',
             end_time)
 
 
-    # Construct a file name
-    mseed_file = network + '_' + station_code + '_{:s}_'.format(channel) + start_time.replace(':', '.') \
-        + '_' + end_time.replace(':', '.') + '.mseed'
+        # Construct a file name
+        mseed_file = network + '_' + station_code + '_{:s}_'.format(channel) + start_time.replace(':', '.') \
+            + '_' + end_time.replace(':', '.') + '.mseed'
 
-    mseed_file_path = os.path.join(dir_path, mseed_file)
+        mseed_file_path = os.path.join(dir_path, mseed_file)
 
-    # Get the miniSEED file
-    iris_file = [None]*len(urls)
 
-    for ii, u in enumerate(urls):
-        # ORFEUS
-        try:
-            iris_file[ii] = urllibrary.urlopen(station_url[ii])
-        except:
-            print('Unable to access {:}!'.format(u))
-            iris_file[ii] = False
+
+        # # ORFEUS
+        # try:
+        iris_file[ii] = urllibrary.urlopen(station_url[ii])
+        # except:
+        #     print('Unable to access {:}!'.format(u))
+        #     iris_file[ii] = False
 
 
     # Make sure both contents are not empty

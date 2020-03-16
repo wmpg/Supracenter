@@ -177,7 +177,7 @@ class Position:
         try:
             self.lat_r = np.radians(lat)
             self.lon_r = np.radians(lon)
-        except AttributeError:
+        except (AttributeError, TypeError):
             self.lat_r = None
             self.lon_r = None
 

@@ -311,11 +311,11 @@ def addSupraWidgets(obj):
     obj.supra_tab_content = QVBoxLayout()
     obj.plots = QVBoxLayout()
 
-    obj.two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+    obj.two_canvas = FigureCanvas(Figure())
     obj.two_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     obj.plots.addWidget(obj.two_canvas)
 
-    obj.three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+    obj.three_canvas = FigureCanvas(Figure())
     obj.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
     obj.plots.addWidget(obj.three_canvas)
 
@@ -342,11 +342,11 @@ def addSupWidgets(obj):
     obj.sup_tab_content = QGridLayout()
     obj.sup_plots = QVBoxLayout()
 
-    obj.sup_two_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+    obj.sup_two_canvas = FigureCanvas(Figure())
     obj.sup_two_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     obj.sup_plots.addWidget(obj.sup_two_canvas)
     
-    obj.sup_three_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+    obj.sup_three_canvas = FigureCanvas(Figure())
     obj.sup_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     obj.sup_plots.addWidget(obj.sup_three_canvas)
 
@@ -797,7 +797,7 @@ def addRayTracerWidgets(obj):
     obj.ray_canvas.setLabel('bottom', "Longitude", units='deg E')
     obj.ray_canvas.setLabel('left', "Latitude", units='deg N')
 
-    obj.ray_line_canvas = FigureCanvas(Figure(figsize=(0, 0)))
+    obj.ray_line_canvas = FigureCanvas(Figure())
     obj.ray_line_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
     obj.ray_graphs.addWidget(obj.ray_line_canvas)
 

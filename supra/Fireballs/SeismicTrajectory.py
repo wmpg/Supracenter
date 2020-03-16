@@ -36,7 +36,7 @@ from supra.Supracenter.cyzInteg import zInteg
 from supra.Supracenter.stationDat import readTimes
 from supra.Utils.Classes import Position, Constants
 from supra.Utils.pso import pso
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan3 import cyscan
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
 from wmpl.Utils.Math import vectMag, vectNorm, rotateVector, meanAngle

@@ -7,14 +7,17 @@ import time
 import numpy as np
 cimport numpy as np
 
-FLOAT_TYPE = np.float64
-ctypedef np.float64_t FLOAT_TYPE_t
+FLOAT_TYPE = np.float32
+ctypedef np.float32_t FLOAT_TYPE_t
+
+INT_TYPE = np.int8
+ctypedef np.int8_t INT_TYPE_t
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cpdef float appatan(float z):
+cpdef FLOAT_TYPE_t appatan(float z):
     
     # 0.29 deg error
     # cdef:
@@ -23,9 +26,9 @@ cpdef float appatan(float z):
     # return (n1 + n2 * z * z) * z
 
     cdef:
-        float n1 = -3.10715
-        float n2 = 9.99042
-        float a = z*z
+        FLOAT_TYPE_t n1 = -3.10715
+        FLOAT_TYPE_t n2 = 9.99042
+        FLOAT_TYPE_t a = z*z
     return 0.1*z*((a + n1)*a + n2)
 
     # cdef:
@@ -42,10 +45,10 @@ cpdef float appatan(float z):
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cpdef float appatan2(float y, float x):
+cpdef FLOAT_TYPE_t appatan2(float y, float x):
     
     cdef:
-        float z = y/x
+        FLOAT_TYPE_t z = y/x
 
     if x > 0.0:
         return appatan(z)
@@ -56,9 +59,9 @@ cpdef float appatan2(float y, float x):
             return appatan(z) - np.pi
     else:
         if y > 0:
-            return np.pi/2
+            return 1.5707963
         elif y < 0:
-            return -np.pi/2
+            return -1.5707963
         else:
             #undefined
             return 0.0
@@ -86,7 +89,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
     C = np.expand_dims(w*np.cos(wd), axis=0)
     D = np.expand_dims( np.sin(phi), axis=0)
 
-    return A.T*B + C.T*D
+    return np.matmul(A.T, B) + np.matmul(C.T, D)
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
@@ -98,34 +101,34 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     cdef:
 
-        float pi_2 = np.pi/2
-        int found = 0
+        FLOAT_TYPE_t pi_2 = 1.5707963
+        INT_TYPE_t found = 0
 
-        float dtheta = np.pi/n_theta
+        FLOAT_TYPE_t dtheta = np.pi/n_theta
         
-        float dphi = pi_2/n_phi   
+        FLOAT_TYPE_t dphi = pi_2/n_phi   
 
-        float dx = detec_pos[0] - supra_pos[0]
-        float dy = detec_pos[1] - supra_pos[1]
+        FLOAT_TYPE_t dx = detec_pos[0] - supra_pos[0]
+        FLOAT_TYPE_t dy = detec_pos[1] - supra_pos[1]
 
         # Approximate atan2 function, accurate within 0.29 deg
-        float azth = appatan2(dy, dx)
+        FLOAT_TYPE_t azth = appatan2(dy, dx)
 
-        int n_layers = len(z_profile)
+        INT_TYPE_t n_layers = len(z_profile)
 
         np.ndarray[FLOAT_TYPE_t, ndim=1] s = 1.0/z_profile[0:n_layers, 1]
 
         np.ndarray[FLOAT_TYPE_t, ndim=1] z  = z_profile[0:n_layers, 0]
 
-        np.ndarray[FLOAT_TYPE_t, ndim=1] phi = np.linspace(azth-pi_2, azth+pi_2, n_phi)
+        np.ndarray[FLOAT_TYPE_t, ndim=1] phi = np.linspace(azth-pi_2, azth+pi_2, n_phi).astype(np.float32)
         np.ndarray[FLOAT_TYPE_t, ndim=2] Phi = np.tile(phi, (n_theta, 1))
     
         np.ndarray[FLOAT_TYPE_t, ndim=2] u = nwDir(z_profile[:, 2], z_profile[:, 3], phi)
         np.ndarray[FLOAT_TYPE_t, ndim=2] v = nwDir(z_profile[:, 2], z_profile[:, 3], phi+pi_2)
 
-        np.ndarray[FLOAT_TYPE_t, ndim=1] theta = np.linspace(pi_2 + 1e-6, np.pi, n_theta)
+        np.ndarray[FLOAT_TYPE_t, ndim=1] theta = np.linspace(pi_2 + 1e-6, np.pi, n_theta).astype(np.float32)
 
-        float s_val = s[n_layers-1]
+        FLOAT_TYPE_t s_val = s[n_layers-1]
 
         np.ndarray[FLOAT_TYPE_t, ndim=2] Theta = np.tile(theta, (n_phi, 1)).T
 
@@ -136,21 +139,21 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         np.ndarray[FLOAT_TYPE_t, ndim=2] p = s_val*np.sin(Theta)/(1 + s_val*u0*np.sin(Theta))
 
         # Transformed x and y
-        np.ndarray[FLOAT_TYPE_t, ndim=2] X = np.zeros((n_theta, n_phi))
-        np.ndarray[FLOAT_TYPE_t, ndim=2] Y = np.zeros((n_theta, n_phi))
+        np.ndarray[FLOAT_TYPE_t, ndim=2] X = np.zeros((n_theta, n_phi)).astype(np.float32)
+        np.ndarray[FLOAT_TYPE_t, ndim=2] Y = np.zeros((n_theta, n_phi)).astype(np.float32)
 
         # Transformed wind componenets
-        np.ndarray[FLOAT_TYPE_t, ndim=2] U = np.empty((n_theta, n_phi))
-        np.ndarray[FLOAT_TYPE_t, ndim=2] V = np.empty((n_theta, n_phi))
+        np.ndarray[FLOAT_TYPE_t, ndim=2] U = np.empty((n_theta, n_phi)).astype(np.float32)
+        np.ndarray[FLOAT_TYPE_t, ndim=2] V = np.empty((n_theta, n_phi)).astype(np.float32)
 
         #Travel time
-        float t_arrival = 0
+        FLOAT_TYPE_t t_arrival = 0
 
         #azimuth angle
-        float azimuth = 0
+        FLOAT_TYPE_t azimuth = 0
 
         #takeoff angle
-        float takeoff = 0
+        FLOAT_TYPE_t takeoff = 0
 
     # ignore negative roots
 
@@ -171,30 +174,23 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Winds Enabled
             if wind:
                 # clear old variables
-                t1 = time.time()
+
                 # Wind transformation variables
                 U = np.tile(u[i, :], (n_theta, 1))
                 V = np.tile(v[i, :], (n_theta, 1))
-                t2 = time.time()
-                print('TILE: {:E}'.format(t2-t1))
 
-                t1 = time.time()
                 p2 = p/(1 - p*U)
-                t2 = time.time()
-                print('P2: {:E}'.format(t2-t1))
+
                 # This term produces nans
-                t1 = time.time()
+
                 A = delz/np.sqrt(s2 - p2**2)
-                t2 = time.time()
-                print('A: {:E}'.format(t2-t1))
+
                 # Equation (10)
-                t1 = time.time()
                 X += (p2 + s2*U)*A
 
                 # Equation (11)
                 Y += s2*V*A
-                t2 = time.time()
-                print('XY: {:E}'.format(t2-t1))
+
                 last_z = i + 1
 
             # Winds Disabled
@@ -248,14 +244,14 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             if ((theta[k] != pi_2) and (theta[k] != np.pi)):
 
                 # Respace net around best value
-                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)    
+                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi).astype(np.float32)    
                 dphi = 2*dphi/n_phi
 
                 # Check: theta must be > 90 degrees
                 if theta[k] - dtheta < pi_2:
-                    theta = np.linspace(pi_2, theta[k] + 2*dtheta, n_theta)
+                    theta = np.linspace(pi_2, theta[k] + 2*dtheta, n_theta).astype(np.float32)
                 else: 
-                    theta = np.linspace(theta[k] - dtheta, theta[k] + dtheta, n_theta) 
+                    theta = np.linspace(theta[k] - dtheta, theta[k] + dtheta, n_theta).astype(np.float32) 
                 dtheta = 2*dtheta/n_theta  
 
             # Case: central takeoff angle is at 180 degrees (vertical)
@@ -263,20 +259,20 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 # Respace net around best value
                 # Higher accuracy in n_phi helps here
-                phi = np.linspace(0, 2*np.pi - dphi, n_phi) 
+                phi = np.linspace(0, 2*np.pi - dphi, n_phi).astype(np.float32) 
                 dphi = dphi/n_phi
                 
-                theta = np.linspace(theta[k] - dtheta, theta[k], n_theta)                      
+                theta = np.linspace(theta[k] - dtheta, theta[k], n_theta).astype(np.float32)                      
                 dtheta = dtheta/n_theta
 
             # Case: central takeoff angle is at 90 degrees (horizontal)
             elif (theta[k] == pi_2):
 
                 # Respace net around best value
-                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)         
+                phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi).astype(np.float32)         
                 dphi = 2*dphi/n_phi  
 
-                theta = np.linspace(pi_2, theta[k] + 2*dtheta, n_theta) 
+                theta = np.linspace(pi_2, theta[k] + 2*dtheta, n_theta).astype(np.float32) 
                 dtheta = dtheta/n_theta/2
             
             # Update values, and try again
@@ -289,8 +285,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             u0 = np.tile(u[0, :], (n_theta, 1))
 
 
-        X = np.zeros((n_theta, n_phi))
-        Y = np.zeros((n_theta, n_phi))
+        X = np.zeros((n_theta, n_phi)).astype(np.float32)
+        Y = np.zeros((n_theta, n_phi)).astype(np.float32)
 
         p = s_val*np.sin(Theta)/(1 + u0*np.sin(Theta)*s_val)
 
