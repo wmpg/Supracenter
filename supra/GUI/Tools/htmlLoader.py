@@ -50,18 +50,18 @@ def addTrajectory(setup, m):
 def addStations(setup, stn_list, m):
     for stn in stn_list:
 
-        if stn.channel == 'BDF':
-            c = 'green'
-        else:
-            c = 'red'
+        # if stn.channel == 'BDF':
+        #     c = 'green'
+        # else:
+        #     c = 'red'
 
-        folium.Marker([stn.position.lat, stn.position.lon], 
-        popup='{:}-{:} \n Latitude: {:} \n Longitude: {:} \n Elevation: {:}'.format(stn.network, stn.code, stn.position.lat, stn.position.lon, stn.position.elev), 
-        icon=folium.Icon(color=c, icon='info-sign')).add_to(m)
+        folium.Marker([stn.metadata.position.lat, stn.metadata.position.lon], 
+        popup='{:}-{:} \n Latitude: {:} \n Longitude: {:} \n Elevation: {:}'.format(stn.metadata.network, stn.metadata.code, stn.metadata.position.lat, stn.metadata.position.lon, stn.metadata.position.elev), 
+        icon=folium.Icon(color='red', icon='info-sign')).add_to(m)
 
     return m
 
-def htmlBuilder(setup, stn_list):
+def htmlBuilder(setup, prefs, stn_list):
     
     m = folium.Map(location=[setup.lat_centre, setup.lon_centre])
     m.add_child(folium.LatLngPopup())
@@ -69,7 +69,7 @@ def htmlBuilder(setup, stn_list):
     m = addStations(setup, stn_list, m)
     m = addTrajectory(setup, m)
 
-    filename = os.path.join(setup.working_directory, 'index.html')
+    filename = os.path.join(prefs.workdir, 'index.html')
     m.save(filename)
 
     return filename

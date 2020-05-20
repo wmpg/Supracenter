@@ -74,10 +74,10 @@ def tryAngle(angle):
 
     return result
 
-def tryTrajectory(t, v, az, ze, i, f):
+def tryTrajectory(t, v, az, ze, i, f, v_f=None):
 
     # try:
-    result = Trajectory(t, v, azimuth=az, zenith=ze, pos_i=i, pos_f=f)
+    result = Trajectory(t, v, azimuth=az, zenith=ze, pos_i=i, pos_f=f, v_f=v_f)
     # except:
     #     result = None
 

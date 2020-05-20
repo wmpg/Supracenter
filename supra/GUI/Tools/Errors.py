@@ -1,5 +1,5 @@
 from pyqtgraph.Qt import QtGui, QtCore
-from supra.GUI.GUITools import *
+from supra.GUI.Tools.GUITools import *
 
 def errorCodes(obj, attr, debug=True):
 

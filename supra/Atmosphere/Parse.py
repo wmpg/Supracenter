@@ -2,7 +2,6 @@ import sys
 import numpy as np
 
 from supra.Utils.Classes import Constants
-from supra.Supracenter.netCDFconv import storeHDF, storeNetCDFECMWF, storeNetCDFUKMO, readCustAtm, storeAus
 from supra.Atmosphere.parseRadio import parseRadio
 
 def parseWeather(setup, t=0, lat=None, lon=None):

@@ -10,16 +10,14 @@ from PyQt5.QtCore import *
 import pyqtgraph as pg
 
 from supra.Utils.pso import pso
-from supra.GUI.WidgetBuilder import theme
-from supra.GUI.GUITools import createLabelEditObj
+from supra.GUI.Tools.Theme import theme
+from supra.GUI.Tools.GUITools import createLabelEditObj
 from supra.Utils.TryObj import *
 from supra.Utils.EigenRay import eigenConsistancy
-from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscanIntegration import cyscan as intscan
 from supra.Supracenter.anglescan import anglescan
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.Classes import Position
-from supra.Supracenter.SPPT import perturb as perturbation_method
 from supra.Supracenter.l137 import estPressure
 
 from supra.Atmosphere.Parse import parseWeather

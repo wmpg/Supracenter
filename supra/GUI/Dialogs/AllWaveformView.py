@@ -19,21 +19,17 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
 from supra.Supracenter.cyscan2 import cyscan
-from supra.Supracenter.cyweatherInterp import getWeather
 
-from supra.GUI.GUITools import *
-from supra.GUI.WidgetBuilder import *
+from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.WidgetBuilder import *
 
 from supra.Utils.Formatting import *
 from supra.Utils.TryObj import *
 
-from supra.Fireballs.GetIRISData import butterworthBandpassFilter
-from supra.GUI.ExportWindow import ExportWindow
-from supra.GUI.WidgetBuilder import theme
+from supra.GUI.Dialogs.ExportWindow import ExportWindow
+from supra.GUI.Tools.Theme import theme
 
 from supra.Atmosphere.Parse import parseWeather
-from supra.Supracenter.SPPT import perturb as perturbation_method
-
 
 HEIGHT_SOLVER_DIV = 100
 PEN = [(0     *255, 0.4470*255, 0.7410*255),        
@@ -142,7 +138,7 @@ class AllWaveformViewer(QScrollArea):
                 for ptb_n in range(self.setup.perturb_times):               
                     dataset = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
                     zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                    [ref_pos.lat, ref_pos.lon, ref_pos.elev], dataset, convert=False)
+                                    ref_pos, dataset, convert=True)
                     point.pos_loc(ref_pos)
                     stn.position.pos_loc(ref_pos)
                     f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \

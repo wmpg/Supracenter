@@ -121,20 +121,20 @@ def runDarkflight(params, mass, uncertainty=False):
     drg = str(params.drag)
 
     # Directory of Darkflight
-    darkflight_dir = "/srv/meteor/fireballs/darkflight"
-    
+    darkflight_dir = "C:\\Users\\lmcfd\\Desktop\\"
+
     # Run Darkflight through terminal calls
 
     # darkflight.c help menu
     if params.help:
-        p = subprocess.Popen(['./darkflight', '--help'], cwd=darkflight_dir)
+        p = subprocess.Popen(['.\\darkflight', '--help'], cwd=darkflight_dir)
         exit()
 
     # Monte-Carlo simulations
     if uncertainty:
         # Fragmentation simulation
         if params.frag:
-            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+            p = subprocess.Popen(['.\\darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -144,7 +144,7 @@ def runDarkflight(params, mass, uncertainty=False):
         
         # no fragmentation
         else:
-            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+            p = subprocess.Popen(['.\\darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -154,13 +154,15 @@ def runDarkflight(params, mass, uncertainty=False):
 
     # Best trajectory points
     else:
-        p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+
+
+        p = subprocess.Popen(['darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        #'--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        #'--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        #'--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, \
-                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir, shell=True)
 
     # Run terminal call
     p.communicate()

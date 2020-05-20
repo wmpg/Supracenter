@@ -79,7 +79,6 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     # Ignore height component transformation
     return local_coord[0], local_coord[1], elev
 
-
 def loc2Geo(lat0, lon0, elev0, local_coord):
     """ Converts local coordinates to geographic, while keeping the elevation the same
 

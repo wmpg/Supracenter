@@ -15,113 +15,14 @@ import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore, QtGui
 import pyqtgraph.opengl as gl
 
-from supra.GUI.GUITools import *
-from supra.GUI.PKLSave import saveGUI, loadGUI
+from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.CustomWidgets import *
+from supra.Files.SaveLoad import save, load
+from supra.GUI.Tools.Theme import theme
 
-def theme(obj):
+from supra.GUI.Tabs.StationInfo import *
 
-    stylesheet = """ 
 
-    QMainWindow{background: black;}
-    QPushButton{color: white; background-color: rgb(0, 100, 200);}
-    QDateTimeEdit {
-    background: rgb(64, 64, 64);
-    selection-background-color: rgb(0, 100, 200);
-    selection-color: white;
-    color: white;
-    }
-    QCalendarWidget QWidget { alternate-background-color: rgb(128, 128, 128); }
-    QComboBox, QAbstractItemView{
-    background: rgb(64, 64, 64);
-    selection-background-color: rgb(0, 100, 200);
-    selection-color: white;
-    color: white;
-    }
-    QCalendarWidget QAbstractItemView:disabled 
-    { 
-    color: rgb(128, 128, 128); 
-    }
-
-    QCalendarWidget QWidget{
-    color: white;
-    background: rgb(64, 64, 64);
-    }
-    QCalendarWidget QAbstractItemView:enabled 
-    { 
-    color: white;  
-    background-color: black;  
-    selection-background-color: rgb(0, 100, 200); 
-    selection-color: white; 
-    }
-    
-    QCheckBox{color: white;}
-    QCheckBox::indicator:checked{
-    color: black;
-    }
-    QTableWidget{color: white; background: rgb(64, 64, 64);}
-    QMenuBar{background-color: black;}
-    QMenuBar::item {color: white;}
-    QMenuBar::item:selected {
-    background: rgb(0, 100, 200);
-    }
-    QMenu{
-    background-color: black;
-    color: white;
-    }
-    QMenu::item:selected{
-    background: rgb(0, 100, 200);
-    }
-
-    QTabWidget>QWidget>QWidget{
-    background: black;}
-    QTabWidget::pane{
-    background: black;
-    }
-    QTabWidget::tab-bar{
-    background: black;
-    }
-    QTabBar::tab{
-    background: black;
-    color: white;
-    }
-    QTabBar::tab:selected {
-    background: rgb(0, 100, 200);
-    }
-    QTabBar::tab:hover {
-    background: rgb(64, 64, 64);
-    }
-    QLabel{color: white;}
-    QLineEdit {
-    background: rgb(64, 64, 64);
-    selection-background-color: rgb(0, 100, 200);
-    selection-color: white;
-    color: white;
-    }
-    QProgressBar {
-    border: 2px solid grey;
-    border-radius: 5px;
-    text-align: center;
-    }
-    QProgressBar::chunk{background-color: rgb(0, 100, 200);}
-    QDockWidget{color: white; background: black;}
-    QGroupBox{color: white;}
-    QGroupBox{ 
-    border: 2px white; 
-    border-radius: 0px; }
-    QMessageBox{color: white; background: black;} 
-
-    QWindow{background: black;}
-    QScrollArea{color: white; background: black;}
-
-    QCheckBox::indicator:checked {
-    image: url(../Supracenter/supra/Fireballs/docs/_images/Fin.png);}
-
-    QCheckBox::indicator:unchecked {
-    image: url(../Supracenter/supra/Fireballs/docs/_images/NoFin.png);}
-
-    """
-
-    obj.setStyleSheet(stylesheet)
 
 def initTabs(obj):
 
@@ -135,6 +36,8 @@ def initTabs(obj):
     addProfileWidgets(obj)
     addRayTracerWidgets(obj)
     addDocWidgets(obj)
+    addRefineWidgets(obj)
+
 
 def initMenuBar(obj, layout):
     menu_bar = obj.menuBar() 
@@ -142,23 +45,25 @@ def initMenuBar(obj, layout):
     file_menu = menu_bar.addMenu('&File')
     about_menu = menu_bar.addMenu('&About')
     view_menu = menu_bar.addMenu('&View')
+    setting_menu = menu_bar.addMenu('&Settings')
+    tools_menu = menu_bar.addMenu('&Tools')
 
     file_qsave = QAction("Quick Save", obj)
     file_qsave.setShortcut('Ctrl+S')
     file_qsave.setStatusTip('Saves setup file')
-    file_qsave.triggered.connect(partial(saveGUI, obj, True, True))
+    file_qsave.triggered.connect(partial(save, obj, obj.bam))
     file_menu.addAction(file_qsave)
 
     file_save = QAction("Save", obj)
     file_save.setShortcut('Ctrl+Shift+S')
     file_save.setStatusTip('Saves setup file')
-    file_save.triggered.connect(partial(saveGUI, obj, True))
+    file_save.triggered.connect(partial(save, obj, obj.bam))
     file_menu.addAction(file_save)
 
     file_load = QAction("Load", obj)
     file_load.setShortcut('Ctrl+L')
     file_load.setStatusTip('Loads setup file')
-    file_load.triggered.connect(partial(loadGUI, obj))
+    file_load.triggered.connect(partial(load, obj))
     file_menu.addAction(file_load)
 
     file_exit = QAction("Exit", obj)
@@ -187,6 +92,15 @@ def initMenuBar(obj, layout):
     view_fullscreen.setStatusTip('Toggles fullscreen')
     view_fullscreen.triggered.connect(obj.viewFullscreen)
     view_menu.addAction(view_fullscreen)
+
+    preferences_menu = QAction("Preferences", obj)
+    preferences_menu.setStatusTip('Opens preferences dialog')
+    preferences_menu.triggered.connect(obj.preferencesDialog)
+    setting_menu.addAction(preferences_menu)
+
+    traj_interp = QAction("Trajectory to Points Wizard", obj)
+    traj_interp.triggered.connect(obj.trajInterpDialog)
+    tools_menu.addAction(traj_interp)
 
 def initMainGUI(obj):
 
@@ -231,6 +145,8 @@ def initMainGUI(obj):
     obj.ray_pick_traj = pg.ScatterPlotItem()
     obj.ray_pick_point = [0, 0, 0]
     obj.ctrl_pressed = False
+    obj.shift_pressed = False
+    obj.alt_pressed = False
 
     
 
@@ -238,7 +154,7 @@ def initMainGUICosmetic(obj):
 
     obj.setWindowTitle('Bolide Acoustic Modelling')
     app_icon = QtGui.QIcon()
-    app_icon.addFile(os.path.join('supra', 'Fireballs','docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
+    app_icon.addFile(os.path.join('supra', 'Docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
     obj.setWindowIcon(app_icon)
 
     p = obj.palette()
@@ -261,19 +177,47 @@ def addStationsWidgets(obj):
     obj.station_label = QLabel("Stations:")
     obj.station_layout.addWidget(obj.station_label)
 
-    obj.station_table = QTableWidget()
+    obj.station_table = QScrollArea()
     obj.station_layout.addWidget(obj.station_table)
+    obj.station_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    obj.station_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
 
-    obj.station_button = QPushButton("Get Station Data")
-    obj.station_layout.addWidget(obj.station_button)
-    obj.station_button.clicked.connect(obj.getStations)
+    obj.station_table.setWidgetResizable(True)
 
-    obj.station_progress = QProgressBar()
-    obj.station_progress.setMaximum(100)
-    obj.station_layout.addWidget(obj.station_progress)
+    container = QWidget()
+    container.setStyleSheet("""
+        QWidget {
+            background-color: rgb(0, 0, 0);
+            }
+        """)
+    obj.station_table.setWidget(container)
+    obj.station_table_layout = QVBoxLayout(container)
+    obj.station_table_layout.setSpacing(10)
+    # obj.station_table.setLayout(obj.station_table_layout)
 
-    obj.station_progress_label = QLabel('')
-    obj.station_layout.addWidget(obj.station_progress_label)
+
+    obj.station_control_layout = QGridLayout()
+
+    obj.station_button = createButton("Download Station Data", obj.station_control_layout, 1, 1, \
+                                                        getStations, args=[obj])
+
+    obj.station_button = createButton("Save Station Data", obj.station_control_layout, 1, 3, \
+                                                        saveStations, args=[obj])  
+
+    obj.station_button = createButton("Load Station Data", obj.station_control_layout, 1, 2, \
+                                                        loadStations, args=[obj])
+
+    obj.station_button = createButton("Clear Station Data", obj.station_control_layout, 2, 1, \
+                                                        clearStationWidgets, args=[obj])
+
+    obj.station_button = createButton("Add Station", obj.station_control_layout, 2, 2, \
+                                                        addStation, args=[obj])
+
+    obj.station_button = createButton("Refresh Station", obj.station_control_layout, 2, 3, \
+                                                        refreshStation, args=[obj])
+
+    obj.station_layout.addLayout(obj.station_control_layout)
+
 
 def addPicksReadWidgets(obj):
     picks_read_tab = QWidget()
@@ -284,7 +228,6 @@ def addPicksReadWidgets(obj):
 
     obj.csv_table = QTableWidget()
     picks_read_tab_content.addWidget(obj.csv_table, 1, 1, 1, 4)
-
 
     obj.csv_table_add = QPushButton("+")
     picks_read_tab_content.addWidget(obj.csv_table_add, 2, 2, 1, 1)
@@ -335,6 +278,141 @@ def addSupraWidgets(obj):
     supra_tab.setLayout(obj.master_supra)
     obj.tab_widget.addTab(supra_tab, "Supracenter Manual Search")
 
+def addRefineWidgets(obj):
+    refine_tab = QWidget()
+    obj.master_ref = QHBoxLayout()
+    refine_tab.setLayout(obj.master_ref)
+
+    obj.ref_control = QVBoxLayout()
+    obj.ref_wave_layout = QVBoxLayout()
+    obj.ref_wave_control = QHBoxLayout()
+
+    obj.ref_waveforms = QScrollArea()
+
+    obj.ref_traj = QGridLayout()
+    obj.ref_frags = QVBoxLayout()
+    obj.ref_buttons = QHBoxLayout()
+
+    trajLabel = QLabel("Trajectory")
+    obj.ref_traj.addWidget(trajLabel, 0, 0)
+
+    latlabel = QLabel('Lat: ')
+    obj.ref_traj.addWidget(latlabel, 1, 0)
+    obj.latedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.latedit, 1, 1)
+
+    lonlabel = QLabel('Lon: ')
+    obj.ref_traj.addWidget(lonlabel, 1, 2)
+    obj.lonedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.lonedit, 1, 3)
+
+    azlabel = QLabel('Az: ')
+    obj.ref_traj.addWidget(azlabel, 2, 0)
+    obj.azedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.azedit, 2, 1)
+
+    zelabel = QLabel('Ze: ')
+    obj.ref_traj.addWidget(zelabel, 2, 2)
+    obj.zeedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.zeedit, 2, 3)
+
+    velabel = QLabel('V: ')
+    obj.ref_traj.addWidget(velabel, 3, 0)
+    obj.veedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.veedit, 3, 1)
+
+    vflabel = QLabel('Vf: ')
+    obj.ref_traj.addWidget(vflabel, 4, 0)
+    obj.vfedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.vfedit, 4, 1)
+
+    tilabel = QLabel('T: ')
+    obj.ref_traj.addWidget(tilabel, 3, 2)
+    obj.tiedit = QLineEdit('')
+    obj.ref_traj.addWidget(obj.tiedit, 3, 3)
+
+    fragLabel = QLabel("Fragmentations")
+    obj.ref_frags.addWidget(fragLabel)
+
+    obj.ref_table = QTableWidget()
+    obj.ref_frags.addWidget(obj.ref_table)
+    defTable(obj.ref_table, 1, 5, headers=['Height', 'Latitude', 'Longitude', 'Time', 'δ Height'])
+    obj.ref_table.setStyleSheet('')
+
+    table_control = QHBoxLayout()
+    obj.ref_frags.addLayout(table_control)
+
+    frag_table_sub = QPushButton("-")
+    table_control.addWidget(frag_table_sub)
+    frag_table_sub.clicked.connect(partial(changeRows, obj.ref_table, -1))
+    frag_table_sub.setToolTip("Remove row")
+
+    frag_table_add = QPushButton("+")
+    table_control.addWidget(frag_table_add)
+    frag_table_add.clicked.connect(partial(changeRows, obj.ref_table, 1))
+    frag_table_add.setToolTip("Add row")
+
+    frag_table_save = QPushButton("Save")
+    table_control.addWidget(frag_table_save)
+    frag_table_save.clicked.connect(obj.refSave)
+
+    frag_table_load = QPushButton("Load")
+    table_control.addWidget(frag_table_load)
+    frag_table_load.clicked.connect(obj.refLoad)
+
+    load_stations = QPushButton("Load All Stations")
+    obj.ref_buttons.addWidget(load_stations)
+    load_stations.clicked.connect(obj.refLoadStations)
+
+    load_traj = QPushButton("Load Trajectory")
+    obj.ref_buttons.addWidget(load_traj)
+    load_traj.clicked.connect(obj.refLoadTrajectory)
+
+    high_stats = QPushButton("Highlight Stations")
+    obj.ref_buttons.addWidget(high_stats)
+    high_stats.clicked.connect(obj.refHighStats)
+
+    sync_heights = QPushButton("Sync Heights to Trajectory")
+    obj.ref_buttons.addWidget(sync_heights)
+    sync_heights.clicked.connect(obj.refSyncHeights) 
+
+    plot_heights = QPushButton("Plot Fragmentation Times")
+    obj.ref_buttons.addWidget(plot_heights)
+    plot_heights.clicked.connect(obj.refPlotHeights) 
+
+    plot_traj = QPushButton("Plot Trajectory Times")
+    obj.ref_buttons.addWidget(plot_traj)
+    plot_traj.clicked.connect(obj.refPlotTraj)
+
+    clear_stations = QPushButton("Clear Stations")
+    obj.ref_wave_control.addWidget(clear_stations)
+    clear_stations.clicked.connect(obj.refClearStations)
+
+    ball_stations = QPushButton("Show Ballistic")
+    obj.ref_wave_control.addWidget(ball_stations)
+    ball_stations.clicked.connect(obj.refBallStations)
+
+    frag_stations = QPushButton("Show Fragmentations")
+    obj.ref_wave_control.addWidget(frag_stations)
+    frag_stations.clicked.connect(obj.refFragStations)
+
+    both_stations = QPushButton("Show Fragmentation and Ballistic")
+    obj.ref_wave_control.addWidget(both_stations)
+    both_stations.clicked.connect(obj.refBothStations)
+
+
+    obj.ref_control.addLayout(obj.ref_traj)
+    obj.ref_control.addLayout(obj.ref_frags)
+    obj.ref_control.addLayout(obj.ref_buttons)
+
+    obj.master_ref.addLayout(obj.ref_control)
+    obj.master_ref.addLayout(obj.ref_wave_layout)
+    
+    obj.ref_wave_layout.addWidget(obj.ref_waveforms)
+    obj.ref_wave_layout.addLayout(obj.ref_wave_control)
+
+    obj.tab_widget.addTab(refine_tab, "Refine")
+
 def addSupWidgets(obj):
 
     sup_tab = QWidget()
@@ -378,10 +456,10 @@ def addDocWidgets(obj):
     obj.tab_widget.addTab(doc_master_tab, 'Documentation')  
 
 def addMakePicksWidgets(obj):
+    
     make_picks_master_tab = QWidget()
     make_picks_master = QVBoxLayout()
     make_picks_master_tab.setLayout(make_picks_master)
-
 
     obj.make_picks_top_graphs = QHBoxLayout()
     obj.make_picks_bottom_graphs = QVBoxLayout()
@@ -557,6 +635,9 @@ def addSeisTrajWidgets(obj):
     obj.seis_resids = QTableWidget()
     table_group.addWidget(obj.seis_resids, 2, 1, 1, 100)
 
+    obj.seis_plane = QTableWidget()
+    table_group.addWidget(obj.seis_plane, 3, 1, 1, 100)
+    defTable(obj.seis_plane, 3, 3, headers=['Latitude', 'Longitude', 'Height'])
     #obj.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
     # obj.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
@@ -609,8 +690,16 @@ def addFetchATMWidgets(obj):
     obj.fatm_variable_combo = QComboBox()
     fetch_plots.addWidget(obj.fatm_variable_combo)
 
+    obj.fatm_variable_combo.addItem('Sound Speed')
+    obj.fatm_variable_combo.addItem('Effective Sound Speed')
+    # obj.fatm_variable_combo.addItem('U-Component of Wind')
+    # obj.fatm_variable_combo.addItem('V-Component of Wind')
+    obj.fatm_variable_combo.addItem('Wind Magnitude')
+    obj.fatm_variable_combo.addItem('Wind Direction')
+
+    
     try:
-        obj.fatm_variable_combo.currentTextChanged.connect(obj.fatmPlot)
+        obj.fatm_variable_combo.currentTextChanged.connect(obj.fatmLoadAtm)
     except:
         pass
 
@@ -618,7 +707,7 @@ def addFetchATMWidgets(obj):
 
     obj.fatm_button = QPushButton('Browse')
     fetch_content.addWidget(obj.fatm_button, 1, 3)
-    obj.fatm_button.clicked.connect(partial(folderSearch, obj.fatm_name_edits))
+    obj.fatm_button.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)', 'CSV (*.csv)', 'TXT (*.txt)'], obj.fatm_name_edits))
 
     obj.fatm_datetime_label = QLabel("Time of Profile:")
     obj.fatm_datetime_edits = QDateTimeEdit()
@@ -627,14 +716,23 @@ def addFetchATMWidgets(obj):
     obj.fatm_datetime_edits.setCalendarPopup(True)
 
     obj.fatm_source_type = QComboBox()
-    obj.fatm_source_type.addItem("Copernicus Climate Change Service")
+    obj.fatm_source_type.addItem("Copernicus Climate Change Service (ECMWF)")
+    obj.fatm_source_type.addItem("Copernicus Climate Change Service (ECMWF) - Spread File")
     obj.fatm_source_type.addItem("Radiosonde")
     fetch_content.addWidget(obj.fatm_source_type, 3, 1, 1, 2)
+
+    save_into_bam = QPushButton('Save into BAM')
+    fetch_content.addWidget(save_into_bam, 4, 1, 1, 1)
+    save_into_bam.clicked.connect(obj.fatmSaveAtm)
+
+    load_from_bam = QPushButton('Load from BAM')
+    fetch_content.addWidget(load_from_bam, 4, 2, 1, 1)
+    load_from_bam.clicked.connect(obj.fatmLoadAtm)
 
     #############################
 
     indep_group = QGroupBox('Inependant Variables (x)')
-    fetch_content.addWidget(indep_group, 4, 1, 1, 2)
+    fetch_content.addWidget(indep_group, 5, 1, 1, 2)
 
     group_box = QGridLayout()
     indep_group.setLayout(group_box)
@@ -651,7 +749,7 @@ def addFetchATMWidgets(obj):
     ##############################
 
     dep_group = QGroupBox('Dependant Variables (y)')
-    fetch_content.addWidget(dep_group, 5, 1, 1, 2)
+    fetch_content.addWidget(dep_group, 6, 1, 1, 2)
 
     dgroup_box = QGridLayout()
     dep_group.setLayout(dgroup_box)
@@ -664,7 +762,7 @@ def addFetchATMWidgets(obj):
 
     ###############################
     op_group = QGroupBox('Options')
-    fetch_content.addWidget(op_group, 6, 1, 1, 2)
+    fetch_content.addWidget(op_group, 7, 1, 1, 2)
 
     opgroup_box = QGridLayout()
     op_group.setLayout(opgroup_box)
@@ -674,34 +772,34 @@ def addFetchATMWidgets(obj):
     #############################################
 
     obj.fatm_fetch = QPushButton("Download")
-    fetch_content.addWidget(obj.fatm_fetch, 7, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_fetch, 8, 1, 1, 2)
     obj.fatm_fetch.clicked.connect(partial(obj.fatmFetch, True))
 
     obj.fatm_open = QPushButton("Open")
-    fetch_content.addWidget(obj.fatm_open, 8, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_open, 9, 1, 1, 2)
     obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
 
     obj.fatm_print = QPushButton("Print")
-    fetch_content.addWidget(obj.fatm_print, 15, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 2)
     obj.fatm_print.clicked.connect(obj.fatmPrint)
 
     obj.fatm_start_label = QLabel("Start lat/lon/elev")
     obj.fatm_start_lat = QLineEdit()
     obj.fatm_start_lon = QLineEdit()
     obj.fatm_start_elev = QLineEdit()
-    fetch_content.addWidget(obj.fatm_start_label, 9, 1)
-    fetch_content.addWidget(obj.fatm_start_lat, 9, 2)
-    fetch_content.addWidget(obj.fatm_start_lon, 10, 2)
-    fetch_content.addWidget(obj.fatm_start_elev, 11, 2)
+    fetch_content.addWidget(obj.fatm_start_label, 10, 1)
+    fetch_content.addWidget(obj.fatm_start_lat, 10, 2)
+    fetch_content.addWidget(obj.fatm_start_lon, 11, 2)
+    fetch_content.addWidget(obj.fatm_start_elev, 12, 2)
 
     obj.fatm_end_label = QLabel("End lat/lon/elev")
     obj.fatm_end_lat = QLineEdit()
     obj.fatm_end_lon = QLineEdit()
     obj.fatm_end_elev = QLineEdit()
-    fetch_content.addWidget(obj.fatm_end_label, 12, 1)
-    fetch_content.addWidget(obj.fatm_end_lat, 12, 2)
-    fetch_content.addWidget(obj.fatm_end_lon, 13, 2)
-    fetch_content.addWidget(obj.fatm_end_elev,14, 2)
+    fetch_content.addWidget(obj.fatm_end_label, 13, 1)
+    fetch_content.addWidget(obj.fatm_end_lat, 13, 2)
+    fetch_content.addWidget(obj.fatm_end_lon, 14, 2)
+    fetch_content.addWidget(obj.fatm_end_elev,15, 2)
 
     # self.LineEdit.setValidator(QIntValidator())
 

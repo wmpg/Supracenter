@@ -14,7 +14,7 @@ from supra.Supracenter.bisearch import bisearch
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
-cpdef zInteg(long d, long s, region, wind=True):
+cpdef zInteg(long d, long s, region):
     # Author: Wayne Edwards
 
     """ Returns a subset of region, interval, that the sound waves propegate through, from S to d. The region
@@ -29,7 +29,6 @@ cpdef zInteg(long d, long s, region, wind=True):
     Returns:
         interval: [ndarray] atmospheric data from between s and d
     """
-    if not wind: region[:, 2] = 0
     
     # flips heights if there is an error
     if d > s:

@@ -17,42 +17,7 @@ from libc.math cimport sqrt, M_PI, M_PI_2
 FLOAT_TYPE = np.float64
 ctypedef np.float64_t FLOAT_TYPE_t
 
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.cdivision(True)
-@cython.nonecheck(False)
-cpdef FLOAT_TYPE_t appatan(float z):
 
-    cdef:
-        FLOAT_TYPE_t n1 = -3.10715
-        FLOAT_TYPE_t n2 = 9.99042
-        FLOAT_TYPE_t a = z*z
-    return 0.1*z*((a + n1)*a + n2)
-
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.cdivision(True)
-@cython.nonecheck(False)
-cpdef FLOAT_TYPE_t appatan2(float y, float x):
-    
-    cdef:
-        FLOAT_TYPE_t z = y/x
-
-    if x > 0.0:
-        return appatan(z)
-    elif x < 0.0:
-        if y >= 0.0:
-            return appatan(z) + np.pi
-        else:
-            return appatan(z) - np.pi
-    else:
-        if y > 0:
-            return 1.5707963
-        elif y < 0:
-            return -1.5707963
-        else:
-            #undefined
-            return 0.0
 
 @cython.wraparound(False)
 @cython.boundscheck(False)
@@ -80,13 +45,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
     return np.matmul(A.T, B) + np.matmul(C.T, D)
 
 
-
-@cython.wraparound(False)
-@cython.boundscheck(False)
-@cython.cdivision(True)
-@cython.nonecheck(False)
-cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, 
-    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=1e-5, float v_tol=1000):
+cpdef cyscan(supra_pos, detec_pos, \
+    z_profile, wind=True, n_theta=90, n_phi=90, h_tol=1e-5, v_tol=1000):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
@@ -134,7 +94,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         float dy = detec_pos[1] - supra_pos[1]
 
         # azth - initial guess for azimuth
-        float azth = appatan2(dy, dx)
+        float azth = np.arctan2(dy, dx)
 
         # The number of layers in the integration region
         int n_layers = len(z_profile)
@@ -158,6 +118,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         np.ndarray[FLOAT_TYPE_t, ndim=1] theta = np.linspace(M_PI_2, M_PI, n_theta)
 
     # move theta off of the singularity at pi/2
+
     theta[0] += 1e-6
 
     s_val = s[n_layers-1]
@@ -192,10 +153,16 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     last_error = 1e20
     np.seterr(divide='ignore', invalid='ignore')
 
+
     ### Scan Loop ###
     while not found:
+        xs = []
+        ys = []
+        zs = [supra_pos[2]]
         count = 0
+
         a, b = np.cos(Phi), np.sin(Phi)
+
         last_z = 0
         for i in range(n_layers - 1):
             
@@ -236,10 +203,12 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 last_z = i + 1
                 # Calculate true destination positions (transform back)
 
-
+            xs.append(a*X - b*Y)
+            ys.append(b*X + a*Y)
+            zs.append(z[n_layers - last_z - 1])
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
-        
+
         # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         # print('pos', supra_pos, detec_pos)
         # print('x_diff', a*X - b*Y-dx)
@@ -254,7 +223,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # Check for all nan error function
         if k.shape == (0, ):
             # As handled in original Supracenter
-            return np.array([np.nan, np.nan, np.nan, np.nan])
+
+            return np.nan
 
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):
@@ -277,8 +247,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             if E[k, l] < v_tol:
                 found = True
             else:
-
-                return np.array([np.nan, np.nan, np.nan, np.nan])
+                return np.nan
 
         else:
             ### FAST PART ###
@@ -360,6 +329,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     p1 = p[k, l]
     p2 = p[k, l]**2
+
     # Find sum of travel times between layers (z)
     for i in range(n_layers - 1):# - n_layers + last_z):
 
@@ -368,5 +338,13 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # Equation (9)
         t_arrival += (s2/np.sqrt(s2 - p2/(1 - p1*u[i, l])**2))*(z[i + 1] - z[i])
     
+
+    xs_final = [supra_pos[0]]
+    ys_final = [supra_pos[1]]
+
+    for i in range(len(xs)):
+        xs_final.append(xs[i][k, l])
+        ys_final.append(ys[i][k, l])
+
     ##########################
-    return np.array([t_arrival, azimuth, takeoff, E[k, l]])
+    return np.array([xs_final, ys_final, zs])

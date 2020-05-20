@@ -3,7 +3,7 @@ import urllib.request
 
 import numpy as np
 
-from supra.Utils.Classes import Station, Position
+from supra.Utils.Classes import Position
 
 def parseStationList():
 
@@ -18,7 +18,7 @@ def parseStationList():
 
 			line = line.split()
 
-			a = Station(line[0], line[0], Position(float(line[1]), float(line[2]), float(line[3])), 'RSNDE', line[4], '')
+			a = Station(line[0], line[0], Position(float(line[1]), float(line[2]), float(line[3])), 'RSNDE', line[4])
 
 			if float(line[-2]) >= now.year:
 				radio_stations.append(a)

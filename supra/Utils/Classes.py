@@ -9,92 +9,95 @@ from pyqtgraph.Qt import QtGui, QtCore
 class Config:
 
     def __init__(self):
+        pass
 
-        # set configuration defaults
-        self.fireball_name = 'Untitled Fireball'
-        self.get_data = False
-        self.run_mode = 'search'
-        self.debug = False
+    def isEmpty(self):
+        return not hasattr(self, 'lat_centre')
+            # # set configuration defaults
+        # self.fireball_name = 'Untitled Fireball'
+        # self.get_data = False
+        # self.run_mode = 'search'
+        # self.debug = False
 
-        self.working_directory = None
-        self.arrival_times_file = None
-        self.sounding_file = None
-        self.perturbation_spread_file = None
-        self.station_picks_file = None
-        self.points_name = None
+        # self.working_directory = None
+        # self.arrival_times_file = None
+        # self.sounding_file = None
+        # self.perturbation_spread_file = None
+        # self.station_picks_file = None
+        # self.points_name = None
 
-        self.lat_centre = None
-        self.lon_centre = None
-        self.deg_radius = 2
-        self.fireball_datetime = None
-        self.v_sound = 310
+        # self.lat_centre = None
+        # self.lon_centre = None
+        # self.deg_radius = 2
+        # self.fireball_datetime = None
+        # self.v_sound = 310
 
-        self.t0 = None
-        self.v = None
-        self.azim = None
-        self.zangle = None
-        self.lat_i = None
-        self.lon_i = None
-        self.elev_i = None
-        self.lat_f = None
-        self.lon_f = None
-        self.elev_f = None
-        self.show_ballistic_waveform = False
+        # self.t0 = None
+        # self.v = None
+        # self.azim = None
+        # self.zangle = None
+        # self.lat_i = None
+        # self.lon_i = None
+        # self.elev_i = None
+        # self.lat_f = None
+        # self.lon_f = None
+        # self.elev_f = None
+        # self.show_ballistic_waveform = False
 
-        self.fragmentation_point = None
-        self.show_fragmentation_waveform = False
-        self.manual_fragmetnation_search = None
+        # self.fragmentation_point = None
+        # self.show_fragmentation_waveform = False
+        # self.manual_fragmetnation_search = None
 
-        self.v_fixed = 11000
-        self.azimuth_min = 0
-        self.azimuth_max = 359.99
-        self.zenith_min = 0
-        self.zenith_max = 89.99
-        self.x_min = -200000
-        self.x_max = 200000
-        self.y_min = -200000
-        self.y_max = 200000
-        self.z_min = 0
-        self.z_max = 100000
-        self.t_min = -200
-        self.t_max = 200
-        self.v_min = 11000
-        self.v_max = 30000 
-        self.max_error = 1000
-        self.restricted_time = None
-        self.enable_restricted_time = False
-        self.weight_distance_min = 0
-        self.weight_distance_max = 0
+        # self.v_fixed = 11000
+        # self.azimuth_min = 0
+        # self.azimuth_max = 359.99
+        # self.zenith_min = 0
+        # self.zenith_max = 89.99
+        # self.x_min = -200000
+        # self.x_max = 200000
+        # self.y_min = -200000
+        # self.y_max = 200000
+        # self.z_min = 0
+        # self.z_max = 100000
+        # self.t_min = -200
+        # self.t_max = 200
+        # self.v_min = 11000
+        # self.v_max = 30000 
+        # self.max_error = 1000
+        # self.restricted_time = None
+        # self.enable_restricted_time = False
+        # self.weight_distance_min = 0
+        # self.weight_distance_max = 0
 
-        self.enable_winds = False
-        self.weather_type = 'none'
+        # self.enable_winds = False
+        # self.weather_type = 'none'
 
-        self.perturb = False
-        self.perturb_method = 'none'
-        self.perturb_times = 0
-        self.observe_frag_no = 0
+        # self.perturb = False
+        # self.perturb_method = 'none'
+        # self.perturb_times = 0
+        # self.observe_frag_no = 0
 
-        self.n_theta = 45
-        self.n_phi = 90
-        self.h_tol = 1e-5
-        self.v_tol = 1000
+        # self.n_theta = 45
+        # self.n_phi = 90
+        # self.h_tol = 1e-5
+        # self.v_tol = 1000
 
-        self.maxiter = 100
-        self.swarmsize = 100
-        self.run_times = 1
-        self.phip = 0.5
-        self.phig = 0.5
-        self.omega = 0.5
-        self.pso_debug = False
-        self.minfunc = 1e-8
-        self.minstep = 1e-8
+        # self.maxiter = 100
+        # self.swarmsize = 100
+        # self.run_times = 1
+        # self.phip = 0.5
+        # self.phig = 0.5
+        # self.omega = 0.5
+        # self.pso_debug = False
+        # self.minfunc = 1e-8
+        # self.minstep = 1e-8
 
-        self.contour_res = 10
-        self.high_f = None
-        self.high_b = None
-        self.rm_stat = None
+        # self.contour_res = 10
+        # self.high_f = None
+        # self.high_b = None
+        # self.rm_stat = None
 
-        self.stations = None
+        # self.stations = None
 
 class Constants:
 
@@ -289,45 +292,24 @@ class Vector3D:
         return '[ {:.4f}, {:.4f}, {:.4f}]'.format(self.x, self.y, self.z)
 
 
-class Station:
+class Annote:
 
-    """
-    A station object containing information and position of the station
-    """
+    def __init__(self, title, time, length, group, source, height, notes, color):
 
-    def __init__(self, network, code, position, channel, name, file_name):
-        """
-        Arguments:
-            network: [String] the network of the station
-            code: [String] the code of the station
-            position: [position Obj] a position object of the station containing the lat/lon/elev of the station
-            channel: [String] the channel of the station (BHZ, HHZ, BDF, etc.)
-            name: [String] A string describing the station's name or location (for display purposes only)
-            file_name: [String] Location of the .mseed file inside the working directory
-        """
-
-        self.network = network
-        self.code = code
-        self.position = position
-        self.channel = channel
-        self.file_name = file_name
-        self.name = name
-        self.offset = 0
+        self.title = title
+        self.time = time
+        self.length = length
+        self.group = group
+        self.source = source
+        self.height = height
+        self.notes = notes
+        self.color = color
 
     def __str__(self):
-        A = "Station: {:} | Channel {:} \n".format(self.name, self.channel)
-        B = str(self.position) + "\n"
-        try:
-            C = "Ground Distance: {:}".format(self.ground_distance)
-        except:
-            C = ''
-        return A + B + C
 
-    def stn_distance(self, ref_pos):
-        self.distance = self.position.pos_distance(ref_pos)
+        return 'Annotation Object "{:}" located at {:.2f} s'.format(self.title, self.time)
 
-    def stn_ground_distance(self, ref_pos):
-        self.ground_distance = self.position.ground_distance(ref_pos)
+
 
 class Supracenter:
     def __init__(self, position, t):
@@ -345,10 +327,8 @@ class Supracenter:
         return [self.position.lat, self.position.lon, self.position.elev, self.time]       
 
 class Trajectory:
-    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None)):
+    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None), v_f=None):
         
-        self.v = v
-
         self.t = t
 
         # Find vector from angles
@@ -428,8 +408,18 @@ class Trajectory:
         self.pos_f = pos_f
         self.azimuth = azimuth
         self.zenith = zenith
-        self.scale = scale
+        self.scale = scale        
+        self.v = v
 
+        if v_f is not None:
+            self.v_f = v_f
+            self.v_avg = np.mean((v, v_f))
+        else:
+            self.v_f = v
+            self.v_avg = v
+
+        # if using linear decel: speed goes from v -> v_f, v_avg is the mean
+        # if using static vel: v == v_f == v_avg
 
     def __str__(self):
 
@@ -442,7 +432,12 @@ class Trajectory:
         except:
             B = "    to      No known ending position \n"
 
-        C = "            Velocity:  {:4.1f} km/s \n".format(self.v/1000)
+        try:
+            C = "            Velocity: Initial {:4.1f} km/s \n".format(self.v_i/1000) + \
+                "                        Final {:4.1f} km/s \n".format(self.v_f/1000)
+        except:
+            C = "            Velocity:  {:4.1f} km/s \n".format(self.v/1000)
+
         D = "            Time:      {:4.2f} s \n".format(self.t)
 
         try:
@@ -456,7 +451,21 @@ class Trajectory:
             F = "            No known zenith \n"
 
         return A + B + C + D + E + F
-                
+    
+    def getVelAtHeight(self, height):
+
+        h_i = self.pos_i.elev
+        h_f = self.pos_f.elev
+
+        frac = (height - h_i)/(h_f - h_i)
+
+        return frac*(self.v_f - self.v) + self.v       
+
+    def getTrajVect(self):
+        return np.array([np.sin(self.azimuth.rad)*np.sin(self.zenith.rad), \
+                         np.cos(self.azimuth.rad)*np.sin(self.zenith.rad), \
+                        -np.cos(self.zenith.rad)])
+
     def trajInterp(self, div=10, write=False):
 
         self.pos_i.pos_loc(self.pos_f)
@@ -479,10 +488,40 @@ class Trajectory:
         
         if write:
             for pt in P:
-                print(pt)
+                print(pt, self.findTime(pt.elev))
 
         return P
 
+    def trajInterp2(self, div=250, min_p=0, max_p=0):
+        
+        ref_loc = self.pos_f
+        ref_loc.elev = 0
+
+        self.pos_i.pos_loc(ref_loc)
+        self.pos_f.pos_loc(ref_loc)
+
+        v = self.vector * self.scale
+
+        dv = v * (1/(div-1))
+
+        P = [None]*div
+        for i in range(div):
+
+            P[i] = Position(0, 0, 0)
+
+            P[i].x = self.pos_i.x + i*dv.x
+            P[i].y = self.pos_i.y + i*dv.y
+            P[i].z = self.pos_i.z + i*dv.z
+
+            P[i].pos_geo(self.pos_f)
+            
+        A = []
+        for pt in P:
+            if min_p <= pt.elev <= max_p:
+                A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
+
+        return np.array(A)
+    
     def findPoints(self, gridspace=250, min_p=0, max_p=0):    
         
         GRID_SPACE = gridspace
@@ -543,18 +582,23 @@ class Trajectory:
 
     def findTime(self, height):
 
-        self.pos_i.pos_loc(self.pos_f)
-        self.pos_f.pos_loc(self.pos_f)
+        
+        frac = (height - self.pos_f.elev) / (self.pos_i.elev - self.pos_f.elev)
 
-        frac = height / (self.pos_i.z)
+        v = (self.v_f + self.getVelAtHeight(height))/2
 
-        A = self.pos_i
-        B = self.pos_f
+        d = frac*(self.findLength())
 
-        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
-        time_of_meteor = length_of_meteor/self.v
+        vect = self.getTrajVect()
+        s = -self.pos_f.elev*vect[2]
+        dist_vect = s*vect
 
-        return frac*time_of_meteor
+        d_ground = np.sqrt(dist_vect[0]**2 + dist_vect[1]**2 + dist_vect[2]**2) 
+
+        t = d/v + d_ground/self.v_f
+
+        return self.t - t
+
 
     def findLength(self):
 
@@ -581,10 +625,28 @@ class Trajectory:
 
         return pos_list
 
+class Plane:
+    def __init__(self, p1, p2, p3):
+        
+        n = np.cross((p2 - p1), (p3 - p1))
+        self.n = n/np.sqrt(np.dot(n, n))
+        self.x0 = p3
+
+    def __str__(self):
+
+        return "Plane object with normal: {:}".format(self.n)
+
+    def checkOnPlane(self, x, tol=0):
+    
+        if np.abs(np.dot(self.n, (x - self.x0))) <= tol:
+            return True
+        else:
+            return False
 
 class Color:
     def __init__(self):
         self.nominal = (255, 0, 238)
+        self.both = (255, 0, 0)
         self.ballistic = (0, 0, 255)
         self.fragmentation = [(0, 255, 0)]
         self.perturb = [([(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
@@ -701,9 +763,14 @@ if __name__ == '__main__':
     # S_m.pos_geo(ref)
 
     # print(S_p)
-    # print(S_m)
-    A = Trajectory(0, 13910, pos_i=Position(45.2308228643, 15.5458504786, 100000.0), pos_f=Position(45.9686227081, 14.9449686199, 0.0))
-    A.trajInterp(div=500, write=True)
+    # print(S_m)Begin point on the trajectory:
+
+    A = Trajectory(2.471993030094728, 13913.0, pos_i=Position(48.05977, 13.10846, 85920), \
+                             zenith=Angle(19.69), azimuth=Angle(354.67))
+
+    A.trajInterp(div=200, write=True)
+    # print(A.findGeo(34500))
+    # print(A.findTime(34500))
     # A = Position()
     #A = Trajectory(0, 13913, pos_i=Position(48.2042, 13.0884, 39946.8), pos_f=Position(48.8461, 13.7179, 1098))
     # A = Trajectory(0, 13913, pos_i=Position(48.05977, 13.10846, 85920.0), pos_f=Position(48.3314, 13.0706, 0))

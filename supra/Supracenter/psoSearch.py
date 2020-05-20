@@ -9,7 +9,6 @@ from supra.Utils.pso import pso
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.plot import outputWeather
@@ -216,8 +215,12 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
     search_min = Position(setup.lat_min, setup.lon_min, setup.elev_min)
     search_max = Position(setup.lat_max, setup.lon_max, setup.elev_max)
 
-    search_min.pos_loc(ref_pos)
-    search_max.pos_loc(ref_pos)
+    try:
+        search_min.pos_loc(ref_pos)
+        search_max.pos_loc(ref_pos)
+    except (AttributeError, TypeError):
+        print('Search min and search max have not been defined! Aborting search!')
+        return None
 
     output_name = setup.working_directory
     single_point = setup.manual_fragmentation_search[0]

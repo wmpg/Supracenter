@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 
 from supra.Utils.AngleConv import loc2Geo, geo2Loc
 from supra.Utils.Classes import Constants
-from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.slowscan2 import cyscan as slowscan
 
@@ -115,14 +114,14 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name,
 
             # With winds
             if setup.enable_winds == True:
-                if setup.weather_type == 'custom' or setup.weather_type == 'none':
+                if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
                     f.write('| Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
                 else:
                     f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
             
             # No winds
             else:
-                if setup.weather_type == 'custom' or setup.weather_type == 'none':
+                if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
                     f.write('| Height (m) | Temp (K) | soundSpd (m/s) |\n')
                 else:
                     f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) |\n')
@@ -130,7 +129,7 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name,
             for ii in range(len(sounding)):
 
                 if setup.enable_winds == True:
-                    if setup.weather_type == 'custom' or setup.weather_type == 'none':
+                    if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
                         f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |   {:7.3f}   |     {:6.2f}     |\n'\
                             .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
                                 sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
@@ -139,7 +138,7 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name,
                             .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
                                 sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
                 else:
-                    if setup.weather_type == 'custom' or setup.weather_type == 'none':
+                    if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
                         f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |\n'\
                             .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
                     else:

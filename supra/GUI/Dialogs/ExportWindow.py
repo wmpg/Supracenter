@@ -9,14 +9,11 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 import pyqtgraph as pg
 
-from supra.GUI.WidgetBuilder import theme
+from supra.GUI.Tools.Theme import theme
 
-from supra.Supracenter.cyweatherInterp import getWeather
 from supra.Utils.Classes import Position
 from supra.Atmosphere.Parse import parseWeather
 from supra.Supracenter.cyscan2 import cyscan
-from supra.Supracenter.SPPT import perturb as perturbation_method
-from supra.Fireballs.GetIRISData import readStationAndWaveformsListFile, butterworthBandpassFilter, convolutionDifferenceFilter, getAllWaveformFiles
 
 from supra.Fireballs.SeismicTrajectory import getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
 from supra.Utils.Formatting import *

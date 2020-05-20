@@ -1,7 +1,13 @@
+import os
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from pyqtgraph.Qt import QtGui, QtCore
+
+from functools import partial
+
+from supra.Utils.Formatting import checkExt
 
 import numpy as np
 
@@ -35,14 +41,23 @@ def toolTime(var):
 
     tool_time_dict = {}
 
-    with open('supra/Fireballs/tool_tips.csv') as f:
+    with open(os.path.join('supra', 'Misc', 'tool_tips.csv')) as f:
         for line in f:
             line = line.split(':')
             tool_time_dict[line[0]] = line[1]
 
     return tool_time_dict[var]
 
-def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='', validate=''):
+def createTab(parent, name):
+
+    tab = QWidget()
+    tab_layout = QGridLayout()
+    tab.setLayout(tab_layout)
+    parent.addTab(tab, name)
+
+    return tab, tab_layout
+
+def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='', validate='', default_txt=''):
     """ Creates a label and line edit object beside each other
 
     Arguments:
@@ -60,7 +75,7 @@ def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='',
     """
     
     label_obj = QLabel(label_name)
-    edits_obj = QLineEdit('')
+    edits_obj = QLineEdit(default_txt)
     parent.addWidget(label_obj, row, 1 + h_shift)
     parent.addWidget(edits_obj, row, 2 + h_shift, 1, width)
 
@@ -75,6 +90,12 @@ def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='',
         edits_obj.setValidator(QRegExpValidator())
 
     return label_obj, edits_obj
+
+def createButton(text, parent, r, c, button_func, args=[]):
+    button = QPushButton(text)
+    parent.addWidget(button, r, c)
+    button.clicked.connect(partial(button_func, *args))
+    return button
 
 def createFileSearchObj(label_name, parent, row, width=1, h_shift=0, tool_tip=''):
 
@@ -98,6 +119,13 @@ def createComboBoxObj(label_name, parent, row, items=[], width=1, h_shift=0, too
         label_obj.setToolTip(toolTime(tool_tip))
 
     return label_obj, combo_obj
+
+def createToggle(label_name, parent, row, width=1, h_shift=0, tool_tip=''):
+
+    toggle_obj = QCheckBox(label_name)
+    parent.addWidget(toggle_obj, row, 1 + h_shift, 1, width)
+
+    return toggle_obj
 
 def createLabelDateEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='', popup=True):
     
@@ -171,8 +199,7 @@ def toTableFromStn(obj, table):
         obj.setItem(x, 2, QTableWidgetItem(str(stn.position.lat)))
         obj.setItem(x, 3, QTableWidgetItem(str(stn.position.lon)))
         obj.setItem(x, 4, QTableWidgetItem(str(stn.position.elev)))
-        obj.setItem(x, 5, QTableWidgetItem(str(stn.channel)))
-        obj.setItem(x, 6, QTableWidgetItem(str(stn.name)))
+        obj.setItem(x, 5, QTableWidgetItem(str(stn.name)))
         obj.setItem(x, 7, QTableWidgetItem(str(stn.file_name)))
 
 def defTable(obj, h, w, headers=None):
@@ -230,6 +257,7 @@ def changeRows(obj, change):
 
 def fileSearch(filters, obj):
     # obj - where the text goes
+    # filter example: ['NetCDF (*.nc)', 'HDF (*.HDF)', 'CSV (*.csv)', 'TXT (*.txt)']
     dlg = QFileDialog()
     dlg.setFileMode(QFileDialog.AnyFile)
     dlg.setNameFilters(filters)
@@ -248,6 +276,11 @@ def fileSearch(filters, obj):
     else:
         return filename[0]
 
+def saveFile(ext):
+    dlg = QFileDialog.getSaveFileName(None, 'Save File')
+    file_name = checkExt(dlg[0], ext)
+    return file_name
+
 def folderSearch(obj):
     # dlg = QFileDialog()
     # dlg.getExistingDirectory(self, "Select Directory")
@@ -265,3 +298,5 @@ def folderSearch(obj):
 
     obj.setText(filename[0])
 
+def canvasFix(canvas):
+    pass

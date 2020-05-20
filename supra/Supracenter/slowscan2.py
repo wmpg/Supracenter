@@ -6,7 +6,8 @@
 import warnings
 
 import numpy as np
-
+import pyximport
+pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 from supra.Supracenter.cynwDir import nwDir
  
 
@@ -201,8 +202,8 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
             if E[k, l] < v_tol:
-                trace = []
-                #trace=[[detec_pos[0], detec_pos[1], detec_pos[2]]]
+                # trace =
+                trace=[[supra_pos[0], supra_pos[1], supra_pos[2]]]
                 a, b = np.cos(Phi), np.sin(Phi)
                 last_z = 0
                 for i in range(n_layers - 1):
@@ -246,7 +247,7 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
 
                     x = supra_pos[0] + np.cos(Phi)*X + np.cos(Phi + np.pi/2)*Y
                     y = supra_pos[1] + np.sin(Phi)*X + np.sin(Phi + np.pi/2)*Y
-                    trace.append([detec_pos[0] - x[k, l], detec_pos[1] - y[k, l], z[last_z]])
+                    trace.append([x[k, l], y[k, l], z[n_layers - 1 - last_z]])
 
                     #trace.append([x[k, l], y[k, l], z[n_layers - last_z]])
                 # print("Azimuth = {:}".format(np.degrees(np.arctan2(-trace[-1][0], -trace[-1][1]))))
@@ -344,3 +345,17 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_t
     
     ##########################
     return t_arrival, azimuth, takeoff, E[k, l], trace
+
+if __name__ == '__main__':
+    s = np.array([0, 0, 2])
+    d = np.array([0, 1.4, 0])
+    z_profile = np.array([ [0, 330, 1, 45],
+                        [0.33, 320, 2, 45],
+                        [0.67, 315, 2, 45],
+                        [1.00, 310, 1, 42],
+                        [1.33, 300, 4, 35],
+                        [1.67, 293, 5, 30],
+                        [2.00, 295, 10, 15]])
+
+    a, b, c, d, e = cyscan(s, d, z_profile)
+    print(e)
