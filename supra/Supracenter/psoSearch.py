@@ -34,7 +34,7 @@ def timeFunction(x, *args):
     '''
 
     # Retrieve passed arguments
-    stns, w, kotc, setup, ref_pos, dataset, v = args
+    stns, w, kotc, setup, ref_pos, atmos, prefs, v = args
 
     # number of stations total
     n_stations = len(stns)
@@ -52,7 +52,9 @@ def timeFunction(x, *args):
     # Mean occurrence time
     motc = 0
 
-    ### multiprocessing
+    S = Position(0, 0, 0)
+    S.x, S.y, S.z = x[0], x[1], x[2]
+    S.pos_geo(ref_pos)
 
     # number of stations total
     n_stations = len(stns)
@@ -73,14 +75,17 @@ def timeFunction(x, *args):
     for j in range(n_stations):
         # if station has weight
         if w[j] > 0:
+            
+            D = Position(0, 0, 0)
+            D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
+            D.pos_geo(ref_pos)
 
-            # Create interpolated atmospheric profile for use with cyscan
-            sounding, points = getWeather([x[0], x[1], x[2]], xstn[j, :], setup.weather_type, ref_pos, copy.copy(dataset))
-
+            sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
 
             # Use distance and atmospheric data to find path time
-            time3D[j], _, _, _ = cyscan(np.array([x[0], x[1], x[2]]), np.array(xstn[j, :]), sounding, \
-                                                wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
+            time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \
+                        wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
+                        h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
             # Residual time for each station
             sotc[j] = tobs[j] - time3D[j]
 
@@ -109,7 +114,8 @@ def timeFunction(x, *args):
     return err
 
 def timeConstraints(x, *args):
-        # Retrieve passed arguments
+    
+    # Retrieve passed arguments
     stns, w, kotc, setup, ref_pos, dataset, v = args
 
     # number of stations total
@@ -191,26 +197,17 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
+def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
         Produces a graph with the stations and residual results, and prints out the optimal supracenter location
-
-    Arguments:
-        search: [list] [x_min, x_max, y_min, y_max, z_min, z_max] limits of coordinates to search within
-        stns: [array] [Latitude, Longitude, Elevation] for each station (converted into locatl coordinates)
-        w: [list] list of weights for each station (0 < w < 1, 1 - default, 0 - ignore station)
-        ref_pos: [list] [latitude, longitude, elevation] reference coordinate to be used for the local coordinate system
-                    by default, is the average latitude and longitude between the stations, and an elevation of 0.
-        s_name: [lst] names of stations for plotting
-        setup: [object] object storing ini inputs
-        tweaks: [object]  parameters that can be changed from the main menu
-        dataset: [array] weather profile for the entire search area, for use with weatherInterp
-        consts: [object] Physical constants used throught the program
     """
 
     print('Data converted. Searching...')
+
+    setup = bam.setup
+    atmos = bam.atmos
 
     search_min = Position(setup.lat_min, setup.lon_min, setup.elev_min)
     search_max = Position(setup.lat_max, setup.lon_max, setup.elev_max)
@@ -222,7 +219,7 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
         print('Search min and search max have not been defined! Aborting search!')
         return None
 
-    output_name = setup.working_directory
+    output_name = prefs.workdir
     single_point = setup.manual_fragmentation_search[0]
     ref_time = setup.fireball_datetime
 
@@ -259,19 +256,19 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
     # combined weights
     nwn = sum(w)
 
-    if setup.show_ballistic_waveform:
+    if prefs.ballistic_en:
         try:
             v = -setup.trajectory.vector.xyz
             setup.ref_pos = setup.trajectory.pos_f
-            if setup.debug:
+            if prefs.debug:
                 print("Constraining Trajectory")
         except:
             v = [None]
-            if setup.debug:
+            if prefs.debug:
                 print("Free Search")
     else:
         v = [None]
-        if setup.debug:
+        if prefs.debug:
             print("Free Search")
 
     # Prevent search below stations
@@ -288,7 +285,7 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
         #  [x, y, z] local coordinates
 
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, setup.ref_pos, dataset, v)
+        args = (stns, w, kotc, setup, setup.ref_pos, atmos, prefs, v)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location
@@ -299,12 +296,21 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
         #     x_opt, f_opt = pso(timeFunction, lb, ub, f_ieqcons=lineConstraint, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
         #                 phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep) 
         # else:
-        if v[0] != None:
-            x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, ieqcons=[trajConstraints, timeConstraints], args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
-                    phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep, processes=multiprocessing.cpu_count(), particle_output=True) 
-        else:
-            x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, args=args, swarmsize=int(setup.swarmsize), maxiter=int(setup.maxiter), \
-                    phip=setup.phip, phig=setup.phig, debug=False, omega=setup.omega, minfunc=setup.minfunc, minstep=setup.minstep, processes=multiprocessing.cpu_count(), particle_output=True) 
+
+        # # Restricted to trajectory
+        # if v[0] != None:
+        #     x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, \
+        #             ieqcons=[trajConstraints, timeConstraints], args=args,\
+        #             swarmsize=int(prefs.pso_swarm_size), maxiter=int(prefs.pso_max_iter), \
+        #             phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega, \
+        #             minfunc=prefs.pso_min_error, minstep=prefs.pso_min_step, processes=1, particle_output=True) 
+        
+        # Unrestricted
+
+        x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, \
+                args=args, swarmsize=int(prefs.pso_swarm_size), maxiter=int(prefs.pso_max_iter), \
+                phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega,\
+                minfunc=prefs.pso_min_error, minstep=prefs.pso_min_step, processes=1, particle_output=True) 
 
 
         print('Done Searching')
@@ -313,12 +319,12 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
         x_opt.x = x_opt_temp[0]
         x_opt.y = x_opt_temp[1]
         x_opt.z = x_opt_temp[2]
-        x_opt.pos_geo(setup.ref_pos)
+        x_opt.pos_geo(ref_pos)
 
     # If manual search
     else:
 
-        single_point.position.pos_loc(setup.ref_pos)
+        single_point.position.pos_loc(ref_pos)
         x_opt = single_point.position
         sup = single_point.position.xyz
         errors=0
@@ -326,7 +332,7 @@ def psoSearch(stns, w, s_name, setup, dataset, ref_pos, manual=False):
 
     # Get results for current Supracenter
     time3D, az, tf, r, motc, sotc, trace = outputWeather(n_stations, x_opt, stns, setup, \
-                                                setup.ref_pos, dataset, output_name, s_name, kotc, w)
+                                                ref_pos, atmos, output_name, s_name, kotc, w, prefs)
 
     for ii, element in enumerate(time3D):
         if np.isnan(element):

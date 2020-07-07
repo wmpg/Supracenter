@@ -13,13 +13,8 @@ class FragmentationStaff(QWidget):
     def __init__(self, setup, pack):
 
         QWidget.__init__(self)
-        self.setWindowTitle('Fragmentation Staff')
-        p = self.palette()
-        p.setColor(self.backgroundRole(), Qt.black)
-        self.setPalette(p)
-        
-        theme(self)
 
+        self.buildGUI()
         # Take important values from main window class
         stn, self.current_station, self.pick_list = pack
 
@@ -82,24 +77,54 @@ class FragmentationStaff(QWidget):
         self.height_canvas.addItem(base_points, update=True)
 
         #########################
+        # Plot Precursor Points
+        #########################
+
+        pre_points = pg.ScatterPlotItem()
+        
+        for i in range(len(self.setup.fragmentation_point)):
+        
+            X = self.setup.fragmentation_point[i].position.elev
+            
+            # Distance between frag point and the ground below it
+            v_dist = X - stn.metadata.position.elev
+            
+            # Horizontal distance betweent the new ground point and the stn
+            h_dist = self.setup.fragmentation_point[i].position.ground_distance(stn.metadata.position)
+            
+            # Speed of wave in air
+            v_time = v_dist/310
+
+            # Speed of wave in ground
+            h_time = h_dist/3100
+
+            # Total travel time
+            Y = v_time + h_time - nom_pick.time
+
+            pre_points.addPoints(x=[X], y=[Y], pen=(210, 235, 52), brush=(210, 235, 52), symbol='o')
+
+        self.height_canvas.addItem(pre_points, update=True)
+
+        #########################
         # Perturbation points
         #########################
         prt_points = pg.ScatterPlotItem()
         for i in range(len(self.setup.fragmentation_point)):
             data, remove = self.obtainPerts(stn.times.fragmentation, i)
+            Y = []
+            X = self.setup.fragmentation_point[i].position.elev
             for pt in data:
-                X = self.setup.fragmentation_point[i].position.elev
-                Y = pt - nom_pick.time
+                
+                Y = (pt - nom_pick.time)
                 prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
 
-        self.height_canvas.addItem(prt_points, update=True)
- 
+            self.height_canvas.addItem(prt_points, update=True)
 
         for pick in self.pick_list:
             if pick.group == 0:
-                self.height_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[pick.time - nom_pick.time, pick.time - nom_pick.time], pen='g')
+                self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 255, 0)))
             else:
-                self.height_canvas.plot(x=[np.nanmin(X), np.nanmax(X)], y=[pick.time - nom_pick.time, pick.time - nom_pick.time], pen='b')
+                self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
 
 
         #####################
@@ -123,15 +148,17 @@ class FragmentationStaff(QWidget):
             angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
             X.append(self.setup.fragmentation_point[i].position.elev)
         angle_off = np.array(angle_off)
+
+        ###############################
+        # Find optimal ballistic angle
+        ###############################
         try:
             best_indx = np.nanargmin(abs(angle_off - 90))
             print("Optimal Ballistic Height {:.2f} km with angle of {:.2f} deg".format(X[best_indx]/1000, angle_off[best_indx]))
-
-            self.angle_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(np.append(angle_off, 90)), np.nanmax(np.append(angle_off, 90))], pen=(0, 0, 255))
-            self.height_canvas.plot(x=[X[best_indx], X[best_indx]], y=[np.nanmin(Y), np.nanmax(Y)], pen=(0, 0, 255))
+            self.angle_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
+            self.height_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
             self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
 
-            # self.angle_canvas.setXRange(10000, 45000, padding=0)
             best_arr = []
             angle_arr = []
             
@@ -141,13 +168,12 @@ class FragmentationStaff(QWidget):
         angle_off = 0
         height = None
         for i in range(len(self.setup.fragmentation_point)):
-            az, _ = np.array(self.obtainPerts(stn.times.fragmentation, i, pt=1))
-            tf, _ = np.array(self.obtainPerts(stn.times.fragmentation, i, pt=2))
-            az = np.radians(az)
-            tf = np.radians(180 - tf)
-
-            for j in range(len(az)):
-                v = np.array([np.sin(az[j])*np.sin(tf[j]), np.cos(az[j])*np.sin(tf[j]), -np.cos(tf[j])])
+            for j in range(len(stn.times.fragmentation[i][1])):
+                az = stn.times.fragmentation[i][1][j][1]
+                tf = stn.times.fragmentation[i][1][j][2]
+                az = np.radians(az)
+                tf = np.radians(180 - tf)
+                v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
 
                 angle_off_new = np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v)))))
                 self.angle_canvas.scatterPlot(x=[self.setup.fragmentation_point[i].position.elev], y=[angle_off_new], symbol='o')
@@ -163,29 +189,19 @@ class FragmentationStaff(QWidget):
         
         self.angle_canvas.addItem(pg.InfiniteLine(pos=(0, 90), angle=0, pen=QColor(255, 0, 0)))
 
-        # if self.setup.perturb:
-        #     data, remove = chauvenet(X[best_arr])
-        #     data_angle, remove_angle = chauvenet(angle_arr)
-        #     print("Ballistic Perturbation Range: {:.5f} - {:.5f} km, with angles of {:.2f} - {:.2f} deg"\
-        #                     .format(np.nanmin(data)/1000, np.nanmax(data)/1000, np.nanmin(data_angle), np.nanmax(data_angle)))
-        #     print("Removed Points: {:} km".format(remove))
-        #     print("Removed Angles: {:} deg".format(remove_angle))
+        #####################
+        # Build plot window
+        #####################
 
-
-
+        # 25 deg tolerance window
         phigh = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [65, 65], pen = 'g')           
         plow = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [115, 115], pen = 'g')                  
-        pfill = pg.FillBetweenItem(phigh, plow, brush = (0, 0, 255, 150))
+        pfill = pg.FillBetweenItem(phigh, plow, brush = (0, 0, 255, 100))
         self.angle_canvas.addItem(phigh)
         self.angle_canvas.addItem(plow)
         self.angle_canvas.addItem(pfill)
 
-        # self.height_canvas.plot(x=[20500, 20500], y=[-40, 100], pen=(255, 255, 255))
-        # self.height_canvas.plot(x=[21500, 21500], y=[-40, 100], pen=(255, 255, 255))
-        # self.height_canvas.plot(x=[25500, 25500], y=[-40, 100], pen=(255, 255, 255))
-        # self.height_canvas.plot(x=[30400, 30400], y=[-40, 100], pen=(255, 255, 255))
-
-
+        # Build axes
         self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick', color=(0, 0, 0))
         self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path', color=(0, 0, 0))
         self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(nom_pick.time), units='s')
@@ -195,13 +211,29 @@ class FragmentationStaff(QWidget):
 
         self.height_canvas.setLimits(xMin=0, xMax=50000, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
 
+        # Fonts
+        font= QFont()
+        font.setPixelSize(20)
+        self.height_canvas.getAxis("bottom").tickFont = font
+        self.height_canvas.getAxis("left").tickFont = font
+        self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        self.height_canvas.getAxis('left').setPen((255, 255, 255))
+        self.angle_canvas.getAxis("bottom").tickFont = font
+        self.angle_canvas.getAxis("left").tickFont = font
+        self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        self.angle_canvas.getAxis('left').setPen((255, 255, 255))
         self.setLayout(layout)
 
+    def buildGUI(self):
+        self.setWindowTitle('Fragmentation Staff')
+        p = self.palette()
+        p.setColor(self.backgroundRole(), Qt.black)
+        self.setPalette(p)
+        
+        theme(self)
 
     def export(self):
 
-        # set export parameters if needed
-        #exporter.parameters()['width'] = 1000   # (note this also affects height parameter)
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
         file_name = dlg[0]

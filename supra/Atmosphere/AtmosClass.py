@@ -11,7 +11,6 @@ from supra.Utils.AngleConv import roundToNearest
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyzInteg import zInteg
 
-
 consts = Constants()
 
 class AtmosType:
@@ -19,8 +18,14 @@ class AtmosType:
         pass
 
     def interp(self, lat, lon, div=0.25):
-        
-        #approximately interpolates the grid points in between
+        """
+        Approximately interpolates grid points of a division between point A and point B
+
+        lat: [lat_initial, lat_final]
+        lon: [lon_initial, lon_final]
+        """
+
+        # Collect interpolated points
         pts = []
 
         x0 = lat[0]
@@ -28,22 +33,33 @@ class AtmosType:
         y0 = lon[0]
         y1 = lon[1]
 
-        dx = (x1 - x0)/div
-        dy = (y1 - y0)/div
+        dx = np.abs(x1 - x0)/div
+        dy = np.abs(y1 - y0)/div
 
-        # upper limit on number of steps
-        steps = int((dx - 2)*(dy - 2) + 2)//3 + 1
+        # Approximate upper limit on number of steps
+        try:
+            steps = np.abs(int((dx - 2)*(dy - 2) + 2)//3 + 1)
+        except ValueError:
+            steps = 10
 
         x = np.linspace(x0, x1, steps)
         y = np.linspace(y0, y1, steps)
 
+        # Take all steps and lock them to the nearest grid point
         for i in range(steps):
             pts.append([roundToNearest(x[i], div), roundToNearest(y[i], div)])
+
+        if len(pts) == 0:
+            return [[roundToNearest(x0, div), roundToNearest(y0, div)], [roundToNearest(x1, div), roundToNearest(y1, div)]]
 
         return pts
 
 
     def convert(self, t, u, v, z):
+        """
+        Converts temp, u-wind, v-wind, geopotential to
+        height, sp of sound, wind magnitude and wind direction
+        """
 
         speed = np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)
         mags = np.sqrt(u**2 + v**2)
@@ -53,7 +69,10 @@ class AtmosType:
         return level, speed, mags, dirs
 
     def spline(self, level, speed, mags, dirs, interp=100):
-        
+        """
+        Cubic spline the data for smooth profiles
+        """
+
         speed, _ = self.splineSec(speed, level, interp=interp)
         mags, _ = self.splineSec(mags, level, interp=interp)
         dirs, level = self.splineSec(dirs, level, interp=interp)
@@ -61,11 +80,14 @@ class AtmosType:
         return level, speed, mags, dirs
 
     def splineSec(self, y, x, interp=100):
+        
+        if interp is None:
+            return y, x
 
         x, y = np.flip(x), np.flip(y)
         f = CubicSpline(x, y)
 
-        new_x = np.linspace(x[0], x[-1], interp)
+        new_x = np.linspace(x[0], x[-1], interp-1)
         new_y = f(new_x)
 
         return new_y, new_x
@@ -138,6 +160,8 @@ class ECMWF(AtmosType):
         t_all = []
         u_all = []
         v_all = []
+
+        # Using a different random number for each variable and height
         for level in range(len(t)):
             t_all.append(random.gauss(t[level], t_spr[level]))
             u_all.append(random.gauss(u[level], u_spr[level]))
@@ -147,8 +171,8 @@ class ECMWF(AtmosType):
         return np.array(t_all), np.array(u_all), np.array(v_all), z
 
 
-    def generateProfile(self, t, u, v, z, h):
-        level, speed, mags, dirs = self.spline(*self.convert(t, u, v, z), interp=100)
+    def generateProfile(self, t, u, v, z, h, spline=100):
+        level, speed, mags, dirs = self.spline(*self.convert(t, u, v, z), interp=spline)
 
         sounding = []
         for i in range(len(level)):
@@ -158,7 +182,7 @@ class ECMWF(AtmosType):
         
         return sounding
 
-    def getProfile(self, lat, lon, heights, prefs):
+    def getProfile(self, lat, lon, heights, prefs, spline=100):
         ''' Interpolates between starting and ending locations, converts, and splines 
             resulting curve into a smooth profile
             lat = [start lat, end lat]
@@ -187,8 +211,22 @@ class ECMWF(AtmosType):
             lat = roundToNearest(pt[0], 0.25)
             lon = roundToNearest(pt[1], 0.25)%360
 
-            lon_index = int(np.where(self.lons==lon)[0])
-            lat_index = int(np.where(self.lats==lat)[0])
+            try:
+                lon_index = int(np.where(self.lons==lon)[0])
+            except TypeError:
+                if np.abs(lon - self.lons[-1]) < np.abs(lon - self.lons[0]):
+                    lon_index = 0
+                else:
+                    lon_index = len(self.lons) - 1
+            try:
+                lat_index = int(np.where(self.lats==lat)[0])
+            except TypeError:
+                if np.abs(lat - self.lats[-1]) < np.abs(lat - self.lats[0]):
+                    lat_index = 0
+                else:
+                    lat_index = len(self.lats) - 1
+            
+
 
             frac = int(np.around((ii+1)/num_pts*num_lvl) + 1)
 
@@ -201,8 +239,21 @@ class ECMWF(AtmosType):
                 lat = roundToNearest(pt[0], 0.5)
                 lon = roundToNearest(pt[1], 0.5)%360
 
-                lon_index = int(np.where(self.lons_spr==lon)[0])
-                lat_index = int(np.where(self.lats_spr==lat)[0])
+
+                try:
+                    lon_index = int(np.where(self.lons_spr==lon)[0])
+                except TypeError:
+                    if np.abs(lon - self.lons_spr[-1]) < np.abs(lon - self.lons_spr[0]):
+                        lon_index = 0
+                    else:
+                        lon_index = len(self.lons_spr) - 1
+                try:
+                    lat_index = int(np.where(self.lats_spr==lat)[0])
+                except TypeError:
+                    if np.abs(lat - self.lats_spr[-1]) < np.abs(lat - self.lats_spr[0]):
+                        lat_index = 0
+                    else:
+                        lat_index = len(self.lats_spr) - 1
 
                 t_spr.append(self.temperature_spr[last_frac:frac, lat_index, lon_index])
                 u_spr.append(self.x_wind_spr[last_frac:frac, lat_index, lon_index])
@@ -221,7 +272,7 @@ class ECMWF(AtmosType):
         v_spr = np.array([item for sublist in v_spr for item in sublist])
         z_spr = np.array([item for sublist in z_spr for item in sublist])
 
-        sounding = self.generateProfile(t, u, v, z, heights)
+        sounding = self.generateProfile(t, u, v, z, heights, spline=spline)
 
         perturbations = []
 
@@ -229,7 +280,7 @@ class ECMWF(AtmosType):
             
             for i in range(perturb):
 
-                per_sounding = self.generateProfile(*self.perturb(t, u, v, z, t_spr, u_spr, v_spr), heights)
+                per_sounding = self.generateProfile(*self.perturb(t, u, v, z, t_spr, u_spr, v_spr), heights, spline=spline)
 
                 perturbations.append(np.array(per_sounding))
 

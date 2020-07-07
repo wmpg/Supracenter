@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,34 +11,36 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
   
-    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+    <link rel="shortcut icon" href="../_static/BAM_logo.png"/>
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="References" href="References.html" />
-    <link rel="prev" title="Seismic Trajectory" href="seismictraj.html" /> 
+    <link rel="next" title="Make Picks" href="makepicks.html" />
+    <link rel="prev" title="Getting Started" href="GettingStarted.html" /> 
 </head>
 
 <body class="wy-body-for-nav">
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -86,40 +88,34 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Atmosphere</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#atmospheric-data-instructions">Atmospheric Data Instructions</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#ukmo-instructions-manual-download">UKMO Instructions - Manual Download</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#ecmwf-instructions-script-download">ECMWF Instructions - Script Download</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#merra-2-instructions-script-download">MERRA-2 Instructions - Script Download</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#merra-2-instructions-manual-download">MERRA-2 Instructions - Manual Download</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#custom-atmospheric-data">Custom Atmospheric Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#era5">ERA5</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#radiosonde">Radiosonde</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#perturbations">Perturbations</a><ul class="simple">
+<li class="toctree-l2"><a class="reference internal" href="#perturbations">Perturbations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#loading-data-into-an-event">Loading Data into an Event</a><ul class="simple">
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="makepicks.html">Make Picks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Features.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -158,7 +154,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Atmosphere</li>
     
@@ -181,10 +177,6 @@
             
   <div class="section" id="atmosphere">
 <h1>Atmosphere<a class="headerlink" href="#atmosphere" title="Permalink to this headline">¶</a></h1>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>A lot of the weather features were added very early in development. Currently, only the ECMWF method is supported, since it also has perturbations.</p>
-</div>
 <div class="section" id="effect-of-weather-on-rays">
 <h2>Effect of Weather on Rays<a class="headerlink" href="#effect-of-weather-on-rays" title="Permalink to this headline">¶</a></h2>
 <p>The temperature changes the speed of sound in air like so:</p>
@@ -198,17 +190,14 @@
 <p><strong>Heat capacity ratio</strong> <span class="math notranslate nohighlight">\(\gamma = 1.40\)</span></p>
 <p><strong>Molar mass of the air</strong> <span class="math notranslate nohighlight">\(M_0 = 0.0289644\)</span> kg/mol</p>
 </div>
-<div class="section" id="atmospheric-data-instructions">
-<h2>Atmospheric Data Instructions<a class="headerlink" href="#atmospheric-data-instructions" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="setting-up-atmospheric-fetching">
+<h2>Setting Up Atmospheric Fetching<a class="headerlink" href="#setting-up-atmospheric-fetching" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
 <p>Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required. See netCDFconv.py for more details.</p>
 </div>
-<p>Reading the wrong file may cause the program to freeze, such as trying to read UKMO .nc file as an ECMWF .nc file. Killing the program while it is reading the data may corrupt the file (while the message ‘Converting weather data. This may take a while…’ is in the terminal).</p>
-<p>Constants used in converting weather values can be changed in supra/Fireballs/SeismicTrajectory.ini</p>
-</div>
-<div class="section" id="setting-up-atmospheric-fetching">
-<h2>Setting Up Atmospheric Fetching<a class="headerlink" href="#setting-up-atmospheric-fetching" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="era5">
+<h3>ERA5<a class="headerlink" href="#era5" title="Permalink to this headline">¶</a></h3>
 <p>Setting up atmospheric fetching is a one-time setup which will allow data to be downloaded from the Copernicus Climate Change Store automatically.</p>
 <p>Follow the instructions given here, with the given exceptions below:
 <a class="reference external" href="https://cds.climate.copernicus.eu/api-how-to">https://cds.climate.copernicus.eu/api-how-to</a></p>
@@ -219,73 +208,11 @@
 <p class="admonition-title">Warning</p>
 <p>Cancelling the program while it is using the weather data may corrupt it! Since these files are so large to download (usually between 1 and 6 GB), it is recommended to keep a copy of the weather file on your computer, just in case!</p>
 </div>
-<div class="section" id="ukmo-instructions-manual-download">
-<h3>UKMO Instructions - Manual Download<a class="headerlink" href="#ukmo-instructions-manual-download" title="Permalink to this headline">¶</a></h3>
-<p>Downloadable files can be found here:
-<a class="reference external" href="http://data.ceda.ac.uk/badc/ukmo-assim/">http://data.ceda.ac.uk/badc/ukmo-assim/</a></p>
-<p>An account will need to be created in order to access files</p>
-<p>UKMO data is found as a .pp file on the CEDA site</p>
-<p>Supracenter only handles .nc files, so the file needs to be converted.</p>
-<p>CONVERT .PP TO .NC
-Download xConv1.94 &lt;replace 1.94 with the current version number&gt;
-<a class="reference external" href="http://cms.ncas.ac.uk/documents/xconv/">http://cms.ncas.ac.uk/documents/xconv/</a>
-and extract xconv1.94 and convsh1.94. Create a symbolic link to convsh:</p>
-<p>Terminal:
-ln -s xconv1.94 convsh1.94</p>
-<p>In the folder with xconv and convsh, add conv2nc.tcl and runXconv.bat from the xconv_scripts file. Other
-example scripts can be found here: <a class="reference external" href="http://cms.ncas.ac.uk/documents/xconv/">http://cms.ncas.ac.uk/documents/xconv/</a></p>
-<p>After this setup, .pp files in the folder can be converted to .nc files with the command:
-(Navigate to the folder)</p>
-<p>Terminal:
-./convsh1.94 ./conv2nc.tcl -i &lt;input file.pp&gt; -o &lt;output file.nc&gt;</p>
-<p>Indicate in the .ini where the .nc file is, and the UKMO data can now be read by Supracenter</p>
-<p>Note: killing the program while reading a .nc file WILL corrupt the file</p>
-<p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
 </div>
-<div class="section" id="ecmwf-instructions-script-download">
-<h3>ECMWF Instructions - Script Download<a class="headerlink" href="#ecmwf-instructions-script-download" title="Permalink to this headline">¶</a></h3>
-<p>Create an account with ECMWF</p>
-<p>Follow the instructions given:
-<a class="reference external" href="https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI">https://software.ecmwf.int/wiki/display/CKB/How+to+download+data+via+the+ECMWF+WebAPI</a></p>
-<p>Follow the instructions given up to before making the script, the script is in mainmenu.py:
-<a class="reference external" href="https://software.ecmwf.int/wiki/display/CKB/How+to+download+ERA5+data+via+the+ECMWF+Web+API">https://software.ecmwf.int/wiki/display/CKB/How+to+download+ERA5+data+via+the+ECMWF+Web+API</a></p>
-<p>Change the ECMWF script in mainmenu.py as needed, indicate the hour of the weather profile needed
-atm_hour is the hour that will be downloaded, if it is available.
-grid_size specifies the spatial resolution of the weather data from ECMWF</p>
-<p>Note: Automatic data retrival may not work for older files</p>
-</div>
-<div class="section" id="merra-2-instructions-script-download">
-<h3>MERRA-2 Instructions - Script Download<a class="headerlink" href="#merra-2-instructions-script-download" title="Permalink to this headline">¶</a></h3>
-<p>Create an account:
-<a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
-<p>Link the database with your account:
-<a class="reference external" href="https://disc.gsfc.nasa.gov/earthdata-login">https://disc.gsfc.nasa.gov/earthdata-login</a></p>
-<p>Enter your username and password into fetchMERRA.py</p>
-<p>Specify in the .ini where the file is and the name of the file, indicate the hour of the weather profile needed.
-atm_hour is the hour that will be downloaded, if it is available.</p>
-<p>Note: Automatic data retrival may not work for older files</p>
-</div>
-<div class="section" id="merra-2-instructions-manual-download">
-<h3>MERRA-2 Instructions - Manual Download<a class="headerlink" href="#merra-2-instructions-manual-download" title="Permalink to this headline">¶</a></h3>
-<p>Create an account:
-<a class="reference external" href="https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login">https://wiki.earthdata.nasa.gov/display/EL/How+To+Register+With+Earthdata+Login</a></p>
-<p>Link the database with your accout:
-<a class="reference external" href="https://disc.gsfc.nasa.gov/earthdata-login">https://disc.gsfc.nasa.gov/earthdata-login</a></p>
-<p>Download the data from the site:
-<a class="reference external" href="https://disc.gsfc.nasa.gov/datasets/M2I3NVASM_V5.12.4/summary?keywords=%22MERRA-2%22">https://disc.gsfc.nasa.gov/datasets/M2I3NVASM_V5.12.4/summary?keywords=%22MERRA-2%22</a></p>
-<p>Go to “subset/get data” and specify what area data is needed. Make sure the file type is HDF
-and the variables contain at least “air_temperature”, “northward_wind”, “eastward_wind”, and “mid_layer_heights”</p>
-<p>Specify in the .ini where the file is and the name of the file</p>
-<p>Note: Data conversion may not work for older files, and may need to be read with a script</p>
-</div>
-<div class="section" id="custom-atmospheric-data">
-<h3>Custom Atmospheric Data<a class="headerlink" href="#custom-atmospheric-data" title="Permalink to this headline">¶</a></h3>
-<p>Create a custom .txt file containing the data, separated by spaces.</p>
-<p>There must be at least two rows for the program to be able to run.</p>
-<p>The format of the .txt file should be:</p>
-<p>header
-elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north due east)</p>
-<p>Specify in the .ini where the file is.</p>
+<div class="section" id="radiosonde">
+<h3>Radiosonde<a class="headerlink" href="#radiosonde" title="Permalink to this headline">¶</a></h3>
+<p>Follow the Fetch Atmosphere GUI. It will download the closest active station data to the lat/lon_centre.</p>
+<p>When inputting a file name, do not include an extension</p>
 </div>
 <div class="section" id="isotropic-atmospheric-data">
 <h3>Isotropic Atmospheric Data<a class="headerlink" href="#isotropic-atmospheric-data" title="Permalink to this headline">¶</a></h3>
@@ -295,6 +222,16 @@ elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north du
 </div>
 <div class="section" id="perturbations">
 <h2>Perturbations<a class="headerlink" href="#perturbations" title="Permalink to this headline">¶</a></h2>
+<div class="figure align-center">
+<img alt="../_images/perturbation_example.png" src="../_images/perturbation_example.png" />
+</div>
+<p>The atmospheric data has some uncertainty. To capture this uncertainty in our analysis, we add Monte-Carlo perturbations to the nominal atmospheric profile. The ERA5 model provides the standard deviation of the raw weather data, namely the temperature and the u- and v-components of the winds. A perturbation generates a random value for every data point in the atmosphere fit on a Gaussian curve using the nominal atmosphere as a mean and the ensemble spread provided by ERA5 as the standard deviation.</p>
+<p>The number of perturbations run in a simulation can be configured in the preferences menu. Note that since the perturbations deal with random numbers, the results between runs may be different.</p>
+</div>
+<div class="section" id="loading-data-into-an-event">
+<h2>Loading Data into an Event<a class="headerlink" href="#loading-data-into-an-event" title="Permalink to this headline">¶</a></h2>
+<p>Data may be loaded into an event .bam file by selecting the Fetch Atmosphere tab. To automatically download an atmosphere or perturbation file, indicate the desired download location in the Name field and click download. If a perturbation file is required, click the Perturbation check box. Alternatively, the files may be downloaded from the Copernicus site directly: <a class="reference external" href="https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels">https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels</a></p>
+<p>To save a file, indicate the file in the name field, and indicate what file type it is (nominal, spread, or radiosonde data). Then click save into BAM, which will load a subsection of the data into the BAM file which is within the search radius. Once the atmospheric file is saved into BAM, the atmospheric file is no longer needed, and can be deleted (although it is recommended to keep it on your computer - the files may become corrupted if the program is cancelled at the wrong time).</p>
 <div class="toctree-wrapper compound">
 </div>
 </div>
@@ -308,10 +245,10 @@ elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north du
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="References.html" class="btn btn-neutral float-right" title="References" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="makepicks.html" class="btn btn-neutral float-right" title="Make Picks" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
-        <a href="seismictraj.html" class="btn btn-neutral float-left" title="Seismic Trajectory" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+        <a href="GettingStarted.html" class="btn btn-neutral float-left" title="Getting Started" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
       
     </div>
   
@@ -320,11 +257,19 @@ elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north du
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2020, Luke McFadden, Denis Vida, Peter Brown
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -335,7 +280,6 @@ elevation(m) temperature(deg C) wind_speed(m/s) wind_direction(deg from north du
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

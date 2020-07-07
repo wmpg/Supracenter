@@ -4,7 +4,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
-def anglescan(S, phi, theta, z_profile, wind=True):
+def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, target=None, debug=True):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
@@ -74,14 +74,14 @@ def anglescan(S, phi, theta, z_profile, wind=True):
     a, b = np.cos(phi), np.sin(phi)
     last_z = 0 
     for i in range(n_layers - 1):
-        
+
         s2 = s[i]**2
         delz = z[i + 1] - z[i]
 
         # Winds Enabled
         if wind:
             # clear old variables
-            
+
             # Wind transformation variables
             U = u[i]
             V = v[i]
@@ -92,7 +92,10 @@ def anglescan(S, phi, theta, z_profile, wind=True):
 
             if np.isnan(A).all():
 
-                return np.nan, np.nan, np.nan, np.nan
+                if debug:
+                    print("ANGLESCAN ERROR: All NaNs - rays reflect upwards")
+
+                return np.array([np.nan, np.nan, np.nan, np.nan])
 
             # Equation (10)
             X += (p2 + s2*U)*A
@@ -102,17 +105,22 @@ def anglescan(S, phi, theta, z_profile, wind=True):
 
             # Calculate true destination positions (transform back)
             #0.0016s
-            last_z = i + 1
+
 
         # Winds Disabled
         else:
 
             # Equation (3)
             X += p*(delz)/(np.sqrt(s2 - p**2))
-            last_z = i + 1
-            # Calculate true destination positions (transform back)
+        last_z = i
 
-        t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*(z[i + 1] - z[i])
+
+        t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
+        # if v_tol is not None and h_tol is not None:
+        #     dh = z[last_z] - target[2]
+        #     dx = np.sqrt((S[0] + (a*X - b*Y) - target[0])**2 + (S[1] + (b*X + a*Y) - target[1])**2)
+        #     if dh <= v_tol and dx <= h_tol:
+        #         t_arrival += np.sqrt(dh**2 + dx**2)/310
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
     # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 

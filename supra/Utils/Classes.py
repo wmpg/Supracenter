@@ -124,6 +124,8 @@ class Constants:
 
         self.R_EARTH = 6378100
 
+        self.eps = 7./3 - 4./3 -1
+
 class Pick:
     def __init__(self, t, stn, stn_no, channel, group):
         self.time = t
@@ -382,7 +384,7 @@ class Trajectory:
 
             pos_f.pos_loc(pos_f)
 
-            scale = -100000 / self.vector.z
+            scale = -50000 / self.vector.z
 
             pos_i = self.vector * -scale + pos_f 
 
@@ -536,13 +538,14 @@ class Trajectory:
             MAX_HEIGHT = max_p
 
         u = self.vector.xyz
+
         ground_point = np.array([0, 0, 0])
         # find top boundary of line given maximum elevation of trajectory
         if self.pos_i.elev != None:
             scale = -self.pos_i.elev/u[2]
 
         else:
-            scale = -100000/u[2]
+            scale = -50000/u[2]
 
         # define line top boundary
         top_point = ground_point - scale*u
@@ -585,9 +588,9 @@ class Trajectory:
         
         frac = (height - self.pos_f.elev) / (self.pos_i.elev - self.pos_f.elev)
 
-        v = (self.v_f + self.getVelAtHeight(height))/2
-
-        d = frac*(self.findLength())
+        # v = (self.v_f + self.getVelAtHeight(height))/2
+        v = self.v
+        d = (1-frac)*(self.findLength())
 
         vect = self.getTrajVect()
         s = -self.pos_f.elev*vect[2]
@@ -597,7 +600,10 @@ class Trajectory:
 
         t = d/v + d_ground/self.v_f
 
-        return self.t - t
+        # Temporary for theoretical fireballs
+        # should be 
+        # return self.t - t
+        return d/v
 
 
     def findLength(self):
@@ -664,6 +670,7 @@ class RectangleItem(pg.GraphicsObject):
     
     def normData(self):
         a = np.array(self.data)
+
         a = a[:, 4]
         
         max_data = np.nanmax(a)
@@ -673,7 +680,7 @@ class RectangleItem(pg.GraphicsObject):
 
         a = (a - min_data)/r
 
-        return a**0.25
+        return a
 
     def weightedNormData(self):
         a = np.array(self.data)
@@ -721,7 +728,7 @@ class RectangleItem(pg.GraphicsObject):
 
         for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
             z = self.normed_dat[ii]
-            p.setBrush(pg.mkBrush(self.gradient(z, 150)))
+            p.setBrush(pg.mkBrush(self.gradient(z, 70)))
             p.setPen(pg.mkPen(self.gradient(z, 0)))
             l = c_x - w/2
             t = c_y + h/2
@@ -765,10 +772,57 @@ if __name__ == '__main__':
     # print(S_p)
     # print(S_m)Begin point on the trajectory:
 
-    A = Trajectory(2.471993030094728, 13913.0, pos_i=Position(48.05977, 13.10846, 85920), \
-                             zenith=Angle(19.69), azimuth=Angle(354.67))
+    # A = Trajectory(2.471993030094728, 13913.0, pos_i=Position(48.05977, 13.10846, 85920), \
+    #                          zenith=Angle(19.69), azimuth=Angle(354.67))
 
-    A.trajInterp(div=200, write=True)
+    s = Position(48.8461, 13.7179,   1141.10)
+    d = Position(48.2105000000000,   13.0873000000000,    37.9500000000000)
+    print(s.ground_distance(d))
+    # import numpy as np
+    # import matplotlib.pyplot as plt
+
+    # import csv
+
+    # with open('C:\\Users\\lmcfd\\Desktop\\Theoretical\\aaa.csv', newline='') as f:
+    #     reader = csv.reader(f)
+    #     data = list(reader)
+
+    # xs = []
+    # ys = []
+    # current_stn = "NORI"
+    # for line in data:
+    #     if float(line[3]) > 50:
+    #         line[0] = line[0].replace(u'\xa0', u'')
+    #         if line[0] == current_stn:
+                
+    #             stn_no = None
+    #             for i in range(len(stn)):
+
+    #                 if line[0] == stn[i][0]:
+    #                     stn_no = i
+
+
+    #             zenith = float(line[4])
+    #             height = float(line[2])
+    #             spread = float(line[1])/2
+
+    #             stat_pos = Position(stn[stn_no][1], stn[stn_no][2], stn[stn_no][3])
+    #             pos_i = Position(48.1724466606, 13.0926245672, 50000)
+    #             A = Trajectory(0, 11, pos_i=pos_i, zenith=Angle(zenith), azimuth=Angle(354.67))
+
+    #             wrp = A.findGeo(height)
+    #             rag = wrp.pos_distance(stat_pos)
+                
+    #             xs.append(rag)
+    #             ys.append(spread)
+
+    # plt.scatter(xs, ys)
+
+    # plt.show()
+
+
+
+    # A.trajInterp(div=200, write=True)
     # print(A.findGeo(34500))
     # print(A.findTime(34500))
     # A = Position()

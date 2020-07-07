@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,33 +11,35 @@
   
 
   
+  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+
   
-    <link rel="shortcut icon" href="../_static/wmpl.ico"/>
+  
+    <link rel="shortcut icon" href="../_static/BAM_logo.png"/>
   
   
   
 
   
-  <script type="text/javascript" src="../_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
-        <script type="text/javascript" src="../_static/jquery.js"></script>
-        <script type="text/javascript" src="../_static/underscore.js"></script>
-        <script type="text/javascript" src="../_static/doctools.js"></script>
-        <script type="text/javascript" src="../_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/jquery.js"></script>
+        <script src="../_static/underscore.js"></script>
+        <script src="../_static/doctools.js"></script>
+        <script src="../_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="../_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Usage" href="Usage.html" />
+    <link rel="next" title="Atmosphere" href="Atmosphere.html" />
     <link rel="prev" title="Requirements" href="Installation.html" /> 
 </head>
 
@@ -53,7 +54,7 @@
           
 
           
-            <a href="../index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
+            <a href="../index.html" class="icon icon-home" alt="Documentation Home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
           
 
           
@@ -76,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -86,27 +88,32 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Features.html">Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-bam-optional">Configuring BAM (Optional)</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-an-event">Setting Up an Event</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#downloading-stations">Downloading Stations</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#picking-data-centers">Picking Data Centers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#citing-station-data">Citing Station Data</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#adding-stations-manually">Adding Stations Manually</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#managing-station-data">Managing Station Data</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="Usage.html">Usage</a></li>
+</ul>
+</li>
 <li class="toctree-l1"><a class="reference internal" href="Atmosphere.html">Atmosphere</a></li>
-<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Files.html">Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="makepicks.html">Make Picks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Features.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="References.html">References</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -145,7 +152,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="../index.html">Docs</a> &raquo;</li>
+      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Getting Started</li>
     
@@ -168,11 +175,39 @@
             
   <div class="section" id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="configuring-bam-optional">
+<h2>Configuring BAM (Optional)<a class="headerlink" href="#configuring-bam-optional" title="Permalink to this headline">¶</a></h2>
+<p>Before running events on BAM, it may be useful to configure the program-wide settings. These can be changed in Settings&gt;Preferences at any time, and are stored in a file supra/Misc/BAMprefs.bam. The default settings are good enough to run out of the box, but you may want to tweak some of the settings based on what atmospheric data you have available. Once this is done, saving will update the BAMprefs file.</p>
+<p>I recommend defining the workspace to a place that is easy to find. The .bam files are best put in that working directory, and any information are best put in &lt;working directory&gt;/&lt;fireball name&gt;/ since the program will make these folders for you anyways.</p>
+</div>
 <div class="section" id="setting-up-an-event">
 <h2>Setting Up an Event<a class="headerlink" href="#setting-up-an-event" title="Permalink to this headline">¶</a></h2>
 <img alt="../_images/BAM.png" src="../_images/BAM.png" />
-<p>An individual event is defined by its .pkl file. It is recommended that every simulation that you run should be on a separate .pkl file. The parameters of the event should be entered in the “variables” toolbar on the left side. This toolbar is dragable, dockable, and can be shown/hidden by pressing “v” (thanks to the wonderful PYQT GUI Library). It is not necessary to completely fill in every entry, the program actually has enough defaults in place to run without needing much filled in.</p>
-<p>If you are just starting with an event, the key is to fill in as much of the “General” section as known. The program will fill in the rest of the defaults in this section, and calculate the other parameters of the trajectory if not filled in. If either of the fragmentation or ballistic searches are being done, then it is important to fill in the “Sources” tab with your search area, specifically the bottom half. The “Atmosphere” tab should set to “False” or “None”, and the two editable boxes should be set to “1” (Hopefully these will be more user-friendly in the future), if weather is not being used. The “Tweaks” tab is already defaulted to about what they should be, and should only really be edited for speed or graphing purposes. The “Misc” tab should not be touched unless you know exactly what you are doing, (hopefully this will also be more user-friendly in the future).</p>
+<p>An individual event is defined by its .bam file, the idea being that .bam files can be saved on one computer and opened on another for group analysis of an event. It is recommended that every simulation that you run should be on a separate .bam file. This file may contain the metadata, stations, and atmospheric data for that event, if they are used.</p>
+<p>The parameters of the event should be entered in the “variables” toolbar on the left side. This toolbar is dragable, dockable, and can be shown/hidden by pressing “v” (thanks to the wonderful PYQT GUI Library). It is not necessary to completely fill in every entry, the program actually has enough defaults in place to run without needing much filled in.</p>
+<p>If you are just starting with an event, the key is to fill in as much of the “General” section as known. The program will fill in the rest of the defaults in this section, and calculate the other parameters of the trajectory if not filled in. If either of the fragmentation or ballistic searches are being done, then it is important to fill in the “Sources” tab with your search area, specifically the bottom half.</p>
+<p>Once this is done, you can save your .bam file anywhere on your computer. I recommend putting all of your .bam files in the same place, such as your working directory.</p>
+</div>
+<div class="section" id="downloading-stations">
+<h2>Downloading Stations<a class="headerlink" href="#downloading-stations" title="Permalink to this headline">¶</a></h2>
+<p>Once the “variables” tab is filled in as best as possible (most importantly the approximate time and location) and saved, then it is time to download nearby stations. The Degrees in Search Radius variable defines the radius of stations to be downloaded around the latitude and longitude center.</p>
+<div class="section" id="picking-data-centers">
+<h3>Picking Data Centers<a class="headerlink" href="#picking-data-centers" title="Permalink to this headline">¶</a></h3>
+<p>The data centers to download from can be selected in Settings&gt;Station Download Sources. The user may toggle which data centers to take data from, which will be saved in supra/Misc/BAMStationprefs.bam. I recommend using all reliable data centers unless some error is causing a specific one not to work. This program uses the International Federation of Digital Seismic Networks Web Services (FDSNWS) to download the seismic data.</p>
+</div>
+<div class="section" id="citing-station-data">
+<h3>Citing Station Data<a class="headerlink" href="#citing-station-data" title="Permalink to this headline">¶</a></h3>
+<p>Stations should be cited by network. For example, using station GR-I26H1 would require a citation for the GR network. Prefered network citations and DOIs can be found here: <a class="reference external" href="https://www.fdsn.org/networks/">https://www.fdsn.org/networks/</a>.</p>
+</div>
+<div class="section" id="adding-stations-manually">
+<h3>Adding Stations Manually<a class="headerlink" href="#adding-stations-manually" title="Permalink to this headline">¶</a></h3>
+<p>Stations may be added manually by clicking Add Stations and indicating where the compatible .SAC or .mseed file is located.</p>
+</div>
+<div class="section" id="managing-station-data">
+<h3>Managing Station Data<a class="headerlink" href="#managing-station-data" title="Permalink to this headline">¶</a></h3>
+<p>The station data can be downloaded by selecting Download Stations. All stations within the selected area of the selected data centers will then be downloaded to your event’s working directory as .mseed files, as long as the file is at least 1 kb in size. Stations will appear on the screen once they have downloaded, and may be removed by clicking the button on the left of the station. Save Stations saves all of the enabled stations to the current event .bam file. Load Stations adds all of the stations from the current event .bam file to the window.</p>
+<p>Once the stations are downloaded, then the minimum information required to analyze an event is now ready.</p>
+</div>
 </div>
 </div>
 
@@ -184,7 +219,7 @@
   
     <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
       
-        <a href="Usage.html" class="btn btn-neutral float-right" title="Usage" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+        <a href="Atmosphere.html" class="btn btn-neutral float-right" title="Atmosphere" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
       
       
         <a href="Installation.html" class="btn btn-neutral float-left" title="Requirements" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
@@ -196,11 +231,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2020, Luke McFadden, Denis Vida, Peter Brown
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -211,7 +254,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

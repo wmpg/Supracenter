@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,31 +11,34 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
   
-    <link rel="shortcut icon" href="_static/wmpl.ico"/>
+  
+    <link rel="shortcut icon" href="_static/BAM_logo.png"/>
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+    
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
-        <script type="text/javascript" src="_static/searchtools.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" src="_static/searchtools.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="#" /> 
 </head>
@@ -52,7 +54,7 @@
           
 
           
-            <a href="index.html" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
+            <a href="index.html" class="icon icon-home" alt="Documentation Home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
           
 
           
@@ -75,6 +77,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -85,24 +88,21 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="docs/About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Theory.html">Theory</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Files.html">Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/makepicks.html">Make Picks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -141,7 +141,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="index.html">Docs</a> &raquo;</li>
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
         
       <li>Search</li>
     
@@ -163,8 +163,7 @@
   <noscript>
   <div id="fallback" class="admonition warning">
     <p class="last">
-      Please activate JavaScript to enable the search
-      functionality.
+      Please activate JavaScript to enable the search functionality.
     </p>
   </div>
   </noscript>
@@ -184,11 +183,19 @@
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2020, Luke McFadden, Denis Vida, Peter Brown
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -199,7 +206,6 @@
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

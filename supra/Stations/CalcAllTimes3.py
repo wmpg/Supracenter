@@ -21,27 +21,51 @@ class Times:
         return 'Times are Calculated'
 
 def checkSkip(bam, prefs):
+    """
+    Returns TRUE if the time calculations can be skipped
+    """
+
 
     for stn in bam.stn_list:
         
         # Check if any times
         if not hasattr(stn, 'times'):
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - No previously calculated times')
             return False
 
         # Check Ballistic
-        if len(stn.times.ballistic) != prefs.ballistic_en:
+        if not (len(stn.times.ballistic) >= 1 and prefs.ballistic_en):
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - No nominal ballistic times')
             return False
 
         # Check Fragmentations
         if prefs.frag_en and len(stn.times.fragmentation) != len(bam.setup.fragmentation_point):
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - No nominal fragmentation times')
             return False
 
         # Check Ballistic Perturb
-        if prefs.pert_en and len(stn.times.ballistic_perturb) != prefs.pert_num:
+        if prefs.pert_en and len(stn.times.ballistic[1]) != prefs.pert_num:
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - No perturbed ballistic arrivals')
             return False
 
         # Check Fragmentation Perturb
-        if prefs.pert_en and len(stn.times.fragmentation_perturb[0]) != prefs.pert_num:
+        try:
+            if prefs.pert_en and len(stn.times.fragmentation[0][1]) != prefs.pert_num:
+                if prefs.debug:
+                    print('DEBUG: Not skipping CalcAllTimes - No perturbed fragmentation arrivals')
+                return False
+        except IndexError:
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - Cannot read perturbed fragmentation arrivals')
+            return False
+
+        if prefs.recalc_times:
+            if prefs.debug:
+                print('DEBUG: Not skipping CalcAllTimes - User override')
             return False
 
     return True
@@ -50,12 +74,12 @@ def calcAllTimes(bam, prefs):
 
     if checkSkip(bam, prefs):
         print('Skipped Calc Times')
-        return None
+        return bam.stn_list
 
     # define line bottom boundary
     if prefs.ballistic_en:
         try:
-            points = bam.setup.trajectory.findPoints(gridspace=100, min_p=10000, max_p=50000)
+            points = bam.setup.trajectory.findPoints(gridspace=340, min_p=17000, max_p=50000)
         except AttributeError:
             points = []
     else:
@@ -67,8 +91,8 @@ def calcAllTimes(bam, prefs):
     no_of_frags = len(bam.setup.fragmentation_point)
 
 
-    for stn in bam.stn_list:
-        
+    for ii, stn in enumerate(bam.stn_list):
+        print("Station {:}/{:} ".format(ii+1, len(bam.stn_list)))
 
         if not hasattr(stn, 'times'):
             stn.times = Times()
@@ -85,13 +109,14 @@ def calcAllTimes(bam, prefs):
 
             # Time to travel from trajectory to station
             stn.times.ballistic = timeOfArrival(stn.metadata.position.xyz, bam.setup.trajectory, \
-                                    bam, prefs, points, ref_loc =ref_pos)
+                                    bam, prefs, points, ref_loc=ref_pos)
 
 
         # Fragmentation
         if prefs.frag_en:
 
             for i, frag in enumerate(bam.setup.fragmentation_point):
+                
                 a = []
                 
                 supra = frag.position

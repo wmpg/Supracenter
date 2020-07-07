@@ -44,17 +44,20 @@ def eigenAngleError(S, az, tf, z_profile, n_angle=90):
     print("Temporal Error: ", time_err)
     print("Spatial Error: ", frag_err)
 
-def eigenConsistancy(S, D, az, tf, z_profile, n_angle=90):
+def eigenConsistancy(S, D, az, tf, z_profile, n_angle=90, h_tol=None, v_tol=None):
+    '''
+    Checks if a given source-detector, atmosphere, initial launch angle, solution is consistant with itself
+    by running through both anglescan and cyscan 
+    '''
+    n_angle = 360
+    D_new = anglescan(S, az, tf, z_profile, wind=True, debug=True)
 
-    try:
-        z_profile = zInteg(S[2], D[2], z_profile)
-    except ValueError:
+    if np.isnan(D_new[0]):
+        print('Inconsistant - bad anglescan')
         return 0
 
-    D_new = anglescan(S, az, tf, z_profile, wind=True)
-    
-    T_new, az_new, tf_new, err = cyscan(S, D[:3], z_profile, wind=True, \
-                n_theta=n_angle, n_phi=n_angle, h_tol=1e-15, v_tol=330)
+    T_new, az_new, tf_new, err = cyscan(S, D_new, z_profile, wind=True, \
+                n_theta=n_angle, n_phi=n_angle, h_tol=330, v_tol=330, debug=True)
 
     d_loc_err = np.sqrt((D[0]-D_new[0])**2 + (D[1]-D_new[1])**2)
     d_time_err = D_new[3] - T_new
@@ -63,15 +66,18 @@ def eigenConsistancy(S, D, az, tf, z_profile, n_angle=90):
     d_err_err = d_loc_err - err
 
     if np.isnan(T_new):
+        print('Inconsistant - nan solution')
         return 0
 
-    if not (d_loc_err < 330 and d_time_err < 1 and tf_error < 0.5 and az_error < 0.5):
-        # print("Inconsistant Solution at height {:.2f} km".format(S[2]/1000))
-        # print('Spatial Error: ', d_loc_err)
-        # print('Temporal Error: ', d_time_err)
-        # print("Takeoff Error [deg]: ", tf_error)
-        # print("Azimuth Error [deg]: ", az_error)
-        # print("Error Error: ", d_err_err)
+    max_error = np.sqrt(h_tol**2 + v_tol**2)
+    
+    if not (d_loc_err < max_error and d_time_err < max_error/310 and tf_error < 1 and az_error < 1):
+        print("Inconsistant Solution at height {:.2f} km".format(S[2]/1000))
+        print('Spatial Error: ', d_loc_err)
+        print('Temporal Error: ', d_time_err)
+        print("Takeoff Error [deg]: ", tf_error)
+        print("Azimuth Error [deg]: ", az_error)
+        print("Error Error: ", d_err_err)
         return 0
 
     return 1

@@ -85,6 +85,10 @@ class Atmos:
                                          [    0.0, avg_sp_sound, 0.0, 0.0],
                                          [99999.0, avg_sp_sound, 0.0, 0.0]])
 
+    def __str__(self):
+        
+        return "Atmosphere class"
+
     def isEmpty(self):
 
         return not hasattr(self, 'ecmwf')
@@ -110,14 +114,14 @@ class Atmos:
         else:
             print('Unrecognized weather type')
 
-    def getSounding(self, lat=0, lon=0, heights=[100000, 0]):
+    def getSounding(self, lat=0, lon=0, heights=[100000, 0], spline=100):
 
         prefs = Prefs()
         prefs = prefs.load()
         
         if prefs.atm_type == 'ecmwf':
             if hasattr(self, 'ecmwf'):
-                return self.ecmwf.getProfile(lat, lon, heights, prefs)
+                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
             else:
                 print('ECMWF is not added yet')
         elif prefs.atm_type == 'radio':

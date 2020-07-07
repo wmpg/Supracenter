@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from supra.Utils.AngleConv import loc2Geo, geo2Loc
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyscan2 import cyscan
+from supra.Utils.Classes import Position
 from supra.Supracenter.slowscan2 import cyscan as slowscan
 
 def pointsList(sounding, points):
@@ -45,7 +46,7 @@ def pointsList(sounding, points):
     return locs
 
 
-def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name, s_name, kotc, w):
+def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s_name, kotc, w, prefs):
     """ Function to calculate the results of the optimal Supracenter and export interpolated weather data
         from each station.
 
@@ -94,61 +95,65 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, dataset, output_name,
     r = np.zeros_like(tobs)
 
     trace = []
+           
 
     # Find parameters of optimal location
     print('Exporting weather profiles...')
     for j in range(n_stations):
         #print(np.array(x_opt), np.array(xstn[j, :]))
         # get interpolated weather profile
-        sounding, points = getWeather(x_opt.xyz, np.array(xstn[j, :]), setup.weather_type, ref_pos, copy.copy(dataset), convert=True)
+        D = Position(0, 0, 0)
+        D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
+        D.pos_geo(ref_pos)
 
+        sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev])
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
 
-        # If weather interp was used
-        if len(points) != 0:
-            points = pointsList(sounding, points)
-
         # Export the interpolated weather profiles from the optimal Supracenter for each station
-        with open(os.path.join(output_name, s_name[j] + '_sounding.txt'), 'w') as f:
+        # with open(os.path.join(output_name, s_name[j] + '_sounding.txt'), 'w') as f:
 
-            # With winds
-            if setup.enable_winds == True:
-                if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
-                    f.write('| Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
-                else:
-                    f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
+        #     # With winds
+        #     if prefs.wind_en == True:
+        #         if prefs.atm_type == 'custom' or prefs.atm_type == 'none' or prefs.atm_type == 'radio':
+        #             f.write('| Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
+        #         else:
+        #             f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) | wdSpd (m/s) | wdDir (deg fN) |\n')
             
-            # No winds
-            else:
-                if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
-                    f.write('| Height (m) | Temp (K) | soundSpd (m/s) |\n')
-                else:
-                    f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) |\n')
+        #     # No winds
+        #     else:
+        #         if prefs.atm_type == 'custom' or prefs.atm_type == 'none' or prefs.atm_type== 'radio':
+        #             f.write('| Height (m) | Temp (K) | soundSpd (m/s) |\n')
+        #         else:
+        #             f.write('| Latitude (deg N) | Longitude (deg E) | Height (m) | Temp (K) | soundSpd (m/s) |\n')
 
-            for ii in range(len(sounding)):
+            # for ii in range(len(sounding)):
 
-                if setup.enable_winds == True:
-                    if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
-                        f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |   {:7.3f}   |     {:6.2f}     |\n'\
-                            .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
-                                sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
-                    else:
-                        f.write('|       {:7.4f}    |      {:7.4f}    |  {:8.2f}  |  {:7.3f} |    {:6.4f}    |   {:7.3f}   |     {:6.2f}     |\n'\
-                            .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
-                                sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
-                else:
-                    if setup.weather_type == 'custom' or setup.weather_type == 'none' or setup.weather_type == 'radio':
-                        f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |\n'\
-                            .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
-                    else:
-                        f.write('|       {:7.4f}    |      {:7.4f}    |  {:8.2f}  |  {:7.3f} |    {:6.4f}    |\n'\
-                            .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
+            #     if prefs.wind_en == True:
+            #         if prefs.atm_type == 'custom' or prefs.atm_type == 'none' or prefs.atm_type == 'radio':
+            #             f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |   {:7.3f}   |     {:6.2f}     |\n'\
+            #                 .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
+            #                     sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
+            #         else:
+            #             f.write('|       {:7.4f}    |      {:7.4f}    |  {:8.2f}  |  {:7.3f} |    {:6.4f}    |   {:7.3f}   |     {:6.2f}     |\n'\
+            #                 .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, \
+            #                     sounding[ii, 1], sounding[ii, 2], sounding[ii, 3]))
+            #     else:
+            #         if prefs.atm_type == 'custom' or prefs.atm_type == 'none' or prefs.atm_type == 'radio':
+            #             f.write('|  {:8.2f}  |  {:7.3f} |    {:6.4f}    |\n'\
+            #                 .format(sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
+            #         else:
+            #             f.write('|       {:7.4f}    |      {:7.4f}    |  {:8.2f}  |  {:7.3f} |    {:6.4f}    |\n'\
+            #                 .format(points[ii][0], points[ii][1], sounding[ii, 0], sounding[ii, 1]**2*consts.M_0/consts.GAMMA/consts.R, sounding[ii, 1]))
 
         # ray tracing function
-        _, _, _, _, temp_trace = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
-        time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, wind=setup.enable_winds, n_theta=setup.n_theta, n_phi=setup.n_phi, h_tol=setup.h_tol, v_tol=setup.v_tol)
-        trace.append(temp_trace)
+        # _, _, _, _, temp_trace = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
+        #                  wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
+        #                     h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+        time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
+                         wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
+                            h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+        # trace.append(temp_trace)
 
         # find residuals
         sotc[j] = tobs[j] - time3D[j]

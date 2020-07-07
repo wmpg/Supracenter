@@ -3,6 +3,7 @@ import urllib.request as urllibrary
 import urllib
 import datetime
 import obspy
+import pickle
 from socket import timeout
 
 from wmpl.Utils.OSTools import mkdirP
@@ -10,8 +11,11 @@ from wmpl.Utils.OSTools import mkdirP
 from supra.Stations.StationObj import Station, Metadata
 from supra.Utils.Classes import Position
 
-
+        # 'http://eida.gfz-potsdam.de/fdsnws/',
 def urlList():
+    with open(os.path.join('supra', 'Misc', 'BAMStationprefs.bam'), 'rb') as f:
+        sources = pickle.load(f)
+
     urls = ['http://service.iris.edu/fdsnws/', 
         'http://service.ncedc.org/fdsnws/',
         'http://service.scedc.caltech.edu/fdsnws/',
@@ -20,7 +24,6 @@ def urlList():
         'http://eida-service.koeri.boun.edu.tr/fdsnws/',
         'http://eida.ethz.ch/fdsnws/',
         'http://geofon.gfz-potsdam.de/fdsnws/',
-        'http://eida.gfz-potsdam.de/fdsnws/',
         'http://ws.icgc.cat/fdsnws/',
         'http://eida.ipgp.fr/fdsnws/',
         'http://webservices.ingv.it/fdsnws/',
@@ -28,12 +31,19 @@ def urlList():
         'http://eida-sc3.infp.ro/fdsnws/',
         'http://eida.gein.noa.gr/fdsnws/',
         'http://www.orfeus-eu.org/fdsnws/',
-        # 'http://ws.resif.fr/fdsnws/',
+        'http://ws.resif.fr/fdsnws/',
         'http://seisrequest.iag.usp.br/fdsnws/',
-        # 'http://fdsnws.raspberryshakedata.com/fdsnws/',
+        'http://fdsnws.raspberryshakedata.com/fdsnws/',
         'http://auspass.edu.au:8080/fdsnws/']
 
-    return urls
+    refined_urls = []
+
+    for i in range(len(sources)):
+        if sources[i] == 1:
+            refined_urls.append(urls[i])   
+
+
+    return refined_urls
 
 def filterStations(data_list):
 
@@ -87,7 +97,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
             "&maxradius={:.3f}&start={:s}&end={:s}&channel=*&format=text" \
             "&includerestricted=false&nodata=404".format(u, lat_centre, lon_centre, deg_radius, \
             start_date, end_date)
-        
+
         try:
             txt = urllibrary.urlopen(query).read().decode('utf-8')
         except urllib.error.HTTPError as e:
@@ -113,12 +123,16 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                     
                     # Construct a file name
                     mseed_file = network_new + '_' + station_code + '_' + str(ii) + '.mseed'
-                    
                     mseed_file_path = os.path.join(dir_path, mseed_file)
+
+                    resp_file = network_new + '_' + station_code + '_' + str(ii) + '.resp'
+                    resp_file_path = os.path.join(dir_path, mseed_file)
 
                     stn_query = ("{:}dataselect/1/query?network={:s}&station={:s}" \
                         "&channel=*&start={:s}&end={:s}").format(u, network_new, station_code, start_time, \
                         end_time)
+
+                    # resp = ("{:}station/1/query?network={:s}&station={:s}&channel=*&format=resp&nodata=404".format(u, network_new, station_code))
 
                     try:
                         stn_query_txt = urllibrary.urlopen(stn_query)
@@ -127,6 +141,19 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                             pass
                         else:
                             print(e)
+
+                    # resp_sw = True
+                    # try:
+                    #     urllibrary.urlopen(resp)
+                    #     resp_sw = True
+                    # except:
+                    #     resp_sw = False
+
+                    # if resp_sw:
+                    #     with open(resp_file_path, 'wb') as f:
+                    #         for line in urllibrary.urlopen(resp):
+                    #             f.write(line.decode('utf-8'))    
+
 
 
                     print('{:2}-{:4}'.format(network_new, station_code))

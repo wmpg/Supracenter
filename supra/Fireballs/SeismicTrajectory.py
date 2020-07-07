@@ -30,7 +30,6 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 from supra.Supracenter.anglescan import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
-from supra.Supracenter.stationDat import readTimes
 from supra.Utils.Classes import Position, Constants, Trajectory, Angle
 from supra.Utils.pso import pso
 from supra.Supracenter.cyscan2 import cyscan
@@ -203,7 +202,8 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
 
             # Calculate time of arrival
 
-    ti = traj.t - dt/traj.v_avg + R[0]*beta
+    # ti = traj.t - dt/traj.v_avg + R[0]*beta
+    ti = R[0]
 
     ti_pert = []
     for pert_R in R[1]:
@@ -211,7 +211,9 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
 
     return ti, ti_pert
 
-def waveReleasePointWindsContour(setup, sounding, ref_loc, points, div=37, mode='ballistic'):
+def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic'):
+    setup = bam.setup
+    atmos = bam.atmos
     steps = 90
     alpha = np.linspace(0, 360*((steps-1)/steps), steps)
     alpha = np.radians(alpha)
@@ -235,17 +237,29 @@ def waveReleasePointWindsContour(setup, sounding, ref_loc, points, div=37, mode=
             for p in points:
                 
                 for i in range(steps):
-                    try:
-                        v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
-                                         np.cos(alpha[i])*np.sin(beta[i]),\
-                                                        -np.cos(beta[i])]) 
-                        s = p + p[2]/np.cos(beta[i])*v[i]
-                        z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
-                             ref_loc, copy.copy(sounding), convert=True)
-                        res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True)
+
+                    v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
+                                     np.cos(alpha[i])*np.sin(beta[i]),\
+                                                    -np.cos(beta[i])]) 
+                    s = p + p[2]/np.cos(beta[i])*v[i]
+                    S = Position(0, 0, 0)
+                    P = Position(0, 0, 0)
+                    S.x, S.y, S.z = s[0], s[1], s[2]
+                    P.x, P.y, P.z = p[0], p[1], p[2]
+                    S.pos_geo(ref_loc)
+                    P.pos_geo(ref_loc)
+
+                    lats = [P.lat, S.lat]
+                    lons = [P.lon, S.lon]
+                    elev = [P.elev, S.elev]
+                    # z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
+                    #      ref_loc, copy.copy(sounding), convert=True)
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
+                    res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True)
+
+                    if np.sqrt(res[0]**2 + res[1]**2) <= 150000:
                         results.append(res)
-                    except:
-                        pass
+
     else:
         beta = np.linspace(90 + 0.01, 180, steps)
         beta = np.radians(beta)
@@ -306,8 +320,6 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
         lons = [traj_point.lon, stat_point.lon]
         heights = [traj_point.elev, stat_point.elev]
 
-
-
         sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
 
         A = cyscan(S, D, sounding, \
@@ -320,6 +332,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     
     T_pert = []
     for p in range(len(perturbations)):
+
         cyscan_res = []
         for i in range(a):
 

@@ -1,8 +1,7 @@
 
 
 <!DOCTYPE html>
-<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
-<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<html class="writer-html5" lang="en" >
 <head>
   <meta charset="utf-8">
   
@@ -12,30 +11,32 @@
   
 
   
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+
   
-    <link rel="shortcut icon" href="_static/wmpl.ico"/>
+  
+    <link rel="shortcut icon" href="_static/BAM_logo.png"/>
   
   
   
 
   
-  <script type="text/javascript" src="_static/js/modernizr.min.js"></script>
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
   
     
       <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
-        <script type="text/javascript" src="_static/jquery.js"></script>
-        <script type="text/javascript" src="_static/underscore.js"></script>
-        <script type="text/javascript" src="_static/doctools.js"></script>
-        <script type="text/javascript" src="_static/language_data.js"></script>
-        <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/language_data.js"></script>
+        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
     
     <script type="text/javascript" src="_static/js/theme.js"></script>
 
     
-
-  
-  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
-  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="About" href="docs/About.html" /> 
@@ -52,7 +53,7 @@
           
 
           
-            <a href="#" class="icon icon-home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
+            <a href="#" class="icon icon-home" alt="Documentation Home"> Western Meteor Physics Group Bolide Acoustic Modeling Program
           
 
           
@@ -75,6 +76,7 @@
           
         </div>
 
+        
         <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
           
             
@@ -85,24 +87,21 @@
               <p class="caption"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="docs/About.html">About</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Features</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Theory.html">Theory</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/GettingStarted.html">Getting Started</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Usage.html">Usage</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/ExtraStations.html">Extra Stations</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Errors.html">Errors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Files.html">Files</a></li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Code.html">Code</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/makepicks.html">Make Picks</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Theory.html">Theory</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Tools</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Methods.html">Methods</a></li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Changelog.html">Changelog</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a></li>
 </ul>
 
             
           
         </div>
+        
       </div>
     </nav>
 
@@ -141,7 +140,7 @@
 
   <ul class="wy-breadcrumbs">
     
-      <li><a href="#">Docs</a> &raquo;</li>
+      <li><a href="#" class="icon icon-home"></a> &raquo;</li>
         
       <li>Western Meteor Physics Group Bolide Acoustic Modelling</li>
     
@@ -176,17 +175,38 @@ This expansion to the Western Meteor Python Library (WMPL) has been in developme
 <li class="toctree-l1"><a class="reference internal" href="docs/About.html">About</a><ul class="simple">
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Features</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="docs/Features.html#atmosphere-profile-viewer">Atmosphere Profile Viewer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Features.html#inversion-of-arrival-times">Inversion of Arrival Times</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Features.html#acoustic-ray-tracer">Acoustic Ray Tracer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Features.html#yield-estimater">Yield Estimater</a></li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a><ul class="simple">
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/GettingStarted.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/GettingStarted.html#configuring-bam-optional">Configuring BAM (Optional)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/GettingStarted.html#setting-up-an-event">Setting Up an Event</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/GettingStarted.html#downloading-stations">Downloading Stations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#perturbations">Perturbations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#loading-data-into-an-event">Loading Data into an Event</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/makepicks.html">Make Picks</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html#usage">Usage</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html#shortcuts">Shortcuts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html#station-navigation">Station Navigation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html#exporting-picks">Exporting Picks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="docs/makepicks.html#yield-estimater">Yield Estimater</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Theory.html">Theory</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="docs/Theory.html#overview">Overview</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docs/Theory.html#sources">Sources</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docs/Theory.html#attenuations">Attenuations</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/Features.html">Tools</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/Features.html#trajectory-interpolator">Trajectory Interpolator</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Methods.html">Methods</a><ul>
@@ -199,48 +219,14 @@ This expansion to the Western Meteor Python Library (WMPL) has been in developme
 <li class="toctree-l2"><a class="reference internal" href="docs/Methods.html#finding-the-yield">Finding the Yield</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Installation.html">Requirements</a><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/GettingStarted.html">Getting Started</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="docs/GettingStarted.html#setting-up-an-event">Setting Up an Event</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Usage.html">Usage</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="docs/Usage.html#main-program">Main Program</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Usage.html#other-functions">Other Functions</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Atmosphere.html">Atmosphere</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#atmospheric-data-instructions">Atmospheric Data Instructions</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/Atmosphere.html#perturbations">Perturbations</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/ExtraStations.html">Extra Stations</a><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Errors.html">Errors</a><ul class="simple">
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Files.html">Files</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="docs/atmospherefiles.html">Atmosphere Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/stationfiles.html">Station Picks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/alltimesfiles.html">All Times Files</a></li>
-<li class="toctree-l2"><a class="reference internal" href="docs/inifiles.html">PKL Files</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="docs/Code.html">Code</a><ul class="simple">
-</ul>
-</li>
 <li class="toctree-l1"><a class="reference internal" href="docs/Changelog.html">Changelog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="docs/Changelog.html#july-6-2020">July 6, 2020</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docs/Changelog.html#febuary-5-2020">Febuary 5, 2020</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docs/Changelog.html#december-12-2019">December 12, 2019</a></li>
 <li class="toctree-l2"><a class="reference internal" href="docs/Changelog.html#november-7-2019">November 7, 2019</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="docs/References.html">References</a><ul class="simple">
 </ul>
 </li>
 </ul>
@@ -265,11 +251,19 @@ This expansion to the Western Meteor Python Library (WMPL) has been in developme
 
   <div role="contentinfo">
     <p>
+        
         &copy; Copyright 2020, Luke McFadden, Denis Vida, Peter Brown
 
     </p>
   </div>
-  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+    
+    
+    
+    Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a
+    
+    <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a>
+    
+    provided by <a href="https://readthedocs.org">Read the Docs</a>. 
 
 </footer>
 
@@ -280,7 +274,6 @@ This expansion to the Western Meteor Python Library (WMPL) has been in developme
 
   </div>
   
-
 
   <script type="text/javascript">
       jQuery(function () {

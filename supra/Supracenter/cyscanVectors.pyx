@@ -208,7 +208,8 @@ cpdef cyscan(supra_pos, detec_pos, \
             zs.append(z[n_layers - last_z - 1])
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
-
+        horizontal_error = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2))
+        vertical_error = z[n_layers - last_z - 1] - detec_pos[2]
         # print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         # print('pos', supra_pos, detec_pos)
         # print('x_diff', a*X - b*Y-dx)
@@ -240,15 +241,12 @@ cpdef cyscan(supra_pos, detec_pos, \
         #         # As handled in original Supracenter
         #         return np.array([np.nan, np.nan, np.nan])
 
-        if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
+        if horizontal_error[k, l] < h_tol and vertical_error < v_tol:
+        # if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
 
-            if E[k, l] < v_tol:
-                found = True
-            else:
-                return np.nan
-
+            found = True
         else:
             ### FAST PART ###
             last_error = E[k, l]

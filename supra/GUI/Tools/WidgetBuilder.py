@@ -23,9 +23,9 @@ from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tabs.StationInfo import *
 
 
-
 def initTabs(obj):
-
+    
+    addDocWidgets(obj)
     addStationsWidgets(obj)
     addPicksReadWidgets(obj)
     addSupraWidgets(obj)
@@ -35,7 +35,6 @@ def initTabs(obj):
     addFetchATMWidgets(obj)
     addProfileWidgets(obj)
     addRayTracerWidgets(obj)
-    addDocWidgets(obj)
     addRefineWidgets(obj)
 
 
@@ -98,6 +97,10 @@ def initMenuBar(obj, layout):
     preferences_menu.triggered.connect(obj.preferencesDialog)
     setting_menu.addAction(preferences_menu)
 
+    stndownload_menu = QAction("Station Download Sources", obj)
+    stndownload_menu.triggered.connect(obj.stndownloadDialog)
+    setting_menu.addAction(stndownload_menu)
+
     traj_interp = QAction("Trajectory to Points Wizard", obj)
     traj_interp.triggered.connect(obj.trajInterpDialog)
     tools_menu.addAction(traj_interp)
@@ -115,7 +118,7 @@ def initMainGUI(obj):
     obj.tab_widget.blockSignals(False)
     layout.addWidget(obj.tab_widget, 1, 1)
 
-    obj.doc_file = os.path.join('supra', 'Fireballs', 'docs', 'index.html')
+    obj.doc_file = os.path.join('supra', 'Docs', 'index.html')
        
     obj.contour_data = None
 
@@ -154,7 +157,7 @@ def initMainGUICosmetic(obj):
 
     obj.setWindowTitle('Bolide Acoustic Modelling')
     app_icon = QtGui.QIcon()
-    app_icon.addFile(os.path.join('supra', 'Docs', '_images', 'wmpl.png'), QtCore.QSize(16, 16))
+    app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'BAM.png'), QtCore.QSize(16, 16))
     obj.setWindowIcon(app_icon)
 
     p = obj.palette()
@@ -476,7 +479,6 @@ def addMakePicksWidgets(obj):
     obj.make_picks_top_graphs.addWidget(obj.make_picks_map_graph_view)
     obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
-
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
     obj.make_picks_bottom_graphs.addWidget(obj.make_picks_waveform_view)
@@ -559,6 +561,10 @@ def addMakePicksWidgets(obj):
     obj.show_ball = QCheckBox('Show Ballistic')
     check_group_layout.addWidget(obj.show_ball)
     obj.show_ball.stateChanged.connect(partial(obj.updatePlot, True))
+
+    obj.show_prec = QCheckBox('Show Precursors')
+    check_group_layout.addWidget(obj.show_prec)
+    obj.show_prec.stateChanged.connect(partial(obj.updatePlot, True))
 
     obj.show_perts = QCheckBox('Show Perturbations')
     check_group_layout.addWidget(obj.show_perts)

@@ -147,7 +147,7 @@ def dweight(data, d_min, d_max):
     return w
 
 
-def convStationDat(station_name, setup, d_min=0, d_max=100000):
+def convStationDat(station_name, ref_pos, d_min=0, d_max=100000):
     """ Reads and converts the station data, and returns it in a usable format
     
     Arguments:
@@ -173,18 +173,9 @@ def convStationDat(station_name, setup, d_min=0, d_max=100000):
     else:
         data, names = readStationDat(station_name)
 
-    # Initialize array
-    ref_pos = np.array([0.0, 0.0, 0.0])
-
-    # Choose reference position to be the average coordinate (for least error), and at ground level
-
-    ref_pos[0] = setup.lat_centre
-    ref_pos[1] = setup.lon_centre
-    ref_pos[2] = 0
-
     # convert station positions to local coordinate system
     for i in range(len(data)):
-        data[i, 0], data[i, 1], data[i, 2] = geo2Loc(ref_pos[0], ref_pos[1], ref_pos[2], data[i,0], data[i,1], data[i,2])       
+        data[i, 0], data[i, 1], data[i, 2] = geo2Loc(ref_pos.lat, ref_pos.lon, ref_pos.elev, data[i,0], data[i,1], data[i,2])       
 
     # weighting scheme
     if (d_min == None) or (d_max == None):
@@ -192,10 +183,4 @@ def convStationDat(station_name, setup, d_min=0, d_max=100000):
 
     weights = dweight(data, d_min, d_max)
 
-    return data, names, weights, ref_pos
-
-def readTimes(file_name):
-
-    allTimes = np.load(file_name)
-
-    return np.array(allTimes)
+    return data, names, weights

@@ -17,7 +17,7 @@ import time
 import datetime
 import copy
 import webbrowser
-import multiprocessing
+
 import zipfile
 import pickle
 
@@ -46,7 +46,6 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 from supra.Fireballs.SeismicTrajectory import timeOfArrival, trajSearch, getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
 
 from supra.Supracenter.slowscan2 import cyscan as slowscan
-from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
 from supra.Supracenter.fetchCopernicus import copernicusAPI
 from supra.Supracenter.cyscan2 import cyscan
@@ -61,11 +60,14 @@ from supra.GUI.Dialogs.Yields import Yield
 from supra.GUI.Dialogs.FragStaff import FragmentationStaff
 from supra.GUI.Dialogs.AllWaveformView import AllWaveformViewer
 from supra.GUI.Dialogs.TrajInterp import TrajInterpWindow
+from supra.GUI.Dialogs.StationList import StationList
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
 
+from supra.GUI.Tabs.SupracenterSearch import supSearch
+
 from supra.Stations.Filters import *
-from supra.Stations.CalcAllTimes3 import calcAllTimes
+from supra.Stations.CalcAllTimes4 import calcAllTimes
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
@@ -109,68 +111,39 @@ def contourLoop(X, Y, ref_pos, dy, dx, T, i):
     return (A.lon, A.lat, dy, dx, T[i]) 
 
 
-
-class newThread(QThread):
-    def __init__(self, func, *args, **kwargs):
-        QThread.__init__(self)
-        self.func = func
-        self.args = args
-        self.kwargs = kwargs
-
-    def run(self):
-        self.func(*self.args, **self.kwargs)
-
-
 # Main Window
 class SolutionGUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
-
-
-        ##### File System
-        # Pref() -> variables which apply program-wide to every fireball
-        # Config() -> variables specific to a fireball
-        #       Station() -> Stations of a fireball
-        #       Atmosphere() -> Different profiles of a fireball
-
-        # Pref() is loaded from a file inside the program directories
-        # Config() is loaded from the working directory
-
-        # Try to load system variables
         
+        ##############################
+        # Load system-wide preferences
+        ##############################
         self.prefs = Prefs()
         try:
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'rb') as f:
                 self.prefs = pickle.load(f)
         except EOFError as e:
-            # Unable to load preferences
-            # Read a default prefs file
+            # Prefs file missing? - Not sure how to handle this yet
             pass
 
         self.bam = BAMFile()
-
-        # self.setup = Config()
-        # Initialize Variables
         self.color = Color()
-        
-        # splashMessage()
 
+        # Initialize all of the pyqt things in the GUI
         initMainGUI(self)
         initMainGUICosmetic(self)
-
-        # self.thread(partial(self.takeTime, 11, l=2))
 
         # Add widgets to the floating box
         self.addIniDockWidgets()
 
-    def thread(self, func, *args, **kwargs):
-        self.myThread = newThread(func, *args, **kwargs)
-        self.myThread.start()
 
     def viewToolbar(self):
-        # show/hides the toolbar
+
+        # Toggles the toolbar
         self.ini_dock.toggleViewAction().trigger()
+
 
     def viewFullscreen(self):
 
@@ -180,6 +153,7 @@ class SolutionGUI(QMainWindow):
         else:
             self.showFullScreen()
 
+
     def quitApp(self):
 
         # Begins quit sequence
@@ -188,15 +162,23 @@ class SolutionGUI(QMainWindow):
             qApp.quit()
         else:
             return None
+
         
     def openGit(self):
 
         webbrowser.open_new_tab("https://github.com/dvida/Supracenter")
 
+
     def openDocs(self):
 
         # docs are a locally stored html file
         webbrowser.open_new_tab(self.doc_file)
+        
+    def stndownloadDialog(self):
+
+        self.sd = StationList()
+        self.sd.setGeometry(QRect(500, 400, 500, 400))
+        self.sd.show()
 
     def preferencesDialog(self):
 
@@ -266,6 +248,9 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Output to CSV!', 0, title='Exported!', detail='Filename: {:}'.format(file_name))
 
+    def supSearch(self):
+        supSearch(self.bam, self.prefs)
+
     def psoTrajectory(self, station_list, sounding):
 
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
@@ -305,14 +290,14 @@ class SolutionGUI(QMainWindow):
             x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, sounding, ref_pos, self.setup, rest_plane), \
                 maxiter=self.setup.maxiter, swarmsize=self.setup.swarmsize, \
                 phip=self.setup.phip, phig=self.setup.phig, debug=False, omega=self.setup.omega, \
-                processes=multiprocessing.cpu_count(), particle_output=False)
+                particle_output=False)
         else:
             if self.prefs.debug:
                 print('Plane Search')
             x, fopt = pso(trajSearch, lower_bounds, upper_bounds, ieqcons=[planeConst], args=(station_list, sounding, ref_pos, self.setup, rest_plane), \
                 maxiter=self.setup.maxiter, swarmsize=self.setup.swarmsize, \
                 phip=self.setup.phip, phig=self.setup.phig, debug=False, omega=self.setup.omega, \
-                processes=multiprocessing.cpu_count(), particle_output=False)
+                particle_output=False)
 
         print('Results:')
         print('X: {:.4f}'.format(x[0]))
@@ -787,11 +772,9 @@ class SolutionGUI(QMainWindow):
     def W_estGUI(self):
         """ Opens up yield estimater GUI
         """
-        if errorCodes(self, 'stn_list'):
-            return None
 
         try:
-            self.w = Yield(self.setup, self.stn_list, self.current_station)
+            self.w = Yield(self.bam, self.prefs, self.current_station)
         except AttributeError as e:
             errorMessage('Not enough data for yield generator', 2, detail='{:}'.format(e))
 
@@ -804,22 +787,22 @@ class SolutionGUI(QMainWindow):
         print('Working on contour - This could take a while...')
         self.clearContour()
 
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        sounding = parseWeather(self.setup)
+        ref_pos = Position(45.9789390626, 14.9929810526, 0)
+
 
         ### option to use a perturbation for the contour instead of nominal (change the 0 to the perturbation number)
         # sounding = self.perturbGenerate(0, sounding, self.perturbSetup())
 
         if mode == 'ballistic':
-            if errorCodes(self.setup, 'trajectory'):
+            if errorCodes(self.bam.setup, 'trajectory'):
                 return None
             try:    
-                points = self.setup.trajectory.findPoints(gridspace=100, min_p=17000, max_p=50000)
+                points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=17000, max_p=50000)
             except AttributeError as e:
                 errorMessage('Trajectory is not defined!', 2, detail='{:}'.format(e))
                 return None
         elif mode == 'fragmentation':
-            if errorCodes(self.setup, 'fragmentation_point'):
+            if errorCodes(self.bam.setup, 'fragmentation_point'):
                 return None
             try:
                 A = self.setup.fragmentation_point[0].position
@@ -830,23 +813,24 @@ class SolutionGUI(QMainWindow):
                 return None
 
 
-        results = waveReleasePointWindsContour(self.setup, sounding, ref_pos, points, mode=mode)
+        results = waveReleasePointWindsContour(self.bam, ref_pos, points, mode=mode)
 
         results = np.array(results)
 
         dx, dy = 0.01, 0.01
-
+        
         X = results[:, 0]
         Y = results[:, 1]
         T = results[:, 3]
-
-        pool = multiprocessing.Pool(multiprocessing.cpu_count())
- 
-        iterable = range(len(X))
-
-        func = partial(contourLoop, X, Y, ref_pos, dy, dx, T) 
-        
-        data = pool.map(func, iterable)
+        data = []
+        for i in range(len(X)):
+            A = Position(0, 0, 0)
+            A.x = X[i]
+            A.y = Y[i]
+            A.z = 0
+            A.pos_geo(ref_pos)
+            data.append((A.lon, A.lat, dy, dx, T[i]))
+            # return data in a form readable by Rectangle Object
 
         self.contour_data_squares = RectangleItem(data)
         self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
@@ -942,6 +926,13 @@ class SolutionGUI(QMainWindow):
 
 
     def effectiveSoundSpeed(self, sounding):
+        '''
+        Returns the sound speed at every pressure level, also considering the winds and the k-vectors
+        '''
+
+        #############################
+        # Get start and end positions
+        #############################
         lat = [tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_end_lat.text())]
         lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
         elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
@@ -953,9 +944,23 @@ class SolutionGUI(QMainWindow):
         supra_pos.pos_loc(ref_pos)
         detec_pos.pos_loc(ref_pos)
 
+        ################################
+        # Get eigen-path from ray-tracer
+        ################################
         pts = cyscanV(supra_pos.xyz, detec_pos.xyz, sounding, \
                     wind=self.prefs.wind_en, n_theta=self.prefs.pso_theta, n_phi=self.prefs.pso_phi,
                     h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist)
+
+        # The path taken in an isotropic atmosphere - straight line
+        u = supra_pos.xyz - detec_pos.xyz
+        nom_range = np.sqrt(u[0]**2 + u[1]**2 + u[2]**2)
+
+        ray_range = 0
+        for ii in range(len(pts[0]) - 1):
+            k = np.array([pts[0][ii + 1] - pts[0][ii],\
+                          pts[1][ii + 1] - pts[1][ii],\
+                          pts[2][ii + 1] - pts[2][ii]])
+            ray_range += np.sqrt(k[0]**2 + k[1]**2 + k[2]**2)
 
 
         for ii in range(len(pts[0]) - 1):
@@ -973,25 +978,25 @@ class SolutionGUI(QMainWindow):
 
         c_eff = c + np.dot(k, w)
 
-        return c_eff
+        return c_eff, nom_range, ray_range
             
 
     def fatmPlot(self, sounding, perturbations):
         self.fatm_canvas.clear()
-        self.fatm_canvas.setLabel('left', "Height", units='m')
+        self.fatm_canvas.setLabel('left', "Height", units='m', size='24pt')
         if self.fatm_variable_combo.currentText() == 'Sound Speed':
             X = sounding[:, 1]
-            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s')
+            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Magnitude':
             X = sounding[:, 2]
-            self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s')
+            self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = np.degrees(sounding[:, 3])
             self.fatm_canvas.addItem(pg.InfiniteLine(pos=(310, 0), angle=90, pen=QColor(255, 0, 0)))
-            self.fatm_canvas.setLabel('bottom', "Wind Direction", units='deg from N')
+            self.fatm_canvas.setLabel('bottom', "Wind Direction", units='deg from N', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
-            X = self.effectiveSoundSpeed(sounding)
-            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s')    
+            X, nom_range, nom_ray_range = self.effectiveSoundSpeed(sounding)
+            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')    
         # elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
         #     dirs = angle2NDE(np.degrees(sounding[:, 3]))
         #     mags = sounding[:, 2]
@@ -1007,7 +1012,7 @@ class SolutionGUI(QMainWindow):
         
         self.fatm_canvas.plot(x=X, y=Y, pen='w')
         SolutionGUI.update(self)
-
+        perts_range = []
         if len(perturbations) != 0:
             for ii, ptb in enumerate(perturbations):
                 
@@ -1018,7 +1023,8 @@ class SolutionGUI(QMainWindow):
                 elif self.fatm_variable_combo.currentText() == 'Wind Direction':
                     X = np.degrees(ptb[:, 3])
                 elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
-                    X = self.effectiveSoundSpeed(ptb)
+                    X, nom_range, pert_ray_range = self.effectiveSoundSpeed(ptb)
+                    perts_range.append(pert_ray_range)
                 # elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
                 #     dirs = angle2NDE(np.degrees(ptb[:, 3]))
                 #     mags = ptb[:, 2]
@@ -1032,7 +1038,14 @@ class SolutionGUI(QMainWindow):
                 Y = ptb[:, 0]
                 self.fatm_canvas.plot(x=X, y=Y, pen='g')
                 SolutionGUI.update(self)
-        
+        perts_range = np.array(perts_range)
+        try:
+            print('Isotropic Range:           {:.2f}         km'.format(nom_range/1000))
+            print('Nominal Atmospheric Range: {:.2f}         km'.format(nom_ray_range/1000))
+            print('Perturbation Range:        {:.2f} - {:.2f} km'.format(np.nanmin(perts_range/1000), np.nanmax(perts_range/1000)))
+            print('Average Speed:             {:.2f}         m/s'.format(np.nanmean(X)))
+        except:
+            pass
         font=QtGui.QFont()
         font.setPixelSize(20)
         self.fatm_canvas.getAxis("bottom").tickFont = font
@@ -1810,7 +1823,7 @@ class SolutionGUI(QMainWindow):
             return None
 
         dataset = parseWeather(self.setup)
-        print("Lat, Lon:", lat, lon)
+
         if self.setup.weather_type == 'ecmwf':
             sounding = findECMWFSound(lat, lon, dataset)
         elif self.setup.weather_type == 'binary':
@@ -2002,7 +2015,7 @@ class SolutionGUI(QMainWindow):
         self.pick_group = 0
 
         # Define a list of colors for groups
-        self.pick_group_colors = ['r', 'g', 'm', 'w', 'y']
+        self.pick_group_colors = ['w', 'g', 'm', 'c', 'y']
 
         # Current station map handle
         self.current_station_scat = None
@@ -2113,7 +2126,7 @@ class SolutionGUI(QMainWindow):
                 self.prefs.ballistic_en = False
 
         self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
-
+        save(self)
         SolutionGUI.update(self)
 
         self.updatePlot()
@@ -2361,16 +2374,12 @@ class SolutionGUI(QMainWindow):
             self.alt_pressed = True
 
         if event.key() == QtCore.Qt.Key_D:
-            try:
-                self.incrementStation()
-            except:
-                pass
+            self.incrementStation()
+
 
         if event.key() == QtCore.Qt.Key_A:
-            try:
-                self.decrementStation()
-            except:
-                pass
+            self.decrementStation()
+
 
         if event.key() == QtCore.Qt.Key_W:
             try:
@@ -2427,13 +2436,14 @@ class SolutionGUI(QMainWindow):
 
         self.current_station += 1
 
-        if self.current_station >= len(self.stn_list):
+        if self.current_station >= len(self.bam.stn_list):
             self.current_station = 0
 
-        while self.checkExists() == False:
-            self.current_station += 1
-            if self.current_station >= len(self.stn_list):
-                self.current_station = 0
+        # while self.checkExists() == False:
+        #     self.current_station += 1
+        #     if self.current_station >= len(self.bam.stn_list):
+        #         self.current_station = 0
+
 
         self.updatePlot()
 
@@ -2446,12 +2456,12 @@ class SolutionGUI(QMainWindow):
         self.current_station -= 1
 
         if self.current_station < 0:
-            self.current_station = len(self.stn_list) - 1
+            self.current_station = len(self.bam.stn_list) - 1
 
-        while self.checkExists() == False:
-            self.current_station -= 1
-            if self.current_station < 0:
-                self.current_station = len(self.stn_list) - 1
+        # while self.checkExists() == False:
+        #     self.current_station -= 1
+        #     if self.current_station < 0:
+        #         self.current_station = len(self.bam.stn_list) - 1
 
         self.updatePlot()
 
@@ -2462,7 +2472,7 @@ class SolutionGUI(QMainWindow):
         """
 
         # Extract current station
-        stn = self.stn_list[self.current_station]
+        stn = self.bam.stn_list[self.current_station]
 
         # Get the miniSEED file path
         mseed_file_path = os.path.join(self.dir_path, stn.file_name)
@@ -2678,13 +2688,26 @@ class SolutionGUI(QMainWindow):
         
 
         # Plot the waveform
-        self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
+        # self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
+        # 2.370980392E10
+        self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data/6980.8, pen='w')
         self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
-        self.make_picks_waveform_canvas.plot(x=[t_arrival, t_arrival], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(255, 0, 0), width=2))
+        # self.make_picks_waveform_canvas.plot(x=[t_arrival, t_arrival], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(255, 0, 0), width=2))
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
+
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
         self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
+
+        # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
+
+
+        font=QtGui.QFont()
+        font.setPixelSize(20)
+        self.make_picks_waveform_canvas.getAxis("bottom").tickFont = font
+        self.make_picks_waveform_canvas.getAxis("left").tickFont = font
+        self.make_picks_waveform_canvas.getAxis('bottom').setPen(self.color.WHITE) 
+        self.make_picks_waveform_canvas.getAxis('left').setPen(self.color.WHITE)
 
         for pick in self.pick_list:
             if pick.stn_no == self.current_station:
@@ -2711,7 +2734,7 @@ class SolutionGUI(QMainWindow):
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():
 
-            b_time = stn.times.ballistic[0]
+            b_time = stn.times.ballistic[0][0][0]
 
             if b_time == b_time:
                 self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), width=2) , label='Ballistic')
@@ -2719,7 +2742,7 @@ class SolutionGUI(QMainWindow):
             else:
                 print("No Ballistic Arrival")
 
-            data, remove = chauvenet(stn.times.ballistic[1])
+            data, remove = chauvenet(stn.times.ballistic[0][1][0])
             try:
                 print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
                 print('Removed points {:}'.format(remove))
@@ -2742,6 +2765,9 @@ class SolutionGUI(QMainWindow):
 
                 f_time = stn.times.fragmentation[i][0][0]
 
+                v_time = (frag.position.elev - stn.metadata.position.elev)/310
+                h_time = frag.position.ground_distance(stn.metadata.position)/1000
+                p_time = h_time + v_time
                 print('++++++++++++++++')
                 print('Fragmentation {:} ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 frag.position.pos_loc(stn.metadata.position)
@@ -2753,6 +2779,12 @@ class SolutionGUI(QMainWindow):
                 if not np.isnan(f_time):
                     # Plot Fragmentation Prediction
                     self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
+                    
+                    if self.show_prec.isChecked():
+                        # Plot Precursor Arrivals
+                        self.make_picks_waveform_canvas.plot(x=[p_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=(210, 235, 52), label='Fragmentation')
+
+
                     stn.stn_distance(frag.position)
                     #print("Range: {:7.3f} km".format(stn.distance/1000))                   
                     print('Arrival: {:.3f} s'.format(f_time))
@@ -2906,13 +2938,13 @@ class SolutionGUI(QMainWindow):
                 for pick in self.pick_list:
 
                     # Calculate Julian date of the pick time
-                    pick_jd = datetime2JD(self.setup.fireball_datetime + datetime.timedelta(seconds=pick.time))
+                    pick_jd = datetime2JD(self.bam.setup.fireball_datetime + datetime.timedelta(seconds=pick.time))
 
                     stn = pick.stn
 
                     # Write the CSV entry
-                    f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(0, stn.network, \
-                        stn.code, stn.position.lat, stn.position.lon, stn.position.elev, pick_jd, pick.time, pick.stn_no))
+                    f.write("{:d}, {:s}, {:s}, {:.6f}, {:.6f}, {:.2f}, {:.8f}, {:}, {:}\n".format(0, stn.metadata.network, \
+                        stn.metadata.code, stn.metadata.position.lat, stn.metadata.position.lon, stn.metadata.position.elev, pick_jd, pick.time, pick.stn_no))
         except FileNotFoundError as e:
             errorMessage('Could not find file!', 2, detail='{:}'.format(e))
             return None
@@ -2983,13 +3015,13 @@ class SolutionGUI(QMainWindow):
         """ Pulls the correct file names for the perturbing function to read, depending on the perturbation type
         """
 
-        if self.setup.perturb_method == 'temporal':
+        if self.bam.setup.perturb_method == 'temporal':
 
             # sounding data one hour later
-            sounding_u = parseWeather(self.setup, time= 1)
+            sounding_u = parseWeather(self.bam.setup, time= 1)
 
             # sounding data one hour earlier
-            sounding_l = parseWeather(self.setup, time=-1)
+            sounding_l = parseWeather(self.bam.setup, time=-1)
 
         else:
             sounding_u = []
@@ -3029,88 +3061,8 @@ class SolutionGUI(QMainWindow):
 
         return sounding_p
 
-    def supSearch(self):
 
-        s_info, s_name, weights, ref_pos = self.getStationData()
 
-        ref_pos = Position(ref_pos[0], ref_pos[1], ref_pos[2])
-        
-        perturb_data = self.perturbSetup()
-
-        self.setup.ref_pos = ref_pos
-
-        n_stations = len(s_name)
-
-        xstn = s_info[0:n_stations, 0:3]
-
-        dataset = parseWeather(self.setup)
-
-        results = [None]*self.setup.perturb_times
-
-        self.setup.single_point = None
-
-        for ptb_n in range(self.setup.perturb_times):
-
-            sounding_p = self.perturbGenerate(ptb_n, dataset, perturb_data)
-
-            results[ptb_n] = psoSearch(s_info, weights, s_name, self.setup, sounding_p, ref_pos, manual=False)
-
-            print("Error Function: {:5.2f} (Perturbation {:})".format(results[ptb_n].f_opt, ptb_n))
-            print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
-                .format(results[ptb_n].x_opt.lat, results[ptb_n].x_opt.lon, results[ptb_n].x_opt.elev, results[ptb_n].motc))
-            
-        self.scatterPlot(self.setup, results, n_stations, xstn, s_name, dataset, manual=False)
-
-        self.residPlot(results, s_name, xstn, self.prefs.workdir, n_stations, manual=False)
-
-        print("Results")
-        for ii, result in enumerate(results):
-            if ii >= 1:
-                print("Error Function: {:5.2f} (Perturbation {:4d}) | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}"\
-                    .format(results[ii].f_opt, ii, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-                        results[ii].x_opt.elev, results[ii].motc))
-            else:
-                print("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}"\
-                    .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-                        results[ii].x_opt.elev, results[ii].motc))
-
-        file_name = os.path.join(self.prefs.workdir, self.setup.fireball_name, "SupracenterResults.txt")
-        print('Output printed at: {:}'.format(file_name))
-
-        with open(file_name, "w") as f:
-            f.write("Results\n")
-            for ii, result in enumerate(results):
-                if ii >= 1:
-                    f.write("Error Function: {:5.2f} (Perturbation {:4d}) | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
-                        .format(results[ii].f_opt, ii, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-                            results[ii].x_opt.elev, results[ii].motc))
-                else:
-                    f.write("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
-                        .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-                            results[ii].x_opt.elev, results[ii].motc))
-
-        defTable(self.sup_results_table, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
-
-        setTableRow(self.sup_results_table, 0, terms=["Total (Time = ({:}s)".format(results[0].motc), results[0].x_opt.lat, results[0].x_opt.lon, results[0].x_opt.elev, results[0].f_opt])
-
-        for i in range(n_stations):
-            setTableRow(self.sup_results_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results[0].r[i]])
-
-    def getStationData(self):
-
-        try:
-            s_info, s_name, weights, ref_pos = convStationDat(self.setup.station_picks_file, self.setup, d_min=self.setup.weight_distance_min, d_max=self.setup.weight_distance_max)
-        except TypeError as e:
-            errorMessage("Unable to use station picks file!", 2, info="Error in the given file name: '{:}'".format(self.setup.station_picks_file), detail='{:}'.format(e))
-            return None, None, None, None
-        except FileNotFoundError as e:
-            errorMessage("Unable to find given station picks file!", 2, info="Could not find file: {:}".format(self.setup.station_picks_file), detail='{:}'.format(e))
-            return None, None, None, None
-        except ValueError as e:
-            errorMessage("Error in station picks file!", 2, info="Make sure that the file is formatted correctly", detail='{:}'.format(e))
-            return None, None, None, None
-
-        return s_info, s_name, weights, ref_pos 
 
     def supraSearch(self):
 
