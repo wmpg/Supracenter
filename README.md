@@ -17,7 +17,7 @@ pip install pyqt5 pyswarm
 
 The GUI for the program, which contains all of the features, can be run by:
 ```
-python -m supra.Fireballs.SolutionGUI
+python -m supra.bam
 ```
 
 For further documentation, look for About->Documentation in the GUI or if the GUI is not running, look for supra/Fireballs/docs/index.html in the files
