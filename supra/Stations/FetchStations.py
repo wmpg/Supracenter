@@ -4,6 +4,7 @@ import urllib
 import datetime
 import obspy
 import pickle
+import requests
 from socket import timeout
 
 from wmpl.Utils.OSTools import mkdirP
@@ -125,14 +126,14 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                     mseed_file = network_new + '_' + station_code + '_' + str(ii) + '.mseed'
                     mseed_file_path = os.path.join(dir_path, mseed_file)
 
-                    resp_file = network_new + '_' + station_code + '_' + str(ii) + '.resp'
-                    resp_file_path = os.path.join(dir_path, mseed_file)
+                    resp_file = network_new + '_' + station_code + '_' + str(ii) + '.xml'
+                    resp_file_path = os.path.join(dir_path, resp_file)
 
                     stn_query = ("{:}dataselect/1/query?network={:s}&station={:s}" \
                         "&channel=*&start={:s}&end={:s}").format(u, network_new, station_code, start_time, \
                         end_time)
 
-                    # resp = ("{:}station/1/query?network={:s}&station={:s}&channel=*&format=resp&nodata=404".format(u, network_new, station_code))
+                    resp = ("{:}station/1/query?network={:s}&station={:s}&channel=*&format=xml&nodata=404".format(u, network_new, station_code))
 
                     try:
                         stn_query_txt = urllibrary.urlopen(stn_query)
@@ -142,18 +143,19 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                         else:
                             print(e)
 
-                    # resp_sw = True
-                    # try:
-                    #     urllibrary.urlopen(resp)
-                    #     resp_sw = True
-                    # except:
-                    #     resp_sw = False
+                    resp_sw = True
+                    try:
+                        urllibrary.urlopen(resp)
+                        resp_sw = True
 
-                    # if resp_sw:
-                    #     with open(resp_file_path, 'wb') as f:
-                    #         for line in urllibrary.urlopen(resp):
-                    #             f.write(line.decode('utf-8'))    
+                    except:
+                        resp_sw = False
 
+                    if resp_sw:
+
+                        xml = requests.get(resp)
+                        with open(resp_file_path, 'wb') as f:
+                           f.write(xml.content)
 
 
                     print('{:2}-{:4}'.format(network_new, station_code))
