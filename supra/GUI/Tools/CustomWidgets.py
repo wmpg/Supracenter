@@ -36,6 +36,7 @@ class StationEx(QGroupBox):
         layout.addWidget(self.position, 2, 1, 1, 4)
 
         self.stream = []
+        self.response = []
 
         self.setMinimumHeight(126)
 

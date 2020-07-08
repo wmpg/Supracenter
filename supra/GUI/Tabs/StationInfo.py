@@ -24,6 +24,7 @@ def addStationWidgets(obj, stn_list):
         stat_obj.position.elev.setText('{:}'.format(stn.metadata.position.elev))
         stat_obj.name.setText('{:}'.format(stn.metadata.name))
         stat_obj.stream = stn.stream
+        stat_obj.response = stn.response
         stat_obj.toggle.setState(stn.metadata.enabled)
 
         obj.stat_widget_lst.append(stat_obj) 
@@ -101,10 +102,9 @@ def saveStations(obj):
 
             meta = Metadata(stn_ex.network.text(), stn_ex.code.text(), pos, stn_ex.name.text())
             meta.enabled = True
-            stn = Station(meta, stn_ex.stream)
+            stn = Station(meta, stn_ex.stream, response=stn_ex.response)
 
             stn_list.append(stn)
-        
 
     obj.bam.stn_list = stn_list
     save(obj)

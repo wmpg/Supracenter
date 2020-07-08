@@ -56,11 +56,13 @@ def loadIntoStations(data_list):
 
     for station in data_list:
         meta = Metadata(station[0], station[1], \
-                Position(float(station[2]), float(station[3]), float(station[4])), station[5])
+                Position(float(station[2]), float(station[3]), float(station[4])), station[5], source=station[9])
 
         st = obspy.read(station[8])
 
-        stn = Station(meta, st)
+        resp = obspy.read_inventory(station[10])
+
+        stn = Station(meta, st, response=resp)
 
         stn_list.append(stn)
 
@@ -133,7 +135,9 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                         "&channel=*&start={:s}&end={:s}").format(u, network_new, station_code, start_time, \
                         end_time)
 
-                    resp = ("{:}station/1/query?network={:s}&station={:s}&channel=*&format=xml&nodata=404".format(u, network_new, station_code))
+
+                    resp = ("{:}station/1/query?net={:s}&sta={:s}&starttime={:s}&"\
+                                "format=xml&nodata=404&level=response".format(u, network_new, station_code, start_time))
 
                     try:
                         stn_query_txt = urllibrary.urlopen(stn_query)
@@ -143,19 +147,12 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                         else:
                             print(e)
 
-                    resp_sw = True
                     try:
-                        urllibrary.urlopen(resp)
-                        resp_sw = True
-
-                    except:
-                        resp_sw = False
-
-                    if resp_sw:
-
                         xml = requests.get(resp)
                         with open(resp_file_path, 'wb') as f:
                            f.write(xml.content)
+                    except:
+                        pass
 
 
                     print('{:2}-{:4}'.format(network_new, station_code))
@@ -172,9 +169,10 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                         os.remove(mseed_file_path)
                         continue
 
-                    station_list.append([*entry, mseed_file_path])
+                    station_list.append([*entry, mseed_file_path, u, resp_file_path])
 
 
     station_list = filterStations(station_list)
     stn_list = loadIntoStations(station_list)
+
     return stn_list

@@ -15,7 +15,7 @@ class Station:
     A station object containing information and position of the station
     """
 
-    def __init__(self, metadata, stream, edits=None):
+    def __init__(self, metadata, stream, edits=None, response=None):
         """
         Arguments:
             network: [String] the network of the station
@@ -29,6 +29,7 @@ class Station:
         self.metadata = metadata
         self.stream = stream
         self.edits = edits
+        self.response = response
 
     def __str__(self):
         A = "Station: {:}\n".format(self.metadata.name)

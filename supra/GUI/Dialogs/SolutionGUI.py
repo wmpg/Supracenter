@@ -2125,6 +2125,7 @@ class SolutionGUI(QMainWindow):
                 errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform', detail='{:}'.format(e))
                 self.prefs.ballistic_en = False
 
+
         self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
         save(self)
         SolutionGUI.update(self)
@@ -2222,29 +2223,9 @@ class SolutionGUI(QMainWindow):
             sys.stdout.flush()
             time.sleep(0.001)
 
-            # mseed_file_path = os.path.join(self.dir_path, stn.file_name)
 
-            # try:
             mseed = stn.stream                
-                # # Read the miniSEED file
-                    # if os.path.isfile(mseed_file_path):
-
-                    #     mseed = obspy.read(mseed_file_path)
-
-                    # else:
-                    #     bad_stats.append(idx)
-                    #     if self.prefs.debug:
-                    #         print('File {:s} does not exist!'.format(mseed_file_path))
-                    #     continue
-
-
-                # except TypeError as e:
-                #     bad_stats.append(idx)
-                #     if self.prefs.debug:
-                #         print('Opening file {:} failed with error: {:}'.format(mseed_file_path, e))
-                #     continue
-
-                # Find channel with BHZ, HHZ, or BDF
+  
 
             for i in range(len(mseed)):
                 if mseed[i].stats.channel == 'BDF':
@@ -2630,7 +2611,6 @@ class SolutionGUI(QMainWindow):
 
         # Get the miniSEED file path
         
-
         # Try reading the mseed file, if it doesn't work, skip to the next frame
         try:
             mseed = stn.stream
@@ -2645,15 +2625,36 @@ class SolutionGUI(QMainWindow):
             self.make_picks_channel_choice.blockSignals(True)
             self.make_picks_channel_choice.clear()
             for i in range(len(mseed)):
-                self.make_picks_channel_choice.addItem(mseed[i].stats.channel + ' ({:})'.format(i))
+                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
             self.make_picks_channel_choice.blockSignals(False)
         
         current_channel = self.make_picks_channel_choice.currentIndex()
-        # print(current_channel)
+        chn_selected = self.make_picks_channel_choice.currentText()
+
+        resp = stn.response
+
+        st = mseed
+
+        # A second stream containing channels with the response
+        st2 = mseed.select(inventory=resp.select(channel=chn_selected))
+
+        # Use st2 if able to, else use st
+        st2 = st2.select(channel=chn_selected)
+        st = st.select(channel=chn_selected)
         # Unpact miniSEED data
-        delta = mseed[current_channel].stats.delta
-        start_datetime = mseed[current_channel].stats.starttime.datetime
-        end_datetime = mseed[current_channel].stats.endtime.datetime
+
+
+        if len(st2) > 0 and resp is not None:
+            st = st2
+            st = st[0].remove_response(inventory=resp, output="VEL")
+            rm_resp = True
+        else:
+            st = st[0]
+            rm_resp = False
+
+        delta = st.stats.delta
+        start_datetime = st.stats.starttime.datetime
+        end_datetime = st.stats.endtime.datetime
 
         stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
 
@@ -2696,7 +2697,12 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
-        self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
+
+        if rm_resp:
+            print(st.stats.items())
+            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m/s')
+        else:
+            self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
 
         # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
