@@ -70,8 +70,10 @@ def loadIntoStations(data_list):
 
 def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_path, obj=None):
     
+    # Make directory if needed
     mkdirP(dir_path)
 
+    # Pull station urls that are being used (checks which ones the user has selected)
     urls = urlList()
 
     station_list = []
@@ -81,6 +83,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
     ed = sd + datetime.timedelta(days=1)
     end_date = "{:04d}-{:02d}-{:02d}".format(ed.year, ed.month, ed.day)
 
+    # grab 5 minutes before user selected time to help with not knowing the correct time
     sd = fireball_datetime - datetime.timedelta(minutes=5)
     start_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(sd.year, sd.month, sd.day, \
         sd.hour, sd.minute, sd.second, sd.microsecond//1000)
@@ -125,6 +128,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                 if entry not in station_list:
                     
                     # Construct a file name
+                    # str(ii) allows for the same station to be downloaded from multiple networks if possible
                     mseed_file = network_new + '_' + station_code + '_' + str(ii) + '.mseed'
                     mseed_file_path = os.path.join(dir_path, mseed_file)
 

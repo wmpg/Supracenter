@@ -53,9 +53,14 @@ def checkSkip(bam, prefs):
             return False
 
         # Check Ballistic Perturb
-        if prefs.pert_en and len(stn.times.ballistic[1]) != prefs.pert_num:
+        try:
+            if prefs.pert_en and len(stn.times.ballistic[1]) != prefs.pert_num:
+                if prefs.debug:
+                    print('DEBUG: Not skipping CalcAllTimes - No perturbed ballistic arrivals')
+                return False
+        except IndexError:
             if prefs.debug:
-                print('DEBUG: Not skipping CalcAllTimes - No perturbed ballistic arrivals')
+                print('DEBUG: Not skipping CalcAllTimes - Cannot read perturbed ballistic arrivals')
             return False
 
         # Check Fragmentation Perturb

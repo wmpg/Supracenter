@@ -566,6 +566,10 @@ def addMakePicksWidgets(obj):
     check_group_layout.addWidget(obj.show_prec)
     obj.show_prec.stateChanged.connect(partial(obj.updatePlot, True))
 
+    obj.rm_resp = QCheckBox('Remove Response (EXPERIMENTAL)')
+    check_group_layout.addWidget(obj.rm_resp)
+    obj.rm_resp.stateChanged.connect(partial(obj.updatePlot, True))
+
     obj.show_perts = QCheckBox('Show Perturbations')
     check_group_layout.addWidget(obj.show_perts)
     obj.show_perts.stateChanged.connect(partial(obj.updatePlot, True))

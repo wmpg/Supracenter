@@ -1,2 +1,4 @@
 *.pyc
 Utils/__pycache__/*
+supra/Misc/BAMprefs.bam
+supra/Misc/BAMStationprefs.bam

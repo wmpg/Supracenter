@@ -30,7 +30,14 @@ def supSearch(bam, prefs):
     for i in range(len(s_name)):
         print('{:}: {:.4f} s'.format(s_name[i], results.r[i]))
 
-    print('Total Residual: {:.4f} s'.format(np.sum(results.r)))
+    norm_res = 0
+    stat = 0
+    for res in results.r:
+        if not np.isnan(res):
+            stat += 1
+            norm_res += res**2
+
+    print('Residual Norm: {:.4f} s'.format(norm_res/stat))
     return None
 
     # self.scatterPlot(self.bam.setup, results, n_stations, xstn, s_name, dataset, manual=False)

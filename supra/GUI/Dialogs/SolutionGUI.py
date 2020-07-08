@@ -2643,9 +2643,9 @@ class SolutionGUI(QMainWindow):
         st = st.select(channel=chn_selected)
         # Unpact miniSEED data
 
-
-        if len(st2) > 0 and resp is not None:
+        if len(st2) > 0 and resp is not None and self.rm_resp.isChecked():
             st = st2
+            #TODO - bug, this shouldn't run every time the waveform is shown
             st = st[0].remove_response(inventory=resp, output="VEL")
             rm_resp = True
         else:
@@ -2699,7 +2699,6 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
         if rm_resp:
-            print(st.stats.items())
             self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m/s')
         else:
             self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
