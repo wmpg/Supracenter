@@ -33,12 +33,21 @@ class Station:
 
     def __str__(self):
         A = "Station: {:}\n".format(self.metadata.name)
-        B = str(self.position) + "\n"
+
+        B = str(self.metadata.position) + "\n"
+
         try:
-            C = "Ground Distance: {:}".format(self.ground_distance)
+            C = "Ground Distance: {:} \n".format(self.ground_distance)
         except:
             C = ''
-        return A + B + C
+
+        if self.response is not None:
+            D = "Response Attatched"
+        else:
+            D = "No Response Found"
+
+
+        return A + B + C + D
 
     def stn_distance(self, ref_pos):
         self.distance = self.metadata.position.pos_distance(ref_pos)

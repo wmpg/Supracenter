@@ -1,8 +1,12 @@
+import os
+
 from functools import partial
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
+
+import pyqtgraph as pg
 
 class StationEx(QGroupBox):
 
@@ -18,7 +22,7 @@ class StationEx(QGroupBox):
         main_layout.addLayout(left_side)
         main_layout.addLayout(layout)
 
-        self.toggle = ToggleButton(True)
+        self.toggle = ToggleButton(True, 0)
         left_side.addWidget(self.toggle, 1, 1)
         self.toggle.clicked.connect(self.toggle.clickedEvt)
         self.toggle.clicked.connect(partial(self.func, self.toggle))
@@ -99,32 +103,76 @@ class PositionEx(QWidget):
         self.setLayout(layout)
 
 class ToggleButton(QAbstractButton):
-    def __init__(self, status):
+    def __init__(self, status, dict_item):
         super(ToggleButton, self).__init__()
+
+        # Preloads images here to make it faster
+        on_pix, off_pix = self.detImg(dict_item)
+
+        self.on_pix = os.path.join('supra', 'GUI', 'Images', on_pix)
+        self.off_pix = os.path.join('supra', 'GUI', 'Images', off_pix)
 
         self.status = status
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.update()
 
+    def detImg(self, dict_item):
+        # Preloads images here to make it faster
+        if dict_item == 0:
+            on_pix = 'ButtonStateOn.png'
+            off_pix = 'ButtonStateOff.png'
+        elif dict_item == 1:
+            on_pix = 'Pick_down.png'
+            off_pix = 'Pick_up.png'
+        elif dict_item == 2:
+            on_pix = 'Annote_down.png'
+            off_pix = 'Annote_up.png'
+        elif dict_item == 3:
+            on_pix = 'Ground_Motion_down.png'
+            off_pix = 'Ground_Motion_up.png'
+        elif dict_item == 4:
+            on_pix = 'RM_Pick_down.png'
+            off_pix = 'RM_Pick_up.png'
+        elif dict_item == 5:
+            on_pix = 'Pick_down_b.png'
+            off_pix = 'Pick_up_b.png'
+        elif dict_item == 6:
+            on_pix = 'Bandpass_down.png'
+            off_pix = 'Bandpass_up.png'
+
+
+        return on_pix, off_pix
+
+    def changeImg(self, dict_item):
+
+        on_pix, off_pix = self.detImg(dict_item)
+        self.on_pix = os.path.join('supra', 'GUI', 'Images', on_pix)
+        self.off_pix = os.path.join('supra', 'GUI', 'Images', off_pix)
+        self.update()
+
     def setState(self, state):
         self.status = state
-
+        qApp.processEvents()
         self.update()
 
     def getState(self):
+        return self.status
+
+    def isChecked(self):
         return self.status
 
     def paintEvent(self, event):
         painter = QPainter(self)
 
         if self.status:
-            painter.drawPixmap(event.rect(), QPixmap('supra\\GUI\\Images\\ButtonStateOn.png'))
+            painter.drawPixmap(event.rect(), QPixmap(self.on_pix))
         else:
-            painter.drawPixmap(event.rect(), QPixmap('supra\\GUI\\Images\\ButtonStateOff.png'))
+            painter.drawPixmap(event.rect(), QPixmap(self.off_pix))
 
     def sizeHint(self):
-        return QPixmap('supra\\GUI\\Images\\ButtonStateOff.png').size()
+        return QPixmap(self.on_pix).size()
 
     def clickedEvt(self):
         self.status = not self.status
         self.update()
+

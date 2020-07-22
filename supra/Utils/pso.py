@@ -1,3 +1,7 @@
+#############################################################
+# Edited from pyswarm for the purposes in Supracenter code! #
+#############################################################
+
 from functools import partial
 import numpy as np
 

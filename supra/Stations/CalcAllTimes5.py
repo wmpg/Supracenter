@@ -74,11 +74,9 @@ def checkSkip(bam, prefs):
 def calcAllTimes(bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
-    for ii, stn in enumerate(bam.stn_list):
-        print(stn.metadata.code, stn.metadata.position)
-    exit()
+
     velocities = [11]
-    zes = [5]
+    zes = [85]
     az = 354.67
     t = 0
     pos_i = Position(48.1724466606, 13.0926245672, 50000)
@@ -268,6 +266,6 @@ def calcAllTimes(bam, prefs):
                 # winsound.Beep(freq, duration)
                 # winsound.Beep(freq*2, duration)
 
-
+    exit()
 
     return None

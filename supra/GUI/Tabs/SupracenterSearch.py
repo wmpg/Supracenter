@@ -5,11 +5,11 @@ from supra.Supracenter.psoSearch import psoSearch
 
 from supra.Utils.Classes import Position
 
-def supSearch(bam, prefs):
+def supSearch(bam, prefs, manual=True):
     """
     Function to initiate PSO Search of a Supracenter
     """
-
+    
     # Reference location to convert to local coordinates
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
 
@@ -20,12 +20,32 @@ def supSearch(bam, prefs):
 
     xstn = s_info[0:n_stations, 0:3]
 
-    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=True)
+    # TODO Test this code
+    # TODO Display results in a statistically significant way
 
+    # Nominal Run
+    if prefs.debug:
+        print("Current status: Nominal Supracenter")
+
+    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=0)
+
+    # Perturbation Runs
+    if prefs.pert_en:
+        pert_results = [None]*prefs.pert_num
+        for i in range(prefs.pert_num):
+
+            if prefs.debug:
+                print("Current status: Perturbation {:}".format(i+1))
+
+            pert_results[i] = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=i+1)
+
+    # Error function is the absolute L1 norm ??
+    print("Nominal Results")
     print("Error Function: {:5.2f}".format(results.f_opt))
     print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
         .format(results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, results.motc))
     
+    # Results show an L2 norm, normalized by the number of stations that have arrivals
     print('Residuals:')
     for i in range(len(s_name)):
         print('{:}: {:.4f} s'.format(s_name[i], results.r[i]))
@@ -38,6 +58,31 @@ def supSearch(bam, prefs):
             norm_res += res**2
 
     print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+
+    if prefs.pert_en:
+        for i in range(prefs.pert_num):
+
+            # Error function is the absolute L1 norm ??
+            print("Perturbation {:} Results".format(i+1))
+            print("Error Function: {:5.2f}".format(pert_results[i].f_opt))
+            print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
+                .format(pert_results[i].x_opt.lat, pert_results[i].x_opt.lon, pert_results[i].x_opt.elev, pert_results[i].motc))
+            
+            # Results show an L2 norm, normalized by the number of stations that have arrivals
+            print('Residuals:')
+            for ii in range(len(s_name)):
+                print('{:}: {:.4f} s'.format(s_name[ii], pert_results[i].r[ii]))
+
+            norm_res = 0
+            stat = 0
+            for res in pert_results[i].r:
+                if not np.isnan(res):
+                    stat += 1
+                    norm_res += res**2
+
+            print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+
+
     return None
 
     # self.scatterPlot(self.bam.setup, results, n_stations, xstn, s_name, dataset, manual=False)

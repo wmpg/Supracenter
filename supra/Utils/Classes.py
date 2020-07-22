@@ -494,7 +494,7 @@ class Trajectory:
 
         return P
 
-    def trajInterp2(self, div=250, min_p=0, max_p=0):
+    def trajInterp2(self, div=250, min_p=17000, max_p=50000):
         
         ref_loc = self.pos_f
         ref_loc.elev = 0
@@ -771,13 +771,15 @@ if __name__ == '__main__':
 
     # print(S_p)
     # print(S_m)Begin point on the trajectory:
-
-    # A = Trajectory(2.471993030094728, 13913.0, pos_i=Position(48.05977, 13.10846, 85920), \
-    #                          zenith=Angle(19.69), azimuth=Angle(354.67))
+    pos_i = Position(48.1724466606, 13.0926245672, 50000)
+    A = Trajectory(2.471993030094728, 13913.0, pos_i=pos_i, \
+                             zenith=Angle(85), azimuth=Angle(354.67))
 
     s = Position(48.8461, 13.7179,   1141.10)
-    d = Position(48.2105000000000,   13.0873000000000,    37.9500000000000)
-    print(s.ground_distance(d))
+
+    wrp = A.findGeo(43288.5906040269)
+    rag = wrp.pos_distance(s)
+    print(rag)
     # import numpy as np
     # import matplotlib.pyplot as plt
 

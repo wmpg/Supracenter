@@ -273,7 +273,7 @@ def addSupraWidgets(obj):
 
     obj.search_button = QPushButton('Search')
     obj.supra_tab_content.addWidget(obj.search_button)
-    obj.search_button.clicked.connect(obj.supraSearch)
+    obj.search_button.clicked.connect(partial(obj.supSearch, True))
 
     obj.master_supra.addLayout(obj.supra_tab_content, 1, 1, 1, 100)
     obj.master_supra.addLayout(obj.plots, 1, 101)
@@ -433,7 +433,7 @@ def addSupWidgets(obj):
 
     obj.sup_search_button = QPushButton('Search')
     obj.sup_tab_content.addWidget(obj.sup_search_button, 5, 1, 1, 75)
-    obj.sup_search_button.clicked.connect(obj.supSearch)
+    obj.sup_search_button.clicked.connect(partial(obj.supSearch, False))
 
     obj.sup_results_label = QLabel("Results: ")
     obj.sup_tab_content.addWidget(obj.sup_results_label, 3, 1, 1, 1)
@@ -465,7 +465,7 @@ def addMakePicksWidgets(obj):
     make_picks_master_tab.setLayout(make_picks_master)
 
     obj.make_picks_top_graphs = QHBoxLayout()
-    obj.make_picks_bottom_graphs = QVBoxLayout()
+    obj.make_picks_bottom_graphs = QGridLayout()
     make_picks_master.addLayout(obj.make_picks_top_graphs)
     make_picks_master.addLayout(obj.make_picks_bottom_graphs)
 
@@ -481,11 +481,43 @@ def addMakePicksWidgets(obj):
 
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
-    obj.make_picks_bottom_graphs.addWidget(obj.make_picks_waveform_view)
+    obj.make_picks_bottom_graphs.addWidget(obj.make_picks_waveform_view, 1, 2)
     obj.make_picks_waveform_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+
+    toggle_button_array = QVBoxLayout()
+    toggle_button_array.setSpacing(0)
+    obj.make_picks_bottom_graphs.addLayout(toggle_button_array, 1, 1)
+
+    obj.tog_picks = ToggleButton(False, 1)
+    obj.tog_picks.setToolTip("Click the waveform to make a pick")
+    obj.tog_picks.clicked.connect(obj.tog_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.tog_picks)
+
+    obj.tog_rm_picks = ToggleButton(False, 4)
+    obj.tog_rm_picks.setToolTip("Click the waveform to remove a pick")
+    obj.tog_rm_picks.clicked.connect(obj.tog_rm_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.tog_rm_picks)
+
+    obj.annote_picks = ToggleButton(False, 2)
+    obj.annote_picks.setToolTip("Click the waveform to make an annotation")
+    obj.annote_picks.clicked.connect(obj.annote_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.annote_picks)
+
+    obj.gnd_mot_picks = ToggleButton(False, 3)
+    obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
+    obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.gnd_mot_picks)
+
+    obj.bandpass_picks = ToggleButton(False, 6)
+    obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
+    obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.bandpass_picks)
+
+    toggle_button_array.insertStretch(-1, 0)
+
     make_picks_control_panel = QHBoxLayout()
-    obj.make_picks_bottom_graphs.addLayout(make_picks_control_panel)
+    obj.make_picks_bottom_graphs.addLayout(make_picks_control_panel, 2, 1, 1, 2)
 
     make_picks_station_group = QGroupBox("Station Navigation")
     make_picks_control_panel.addWidget(make_picks_station_group)

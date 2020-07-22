@@ -34,7 +34,7 @@ def timeFunction(x, *args):
     '''
 
     # Retrieve passed arguments
-    stns, w, kotc, setup, ref_pos, atmos, prefs, v = args
+    stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num = args
 
     # number of stations total
     n_stations = len(stns)
@@ -80,7 +80,17 @@ def timeFunction(x, *args):
             D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
             D.pos_geo(ref_pos)
 
-            sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+            if pert_num == 0:
+
+                # No perturbations used here
+                sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+           
+            else:
+
+                # Sounding is a specfic perturbation number
+                # TODO: Go back and fix how this is done, not all perts need to be generated, just one here 
+                _, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+                sounding = sounding[pert_num - 1]
 
             # Use distance and atmospheric data to find path time
             time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \
@@ -197,7 +207,7 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False):
+def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
@@ -285,7 +295,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False):
         #  [x, y, z] local coordinates
 
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, setup.ref_pos, atmos, prefs, v)
+        args = (stns, w, kotc, setup, setup.ref_pos, atmos, prefs, v, pert_num)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location

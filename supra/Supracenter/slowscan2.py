@@ -12,7 +12,7 @@ from supra.Supracenter.cynwDir import nwDir
  
 
 
-def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=90, n_phi=90, h_tol=1e-5, v_tol=1000):
+def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=180, n_phi=180, h_tol=330, v_tol=2000):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
