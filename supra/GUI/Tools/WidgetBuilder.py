@@ -514,6 +514,11 @@ def addMakePicksWidgets(obj):
     obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
     toggle_button_array.addWidget(obj.bandpass_picks)
 
+    obj.polmap_picks = ToggleButton(False, 7)
+    obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
+    obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.polmap_picks)
+
     toggle_button_array.insertStretch(-1, 0)
 
     make_picks_control_panel = QHBoxLayout()

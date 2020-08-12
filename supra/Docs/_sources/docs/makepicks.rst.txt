@@ -33,8 +33,6 @@ Once the program is done calculating times, the GUI will change, and the wavefor
 Shortcuts
 =========
 
-* Make Pick: Ctrl + Left Click
-* Delete Pick: Shift + Left Click
 * Next Waveform: D
 * Previous Waveform: A
 * Bandpass Current Waveform: W
@@ -53,6 +51,47 @@ Exporting Picks
 Once all of the user picks have been made on the waveforms, the "Export CSV" button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.
 
 These picks may be loaded into the Supracenter or Acoustic Trajectory modules of the program.
+
+Sidebar Tools
+=============
+
+Make Picks
+----------
+
+.. image:: Pick_up.png
+
+Selecting the waveform at a specific spot with this tool enabled will create a pick where the user clicks. (This replaces the old method of CTRL-clicking which is no longer in the program) 
+
+Changing the group will also change the colour of this icon and the picks created under that groupd number, so that the user can make multiple groups of picks for later analysis.
+
+
+Remove Picks
+------------
+
+.. image:: RM_Pick_up.png
+
+Selecting a pick while this tool is enabled will remove a pick from the waveform of any group.
+
+Annote Waveform
+---------------
+
+.. image:: Annote_up.png
+
+Not yet implemented
+
+Ground Motion Plot
+------------------
+
+.. image:: Ground_Motion_up.png
+
+Selecting a waveform with the ground motion button toggled on will open up the Particle Motion dialogue using the currently open station and channel. The window will automatically open up the three channels around the one that was selected, either in a ZNE form (vertical, north, and east), or Z12 form (3 linearly independant directions but not ZNE) and rotate it to ZNE (rotation needs verification). The user may then select the bandpass for the 3 waveforms, and then select the subsection of the waveform to plot.
+
+Selecting "Mark" will propgegate waveforms from the station at the calculated azimuth (and 180 degrees from the azimuth) at discrete zenith angles up until the height specified in the window. The green line plotted on the map shows the optimal azimuth where the red dots show these individual ray-traces.
+
+Optimal Bandpass Tool
+---------------------
+
+.. image:: Bandpass_up.png
 
 
 Yield Estimater

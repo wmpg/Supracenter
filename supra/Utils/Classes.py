@@ -661,12 +661,17 @@ class Color:
         self.WHITE = (255, 255, 255)
 
 class RectangleItem(pg.GraphicsObject):
-    def __init__(self, data):
+    def __init__(self, data, c_map="forward"):
         pg.GraphicsObject.__init__(self)
 
+        self.c_map = c_map
+
         self.data = data
+        
+
         self.normed_dat = self.normData()
         self.generatePicture()
+
     
     def normData(self):
         a = np.array(self.data)
@@ -698,10 +703,16 @@ class RectangleItem(pg.GraphicsObject):
 
     def gradient(self, weight, alpha):
         if weight == weight:
-            c_ender = (7, 65, 112)
-            c_end = (111, 255, 0)
-            c_start   = (224, 245, 66)
-            c_starter = (232, 72, 9)
+            if self.c_map == "forward":
+                c_ender = (7, 65, 112)
+                c_end = (111, 255, 0)
+                c_start   = (224, 245, 66)
+                c_starter = (232, 72, 9)
+            else:
+                c_starter = (7, 65, 112)
+                c_start = (111, 255, 0)
+                c_end   = (224, 245, 66)
+                c_ender = (232, 72, 9)
 
             if weight > (2/3):
                 r = c_end[0] + 3*(weight - (2/3))*(c_ender[0] - c_end[0])

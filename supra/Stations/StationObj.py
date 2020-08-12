@@ -9,6 +9,16 @@ class Metadata:
         self.source = source
         self.enabled = True
 
+class Polarization:
+
+    def __init__(self):
+
+        self.azimuth = None
+        self.azimuth_error = None
+
+    def __str__(self):
+        return "Polarization object with azimuth = {:} +/- {:}".format(self.azimuth, self.azimuth_error)
+
 class Station:
 
     """
@@ -30,6 +40,7 @@ class Station:
         self.stream = stream
         self.edits = edits
         self.response = response
+        self.polarization = Polarization()
 
     def __str__(self):
         A = "Station: {:}\n".format(self.metadata.name)

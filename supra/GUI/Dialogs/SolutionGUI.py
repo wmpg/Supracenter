@@ -50,6 +50,7 @@ from supra.Supracenter.psoSearch import psoSearch
 from supra.Supracenter.fetchCopernicus import copernicusAPI
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Supracenter.cyscanVectors import cyscan as cyscanV
+from supra.Supracenter.propegateBackwards import propegateBackwards
 
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.Theme import theme
@@ -62,6 +63,7 @@ from supra.GUI.Dialogs.AllWaveformView import AllWaveformViewer
 from supra.GUI.Dialogs.TrajInterp import TrajInterpWindow
 from supra.GUI.Dialogs.StationList import StationList
 from supra.GUI.Dialogs.ParticleMot import ParticleMotion
+from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
@@ -70,6 +72,7 @@ from supra.GUI.Tabs.SupracenterSearch import supSearch
 
 from supra.Stations.Filters import *
 from supra.Stations.CalcAllTimes4 import calcAllTimes
+from supra.Stations.StationObj import Polarization
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
@@ -2457,6 +2460,38 @@ class SolutionGUI(QMainWindow):
             self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
             self.bp.setGeometry(QRect(100, 100, 1200, 700))
             self.bp.show()
+
+        elif self.polmap_picks.isChecked():
+
+            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+            points = []
+
+            # Calculate all points here
+            for stn in self.bam.stn_list:
+
+                if not hasattr(stn, "polarization"):
+                    stn.polarization = Polarization()
+
+                if stn.polarization.azimuth is not None: 
+                    
+                    D = propegateBackwards(ref_pos, stn, self.bam)
+
+
+                    for line in D:
+                        print(line)
+                        if not np.isnan(line[0]): 
+                            P = Position(0, 0, 0)
+                            P.x = line[0]
+                            P.y = line[1]
+                            P.z = line[2]
+                            P.pos_geo(ref_pos)
+                            points.append(P)
+
+            # Pass grid to polmap
+            self.pm = Polmap(self.bam, points)
+            self.pm.setGeometry(QRect(100, 100, 1200, 700))
+            self.pm.show()
+
 
 
         elif self.alt_pressed:

@@ -4,7 +4,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
-def anglescanrev(S, phi, theta, z_profile, wind=True):
+def anglescanrev(S, phi, theta, z_profile, wind=True, trace=False):
     #This code is basically cheating, it flips the vertical scale, ray-traces, then flips back
 
     # Azimuths and Wind directions are measured as angles from north, and increasing clockwise to the East
@@ -30,9 +30,9 @@ def anglescanrev(S, phi, theta, z_profile, wind=True):
     z  = z_profile[0:n_layers, 0] - z_profile[-1, 0]
 
     # Component of wind vector in the direction of phi and phi + pi/2 respectively
-
-    u = z_profile[:, 2]*np.sin(z_profile[:, 3])*np.cos(phi) + z_profile[:, 2]*np.cos(z_profile[:, 3])*np.sin(phi)
-    v = z_profile[:, 2]*np.sin(z_profile[:, 3])*np.cos(phi+np.pi/2) + z_profile[:, 2]*np.cos(z_profile[:, 3])*np.sin(phi+np.pi/2)
+    # Backwards Wind
+    u = -z_profile[:, 2]*np.sin(z_profile[:, 3])*np.cos(phi) + z_profile[:, 2]*np.cos(z_profile[:, 3])*np.sin(phi)
+    v = -z_profile[:, 2]*np.sin(z_profile[:, 3])*np.cos(phi+np.pi/2) + z_profile[:, 2]*np.cos(z_profile[:, 3])*np.sin(phi+np.pi/2)
     
     s_val = s[n_layers-1]
 
@@ -46,6 +46,9 @@ def anglescanrev(S, phi, theta, z_profile, wind=True):
 
     # ignore negative roots
     np.seterr(divide='ignore', invalid='ignore')
+
+    if trace:
+        T = []
 
     ### Scan Loop ###
     a, b = np.cos(phi), np.sin(phi)
@@ -69,8 +72,10 @@ def anglescanrev(S, phi, theta, z_profile, wind=True):
 
             if np.isnan(A).all():
 
-
-                return np.array([np.nan, np.nan, np.nan, np.nan])
+                if trace:
+                    return np.array([[np.nan, np.nan, np.nan, np.nan]])
+                else:   
+                    return np.array([np.nan, np.nan, np.nan, np.nan])
 
             # Equation (10)
             X += (p2 + s2*U)*A
@@ -80,7 +85,8 @@ def anglescanrev(S, phi, theta, z_profile, wind=True):
 
             # Calculate true destination positions (transform back)
             #0.0016s
-
+            if trace:
+                T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), np.abs(z[n_layers - last_z - 1]), t_arrival])
 
         # Winds Disabled
         else:
@@ -91,18 +97,12 @@ def anglescanrev(S, phi, theta, z_profile, wind=True):
 
 
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
-        # if v_tol is not None and h_tol is not None:
-        #     dh = z[last_z] - target[2]
-        #     dx = np.sqrt((S[0] + (a*X - b*Y) - target[0])**2 + (S[1] + (b*X + a*Y) - target[1])**2)
-        #     if dh <= v_tol and dx <= h_tol:
-        #         t_arrival += np.sqrt(dh**2 + dx**2)/310
 
-        # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
-    # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 
-    D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), np.abs(z[n_layers - last_z - 1]), t_arrival]
-
-    ##########################
-    return np.array(D)
+    if not trace:
+        D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), np.abs(z[n_layers - last_z - 1]), t_arrival]
+        return np.array(D)
+    else:
+        return np.array(T)
 
 if __name__ == '__main__':
     S = np.array([0, 0, 33000])

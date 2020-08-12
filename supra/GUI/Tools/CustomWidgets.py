@@ -139,6 +139,9 @@ class ToggleButton(QAbstractButton):
         elif dict_item == 6:
             on_pix = 'Bandpass_down.png'
             off_pix = 'Bandpass_up.png'
+        elif dict_item == 7:
+            on_pix = 'Polmap_down.png'
+            off_pix = 'Polmap_up.png'
 
 
         return on_pix, off_pix

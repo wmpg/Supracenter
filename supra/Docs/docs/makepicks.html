@@ -96,6 +96,14 @@
 <li class="toctree-l2"><a class="reference internal" href="#shortcuts">Shortcuts</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#station-navigation">Station Navigation</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#exporting-picks">Exporting Picks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#sidebar-tools">Sidebar Tools</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#id1">Make Picks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#remove-picks">Remove Picks</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#annote-waveform">Annote Waveform</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ground-motion-plot">Ground Motion Plot</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#optimal-bandpass-tool">Optimal Bandpass Tool</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#yield-estimater">Yield Estimater</a><ul class="simple">
 </ul>
 </li>
@@ -196,8 +204,6 @@
 <div class="section" id="shortcuts">
 <h2>Shortcuts<a class="headerlink" href="#shortcuts" title="Permalink to this headline">¶</a></h2>
 <ul class="simple">
-<li><p>Make Pick: Ctrl + Left Click</p></li>
-<li><p>Delete Pick: Shift + Left Click</p></li>
 <li><p>Next Waveform: D</p></li>
 <li><p>Previous Waveform: A</p></li>
 <li><p>Bandpass Current Waveform: W</p></li>
@@ -214,6 +220,35 @@
 <h2>Exporting Picks<a class="headerlink" href="#exporting-picks" title="Permalink to this headline">¶</a></h2>
 <p>Once all of the user picks have been made on the waveforms, the “Export CSV” button in the lower right corner may be clicked to output a .csv file. It is recommended that you place this .csv file in your working directory to easily access it through other parts of the program. To further edit the station picks, the station picks file may be loaded into the Picks Viewer window to be fine-tuned.</p>
 <p>These picks may be loaded into the Supracenter or Acoustic Trajectory modules of the program.</p>
+</div>
+<div class="section" id="sidebar-tools">
+<h2>Sidebar Tools<a class="headerlink" href="#sidebar-tools" title="Permalink to this headline">¶</a></h2>
+<div class="section" id="id1">
+<h3>Make Picks<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/Pick_up.png" src="../_images/Pick_up.png" />
+<p>Selecting the waveform at a specific spot with this tool enabled will create a pick where the user clicks. (This replaces the old method of CTRL-clicking which is no longer in the program)</p>
+<p>Changing the group will also change the colour of this icon and the picks created under that groupd number, so that the user can make multiple groups of picks for later analysis.</p>
+</div>
+<div class="section" id="remove-picks">
+<h3>Remove Picks<a class="headerlink" href="#remove-picks" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/RM_Pick_up.png" src="../_images/RM_Pick_up.png" />
+<p>Selecting a pick while this tool is enabled will remove a pick from the waveform of any group.</p>
+</div>
+<div class="section" id="annote-waveform">
+<h3>Annote Waveform<a class="headerlink" href="#annote-waveform" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/Annote_up.png" src="../_images/Annote_up.png" />
+<p>Not yet implemented</p>
+</div>
+<div class="section" id="ground-motion-plot">
+<h3>Ground Motion Plot<a class="headerlink" href="#ground-motion-plot" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/Ground_Motion_up.png" src="../_images/Ground_Motion_up.png" />
+<p>Selecting a waveform with the ground motion button toggled on will open up the Particle Motion dialogue using the currently open station and channel. The window will automatically open up the three channels around the one that was selected, either in a ZNE form (vertical, north, and east), or Z12 form (3 linearly independant directions but not ZNE) and rotate it to ZNE (rotation needs verification). The user may then select the bandpass for the 3 waveforms, and then select the subsection of the waveform to plot.</p>
+<p>Selecting “Mark” will propgegate waveforms from the station at the calculated azimuth (and 180 degrees from the azimuth) at discrete zenith angles up until the height specified in the window. The green line plotted on the map shows the optimal azimuth where the red dots show these individual ray-traces.</p>
+</div>
+<div class="section" id="optimal-bandpass-tool">
+<h3>Optimal Bandpass Tool<a class="headerlink" href="#optimal-bandpass-tool" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/Bandpass_up.png" src="../_images/Bandpass_up.png" />
+</div>
 </div>
 <div class="section" id="yield-estimater">
 <h2>Yield Estimater<a class="headerlink" href="#yield-estimater" title="Permalink to this headline">¶</a></h2>

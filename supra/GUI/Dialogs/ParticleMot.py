@@ -27,6 +27,8 @@ from supra.Utils.Classes import Position
 
 from supra.Stations.Filters import *
 
+from supra.Stations.StationObj import Polarization
+
 from supra.Supracenter.finalangle import finalanglecheck
 from supra.Supracenter.anglescanrev import anglescanrev
 
@@ -239,32 +241,9 @@ class ParticleMotion(QWidget):
 
             self.zne_canvas[i].addItem(self.selector[i])
 
-    def markWaveform(self):
+    def makePropLine(self, D, alpha=255):
 
         ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
-
-        S = self.stn.metadata.position
-        
-        S.pos_loc(ref_pos)
-        
-        sounding, _ = self.bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, float(self.ray_height.text())])
-
-        D = []
-        for zenith in np.linspace(91, 179, 25):        
-            D.append(anglescanrev(S.xyz, self.azimuth, zenith, sounding, wind=True))
-            D.append(anglescanrev(S.xyz, (self.azimuth+180)%360, zenith, sounding, wind=True))
-        # pt, err = finalanglecheck(self.bam, self.bam.setup.trajectory, self.stn.metadata.position, self.azimuth)
-        D = np.array(D)
-        # print("Solution err: ", err)
-        # print("Solution: ", pt)
-
-        if self.group_no == 0:
-            az_line = pg.InfiniteLine(pos=(self.stn.metadata.position.lon, \
-                        self.stn.metadata.position.lat), angle=90-self.azimuth, pen=QColor(0, 255, 0))
-        else:
-            az_line = pg.InfiniteLine(pos=(self.stn.metadata.position.lon, \
-                        self.stn.metadata.position.lat), angle=90-self.azimuth, pen=QColor(0, 0, 255))
-
         lats = []
         lons = []
         for line in D:
@@ -277,12 +256,70 @@ class ParticleMotion(QWidget):
                 lats.append(temp.lat)
                 lons.append(temp.lon)
 
-        start_pt = pg.ScatterPlotItem()
+        lats.sort()
+        lons.sort()
+
+        start_pt = pg.PlotCurveItem()
         start_pt.setData(x=lons, y=lats)
-        start_pt.setPen((255, 0, 0))
+        start_pt.setPen((255, 85, 0, alpha))
+
+        return start_pt
+
+    def propegateBack(self, offset):
+
+        ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+
+        S = self.stn.metadata.position
+        
+        S.pos_loc(ref_pos)
+
+        sounding, perturbations = self.bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, float(self.ray_height.text())])
+
+        D = []
+        # Use 25 angles between 90 and 180 deg
+
+        ### To do this more right, calculate D with bad winds, and then use D to find new winds and then recalc D
+
+        for zenith in np.linspace(91, 179, 25):
+            # D = anglescanrev(S.xyz, self.azimuth + offset, zenith, sounding, wind=True)
+            # D = anglescanrev(S.xyz, (self.azimuth + offset + 180)%360, zenith, sounding, wind=True)
+
+            D.append(anglescanrev(S.xyz, self.azimuth + offset, zenith, sounding, wind=True))
+            D.append(anglescanrev(S.xyz, (self.azimuth + offset + 180)%360, zenith, sounding, wind=True))
+        # pt, err = finalanglecheck(self.bam, self.bam.setup.trajectory, self.stn.metadata.position, self.azimuth)
+
+        start_pt = self.makePropLine(np.array(D))
+
+
+        return start_pt
+
+    def markWaveform(self):
+        
+        if self.group_no == 0:
+            az_line = pg.InfiniteLine(pos=(self.stn.metadata.position.lon, \
+                        self.stn.metadata.position.lat), angle=90-self.azimuth, pen=QColor(0, 255, 0))
+        else:
+            az_line = pg.InfiniteLine(pos=(self.stn.metadata.position.lon, \
+                        self.stn.metadata.position.lat), angle=90-self.azimuth, pen=QColor(0, 0, 255))
 
         self.stn_map_canvas.addItem(az_line)
-        self.stn_map_canvas.addItem(start_pt)
+        
+        # Nominal curve
+        nom_curve = self.propegateBack(0)
+
+        # Azimuthal Error Bounds
+        ph = self.propegateBack(self.az_error)
+        pl = self.propegateBack(-self.az_error)
+        pfill = pg.FillBetweenItem(ph, pl, brush=(225, 85, 0, 100))
+        self.stn_map_canvas.addItem(ph)
+        self.stn_map_canvas.addItem(pl)
+        self.stn_map_canvas.addItem(pfill)
+
+        if not hasattr(self.stn, "polarization"):
+            self.stn.polarization = Polarization()
+
+        self.stn.polarization.azimuth = self.azimuth
+        self.stn.polarization.azimuth_error = self.az_error
 
         self.close()
 
@@ -459,6 +496,7 @@ class ParticleMotion(QWidget):
                 #                         anchor=(0, 0)))
 
             self.azimuth = azimuth
+            self.az_error = az_error
 
             self.particle_motion_canvas.addItem(p_mot_plot)
 
