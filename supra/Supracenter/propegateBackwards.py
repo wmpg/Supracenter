@@ -15,47 +15,60 @@ def propegateBackwards(ref_pos, stn, bam, offset=0):
 
     D = []
     offset = 0
-    for zenith in np.linspace(91, 179, 25):
-        
-        # T - expected final arrival, with bad sounding
-        # Recalculate winds
-        # D - real, expected final arrival
+    min_az = stn.polarization.azimuth - stn.polarization.azimuth_error
+    max_az = stn.polarization.azimuth + stn.polarization.azimuth_error
+    for azimuth in np.linspace(min_az, max_az, 10):
+        for zenith in np.linspace(91, 179, 25):
+            
+            # T - expected final arrival, with bad sounding
+            # Recalculate winds
+            # D - real, expected final arrival
 
-        T_pos = anglescanrev(S.xyz, (stn.polarization.azimuth + offset)%360, zenith, sounding, wind=True)
-        T = Position(0, 0, 0)
-        T.x = T_pos[0]
-        T.y = T_pos[1]
-        T.z = T_pos[2]
-        T.pos_geo(ref_pos)
+            T_pos = anglescanrev(S.xyz, (azimuth + offset)%360, zenith, sounding, wind=True)
+            T = Position(0, 0, 0)
+            T.x = T_pos[0]
+            T.y = T_pos[1]
+            T.z = T_pos[2]
+            T.pos_geo(ref_pos)
 
-        try:
-            sounding_plus, _ = bam.atmos.getSounding(lat=[S.lat, T.lat], lon=[S.lon, T.lon], heights=[S.elev, 50000])
-        except ValueError:
-            sounding_plus, _ = bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, 50000])
-        
-        nom_data = anglescanrev(S.xyz, (stn.polarization.azimuth + offset)%360, zenith, sounding_plus, wind=True, trace=True)
+            try:
+                sounding_plus, perts = bam.atmos.getSounding(lat=[S.lat, T.lat], lon=[S.lon, T.lon], heights=[S.elev, 50000])
+            except ValueError:
+                sounding_plus, perts = bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, 50000])
+            
+            nom_data = [None]*len(perts+1)
+            nom_data[0] = anglescanrev(S.xyz, (azimuth + offset)%360, zenith, sounding_plus, wind=True, trace=True)
+            for pp, pert in enumerate(perts):
+                nom_data[pp] = anglescanrev(S.xyz, (azimuth + offset)%360, zenith, pert, wind=True, trace=True)
 
-        # Repeat 180 deg away
 
-        T_pos = anglescanrev(S.xyz, (stn.polarization.azimuth + offset + 180)%360, zenith, sounding, wind=True)
-        T = Position(0, 0, 0)
-        T.x = T_pos[0]
-        T.y = T_pos[1]
-        T.z = T_pos[2]
-        T.pos_geo(ref_pos)
+            # Repeat 180 deg away
 
-        try:
-            sounding_plus, _ = bam.atmos.getSounding(lat=[S.lat, T.lat], lon=[S.lon, T.lon], heights=[S.elev, 50000])
-        except ValueError:
-            sounding_plus, _ = bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, 50000])
-        
-        nom_data_rev = anglescanrev(S.xyz, (stn.polarization.azimuth + offset + 180)%360, zenith, sounding_plus, wind=True, trace=True)
+            T_pos = anglescanrev(S.xyz, (azimuth + offset + 180)%360, zenith, sounding, wind=True)
+            T = Position(0, 0, 0)
+            T.x = T_pos[0]
+            T.y = T_pos[1]
+            T.z = T_pos[2]
+            T.pos_geo(ref_pos)
 
-        for line in nom_data:
-            D.append(line)
+            try:
+                sounding_plus, perts = bam.atmos.getSounding(lat=[S.lat, T.lat], lon=[S.lon, T.lon], heights=[S.elev, 50000])
+            except ValueError:
+                sounding_plus, perts = bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, 50000])
+            
+            nom_data_rev = [None]*len(perts+1)
+            nom_data_rev[0] = anglescanrev(S.xyz, (azimuth + offset + 180)%360, zenith, sounding_plus, wind=True, trace=True)
+            for pp, pert in enumerate(perts):
+                nom_data_rev[pp] = anglescanrev(S.xyz, (azimuth + offset + 180)%360, zenith, pert, wind=True, trace=True)
 
-        for line in nom_data_rev:
-            D.append(line)
+
+
+            for ii in range(len(nom_data)):
+                for line in nom_data[ii]:
+                    D.append(line)
+
+                for line in nom_data_rev[ii]:
+                    D.append(line)
 
     return D
 

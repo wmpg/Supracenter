@@ -2476,9 +2476,7 @@ class SolutionGUI(QMainWindow):
                     
                     D = propegateBackwards(ref_pos, stn, self.bam)
 
-
                     for line in D:
-                        print(line)
                         if not np.isnan(line[0]): 
                             P = Position(0, 0, 0)
                             P.x = line[0]
