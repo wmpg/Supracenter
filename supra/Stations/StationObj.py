@@ -13,8 +13,9 @@ class Polarization:
 
     def __init__(self):
 
-        self.azimuth = None
-        self.azimuth_error = None
+        self.azimuth = []
+        self.azimuth_error = []
+        self.time = []
 
     def __str__(self):
         return "Polarization object with azimuth = {:} +/- {:}".format(self.azimuth, self.azimuth_error)

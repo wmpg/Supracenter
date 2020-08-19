@@ -102,6 +102,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#annote-waveform">Annote Waveform</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#ground-motion-plot">Ground Motion Plot</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#optimal-bandpass-tool">Optimal Bandpass Tool</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#polarization-map-tool">Polarization Map Tool</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#yield-estimater">Yield Estimater</a><ul class="simple">
@@ -243,11 +244,22 @@
 <h3>Ground Motion Plot<a class="headerlink" href="#ground-motion-plot" title="Permalink to this headline">¶</a></h3>
 <img alt="../_images/Ground_Motion_up.png" src="../_images/Ground_Motion_up.png" />
 <p>Selecting a waveform with the ground motion button toggled on will open up the Particle Motion dialogue using the currently open station and channel. The window will automatically open up the three channels around the one that was selected, either in a ZNE form (vertical, north, and east), or Z12 form (3 linearly independant directions but not ZNE) and rotate it to ZNE (rotation needs verification). The user may then select the bandpass for the 3 waveforms, and then select the subsection of the waveform to plot.</p>
-<p>Selecting “Mark” will propgegate waveforms from the station at the calculated azimuth (and 180 degrees from the azimuth) at discrete zenith angles up until the height specified in the window. The green line plotted on the map shows the optimal azimuth where the red dots show these individual ray-traces.</p>
+<p>Selecting “Mark” will propgegate waveforms from the station at the calculated azimuth (and 180 degrees from the azimuth) at discrete zenith angles up until the height specified in the window. The green line plotted on the map shows the optimal azimuth where the red dots show these individual ray-traces. It will also append the polarization of the waveform (with uncertainty, and timing) to a list of azimuths attatched to the Station object (but will not save after closing the window as of version Beta-2). This is intended to use with the Polarization Map tool.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The timing used for the polarization saved to the waveform in the Polarization Map Tool is at the beginning of the selected region of interest.</p>
+</div>
 </div>
 <div class="section" id="optimal-bandpass-tool">
 <h3>Optimal Bandpass Tool<a class="headerlink" href="#optimal-bandpass-tool" title="Permalink to this headline">¶</a></h3>
 <img alt="../_images/Bandpass_up.png" src="../_images/Bandpass_up.png" />
+<p>Selecting a waveform with this button toggled on will open up the Optimal Bandpass tool using the currently open station and channel. The user will use the green selection area to select the portion of the signal to be optimized for, and the red selection area to give a noise sample. The program will then find the low and high cut points of the bandpass which has the best ratio and difference between the signal and noise.</p>
+</div>
+<div class="section" id="polarization-map-tool">
+<h3>Polarization Map Tool<a class="headerlink" href="#polarization-map-tool" title="Permalink to this headline">¶</a></h3>
+<img alt="../_images/Polmap_up.png" src="../_images/Polmap_up.png" />
+<p>Selecting a waveform with this button toggled on will open up the Polarization Map tool using the currently saved azimuths and timings from the Ground Motion Plot window. The program will propegate rays from the station up to a height of 50 km using perturbations and the azimuths (with uncertainty) which were added to each station.</p>
+<p>The height (and therefore time) for the trajectory can be moved with the slider, and only rays with that specific height and time (within a tolerance of 500 m and 2 seconds) will be shown. Ideally, as the height is slid from 50 km downward, these rays should propegate from near the station to the line that is the trajectory (marked with a white “+”).</p>
 </div>
 </div>
 <div class="section" id="yield-estimater">

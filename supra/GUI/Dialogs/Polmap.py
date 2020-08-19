@@ -2,6 +2,7 @@ import os
 import numpy as np
 import pickle
 import time
+import datetime
 
 from functools import partial
 
@@ -70,26 +71,40 @@ class Polmap(QWidget):
         self.polmap_grid_l = QLabel("0.01")
 
         layout.addWidget(self.polmap_view, 0, 0)
-        layout.addWidget(self.polmap_height, 1, 0)
-        layout.addWidget(self.polmap_grid, 2, 0)
-        layout.addWidget(self.polmap_height_l, 1, 1)
-        layout.addWidget(self.polmap_grid_l, 2, 1)
+        layout.addWidget(self.polmap_height, 2, 0)
+        layout.addWidget(self.polmap_grid, 3, 0)
+        layout.addWidget(self.polmap_height_l, 2, 1)
+        layout.addWidget(self.polmap_grid_l, 3, 1)
 
         self.station_marker = [None]*len(self.bam.stn_list)
 
         for ii, stn in enumerate(self.bam.stn_list):
             self.station_marker[ii] = pg.ScatterPlotItem()
 
-            if stn.polarization.azimuth is not None:
+            if len(stn.polarization.azimuth) > 0:
                 color = (255,   0,   0)
             else:
                 color = (255, 255, 255)
 
             self.station_marker[ii].setPoints(x=[stn.metadata.position.lon], y=[stn.metadata.position.lat], pen=color, brush=color, symbol='t')
             self.polmap_canvas.addItem(self.station_marker[ii], update=True)
+
             txt = pg.TextItem("{:}".format(stn.metadata.code))
             txt.setPos(stn.metadata.position.lon, stn.metadata.position.lat)
             self.polmap_canvas.addItem(txt)
+
+        ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+
+        radius = self.bam.setup.deg_radius
+
+        min_lat = ref_pos.lat - radius
+        max_lat = ref_pos.lat + radius
+        min_lon = ref_pos.lon - radius
+        max_lon = ref_pos.lon + radius
+
+        self.time_txt = QLabel()
+        layout.addWidget(self.time_txt, 1, 0)
+        
 
     def heightChange(self):
         self.polmap_height_l.setText(str(self.polmap_height.value()*100))
@@ -101,7 +116,9 @@ class Polmap(QWidget):
 
     def createGrid(self):
 
-        tol = 500
+        tol = 500 # tolerance in m
+
+        temporal_tol = 2 # tolerance in s
 
         ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
@@ -111,10 +128,14 @@ class Polmap(QWidget):
         max_lat = ref_pos.lat + radius
         min_lon = ref_pos.lon - radius
         max_lon = ref_pos.lon + radius
+
+        self.polmap_canvas.setXRange(min_lon, max_lon, padding=0)
+        self.polmap_canvas.setYRange(min_lat, max_lat, padding=0)
+
         min_elev = 0
         max_elev = 50000
 
-        # height = float(self.polmap_height_l.text())
+        height = float(self.polmap_height_l.text())
 
         self.grid = float(self.polmap_grid_l.text())
 
@@ -126,21 +147,22 @@ class Polmap(QWidget):
 
         pts_at_height = []
 
+        grid_time = self.bam.setup.trajectory.findTime(height)
+
         for pt in self.points:
 
-            # if roundToNearest(pt.elev, 5*tol) == roundToNearest(height, 5*tol):
-            elev_idx = np.nanargmin(np.abs(self.grid_elev - pt.elev))
-            lat_idx = np.nanargmin(np.abs(self.grid_lat - pt.lat))
-            lon_idx = np.nanargmin(np.abs(self.grid_lon - pt.lon))
+            if np.abs(grid_time - pt.time) <= temporal_tol:
 
-            self.grid_array[lat_idx, lon_idx, elev_idx] += 1
+                elev_idx = np.nanargmin(np.abs(self.grid_elev - pt.position.elev))
+                lat_idx = np.nanargmin(np.abs(self.grid_lat - pt.position.lat))
+                lon_idx = np.nanargmin(np.abs(self.grid_lon - pt.position.lon))
+
+                self.grid_array[lat_idx, lon_idx, elev_idx] += 1
 
 
         self.drawGrid()
         
         
-
-
     def drawGrid(self):
         
         try:
@@ -161,19 +183,33 @@ class Polmap(QWidget):
                             self.grid, self.grid_array[ii[0], ii[1], h_idx]))
 
 
-        self.heat_map_data_squares = RectangleItem(data, c_map="reverse")
-        self.polmap_canvas.addItem(self.heat_map_data_squares)
+        try:
+            self.heat_map_data_squares = RectangleItem(data, c_map="white", alpha=255)
+            self.polmap_canvas.addItem(self.heat_map_data_squares)
+        # If there are no squares to draw
+        except IndexError:
+            pass
 
         self.drawTrajPoint(height)
+
 
     def clearGrid(self):
         self.polmap_canvas.removeItem(self.heat_map_data_squares)
         self.polmap_canvas.removeItem(self.traj_marker)
 
+
     def drawTrajPoint(self, height):
     
         traj_pos = self.bam.setup.trajectory.findGeo(height)
+        traj_time = self.bam.setup.trajectory.findTime(height)
+
+        text_time = self.bam.setup.fireball_datetime + datetime.timedelta(seconds=traj_time)
+
+        self.time_txt.setText("{:02d}:{:02d}:{:02d}.{:06f} UTC".format(text_time.hour, text_time.minute, \
+                                                                    text_time.second, text_time.microsecond))
 
         self.traj_marker = pg.ScatterPlotItem()
         self.traj_marker.setPoints(x=[traj_pos.lon], y=[traj_pos.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='+')
         self.polmap_canvas.addItem(self.traj_marker)
+
+

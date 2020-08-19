@@ -2472,7 +2472,7 @@ class SolutionGUI(QMainWindow):
                 if not hasattr(stn, "polarization"):
                     stn.polarization = Polarization()
 
-                if stn.polarization.azimuth is not None: 
+                if len(stn.polarization.azimuth) > 0: 
                     
                     D = propegateBackwards(ref_pos, stn, self.bam)
 
@@ -2483,7 +2483,8 @@ class SolutionGUI(QMainWindow):
                             P.y = line[1]
                             P.z = line[2]
                             P.pos_geo(ref_pos)
-                            points.append(P)
+                            S = Supracenter(P, line[3])
+                            points.append(S)
 
             # Pass grid to polmap
             self.pm = Polmap(self.bam, points)

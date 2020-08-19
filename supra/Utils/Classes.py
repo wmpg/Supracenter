@@ -600,10 +600,8 @@ class Trajectory:
 
         t = d/v + d_ground/self.v_f
 
-        # Temporary for theoretical fireballs
-        # should be 
-        # return self.t - t
-        return d/v
+        return self.t - t
+
 
 
     def findLength(self):
@@ -661,7 +659,7 @@ class Color:
         self.WHITE = (255, 255, 255)
 
 class RectangleItem(pg.GraphicsObject):
-    def __init__(self, data, c_map="forward"):
+    def __init__(self, data, c_map="forward", alpha=70):
         pg.GraphicsObject.__init__(self)
 
         self.c_map = c_map
@@ -670,7 +668,7 @@ class RectangleItem(pg.GraphicsObject):
         
 
         self.normed_dat = self.normData()
-        self.generatePicture()
+        self.generatePicture(alpha=alpha)
 
     
     def normData(self):
@@ -708,11 +706,16 @@ class RectangleItem(pg.GraphicsObject):
                 c_end = (111, 255, 0)
                 c_start   = (224, 245, 66)
                 c_starter = (232, 72, 9)
-            else:
+            elif self.c_map == "reverse":
                 c_starter = (7, 65, 112)
                 c_start = (111, 255, 0)
                 c_end   = (224, 245, 66)
                 c_ender = (232, 72, 9)
+            elif self.c_map == "white":
+                c_starter = (255, 255, 255)
+                c_start =   (255, 255, 255)
+                c_end   =   (255, 255, 255)
+                c_ender =   (255, 255, 255)                
 
             if weight > (2/3):
                 r = c_end[0] + 3*(weight - (2/3))*(c_ender[0] - c_end[0])
@@ -731,7 +734,7 @@ class RectangleItem(pg.GraphicsObject):
         else:
             return (0, 0, 0, 0)
 
-    def generatePicture(self):
+    def generatePicture(self, alpha=70):
         ## pre-computing a QPicture object allows paint() to run much more quickly, 
         ## rather than re-drawing the shapes every time.
         self.picture = QtGui.QPicture()
@@ -739,7 +742,7 @@ class RectangleItem(pg.GraphicsObject):
 
         for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
             z = self.normed_dat[ii]
-            p.setBrush(pg.mkBrush(self.gradient(z, 70)))
+            p.setBrush(pg.mkBrush(self.gradient(z, alpha)))
             p.setPen(pg.mkPen(self.gradient(z, 0)))
             l = c_x - w/2
             t = c_y + h/2

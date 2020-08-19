@@ -34,8 +34,8 @@ def initTabs(obj):
     addSeisTrajWidgets(obj)
     addFetchATMWidgets(obj)
     addProfileWidgets(obj)
-    addRayTracerWidgets(obj)
-    addRefineWidgets(obj)
+    # addRayTracerWidgets(obj)
+    # addRefineWidgets(obj)
 
 
 def initMenuBar(obj, layout):

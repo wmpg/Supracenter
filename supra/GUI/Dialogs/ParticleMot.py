@@ -315,11 +315,15 @@ class ParticleMotion(QWidget):
         self.stn_map_canvas.addItem(pl)
         self.stn_map_canvas.addItem(pfill)
 
+
         if not hasattr(self.stn, "polarization"):
             self.stn.polarization = Polarization()
 
-        self.stn.polarization.azimuth = self.azimuth
-        self.stn.polarization.azimuth_error = self.az_error
+        self.stn.polarization.azimuth.append(self.azimuth)
+        self.stn.polarization.azimuth_error.append(self.az_error)
+
+        # Time is start of the region
+        self.stn.polarization.time.append(self.selector[0].getRegion()[0])
 
         self.close()
 
