@@ -102,7 +102,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
 @cython.cdivision(True)
 @cython.nonecheck(False)
 cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, 
-    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=1e-5, float v_tol=1000, debug=False):
+    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=330, float v_tol=1000, debug=False):
 
     # Original Author: Wayne Edwards
 
@@ -257,6 +257,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # If the ray is close enough to the station, stop calculating
             # done in order to reduce NaNs -> Theoretically it should go further if it can,
             # but checking for that takes time
+
             if np.nanmin(horizontal_error) < h_tol and vertical_error < v_tol:
                 k, l = np.where(horizontal_error == np.nanmin(horizontal_error))
                 found = True

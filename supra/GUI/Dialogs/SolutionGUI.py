@@ -2473,7 +2473,7 @@ class SolutionGUI(QMainWindow):
                     stn.polarization = Polarization()
 
                 if len(stn.polarization.azimuth) > 0: 
-                    
+
                     D = propegateBackwards(ref_pos, stn, self.bam)
 
                     for line in D:
@@ -2484,7 +2484,7 @@ class SolutionGUI(QMainWindow):
                             P.z = line[2]
                             P.pos_geo(ref_pos)
                             S = Supracenter(P, line[3])
-                            points.append(S)
+                            points.append([S, stn.color])
 
             # Pass grid to polmap
             self.pm = Polmap(self.bam, points)

@@ -9,6 +9,8 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
 
     # This function should be called for every station
     # Original Author: Wayne Edwards
+    # Theta is vertical
+    # phi is horizontal
 
     """ Finds an optimal ray from the source of the Supracenter to the detector, by making a guess, 
         and checking for the angle of minimum error. This is repeated with better guesses by taking angles around the best angle of the previous step.
@@ -112,7 +114,7 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
 
             # Equation (3)
             X += p*(delz)/(np.sqrt(s2 - p**2))
-        last_z = i
+        last_z = i + 1
 
 
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
@@ -124,6 +126,7 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
     # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 
+
     D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival]
 
     ##########################

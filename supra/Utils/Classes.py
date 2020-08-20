@@ -647,6 +647,8 @@ class Plane:
         else:
             return False
 
+# Using American spelling to avoid confusion with other "colour" related tools, sorry
+# This program is proudly Canadian
 class Color:
     def __init__(self):
         self.nominal = (255, 0, 238)
@@ -658,6 +660,12 @@ class Color:
         self.BLACK = (0, 0, 0)
         self.WHITE = (255, 255, 255)
 
+    def generate(self):
+        r = np.random.randint(0, 255)
+        g = np.random.randint(0, 255)
+        b = np.random.randint(0, 255)
+        return (r, g, b)
+
 class RectangleItem(pg.GraphicsObject):
     def __init__(self, data, c_map="forward", alpha=70):
         pg.GraphicsObject.__init__(self)
@@ -666,8 +674,9 @@ class RectangleItem(pg.GraphicsObject):
 
         self.data = data
         
-
-        self.normed_dat = self.normData()
+        if self.c_map != "set":
+            self.normed_dat = self.normData()
+        
         self.generatePicture(alpha=alpha)
 
     
@@ -741,9 +750,14 @@ class RectangleItem(pg.GraphicsObject):
         p = QtGui.QPainter(self.picture)
 
         for ii, (c_x, c_y, h, w, o) in enumerate(self.data):
-            z = self.normed_dat[ii]
-            p.setBrush(pg.mkBrush(self.gradient(z, alpha)))
-            p.setPen(pg.mkPen(self.gradient(z, 0)))
+            
+            if self.c_map == "set":
+                p.setBrush(pg.mkBrush(o))
+                p.setPen(pg.mkPen(o))
+            else:
+                z = self.normed_dat[ii]
+                p.setBrush(pg.mkBrush(self.gradient(z, alpha)))
+                p.setPen(pg.mkPen(self.gradient(z, 0)))
             l = c_x - w/2
             t = c_y + h/2
             p.drawRect(QtCore.QRectF(l, t, w, h))

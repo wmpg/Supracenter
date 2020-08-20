@@ -82,7 +82,8 @@ class Polmap(QWidget):
             self.station_marker[ii] = pg.ScatterPlotItem()
 
             if len(stn.polarization.azimuth) > 0:
-                color = (255,   0,   0)
+
+                color = stn.color
             else:
                 color = (255, 255, 255)
 
@@ -149,15 +150,24 @@ class Polmap(QWidget):
 
         grid_time = self.bam.setup.trajectory.findTime(height)
 
+        self.color_list = []
+
         for pt in self.points:
 
-            if np.abs(grid_time - pt.time) <= temporal_tol:
+            if np.abs(grid_time - pt[0].time) <= temporal_tol:
 
-                elev_idx = np.nanargmin(np.abs(self.grid_elev - pt.position.elev))
-                lat_idx = np.nanargmin(np.abs(self.grid_lat - pt.position.lat))
-                lon_idx = np.nanargmin(np.abs(self.grid_lon - pt.position.lon))
+                elev_idx = np.nanargmin(np.abs(self.grid_elev - pt[0].position.elev))
+                lat_idx = np.nanargmin(np.abs(self.grid_lat - pt[0].position.lat))
+                lon_idx = np.nanargmin(np.abs(self.grid_lon - pt[0].position.lon))
 
-                self.grid_array[lat_idx, lon_idx, elev_idx] += 1
+                if pt[1] not in self.color_list:
+                    self.color_list.append(pt[1])
+
+                for cc, color in enumerate(self.color_list):
+
+                    if color == pt[1]:
+
+                        self.grid_array[lat_idx, lon_idx, elev_idx] = cc + 1
 
 
         self.drawGrid()
@@ -176,19 +186,18 @@ class Polmap(QWidget):
 
         h_idx = np.nanargmin(np.abs(height - self.grid_elev))
 
-        indicies = np.argwhere(self.grid_array[:, :, h_idx]>0.0)
+        indicies = np.argwhere(self.grid_array[:, :, h_idx] > 0)
 
         for ii in indicies:
             data.append((self.grid_lon[ii[1]], self.grid_lat[ii[0]], self.grid, \
-                            self.grid, self.grid_array[ii[0], ii[1], h_idx]))
+                            self.grid, self.color_list[int(self.grid_array[ii[0], ii[1], h_idx]) - 1]))
 
-
-        try:
-            self.heat_map_data_squares = RectangleItem(data, c_map="white", alpha=255)
-            self.polmap_canvas.addItem(self.heat_map_data_squares)
-        # If there are no squares to draw
-        except IndexError:
-            pass
+        # try:
+        self.heat_map_data_squares = RectangleItem(data, c_map="set", alpha=255)
+        self.polmap_canvas.addItem(self.heat_map_data_squares)
+        # # If there are no squares to draw
+        # except IndexError:
+        #     pass
 
         self.drawTrajPoint(height)
 

@@ -23,7 +23,7 @@ from supra.GUI.Tools.GUITools import *
 
 from supra.Files.SaveObjs import Prefs
 
-from supra.Utils.Classes import Position
+from supra.Utils.Classes import Position, Color
 
 from supra.Stations.Filters import *
 
@@ -324,6 +324,9 @@ class ParticleMotion(QWidget):
 
         # Time is start of the region
         self.stn.polarization.time.append(self.selector[0].getRegion()[0])
+
+        a = Color()
+        self.stn.color = a.generate() 
 
         self.close()
 
