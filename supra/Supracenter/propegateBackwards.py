@@ -20,7 +20,7 @@ def propegateBackwards(ref_pos, stn, bam, offset=0):
         max_az = stn.polarization.azimuth[pol] + stn.polarization.azimuth_error[pol]
 
         for azimuth in np.linspace(min_az, max_az, 10):
-            for zenith in np.linspace(91, 179, 50):
+            for zenith in np.linspace(1, 89, 50):
                 
                 # T - expected final arrival, with bad sounding
                 # Recalculate winds

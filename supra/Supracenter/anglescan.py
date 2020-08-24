@@ -4,7 +4,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
-def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, target=None, debug=True):
+def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, target=None, debug=True, trace=False):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
@@ -69,6 +69,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
     #Travel time
     t_arrival = 0
 
+    if trace:
+        T = []
+        T.append([S[0], S[1], S[2], t_arrival])
+
     # ignore negative roots
     np.seterr(divide='ignore', invalid='ignore')
 
@@ -97,7 +101,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
                 if debug:
                     print("ANGLESCAN ERROR: All NaNs - rays reflect upwards")
 
-                return np.array([np.nan, np.nan, np.nan, np.nan])
+                if trace:
+                    return np.array([[np.nan, np.nan, np.nan, np.nan]])
+                else:
+                    return np.array([np.nan, np.nan, np.nan, np.nan])
 
             # Equation (10)
             X += (p2 + s2*U)*A
@@ -118,6 +125,9 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
 
 
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
+        
+        if trace:
+            T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival])
         # if v_tol is not None and h_tol is not None:
         #     dh = z[last_z] - target[2]
         #     dx = np.sqrt((S[0] + (a*X - b*Y) - target[0])**2 + (S[1] + (b*X + a*Y) - target[1])**2)
@@ -130,7 +140,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
     D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival]
 
     ##########################
-    return np.array(D)
+    if trace:
+        return np.array(T)
+    else:
+        return np.array(D)
 
 if __name__ == '__main__':
     S = np.array([0, 0, 33000])
