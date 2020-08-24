@@ -141,6 +141,7 @@ def anglescanTests():
     vtol = 1000
     n_angle = 360
 
+    test_1 = True
     S = np.array([0.0, 0.0, 10000.0])
     phi, theta = 20.01325035, 160.94708252
     Z = np.array([[    0.0, 300.0, 20.0,  90.0], 
@@ -161,18 +162,17 @@ def anglescanTests():
     count = 0
 
     #horizontal check
-    if np.abs(res[0] - 5000) < htol and np.abs(res[1] - 5000) < vtol:
-        count += 1
+    if not np.abs(res[0] - 5000) < htol and np.abs(res[1] - 5000) < vtol:
+        test_1 = False
 
     #vertical check
-    if res[2] == 0:
-        count += 1
+    if not res[2] == 0:
+        test_1 = False
 
     #time check:
-    if np.abs(res[3] - 35.4540329) < (np.sqrt(htol**2 + vtol**2)/330):
-        count += 1
+    if not np.abs(res[3] - 35.4540329) < (np.sqrt(htol**2 + vtol**2)/330):
+        test_1 = False
 
-    test_1 = (count == 3)
 
     print("RAY-TRACE CHECK: " + result(test_1) + " " + timeres(t2-t1))
 
