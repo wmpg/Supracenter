@@ -13,6 +13,7 @@ import pyqtgraph as pg
 
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.CustomWidgets import ToggleButton
 
 from supra.Files.SaveObjs import Prefs
 from supra.Utils.AngleConv import roundToNearest
@@ -28,8 +29,22 @@ class Polmap(QWidget):
         self.bam = bam
         self.points = points
 
+        self.pick_list = []
+
         self.buildGUI()
         self.createGrid()
+
+    def mouseClicked(self, evt):
+        mousePoint = self.polmap_canvas.vb.mapToView(evt.pos())
+
+        if self.tog_picks.isChecked():
+            self.pick = pg.ScatterPlotItem()
+            self.pick.setPoints(x=[mousePoint.x()], y=[mousePoint.y()], pen=(255, 255, 255), brush=(255, 255, 255), symbol='o')
+            self.polmap_canvas.addItem(self.pick)
+            self.pick_list.append([self.pick, mousePoint.x(), mousePoint.y()])
+
+
+        print("Lat {:} | Lon {:}".format(mousePoint.y(), mousePoint.x()))
 
     def buildGUI(self):
 
@@ -49,6 +64,7 @@ class Polmap(QWidget):
      
         self.polmap_view = pg.GraphicsLayoutWidget()
         self.polmap_canvas = self.polmap_view.addPlot()
+        self.polmap_canvas.scene().sigMouseClicked.connect(self.mouseClicked)
 
         self.polmap_height = QSlider(Qt.Horizontal)
         self.polmap_grid = QSlider(Qt.Horizontal)
@@ -70,11 +86,26 @@ class Polmap(QWidget):
         self.polmap_height_l = QLabel("34000")
         self.polmap_grid_l = QLabel("0.01")
 
-        layout.addWidget(self.polmap_view, 0, 0)
+        height_tol_label = QLabel("Height Tolerance [m]")
+        time_tol_label = QLabel("Time Tolerance [s]")
+
+        self.height_tol = QLineEdit("1000")
+        self.time_tol = QLineEdit("4")
+
+        layout.addWidget(self.polmap_view, 0, 0, 1, 3)
         layout.addWidget(self.polmap_height, 2, 0)
         layout.addWidget(self.polmap_grid, 3, 0)
         layout.addWidget(self.polmap_height_l, 2, 1)
         layout.addWidget(self.polmap_grid_l, 3, 1)
+        layout.addWidget(height_tol_label, 4, 1)
+        layout.addWidget(self.height_tol, 4, 0)
+        layout.addWidget(time_tol_label, 5, 1)
+        layout.addWidget(self.time_tol, 5, 0)
+
+        self.tog_picks = ToggleButton(False, 1)
+        self.tog_picks.setToolTip("Click the map to make a pick")
+        self.tog_picks.clicked.connect(self.tog_picks.clickedEvt)
+        layout.addWidget(self.tog_picks, 2, 2)
 
         self.station_marker = [None]*len(self.bam.stn_list)
 
@@ -117,9 +148,11 @@ class Polmap(QWidget):
 
     def createGrid(self):
 
-        tol = 500 # tolerance in m
+        tol = float(self.height_tol.text()) # tolerance in m
 
-        temporal_tol = 2 # tolerance in s
+        temporal_tol = float(self.time_tol.text()) # tolerance in s
+
+        overlap_tolerance = int(1)
 
         ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
@@ -156,9 +189,23 @@ class Polmap(QWidget):
 
             if np.abs(grid_time - pt[0].time) <= temporal_tol:
 
-                elev_idx = np.nanargmin(np.abs(self.grid_elev - pt[0].position.elev))
-                lat_idx = np.nanargmin(np.abs(self.grid_lat - pt[0].position.lat))
-                lon_idx = np.nanargmin(np.abs(self.grid_lon - pt[0].position.lon))
+                # Round points to current grid
+                elev_idx = np.argmin(np.abs(self.grid_elev - pt[0].position.elev))
+                lat_idx = np.argmin(np.abs(self.grid_lat - pt[0].position.lat))
+                lon_idx = np.argmin(np.abs(self.grid_lon - pt[0].position.lon))
+
+                traj_pos = self.bam.setup.trajectory.findGeo(height)
+                traj_time = self.bam.setup.trajectory.findTime(height)
+
+
+                # if np.abs(pt[0].position.elev - traj_pos.elev) <= tol and\
+                #    np.abs(pt[0].position.lat - traj_pos.lat) <= self.grid and\
+                #    np.abs(pt[0].position.lon - traj_pos.lon) <= self.grid and\
+                #    np.abs(pt[0].time - traj_time) <= temporal_tol:
+
+                #    self.grid_array[lat_idx, lon_idx, elev_idx] = -1
+
+                #    continue
 
                 if pt[1] not in self.color_list:
                     self.color_list.append(pt[1])
@@ -167,7 +214,17 @@ class Polmap(QWidget):
 
                     if color == pt[1]:
 
-                        self.grid_array[lat_idx, lon_idx, elev_idx] = cc + 1
+                        if self.grid_array[lat_idx, lon_idx, elev_idx] == 0:
+                        
+                            self.grid_array[lat_idx, lon_idx, elev_idx] = cc + 1
+
+                        elif self.grid_array[lat_idx, lon_idx, elev_idx] != cc + 1: #or\
+                        #      self.grid_array[lat_idx + overlap_tolerance, lon_idx, elev_idx] != cc + 1 or\
+                        #      self.grid_array[lat_idx - overlap_tolerance, lon_idx, elev_idx] != cc + 1 or\
+                        #      self.grid_array[lat_idx, lon_idx + overlap_tolerance, elev_idx] != cc + 1 or\
+                        #      self.grid_array[lat_idx, lon_idx - overlap_tolerance, elev_idx] != cc + 1:
+
+                            self.grid_array[lat_idx, lon_idx, elev_idx] = -1
 
 
         self.drawGrid()
@@ -191,6 +248,13 @@ class Polmap(QWidget):
         for ii in indicies:
             data.append((self.grid_lon[ii[1]], self.grid_lat[ii[0]], self.grid, \
                             self.grid, self.color_list[int(self.grid_array[ii[0], ii[1], h_idx]) - 1]))
+
+        overlap_indicies = np.argwhere(self.grid_array[:, :, h_idx] == -1)
+
+        for ii in overlap_indicies:
+            self.ovlp_marker = pg.ScatterPlotItem()
+            self.ovlp_marker.setPoints(x=[self.grid_lon[ii[1]]], y=[self.grid_lat[ii[0]]], pen=(255, 255, 255), brush=(255, 255, 255), symbol='o')
+            self.polmap_canvas.addItem(self.ovlp_marker)
 
         # try:
         self.heat_map_data_squares = RectangleItem(data, c_map="set", alpha=255)

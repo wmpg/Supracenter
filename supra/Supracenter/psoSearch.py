@@ -295,7 +295,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0):
         #  [x, y, z] local coordinates
 
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, setup.ref_pos, atmos, prefs, v, pert_num)
+        args = (stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location

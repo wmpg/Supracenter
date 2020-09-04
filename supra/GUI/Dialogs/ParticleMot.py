@@ -280,7 +280,7 @@ class ParticleMotion(QWidget):
 
         ### To do this more right, calculate D with bad winds, and then use D to find new winds and then recalc D
 
-        for zenith in np.linspace(91, 179, 25):
+        for zenith in np.linspace(1, 89, 25):
             # D = anglescanrev(S.xyz, self.azimuth + offset, zenith, sounding, wind=True)
             # D = anglescanrev(S.xyz, (self.azimuth + offset + 180)%360, zenith, sounding, wind=True)
 

@@ -3,6 +3,7 @@ import numpy as np
 from supra.Utils.Classes import Position
 from supra.Supracenter.anglescanrev import anglescanrev
 
+SIGMA = 3
 
 def propegateBackwards(ref_pos, stn, bam, offset=0):
     
@@ -15,12 +16,13 @@ def propegateBackwards(ref_pos, stn, bam, offset=0):
 
     D = []
     offset = 0
+    
     for pol in range(len(stn.polarization.azimuth)):
-        min_az = stn.polarization.azimuth[pol] - stn.polarization.azimuth_error[pol]
-        max_az = stn.polarization.azimuth[pol] + stn.polarization.azimuth_error[pol]
+        min_az = stn.polarization.azimuth[pol] - SIGMA*stn.polarization.azimuth_error[pol]
+        max_az = stn.polarization.azimuth[pol] + SIGMA*stn.polarization.azimuth_error[pol]
 
-        for azimuth in np.linspace(min_az, max_az, 10):
-            for zenith in np.linspace(1, 89, 50):
+        for azimuth in np.linspace(min_az, max_az, 5):
+            for zenith in np.linspace(1, 89, 100):
                 
                 # T - expected final arrival, with bad sounding
                 # Recalculate winds

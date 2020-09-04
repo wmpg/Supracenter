@@ -104,6 +104,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
             "&includerestricted=false&nodata=404".format(u, lat_centre, lon_centre, deg_radius, \
             start_date, end_date)
 
+
         try:
             txt = urllibrary.urlopen(query).read().decode('utf-8')
         except urllib.error.HTTPError as e:
@@ -112,8 +113,8 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
             else:
                 print(e)
             txt = ''
-
-        if txt is not None:
+            
+        if len(txt) > 0:
             for entry in txt.split('\n')[1:]:
 
                 entry = entry.split('|')

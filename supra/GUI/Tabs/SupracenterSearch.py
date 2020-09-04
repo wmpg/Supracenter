@@ -58,7 +58,7 @@ def supSearch(bam, prefs, manual=True):
             norm_res += res**2
 
     print('Residual Norm: {:.4f} s'.format(norm_res/stat))
-
+    reses = [norm_res/stat]
     if prefs.pert_en:
         for i in range(prefs.pert_num):
 
@@ -81,7 +81,44 @@ def supSearch(bam, prefs, manual=True):
                     norm_res += res**2
 
             print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+            reses.append(norm_res/stat)
 
+    print("#####################################")
+    print("SUMMARY")
+    print("#####################################")
+
+    lats = []
+    lons = []
+    elevs = []
+    times = []
+
+    for i in range(prefs.pert_num):
+        lats.append(pert_results[i].x_opt.lat)
+        lons.append(pert_results[i].x_opt.lon)
+        elevs.append(pert_results[i].x_opt.elev)
+        times.append(pert_results[i].motc)
+
+    max_lat = np.nanmax(lats) - results.x_opt.lat
+    max_lon = np.nanmax(lons) - results.x_opt.lon
+    max_elev = np.nanmax(elevs) - results.x_opt.elev
+    max_time = np.nanmax(times) - results.motc
+
+    min_lat = results.x_opt.lat - np.nanmin(lats)
+    min_lon = results.x_opt.lon - np.nanmin(lons)
+    min_elev = results.x_opt.elev - np.nanmin(elevs)
+    min_time = results.motc - np.nanmin(times)
+    print('')
+    print("Latitude : {:.4f} +{:.4f} / -{:.4f} deg N".format(results.x_opt.lat, max_lat, min_lat))
+    print("Longitude: {:.4f} +{:.4f} / -{:.4f} deg E".format(results.x_opt.lon, max_lon, min_lon))
+    print("Elevation: {:.4f} +{:.4f} / -{:.4f} km".format(results.x_opt.elev/1000, max_elev/1000, min_elev/1000))
+    print("Time     : {:.4f} +{:.4f} / -{:.4f} s".format(results.motc, max_time, min_time))
+    print('')
+    print('Residuals')
+    print('------------------------------------')
+    print("Total Normed Residuals: {:.4f} +{:.4f} / -{:.4f} s".format(reses[0], np.nanmax(reses), np.nanmin(reses)))
+    print("By Station (Nominal):")
+    for ii in range(len(s_name)):
+        print('{:}: {:.4f} s'.format(s_name[ii], results.r[ii]))
 
     return None
 

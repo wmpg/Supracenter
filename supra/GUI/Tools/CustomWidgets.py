@@ -103,6 +103,12 @@ class PositionEx(QWidget):
         self.setLayout(layout)
 
 class ToggleButton(QAbstractButton):
+
+    """ Creates a basic toggle button with a picture as one of the following.
+    A more general version
+
+    """
+
     def __init__(self, status, dict_item):
         super(ToggleButton, self).__init__()
 

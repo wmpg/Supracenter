@@ -600,7 +600,7 @@ class Trajectory:
 
         t = d/v + d_ground/self.v_f
 
-        return self.t - t
+        return self.t + t
 
 
 
