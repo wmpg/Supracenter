@@ -8,6 +8,8 @@ class Metadata:
         self.name = name
         self.source = source
         self.enabled = True
+        self.low_bandstop = 2
+        self.high_bandstop = 8
 
 class Polarization:
 

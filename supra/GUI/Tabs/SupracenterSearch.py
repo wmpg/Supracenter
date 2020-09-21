@@ -5,7 +5,7 @@ from supra.Supracenter.psoSearch import psoSearch
 
 from supra.Utils.Classes import Position
 
-def supSearch(bam, prefs, manual=True):
+def supSearch(bam, prefs, manual=True, results=False):
     """
     Function to initiate PSO Search of a Supracenter
     """
@@ -83,6 +83,14 @@ def supSearch(bam, prefs, manual=True):
             print('Residual Norm: {:.4f} s'.format(norm_res/stat))
             reses.append(norm_res/stat)
 
+
+    if results:
+        return [results, pert_results, reses, s_name]
+
+    return None
+
+def resultsPrint(results, pert_results, reses, s_name, prefs, doc=None):
+    
     print("#####################################")
     print("SUMMARY")
     print("#####################################")
@@ -120,7 +128,19 @@ def supSearch(bam, prefs, manual=True):
     for ii in range(len(s_name)):
         print('{:}: {:.4f} s'.format(s_name[ii], results.r[ii]))
 
-    return None
+    if doc is not None:
+        doc.add_heading('Supracenter', 2)
+
+        doc.add_paragraph("Latitude : {:.4f} +{:.4f} / -{:.4f} deg N".format(results.x_opt.lat, max_lat, min_lat))
+        doc.add_paragraph("Longitude: {:.4f} +{:.4f} / -{:.4f} deg E".format(results.x_opt.lon, max_lon, min_lon))
+        doc.add_paragraph("Elevation: {:.4f} +{:.4f} / -{:.4f} km".format(results.x_opt.elev/1000, max_elev/1000, min_elev/1000))
+        doc.add_paragraph("Time     : {:.4f} +{:.4f} / -{:.4f} s".format(results.motc, max_time, min_time))
+        doc.add_paragraph('')
+        doc.add_paragraph('Residuals')
+        doc.add_paragraph("Total Normed Residuals: {:.4f} +{:.4f} / -{:.4f} s".format(reses[0], np.nanmax(reses), np.nanmin(reses)))
+        doc.add_paragraph("By Station (Nominal):")
+        for ii in range(len(s_name)):
+            doc.add_paragraph('{:}: {:.4f} s'.format(s_name[ii], results.r[ii]))
 
     # self.scatterPlot(self.bam.setup, results, n_stations, xstn, s_name, dataset, manual=False)
 

@@ -65,6 +65,7 @@ from supra.GUI.Dialogs.StationList import StationList
 from supra.GUI.Dialogs.ParticleMot import ParticleMotion
 from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
+from supra.GUI.Dialogs.ReportDialog import ReportWindow
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
 
@@ -179,6 +180,12 @@ class SolutionGUI(QMainWindow):
         # docs are a locally stored html file
         webbrowser.open_new_tab(self.doc_file)
         
+    def genReport(self):
+
+        self.gr = ReportWindow(self.bam, self.prefs)
+        self.gr.setGeometry(QRect(500, 400, 500, 400))
+        self.gr.show()
+
     def stndownloadDialog(self):
 
         self.sd = StationList()
@@ -841,6 +848,7 @@ class SolutionGUI(QMainWindow):
             
 
     def fatmPlot(self, sounding, perturbations):
+        
         self.fatm_canvas.clear()
         self.fatm_canvas.setLabel('left', "Height", units='m', size='24pt')
         if self.fatm_variable_combo.currentText() == 'Sound Speed':

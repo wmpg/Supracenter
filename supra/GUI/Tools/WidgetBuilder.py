@@ -59,6 +59,11 @@ def initMenuBar(obj, layout):
     file_save.triggered.connect(partial(save, obj, obj.bam))
     file_menu.addAction(file_save)
 
+    file_rep = QAction("Generate Report", obj)
+    file_rep.setStatusTip('Opens report dialog')
+    file_rep.triggered.connect(obj.genReport)
+    file_menu.addAction(file_rep)    
+
     file_load = QAction("Load", obj)
     file_load.setShortcut('Ctrl+L')
     file_load.setStatusTip('Loads setup file')

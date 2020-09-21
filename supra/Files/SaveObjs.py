@@ -115,7 +115,8 @@ class Atmos:
             print('Unrecognized weather type')
 
     def getSounding(self, lat=0, lon=0, heights=[100000, 0], spline=100):
-
+        ''' lat = [start lat, end lat], etc
+        '''
         prefs = Prefs()
         prefs = prefs.load()
         
