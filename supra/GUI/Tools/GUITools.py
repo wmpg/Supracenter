@@ -11,6 +11,13 @@ from supra.Utils.Formatting import checkExt
 
 import numpy as np
 
+def clearLayout(layout):
+    """ Clears a layout by orphaning its children
+    """
+
+    for i in reversed(range(layout.count())): 
+        layout.itemAt(i).widget().setParent(None)
+
 def errorMessage(message, level, info='', title='Yikes!', detail=''):
     """
     message: base text

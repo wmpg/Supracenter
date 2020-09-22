@@ -1,6 +1,5 @@
 import os
 
-
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -28,9 +27,8 @@ def initTabs(obj):
     addDocWidgets(obj)
     addStationsWidgets(obj)
     addPicksReadWidgets(obj)
-    addSupraWidgets(obj)
-    addSupWidgets(obj)
     addMakePicksWidgets(obj)
+    addSupraWidgets(obj)
     addSeisTrajWidgets(obj)
     addFetchATMWidgets(obj)
     addProfileWidgets(obj)
@@ -262,29 +260,33 @@ def addSupraWidgets(obj):
     obj.supra_tab_content = QVBoxLayout()
     obj.plots = QVBoxLayout()
 
-    obj.two_canvas = FigureCanvas(Figure())
-    obj.two_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    obj.plots.addWidget(obj.two_canvas)
+    obj.residfig = FigureCanvas(Figure())
+    obj.residfig.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    obj.plots.addWidget(obj.residfig)
 
-    obj.three_canvas = FigureCanvas(Figure())
-    obj.three_canvas.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
-    obj.plots.addWidget(obj.three_canvas)
+    obj.suprafig = FigureCanvas(Figure())
+    obj.suprafig.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
+    obj.plots.addWidget(obj.suprafig)
 
     obj.results_label = QLabel("Results: ")
     obj.supra_tab_content.addWidget(obj.results_label)
 
-    obj.tableWidget = QTableWidget(0, 0)
-    obj.supra_tab_content.addWidget(obj.tableWidget)
+    obj.supra_res_table = QTableWidget(0, 0)
+    obj.supra_tab_content.addWidget(obj.supra_res_table)
 
-    obj.search_button = QPushButton('Search')
+    obj.search_button = QPushButton('Manual Search')
     obj.supra_tab_content.addWidget(obj.search_button)
-    obj.search_button.clicked.connect(partial(obj.supSearch, True))
+    obj.search_button.clicked.connect(partial(obj.supSearchSetup, True))
+
+    obj.search_p_button = QPushButton('PSO Search')
+    obj.supra_tab_content.addWidget(obj.search_p_button)
+    obj.search_p_button.clicked.connect(partial(obj.supSearchSetup, False))
 
     obj.master_supra.addLayout(obj.supra_tab_content, 1, 1, 1, 100)
     obj.master_supra.addLayout(obj.plots, 1, 101)
 
     supra_tab.setLayout(obj.master_supra)
-    obj.tab_widget.addTab(supra_tab, "Supracenter Manual Search")
+    obj.tab_widget.addTab(supra_tab, "Supracenter Search")
 
 def addRefineWidgets(obj):
     refine_tab = QWidget()
@@ -420,37 +422,6 @@ def addRefineWidgets(obj):
     obj.ref_wave_layout.addLayout(obj.ref_wave_control)
 
     obj.tab_widget.addTab(refine_tab, "Refine")
-
-def addSupWidgets(obj):
-
-    sup_tab = QWidget()
-    obj.master_sup = QHBoxLayout()
-    obj.sup_tab_content = QGridLayout()
-    obj.sup_plots = QVBoxLayout()
-
-    obj.sup_two_canvas = FigureCanvas(Figure())
-    obj.sup_two_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    obj.sup_plots.addWidget(obj.sup_two_canvas)
-    
-    obj.sup_three_canvas = FigureCanvas(Figure())
-    obj.sup_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-    obj.sup_plots.addWidget(obj.sup_three_canvas)
-
-    obj.sup_search_button = QPushButton('Search')
-    obj.sup_tab_content.addWidget(obj.sup_search_button, 5, 1, 1, 75)
-    obj.sup_search_button.clicked.connect(partial(obj.supSearch, False))
-
-    obj.sup_results_label = QLabel("Results: ")
-    obj.sup_tab_content.addWidget(obj.sup_results_label, 3, 1, 1, 1)
-
-    obj.sup_results_table = QTableWidget(0, 0)
-    obj.sup_tab_content.addWidget(obj.sup_results_table, 4, 1, 1, 75)
-
-    obj.master_sup.addLayout(obj.sup_tab_content)
-    obj.master_sup.addLayout(obj.sup_plots)
-
-    sup_tab.setLayout(obj.master_sup)
-    obj.tab_widget.addTab(sup_tab, "Supracenter PSO Search")
 
 def addDocWidgets(obj):
     doc_master_tab = QWidget()

@@ -1,11 +1,17 @@
 import numpy as np
+import matplotlib.pyplot as plt
+
+from matplotlib.backends.backend_qt5agg import FigureCanvas
+from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
 
 from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
-
+from supra.GUI.Tools.GUITools import *
+from supra.Utils.AngleConv import loc2Geo
 from supra.Utils.Classes import Position
 
-def supSearch(bam, prefs, manual=True, results=False):
+def supSearch(obj, bam, prefs, manual=True, results_print=False):
     """
     Function to initiate PSO Search of a Supracenter
     """
@@ -83,11 +89,28 @@ def supSearch(bam, prefs, manual=True, results=False):
             print('Residual Norm: {:.4f} s'.format(norm_res/stat))
             reses.append(norm_res/stat)
 
+    clearLayout(obj.plots)
 
-    if results:
+    supScatterPlot(bam, prefs, results, xstn, s_name, obj, manual=manual, pert_results=pert_results)
+
+    residPlot(bam, prefs, results, pert_results, s_name, xstn, prefs.workdir, obj, manual=manual)
+
+    if results_print:
+
         return [results, pert_results, reses, s_name]
 
+    else:
+
+        defTable(obj.supra_res_table, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
+
+        setTableRow(obj.supra_res_table, 0, terms=["Total (Time = ({:}s)".format(results.motc), results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, norm_res/stat])
+
+        for i in range(n_stations):
+            setTableRow(obj.supra_res_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results.r[i]])
+
+
     return None
+
 
 def resultsPrint(results, pert_results, reses, s_name, prefs, doc=None):
     
@@ -142,36 +165,6 @@ def resultsPrint(results, pert_results, reses, s_name, prefs, doc=None):
         for ii in range(len(s_name)):
             doc.add_paragraph('{:}: {:.4f} s'.format(s_name[ii], results.r[ii]))
 
-    # self.scatterPlot(self.bam.setup, results, n_stations, xstn, s_name, dataset, manual=False)
-
-    # self.residPlot(results, s_name, xstn, self.prefs.workdir, n_stations, manual=False)
-
-    # print("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}"\
-    #     .format(results.f_opt, results.x_opt.lat, results.x_opt.lon, \
-    #         results.x_opt.elev, results.motc))
-
-    # file_name = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, "SupracenterResults.txt")
-    # print('Output printed at: {:}'.format(file_name))
-
-    # with open(file_name, "w") as f:
-    #     f.write("Results\n")
-    #     for ii, result in enumerate(results):
-    #         if ii >= 1:
-    #             f.write("Error Function: {:5.2f} (Perturbation {:4d}) | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
-    #                 .format(results[ii].f_opt, ii, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-    #                     results[ii].x_opt.elev, results[ii].motc))
-    #         else:
-    #             f.write("Error Function: {:5.2f} (Nominal)           | Opt: {:+.4f} {:+.4f} {:.2f} {:+.4f}\n"\
-    #                 .format(results[ii].f_opt, results[ii].x_opt.lat, results[ii].x_opt.lon, \
-    #                     results[ii].x_opt.elev, results[ii].motc))
-
-    # defTable(self.sup_results_table, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
-
-    # setTableRow(self.sup_results_table, 0, terms=["Total (Time = ({:}s)".format(results[0].motc), results[0].x_opt.lat, results[0].x_opt.lon, results[0].x_opt.elev, results[0].f_opt])
-
-    # for i in range(n_stations):
-    #     setTableRow(self.sup_results_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results[0].r[i]])
-
 def getStationData(picks_file, ref_pos):
 
     try:
@@ -187,3 +180,152 @@ def getStationData(picks_file, ref_pos):
         return None, None, None
 
     return s_info, s_name, weights
+
+def addPlot2Parent(layout, canvas, fig):
+
+    canvas.figure.clf()
+    canvas = FigureCanvas(fig)
+    canvas.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+    layout.addWidget(canvas)    
+    canvas.draw()
+
+def supScatterPlot(bam, prefs, results, xstn, s_name, parent, manual=True, pert_results=[]):
+
+
+    plt.style.use('dark_background')
+    fig = plt.figure(figsize=plt.figaspect(0.5))
+    fig.set_size_inches(20.9, 11.7)
+    ax = fig.add_subplot(1, 1, 1, projection='3d')
+
+    ### Labels
+    ax.set_title("Supracenter Locations")
+    ax.set_xlabel("Latitude (deg N)", linespacing=3.1)
+    ax.set_ylabel("Longitude (deg E)", linespacing=3.1)
+    ax.set_zlabel('Elevation (m)', linespacing=3.1)
+
+
+    n_stations = len(s_name)
+
+    # plot station names and residuals
+    for h in range(n_stations):
+
+        # Convert station locations to geographic
+        xstn[h, 0], xstn[h, 1], xstn[h, 2] = loc2Geo(bam.setup.lat_centre, bam.setup.lon_centre, 0, xstn[h, :])
+
+        # Add station names
+        ax.text(xstn[h, 0], xstn[h, 1], xstn[h, 2],  '%s' % (s_name[h]), size=10, zorder=1, color='w')
+
+
+    r = results.r
+    x_opt = results.x_opt
+    errors = results.errors
+    sup = results.sup
+
+    c = np.nan_to_num(r)
+
+    lat_list = []
+    lon_list = []
+    elev_list = []
+
+    # Add stations with color based off of residual
+    ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
+
+    
+
+    ax.plot3D([bam.setup.trajectory.pos_f.lat,  bam.setup.trajectory.pos_i.lat ],\
+              [bam.setup.trajectory.pos_f.lon,  bam.setup.trajectory.pos_i.lon ],\
+              [bam.setup.trajectory.pos_f.elev, bam.setup.trajectory.pos_i.elev],
+              'blue')
+
+
+    for ptb in range(prefs.pert_num):
+        
+        ax.scatter(x_opt.lat, x_opt.lon, x_opt.elev, c = 'r', marker='*')
+        ax.scatter(pert_results[ptb].x_opt.lat, pert_results[ptb].x_opt.lon, pert_results[ptb].x_opt.elev, c = 'g', marker='*', alpha=0.7)
+
+        lat_list.append(pert_results[ptb].x_opt.lat)   
+        lon_list.append(pert_results[ptb].x_opt.lon)  
+        elev_list.append(pert_results[ptb].x_opt.elev)   
+
+    if prefs.pert_en:
+        lat_list = np.array(lat_list)
+        lon_list = np.array(lon_list)
+        elev_list = np.array(elev_list)
+        # Plot the surface
+        a = np.nanmax(((x_opt.lat - lat_list)**2 + (x_opt.lon - lon_list)**2)**0.5)
+        r = np.nanmax(abs(x_opt.elev - elev_list))
+
+        x, y, z = sphereData(a, a, r, x_opt.lat, x_opt.lon, x_opt.elev)
+
+        # uncertainty sphere
+        ax.plot_wireframe(x, y, z, color='r', alpha=0.5)
+
+    ax.text(x_opt.lat, x_opt.lon, x_opt.elev, '%s' % ('Supracenter'), zorder=1, color='w')
+
+    if not manual:
+        for i in range(len(sup)):
+            sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(bam.setup.ref_pos.lat, bam.setup.ref_pos.lon, bam.setup.ref_pos.elev, sup[i, :])
+        sc = ax.scatter(sup[:, 0], sup[:, 1], sup[:, 2], c=errors, cmap='inferno_r', depthshade=False)
+        a = plt.colorbar(sc, ax=ax)
+        a.set_label("Error in Supracenter (s)")
+
+    addPlot2Parent(parent.plots, parent.suprafig, fig)
+    ax.mouse_init()
+
+
+def residPlot(bam, prefs, results_arr, pert_res, s_name, xstn, output_name, parent, manual=True):
+    """ outputs a 2D residual plot of the stations with the optimal supracenter
+
+    Arguments:
+        x_opt: [list] optimal supracenter position
+        s_name: [list] list of station names
+        xstn: [list] list of lat, lon, height positions of each station
+        resid: [list] list of residuals to each station
+        output_name: [string] folder to store the data in
+        n_stations: [int] number of stations
+    """
+    n_stations = len(s_name)
+
+    x_opt = results_arr.x_opt
+    resid = results_arr.r
+
+    plt.style.use('dark_background')
+    fig = plt.figure(figsize=plt.figaspect(0.5))
+    fig.set_size_inches(20.9, 11.7)
+    ax = fig.add_subplot(1, 1, 1)
+    res = ax.scatter(xstn[:, 1], xstn[:, 0], c=abs(resid), marker='^', cmap='viridis_r', s=21)
+    
+
+    ax.text(x_opt.lon, x_opt.lat,  '%s' % ('Supracenter'), size=10, zorder=1, color='w')
+
+    lat_list = []
+    lon_list = []
+
+    ax.scatter(x_opt.lon, x_opt.lat, c = 'r', marker='*', s=21)
+    
+
+    if prefs.pert_en:
+        for ptb in pert_res:
+        
+            ax.scatter(ptb.x_opt.lon, ptb.x_opt.lat, c="g", marker='*', s=21, alpha=0.7)
+            lat_list.append(ptb.x_opt.lat)   
+            lon_list.append(ptb.x_opt.lon)  
+
+        lat_list = np.array(lat_list)
+        lon_list = np.array(lon_list)
+        # Plot the surface
+        a = np.nanmax(((x_opt.lat - lat_list)**2 + (x_opt.lon - lon_list)**2)**0.5)
+
+        circle = plt.Circle((x_opt.lon, x_opt.lat), a, color='r', alpha=0.3)
+        ax.add_artist(circle)
+
+    ax.set_ylabel("Latitude (deg N)")
+    ax.set_xlabel("Longitude (deg E)")
+    ax.set_title("Station Residuals")
+
+    c = plt.colorbar(res, ax=ax)
+    c.set_label("Station Residuals (s)")
+
+    addPlot2Parent(parent.plots, parent.residfig, fig)
+
+
