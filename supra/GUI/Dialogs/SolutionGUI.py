@@ -262,7 +262,7 @@ class SolutionGUI(QMainWindow):
 
     def supSearchSetup(self, manual):
 
-        supSearch(self, self.bam, self.prefs, manual=manual, results_print=False)
+        supSearch(self.bam, self.prefs, manual=manual, results_print=False, obj=self)
 
     def psoTrajectory(self, station_list, sounding):
 
@@ -332,10 +332,11 @@ class SolutionGUI(QMainWindow):
 
     def seisSearch(self):
 
+        # TODO Rewrite this whole thing
         # Read station file
 
         try:
-            station_list = getStationList(os.path.join(self.prefs.workdir, self.setup.fireball_name, self.setup.station_picks_file))
+            station_list = getStationList(os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, self.bam.setup.station_picks_file))
         except TypeError as e:
             errorMessage('Unexpected station list location!', 2, info="Can not find where 'station_picks_file' is!", detail='{:}'.format(e))
             return None
@@ -355,7 +356,7 @@ class SolutionGUI(QMainWindow):
             stnp.position = Position(np.degrees(float(station_list[i][3])), \
                                      np.degrees(float(station_list[i][4])), \
                                      float(station_list[i][5]))
-            stnp.position.pos_loc(Position(self.setup.lat_centre, self.setup.lon_centre, 0))
+            stnp.position.pos_loc(Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0))
             stnp.time = float(station_list[i][7])
 
 
@@ -363,6 +364,7 @@ class SolutionGUI(QMainWindow):
                                     stnp.position.x, stnp.position.y, stnp.position.z, \
                                     stnp.time])
 
+        # This line is gone
         sounding = parseWeather(self.setup)
 
         self.psoTrajectory(station_obj_list, sounding)
@@ -2502,20 +2504,20 @@ class SolutionGUI(QMainWindow):
 
 
 
-        elif self.alt_pressed:
+        # elif self.annote_picks.isChecked():
 
-            # Create annotation
-            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+        #     # Create annotation
+        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
 
-            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-            self.a = AnnoteWindow(mousePoint.x(), self.stn_list[self.current_station])
-            self.a.setGeometry(QRect(400, 500, 400, 500))
-            self.a.show()
+        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
+        #     self.a.setGeometry(QRect(400, 500, 400, 500))
+        #     self.a.show()
             
-            self.drawWaveform()
-            self.alt_pressed = False
+        #     self.drawWaveform()
+        #     self.alt_pressed = False
             
 
     def addAnnotes(self):

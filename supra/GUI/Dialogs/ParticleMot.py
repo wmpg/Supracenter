@@ -136,7 +136,22 @@ class ParticleMotion(QWidget):
         self.mark_button = createButton('Mark', right_pane, 2, 0, self.markWaveform)
 
         self.ray_height = QLineEdit("50000")
-        right_pane.addWidget(self.ray_height, 3, 0)
+        right_pane.addWidget(self.ray_height, 3, 1)
+
+        win_len_label = QLabel("Window Length")
+        right_pane.addWidget(win_len_label, 4, 0)
+
+        self.win_len_e = QLineEdit("0.1")
+        right_pane.addWidget(self.win_len_e, 4, 1)
+
+        win_frac_label = QLabel("Window Fraction")
+        right_pane.addWidget(win_frac_label, 5, 0)
+
+        self.win_frac_e = QLineEdit("0.1")
+        right_pane.addWidget(self.win_frac_e, 5, 1)
+
+        self.win_len_e.returnPressed.connect(self.selectorPlot)
+        self.win_frac_e.returnPressed.connect(self.selectorPlot)
 
     def rotate2ZNE(self):
         """
@@ -362,15 +377,21 @@ class ParticleMotion(QWidget):
             stime = UTCDateTime(self.bam.setup.fireball_datetime) + roi[0]
             etime = UTCDateTime(self.bam.setup.fireball_datetime) + roi[1]      
 
+            win_len  = float(self.win_len_e.text())
+            win_frac = float(self.win_frac_e.text())
 
             try:
-                pol_res = polarization_analysis(self.condensed_stream, np.abs(roi[1] - roi[0])/5, 0.1, \
-                                                    float(self.low_edits.text()), float(self.high_edits.text()), stime, etime)
+                pol_res = polarization_analysis(self.condensed_stream, win_len, win_frac, \
+                                                    float(self.low_edits.text()), float(self.high_edits.text()), stime, etime, adaptive=True)
             except ValueError:
                 pol_res = {}
                 pol_res['azimuth'] = np.nan
                 pol_res['timestamp'] = np.nan
-
+            except IndexError:
+                pol_res = {}
+                pol_res['azimuth'] = np.nan
+                pol_res['timestamp'] = np.nan
+                print("Too many indicies for array - Not sure on this error yet")
 
             self.particle_motion_canvas.clear()
 
@@ -471,8 +492,10 @@ class ParticleMotion(QWidget):
             # Fit to lines using orthoganal distance regression to a linear function
             if self.group_no == 0:
                 pen = QColor(0, 255, 0)
+                brush = QColor(0, 255, 0, 125)
             else:
                 pen = QColor(0, 0, 255)
+                brush = QColor(0, 0, 255, 125)
 
             if self.plot_type.currentText() == 'Azimuth':
                 p_mot_plot = pg.PlotCurveItem()
@@ -482,6 +505,10 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[1].stats.channel))
                 self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 255, 255), \
                                         anchor=(0, 0)))
+                self.particle_motion_canvas.addItem(p_mot_plot)
+                self.particle_motion_canvas.setXRange(np.min(e), np.max(e), padding=0)
+                self.particle_motion_canvas.setYRange(np.min(n), np.max(n), padding=0)
+
 
             elif self.plot_type.currentText() == 'Incidence':
                 p_mot_plot = pg.PlotCurveItem()
@@ -491,20 +518,38 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[2].stats.channel))
                 self.particle_motion_canvas.addItem(pg.TextItem(text='Incidence = {:.2f}° ± {:.2f}°'.format(incidence, in_error), color=(255, 255, 255), \
                                         anchor=(0, 0)))
+                self.particle_motion_canvas.addItem(p_mot_plot)
+                self.particle_motion_canvas.setXRange(np.min(r), np.max(r), padding=0)
+                self.particle_motion_canvas.setYRange(np.min(z), np.max(z), padding=0)
 
             else:
                 az_window = pol_res['azimuth']
-                t_window = pol_res['timestamp']
+
+                # times are in unix time, casting UTCDatetime to float makes it also unix
+                t_window = pol_res['timestamp'] - float(stime)
+
+
+
                 p_mot_plot = pg.ScatterPlotItem()
                 p_mot_plot.setData(x=t_window, y=az_window)
+                azimuth = np.mean(az_window)
+                az_error = np.std(az_window)
                 self.particle_motion_canvas.setLabel('bottom', "Time")
                 self.particle_motion_canvas.setLabel('left', "Azimuth")
-                # self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 255, 255), \
-                #                         anchor=(0, 0)))
+                self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, azimuth), angle=0, pen=pen))
+                self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 255, 255), \
+                        anchor=(0, 0)))
+                self.particle_motion_canvas.addItem(p_mot_plot)
+                self.particle_motion_canvas.setXRange(0, np.max(t_window), padding=0)
+                self.particle_motion_canvas.setYRange(0, 180, padding=0)
+                # self.particle_motion_canvas.getViewBox().setLimits(xMin=0, xMax=15,   
+                #              yMin=range_[1][0], yMax=range_[1][1]) 
+                
+
 
             self.azimuth = azimuth
             self.az_error = az_error
 
-            self.particle_motion_canvas.addItem(p_mot_plot)
+            
 
-            self.rescalePlot()
+            # self.rescalePlot()

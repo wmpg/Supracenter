@@ -11,7 +11,7 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.AngleConv import loc2Geo
 from supra.Utils.Classes import Position
 
-def supSearch(obj, bam, prefs, manual=True, results_print=False):
+def supSearch(bam, prefs, manual=True, results_print=False, obj=None):
     """
     Function to initiate PSO Search of a Supracenter
     """
@@ -25,9 +25,6 @@ def supSearch(obj, bam, prefs, manual=True, results_print=False):
     n_stations = len(s_name)
 
     xstn = s_info[0:n_stations, 0:3]
-
-    # TODO Test this code
-    # TODO Display results in a statistically significant way
 
     # Nominal Run
     if prefs.debug:
@@ -89,11 +86,6 @@ def supSearch(obj, bam, prefs, manual=True, results_print=False):
             print('Residual Norm: {:.4f} s'.format(norm_res/stat))
             reses.append(norm_res/stat)
 
-    clearLayout(obj.plots)
-
-    supScatterPlot(bam, prefs, results, xstn, s_name, obj, manual=manual, pert_results=pert_results)
-
-    residPlot(bam, prefs, results, pert_results, s_name, xstn, prefs.workdir, obj, manual=manual)
 
     if results_print:
 
@@ -108,6 +100,11 @@ def supSearch(obj, bam, prefs, manual=True, results_print=False):
         for i in range(n_stations):
             setTableRow(obj.supra_res_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results.r[i]])
 
+        clearLayout(obj.plots)
+
+        supScatterPlot(bam, prefs, results, xstn, s_name, obj, manual=manual, pert_results=pert_results)
+
+        residPlot(bam, prefs, results, pert_results, s_name, xstn, prefs.workdir, obj, manual=manual)
 
     return None
 

@@ -15,6 +15,7 @@ from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.ReportHelper import *
 from supra.Utils.AngleConv import chauvenet
+from supra.Supracenter.anglescanrev import anglescanrev
 from supra.Supracenter.cyscanVectors import cyscan as cyscanV
 from supra.Supracenter.cyscan2 import cyscan
 
@@ -35,6 +36,54 @@ except:
 
 SPREAD = 3
 
+def makePropLine(ref_pos, D, alpha=255):
+
+    lats = []
+    lons = []
+    for line in D:
+        temp = Position(0, 0, 0)
+        temp.x = line[0]
+        temp.y = line[1]
+        temp.z = line[2]
+        temp.pos_geo(ref_pos)
+        if not np.isnan(temp.lat) and not np.isnan(temp.lon):
+            lats.append(temp.lat)
+            lons.append(temp.lon)
+
+    lats.sort()
+    lons.sort()
+
+    return lats, lons
+
+def propegateBack(bam, stn, azimuth, offset=0, frag_height=30000):
+
+    ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
+
+    S = stn.metadata.position
+    
+    S.pos_loc(ref_pos)
+
+    sounding, perturbations = bam.atmos.getSounding(lat=[S.lat, S.lat], lon=[S.lon, S.lon], heights=[S.elev, frag_height])
+
+    D = []
+    # Use 25 angles between 90 and 180 deg
+
+    ### To do this more right, calculate D with bad winds, and then use D to find new winds and then recalc D
+
+    for zenith in np.linspace(1, 89, 25):
+        # D = anglescanrev(S.xyz, self.azimuth + offset, zenith, sounding, wind=True)
+        # D = anglescanrev(S.xyz, (self.azimuth + offset + 180)%360, zenith, sounding, wind=True)
+
+        D.append(anglescanrev(S.xyz, azimuth + offset, zenith, sounding, wind=True))
+        D.append(anglescanrev(S.xyz, (azimuth + offset + 180)%360, zenith, sounding, wind=True))
+    # pt, err = finalanglecheck(self.bam, self.bam.setup.trajectory, self.stn.metadata.position, self.azimuth)
+
+    start_pt = makePropLine(ref_pos, np.array(D))
+
+
+    return start_pt
+
+
 class ReportWindow(QWidget):
 
     def __init__(self, bam, prefs):
@@ -43,6 +92,10 @@ class ReportWindow(QWidget):
         
         self.bam = bam
         self.prefs = prefs
+
+        plt.style.use('default')
+        fig = plt.figure(figsize=plt.figaspect(0.5))
+        fig.set_size_inches(8.0, 6.0)
 
         self.buildGUI()
 
@@ -171,7 +224,10 @@ class ReportWindow(QWidget):
             doc.add_heading('-----{:}-{:}-----'.format(stat.metadata.network, stat.metadata.code), 2)
             doc.add_heading('Metadata', 3)
             doc.add_paragraph('Name: {:}'.format(stat.metadata.name))
-            doc.add_paragraph('Bandpass: {:}-{:} Hz'.format(stat.metadata.low_bandstop, stat.metadata.high_bandstop))
+            try:
+                doc.add_paragraph('Bandpass: {:}-{:} Hz'.format(stat.metadata.low_bandstop, stat.metadata.high_bandstop))
+            except AttributeError:
+                print("Station has no bandpass")
             doc.add_paragraph('Location: {:}, {:}, {:.2f} m'.format(latitudify(stat.metadata.position.lat), \
                                                              longitudify(stat.metadata.position.lon), \
                                                              stat.metadata.position.elev))
@@ -179,9 +235,48 @@ class ReportWindow(QWidget):
 
             if len(stat.polarization.azimuth) > 0:
                 doc.add_heading('Polarization', 3)
+                poldata = []
                 for pol in range(len(stat.polarization.azimuth)):
 
                     doc.add_paragraph('{:.2f} ± {:.2f}°'.format(stat.polarization.azimuth[pol], stat.polarization.azimuth_error[pol]))
+
+                    # Using pols in same order as frags -> might want to fix this
+
+                    az = stat.polarization.azimuth[pol]
+                    frag_h = self.bam.setup.fragmentation_point[0].position.elev
+                    az_err = stat.polarization.azimuth_error[pol]
+
+                    nomlat, nomlon = propegateBack(self.bam, stat, az, frag_height=frag_h)
+                    maxlat, maxlon = propegateBack(self.bam, stat, az, offset=az_err, frag_height=frag_h)
+                    minlat, minlon = propegateBack(self.bam, stat, az, offset=-az_err, frag_height=frag_h)
+
+                poldata.append([nomlat, nomlon, maxlat, maxlon, minlat, minlon])
+
+
+
+                for stat in self.bam.stn_list:
+                    plt.scatter(stat.metadata.position.lon, stat.metadata.position.lat, c='r', marker='^')
+                    plt.text(stat.metadata.position.lon, stat.metadata.position.lat, '{:}-{:}'.format(stat.metadata.network, stat.metadata.code))
+
+                plt.plot([self.bam.setup.trajectory.pos_i.lon, self.bam.setup.trajectory.pos_f.lon],\
+                                                      [self.bam.setup.trajectory.pos_i.lat, self.bam.setup.trajectory.pos_f.lat])
+                plt.scatter([self.bam.setup.trajectory.pos_f.lon], \
+                                                             [self.bam.setup.trajectory.pos_f.lat], \
+                                                                marker='x')
+
+                for polline in poldata:
+                    plt.plot(polline[1], polline[0])
+                    plt.plot(polline[3], polline[2])
+                    plt.plot(polline[5], polline[4])
+
+                plt.xlabel('Longitude')
+                plt.ylabel('Latitude')
+                pic_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, 'Station_pol_map.png')
+                
+                plt.savefig(pic_file)
+                doc.add_picture(pic_file)
+                os.remove(pic_file)
+
 
             doc.add_heading('Ballistic Arrivals', 3)
             b_times = []
@@ -281,6 +376,7 @@ class ReportWindow(QWidget):
         plt.savefig(pic_file)
         doc.add_picture(pic_file)
         os.remove(pic_file)
+
 
     def makeWaveform(self, stn, times, time_err, doc, typ='frag', divs=[]):
 
@@ -496,5 +592,5 @@ class ReportWindow(QWidget):
             for i in range(cols):
                 row_cells[i].text = str(line[i])
                 
-        results = supSearch(self.bam, self.prefs, manual=False)
+        results = supSearch(self.bam, self.prefs, manual=False, results_print=True)
         resultsPrint(results[0], results[1], results[2], results[3], self.prefs, doc=doc)
