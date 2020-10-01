@@ -72,3 +72,4 @@ class StationWindow(QWidget):
 
         self.bam.stn_list.append(stn)
 
+        self.close()

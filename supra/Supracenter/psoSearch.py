@@ -207,7 +207,7 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0):
+def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, override_supra=[]):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
@@ -230,7 +230,13 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0):
         return None
 
     output_name = prefs.workdir
-    single_point = setup.manual_fragmentation_search[0]
+    
+    if not isinstance(override_supra, list):
+        single_point = override_supra
+    else:    
+        single_point = setup.manual_fragmentation_search[0]
+
+
     ref_time = setup.fireball_datetime
 
     if setup.enable_restricted_time:

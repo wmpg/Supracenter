@@ -167,8 +167,12 @@ class ReportWindow(QWidget):
         self.close()
 
     def writeTraj(self, doc):
-        traj = self.bam.setup.trajectory
 
+        traj = self.bam.setup.trajectory
+        src = self.bam.setup.traj_metadata[0]
+
+        doc.add_paragraph('Title: {:}'.format(src.title))
+        doc.add_paragraph('Notes: {:}'.format(src.notes))
         doc.add_paragraph('Azimuth: {:}°,  Zenith: {:}°'.format(traj.azimuth.deg, traj.zenith.deg))
         doc.add_paragraph('Time:    {:}s,  Average Velocity: {:} km/s'.format(traj.t, traj.v/1000))
         doc.add_paragraph('Initial Position:')
@@ -183,6 +187,11 @@ class ReportWindow(QWidget):
     def writeFrags(self, doc):
         
         for i, frag in enumerate(self.bam.setup.fragmentation_point):
+
+            src = self.bam.setup.frag_metadata[i]
+
+            doc.add_paragraph('Title: {:}'.format(src.title))
+            doc.add_paragraph('Notes: {:}'.format(src.notes))
             doc.add_paragraph('Fragmentation {:}: {:}, {:}, {:.2f} km, {:}'.format(i+1, latitudify(frag.position.lat), \
                                                              longitudify(frag.position.lon), \
                                                              frag.position.elev/1000, self.bam.setup.fireball_datetime + timedelta(seconds=frag.time)))
@@ -295,6 +304,10 @@ class ReportWindow(QWidget):
                 b_time_err.append([[ball_min], [ball_max]])
 
             except IndexError:
+                doc.add_paragraph('No ballistic arrival')
+            except ValueError:
+
+                # TODO add proper handling here
                 doc.add_paragraph('No ballistic arrival')
 
             self.makeWaveform(stat, b_times, b_time_err, doc, typ='ball')
@@ -464,6 +477,8 @@ class ReportWindow(QWidget):
 
         if t_spr > 0:
             plt.xlim(t_avg - SPREAD*t_spr, t_avg + SPREAD*t_spr)
+        # else:
+        #     plt.xlim(times[0] - 5, times[0] + 5)
 
 
         plt.title('{:} | Channel: {:}'.format(title, chn_selected))        
@@ -591,6 +606,24 @@ class ReportWindow(QWidget):
             row_cells = table.add_row().cells
             for i in range(cols):
                 row_cells[i].text = str(line[i])
-                
-        results = supSearch(self.bam, self.prefs, manual=False, results_print=True)
+        
+        results = supSearch(self.bam, self.prefs, manual=False, results_print=True, misfits=True)
         resultsPrint(results[0], results[1], results[2], results[3], self.prefs, doc=doc)
+
+        pic_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, 'misfits_lat.png')        
+        doc.add_picture(pic_file)
+        os.remove(pic_file)
+
+        pic_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, 'misfits_lon.png')        
+        doc.add_picture(pic_file)
+        os.remove(pic_file)
+
+        pic_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, 'misfits_elev.png')        
+        doc.add_picture(pic_file)
+        os.remove(pic_file)
+
+        pic_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, 'misfits_time.png')        
+        doc.add_picture(pic_file)
+        os.remove(pic_file)
+
+        plt.clf()

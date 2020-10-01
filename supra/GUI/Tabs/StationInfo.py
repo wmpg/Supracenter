@@ -50,6 +50,7 @@ def refreshStation(obj):
     clearStationWidgets(obj)
     addStationWidgets(obj, obj.bam.stn_list)
 
+
 def getStations(obj):
 
     # Create fireball folder

@@ -135,6 +135,9 @@ class ParticleMotion(QWidget):
 
         self.mark_button = createButton('Mark', right_pane, 2, 0, self.markWaveform)
 
+        h_label = QLabel("Height")
+        right_pane.addWidget(h_label, 3, 0)
+
         self.ray_height = QLineEdit("50000")
         right_pane.addWidget(self.ray_height, 3, 1)
 
@@ -381,6 +384,7 @@ class ParticleMotion(QWidget):
             win_frac = float(self.win_frac_e.text())
 
             try:
+
                 pol_res = polarization_analysis(self.condensed_stream, win_len, win_frac, \
                                                     float(self.low_edits.text()), float(self.high_edits.text()), stime, etime, adaptive=True)
             except ValueError:
@@ -503,7 +507,7 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=90-azimuth, pen=pen))
                 self.particle_motion_canvas.setLabel('bottom', "Channel: {:}".format(self.condensed_stream[0].stats.channel))
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[1].stats.channel))
-                self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 255, 255), \
+                self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 0, 0), \
                                         anchor=(0, 0)))
                 self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.setXRange(np.min(e), np.max(e), padding=0)
@@ -516,7 +520,7 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=90-incidence, pen=pen))
                 self.particle_motion_canvas.setLabel('bottom', "Horizontal in Direction of Azimuth")
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[2].stats.channel))
-                self.particle_motion_canvas.addItem(pg.TextItem(text='Incidence = {:.2f}° ± {:.2f}°'.format(incidence, in_error), color=(255, 255, 255), \
+                self.particle_motion_canvas.addItem(pg.TextItem(text='Incidence = {:.2f}° ± {:.2f}°'.format(incidence, in_error), color=(255, 0, 0), \
                                         anchor=(0, 0)))
                 self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.setXRange(np.min(r), np.max(r), padding=0)
@@ -529,7 +533,6 @@ class ParticleMotion(QWidget):
                 t_window = pol_res['timestamp'] - float(stime)
 
 
-
                 p_mot_plot = pg.ScatterPlotItem()
                 p_mot_plot.setData(x=t_window, y=az_window)
                 azimuth = np.mean(az_window)
@@ -537,7 +540,7 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.setLabel('bottom', "Time")
                 self.particle_motion_canvas.setLabel('left', "Azimuth")
                 self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, azimuth), angle=0, pen=pen))
-                self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 255, 255), \
+                self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 0, 0), \
                         anchor=(0, 0)))
                 self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.setXRange(0, np.max(t_window), padding=0)

@@ -20,12 +20,14 @@ from supra.Files.SaveLoad import save, load
 from supra.GUI.Tools.Theme import theme
 
 from supra.GUI.Tabs.StationInfo import *
+from supra.GUI.Tabs.SourcesInfo import *
 
 
 def initTabs(obj):
     
     addDocWidgets(obj)
     addStationsWidgets(obj)
+    addSourceWidgets(obj)
     addPicksReadWidgets(obj)
     addMakePicksWidgets(obj)
     addSupraWidgets(obj)
@@ -224,6 +226,53 @@ def addStationsWidgets(obj):
 
     obj.station_layout.addLayout(obj.station_control_layout)
 
+
+def addSourceWidgets(obj):
+    sources_tab = QWidget()
+
+    obj.sources_layout = QVBoxLayout()
+    sources_tab.setLayout(obj.sources_layout)
+    obj.tab_widget.addTab(sources_tab, "Sources")
+
+    obj.sources_label = QLabel("Sources:")
+    obj.sources_layout.addWidget(obj.sources_label)
+
+    obj.sources_table = QScrollArea()
+    obj.sources_layout.addWidget(obj.sources_table)
+    obj.sources_table.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+    obj.sources_table.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+    obj.sources_table.setWidgetResizable(True)
+
+    container = QWidget()
+    container.setStyleSheet("""
+        QWidget {
+            background-color: rgb(0, 0, 0);
+            }
+        """)
+    obj.sources_table.setWidget(container)
+    obj.sources_table_layout = QVBoxLayout(container)
+    obj.sources_table_layout.setSpacing(10)
+    # obj.station_table.setLayout(obj.station_table_layout)
+
+
+    obj.sources_control_layout = QGridLayout()
+
+
+    obj.sources_save_button = createButton("Load Sources", obj.sources_control_layout, 1, 2, \
+                                                loadSource, args=[obj])
+
+    obj.sources_add_button = createButton("Add Source", obj.sources_control_layout, 2, 2, \
+                                                addSource, args=[obj])
+
+    obj.sources_save_button = createButton("Save Sources", obj.sources_control_layout, 1, 1, \
+                                                saveSource, args=[obj])
+
+    obj.sources_del_button = createButton("Delete Sources", obj.sources_control_layout, 2, 1, \
+                                                delSource, args=[obj])
+
+
+    obj.sources_layout.addLayout(obj.sources_control_layout)
 
 def addPicksReadWidgets(obj):
     picks_read_tab = QWidget()

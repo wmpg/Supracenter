@@ -52,12 +52,12 @@ def saveSetup(obj):
 
     setup.v_f = tryFloat(obj.vf_edits.text())
 
-    try:
-        setup.trajectory = tryTrajectory(setup.t0, setup.v, setup.azimuth, setup.zenith, setup.pos_i, setup.pos_f, v_f=setup.v_f)
-    except AttributeError as e:
-        errorMessage("Cannot build Trajectory!", 2)
+    # try:
+    #     setup.trajectory = tryTrajectory(setup.t0, setup.v, setup.azimuth, setup.zenith, setup.pos_i, setup.pos_f, v_f=setup.v_f)
+    # except AttributeError as e:
+    #     errorMessage("Cannot build Trajectory!", 2)
 
-    setup.fragmentation_point = trySupracenter(fromTable(obj.fragmentation_point))
+    # setup.fragmentation_point = trySupracenter(fromTable(obj.fragmentation_point))
 
     frag_lat  = tryFloat(obj.lat_frag_edits.text())
     frag_lon  = tryFloat(obj.lon_frag_edits.text())
@@ -136,24 +136,24 @@ def loadDisplay(setup, obj):
     obj.fireball_datetime_edits.setDateTime(setup.fireball_datetime)
     obj.fatm_datetime_edits.setDateTime(setup.fireball_datetime)
 
-    obj.t0_edits.setText(str(setup.trajectory.t))
-    obj.v_edits.setText(str(setup.trajectory.v))
-    obj.azim_edits.setText(str(setup.trajectory.azimuth.deg))
-    obj.zangle_edits.setText(str(setup.trajectory.zenith.deg))
-    obj.lat_i_edits.setText(str(setup.trajectory.pos_i.lat))
-    obj.lon_i_edits.setText(str(setup.trajectory.pos_i.lon))
-    obj.elev_i_edits.setText(str(setup.trajectory.pos_i.elev))
-    obj.lat_f_edits.setText(str(setup.trajectory.pos_f.lat))
-    obj.lon_f_edits.setText(str(setup.trajectory.pos_f.lon))
-    obj.elev_f_edits.setText(str(setup.trajectory.pos_f.elev))
+    # obj.t0_edits.setText(str(setup.trajectory.t))
+    # obj.v_edits.setText(str(setup.trajectory.v))
+    # obj.azim_edits.setText(str(setup.trajectory.azimuth.deg))
+    # obj.zangle_edits.setText(str(setup.trajectory.zenith.deg))
+    # obj.lat_i_edits.setText(str(setup.trajectory.pos_i.lat))
+    # obj.lon_i_edits.setText(str(setup.trajectory.pos_i.lon))
+    # obj.elev_i_edits.setText(str(setup.trajectory.pos_i.elev))
+    # obj.lat_f_edits.setText(str(setup.trajectory.pos_f.lat))
+    # obj.lon_f_edits.setText(str(setup.trajectory.pos_f.lon))
+    # obj.elev_f_edits.setText(str(setup.trajectory.pos_f.elev))
 
     obj.vf_edits.setText(str(setup.v_f))
 
-    frag_list = []
-    for element in setup.fragmentation_point:
-        frag_list.append(element.toList())
+    # frag_list = []
+    # for element in setup.fragmentation_point:
+    #     frag_list.append(element.toList())
 
-    toTable(obj.fragmentation_point, frag_list)
+    # toTable(obj.fragmentation_point, frag_list)
 
     if setup.manual_fragmentation_search == None:
         obj.lat_frag_edits.setText('')
@@ -195,6 +195,29 @@ def loadDisplay(setup, obj):
 
     # toTableFromStn(obj.extra_point, setup.stations)
 
+def loadSourcesIntoBam(bam):
+    
+    bam.setup.fragmentation_point = []
+    bam.setup.trajectory = None
+
+    bam.setup.frag_metadata = []
+    bam.setup.traj_metadata = []
+
+    for src in bam.source_list:
+
+        if src.source_type == "Fragmentation":
+
+            bam.setup.fragmentation_point.append(src.source)
+            bam.setup.frag_metadata.append(src)
+
+        elif src.source_type == "Ballistic":
+
+            # Only one trajectory supported currently
+            bam.setup.trajectory = src.source
+            bam.setup.traj_metadata.append(src)
+
+    return bam
+
 def loadAtmos(bam, obj):
     
     avg_sp_sound = obj.prefs.avg_sp_sound
@@ -230,6 +253,7 @@ def load(obj):
     
 
     loadDisplay(bam.setup, obj)
+    bam = loadSourcesIntoBam(bam)
     # loadAtmos(bam, obj)
     # print(bam.stats)
     obj.bam = bam

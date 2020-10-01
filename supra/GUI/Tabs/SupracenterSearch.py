@@ -9,9 +9,9 @@ from supra.Supracenter.stationDat import convStationDat
 from supra.Supracenter.psoSearch import psoSearch
 from supra.GUI.Tools.GUITools import *
 from supra.Utils.AngleConv import loc2Geo
-from supra.Utils.Classes import Position
+from supra.Utils.Classes import Position, Supracenter
 
-def supSearch(bam, prefs, manual=True, results_print=False, obj=None):
+def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=False):
     """
     Function to initiate PSO Search of a Supracenter
     """
@@ -87,6 +87,10 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None):
             reses.append(norm_res/stat)
 
 
+    if misfits:
+        genMisfits(bam, prefs, results, s_info, weights, s_name, ref_pos)
+
+
     if results_print:
 
         return [results, pert_results, reses, s_name]
@@ -106,7 +110,81 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None):
 
         residPlot(bam, prefs, results, pert_results, s_name, xstn, prefs.workdir, obj, manual=manual)
 
+
     return None
+
+def normalizeResids(results, shift=0):
+
+    norm_res = 0
+    stat = 0
+    for res in results.r:
+        if not np.isnan(res):
+            stat += 1
+            norm_res += (res-shift)**2
+
+    return norm_res/stat
+
+def genMisfits(bam, prefs, results_nom, s_info, weights, s_name, ref_pos):
+    nom_res = [results_nom.x_opt.lat, results_nom.x_opt.lon, results_nom.x_opt.elev, results_nom.motc, normalizeResids(results_nom)]
+
+    lats = np.linspace(bam.setup.lat_min, bam.setup.lat_max)
+    lons = np.linspace(bam.setup.lon_min, bam.setup.lon_max)
+    elevs = np.linspace(bam.setup.elev_min, bam.setup.elev_max)
+    ts = np.linspace(bam.setup.t_min, bam.setup.t_max)
+
+    plt.figure()
+    
+    for ll in lats: 
+        supra = Supracenter(Position(ll, results_nom.x_opt.lon, results_nom.x_opt.elev), results_nom.motc)
+        results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=True, override_supra=supra)
+        
+        plt.scatter(ll, normalizeResids(results), color='blue')
+
+    plt.scatter(nom_res[0], nom_res[-1], marker='*', color='red')
+    plt.xlabel("Latitude [deg N]")
+    plt.ylabel("Mean Station Error [s]")    
+
+    pic_file = os.path.join(prefs.workdir, bam.setup.fireball_name, 'misfits_lat.png')
+    plt.savefig(pic_file)
+    plt.clf()
+
+    for ll in lons: 
+        supra = Supracenter(Position(results_nom.x_opt.lat, ll, results_nom.x_opt.elev), results_nom.motc)
+        results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=True, override_supra=supra)
+
+        plt.scatter(ll, normalizeResids(results), color='blue')
+    plt.scatter(nom_res[1], nom_res[-1], marker='*', color='red')
+    plt.xlabel("Longitude [deg E]")   
+    plt.ylabel("Mean Station Error [s]")  
+    pic_file = os.path.join(prefs.workdir, bam.setup.fireball_name, 'misfits_lon.png')
+    plt.savefig(pic_file)
+    plt.clf()
+
+
+    for ee in elevs: 
+        supra = Supracenter(Position(results_nom.x_opt.lat, results_nom.x_opt.lon, ee), results_nom.motc)
+        results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=True, override_supra=supra)
+
+        plt.scatter(ee/1000, normalizeResids(results), color='blue')
+    plt.scatter(nom_res[2]/1000, nom_res[-1], marker='*', color='red')
+
+    plt.xlabel("Elevation [km]")   
+    plt.ylabel("Mean Station Error [s]")  
+    pic_file = os.path.join(prefs.workdir, bam.setup.fireball_name, 'misfits_elev.png')
+    plt.savefig(pic_file) 
+    plt.clf()
+
+    for tt in ts: 
+        
+        plt.scatter(tt, normalizeResids(results_nom, shift=tt), color='blue')
+    
+    plt.scatter(nom_res[3], nom_res[-1], marker='*', color='red')
+
+    plt.xlabel("Relative Time [s]") 
+    plt.ylabel("Mean Station Error [s]")  
+    pic_file = os.path.join(prefs.workdir, bam.setup.fireball_name, 'misfits_time.png')
+    plt.savefig(pic_file) 
+    plt.clf()
 
 
 def resultsPrint(results, pert_results, reses, s_name, prefs, doc=None):

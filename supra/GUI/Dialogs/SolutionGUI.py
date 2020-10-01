@@ -85,7 +85,7 @@ from supra.Utils.TryObj import *
 from supra.Utils.pso import pso
 
 from supra.Files.SaveObjs import Prefs, BAMFile
-from supra.Files.SaveLoad import save, load
+from supra.Files.SaveLoad import save, load, loadSourcesIntoBam
 
 from supra.Atmosphere.Parse import parseWeather
 from supra.Atmosphere.radiosonde import downloadRadio
@@ -143,7 +143,6 @@ class SolutionGUI(QMainWindow):
 
         # Add widgets to the floating box
         self.addIniDockWidgets()
-
 
     def viewToolbar(self):
 
@@ -2503,21 +2502,20 @@ class SolutionGUI(QMainWindow):
             self.pm.show()
 
 
+        elif self.annote_picks.isChecked():
 
-        # elif self.annote_picks.isChecked():
+            # Create annotation
+            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
 
-        #     # Create annotation
-        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
-
-        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
-        #     self.a.setGeometry(QRect(400, 500, 400, 500))
-        #     self.a.show()
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
+            self.a.setGeometry(QRect(400, 500, 400, 500))
+            self.a.show()
             
-        #     self.drawWaveform()
-        #     self.alt_pressed = False
+            self.drawWaveform()
+            self.alt_pressed = False
             
 
     def addAnnotes(self):
@@ -2538,6 +2536,7 @@ class SolutionGUI(QMainWindow):
 
         """
 
+        loadSourcesIntoBam(self.bam)
         station_no = self.current_station
 
         # Clear waveform axis
@@ -2685,10 +2684,12 @@ class SolutionGUI(QMainWindow):
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():
 
+            src = self.bam.setup.traj_metadata[0]
+
             b_time = stn.times.ballistic[0][0][0]
 
             if b_time == b_time:
-                self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), width=2) , label='Ballistic')
+                self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2) , label='Ballistic')
                 print("Ballistic Arrival: {:.3f} s".format(b_time))
             else:
                 print("No Ballistic Arrival")
@@ -2704,7 +2705,7 @@ class SolutionGUI(QMainWindow):
                 if self.show_perts.isChecked():
                     try:
                         self.make_picks_waveform_canvas.plot(x=[data[i]]*2, \
-                         y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(0, 0, 255), style=QtCore.Qt.DotLine) )
+                         y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, style=QtCore.Qt.DotLine) )
                     except:
                         pass
             # Fragmentation Prediction
@@ -2714,6 +2715,7 @@ class SolutionGUI(QMainWindow):
 
             for i, frag in enumerate(self.bam.setup.fragmentation_point):
 
+                src = self.bam.setup.frag_metadata[i]
                 f_time = stn.times.fragmentation[i][0][0]
 
                 v_time = (frag.position.elev - stn.metadata.position.elev)/310
@@ -2729,7 +2731,7 @@ class SolutionGUI(QMainWindow):
                 print('Range {:7.3f} km'.format(xyz_range/1000))
                 if not np.isnan(f_time):
                     # Plot Fragmentation Prediction
-                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], width=2), label='Fragmentation')
+                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2), label='Fragmentation')
                     
                     if self.show_prec.isChecked():
                         # Plot Precursor Arrivals
@@ -2757,7 +2759,7 @@ class SolutionGUI(QMainWindow):
                             if not np.isnan(data[j]):
                                 self.make_picks_waveform_canvas.plot(x=[data[j]]*2, y=[np.min(waveform_data),\
                                     np.max(waveform_data)], alpha=0.3,\
-                                    pen=pg.mkPen(color=self.pick_group_colors[(i+1)%4], style=QtCore.Qt.DotLine), zorder=3)
+                                    pen=pg.mkPen(color=src.color, style=QtCore.Qt.DotLine), zorder=3)
                         except IndexError:
                             errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                             return None

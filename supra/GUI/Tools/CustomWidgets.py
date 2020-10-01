@@ -8,6 +8,122 @@ from PyQt5.QtCore import *
 
 import pyqtgraph as pg
 
+class SourceEx(QGroupBox):
+
+    def __init__(self, S):
+        super(SourceEx, self).__init__()
+
+        self.source = S
+
+
+        # self.setTitle('')
+        main_layout = QGridLayout()
+
+        left_side = QGridLayout()
+        self.layout = QGridLayout()
+
+        main_layout.addLayout(left_side, 0, 0, 2, 1)
+        main_layout.addLayout(self.layout, 0, 1, 2, 100)
+
+        self.toggle = ToggleButton(True, 0)
+        left_side.addWidget(self.toggle, 1, 1)
+        self.toggle.clicked.connect(self.toggle.clickedEvt)
+        
+        self.icon = QLabel()
+
+        FRAG_ICON = os.path.join('supra', 'GUI', 'Images', "Fragmentation.png")
+        TRAJ_ICON = os.path.join('supra', 'GUI', 'Images', "Trajectory.png")
+
+        if self.source.source_type == "Fragmentation": 
+            pixmap = QPixmap(FRAG_ICON)
+            self.buildFragSource(self.layout)
+        elif self.source.source_type == "Ballistic":
+            pixmap = QPixmap(TRAJ_ICON)
+            self.buildTrajSource(self.layout)
+        else:
+            print("Unknown source type")
+            pixmap = QPixmap()
+
+        self.icon.setPixmap(pixmap)
+        left_side.addWidget(self.icon, 1, 0)
+
+        self.setMinimumHeight(126)
+
+        self.setLayout(main_layout)
+
+        self.setStyleSheet("""
+                QGroupBox {
+                    border: 3px solid grey;
+                    border-radius: 10px;
+                    }
+                """)
+
+
+    def buildFragSource(self, layout):
+
+        self.srctype_label = QLabel(self.source.title)
+        self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
+        layout.addWidget(self.srctype_label, 1, 1)
+
+        self.notes_label = QLabel(self.source.notes)
+        layout.addWidget(self.notes_label, 1, 2)
+
+        lat = self.source.source.position.lat
+        lon = self.source.source.position.lon
+        elev = self.source.source.position.elev
+        time = self.source.source.time
+
+        self.lat_label = QLabel("Latitude {:.4f}°N".format(lat))
+        layout.addWidget(self.lat_label, 2, 1)
+
+        self.lon_label = QLabel("Longitude {:.4f}°E".format(lon))
+        layout.addWidget(self.lon_label, 2, 2)
+
+        self.elev_label = QLabel("Elevation {:.2f} km".format(elev/1000))
+        layout.addWidget(self.elev_label, 2, 3)
+
+        self.time_label = QLabel("Time {:.2f} s".format(time))
+        layout.addWidget(self.time_label, 2, 4)
+
+    def buildTrajSource(self, layout):
+        self.srctype_label = QLabel(self.source.title)
+        self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
+        layout.addWidget(self.srctype_label, 1, 1)
+
+        self.notes_label = QLabel(self.source.notes)
+        layout.addWidget(self.notes_label, 1, 2)
+
+        t = self.source.source.t
+        v = self.source.source.v
+        az = self.source.source.azimuth.deg
+        ze = self.source.source.zenith.deg
+        lat = self.source.source.pos_i.lat
+        lon = self.source.source.pos_i.lon
+        elev = self.source.source.pos_i.elev
+
+        self.lat_label = QLabel("Latitude {:.4f}°N".format(lat))
+        layout.addWidget(self.lat_label, 2, 1)
+
+        self.lon_label = QLabel("Longitude {:.4f}°E".format(lon))
+        layout.addWidget(self.lon_label, 2, 2)
+
+        self.elev_label = QLabel("Elevation {:.2f} km".format(elev/1000))
+        layout.addWidget(self.elev_label, 2, 3)
+
+        self.time_label = QLabel("Time {:.2f} s".format(t))
+        layout.addWidget(self.time_label, 2, 4)
+
+        self.v_label = QLabel("Speed {:.2f} km/s".format(v/1000))
+        layout.addWidget(self.v_label, 3, 1)
+
+        self.az_label = QLabel("Azimuth {:.2f}°".format(az))
+        layout.addWidget(self.az_label, 3, 2)
+
+        self.ze_label = QLabel("Zenith {:.2f} s".format(ze))
+        layout.addWidget(self.ze_label, 3, 3)
+
+
+
 class StationEx(QGroupBox):
 
     def __init__(self):
@@ -61,6 +177,18 @@ class StationEx(QGroupBox):
                     background-color: rgb(10, 10, 10);
                     }
                 """)
+            self.network.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.code.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.name.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.name.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.poslabel.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.latlabel.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.lat.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.lonlabel.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.lon.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.elevlabel.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+            self.position.elev.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
+
         elif state == 'disabled':
             self.setStyleSheet("""
                 QGroupBox {
@@ -69,6 +197,17 @@ class StationEx(QGroupBox):
                     background-color: rgb(125, 125, 125);
                     }
                 """)
+            self.network.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.code.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.name.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.name.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.poslabel.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.latlabel.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.lat.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.lonlabel.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.lon.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.elevlabel.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
+            self.position.elev.setStyleSheet("color: black; background-color: rgb(125, 125, 125)")
 
     def func(self, toggle):
         
@@ -84,20 +223,20 @@ class PositionEx(QWidget):
 
         layout = QHBoxLayout()
 
-        pos = QLabel('Position:')
-        lat = QLabel('Lat: ')
+        self.poslabel = QLabel('Position:')
+        self.latlabel = QLabel('Lat: ')
         self.lat = QLabel()
-        lon = QLabel('Lon: ')
+        self.lonlabel = QLabel('Lon: ')
         self.lon = QLabel()
-        elev = QLabel('Elev: ')
+        self.elevlabel = QLabel('Elev: ')
         self.elev = QLabel()
 
-        layout.addWidget(pos)
-        layout.addWidget(lat)
+        layout.addWidget(self.poslabel)
+        layout.addWidget(self.latlabel)
         layout.addWidget(self.lat)
-        layout.addWidget(lon)
+        layout.addWidget(self.lonlabel)
         layout.addWidget(self.lon)
-        layout.addWidget(elev)
+        layout.addWidget(self.elevlabel)
         layout.addWidget(self.elev)
 
         self.setLayout(layout)
