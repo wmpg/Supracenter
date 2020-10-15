@@ -2463,6 +2463,8 @@ class SolutionGUI(QMainWindow):
                 errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
                          2, detail="")
 
+            save(self)
+
         elif self.bandpass_picks.isChecked():
 
 
@@ -2832,6 +2834,9 @@ class SolutionGUI(QMainWindow):
 
         if errorCodes(self, 'current_station', debug=self.prefs.debug):
             return None
+
+        stn = self.bam.stn_list[self.current_station]
+        print(stn.polarization.azimuth)
 
         self.make_picks_waveform_canvas.clear()
 

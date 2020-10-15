@@ -1,4 +1,4 @@
 Precursor Wave, A wave that reaches the station before the main arrival. Calculated by travelling vertical from the source to the ground at 330 m/s and then travelling along the ground to the station at 1 - 4 km/s
 Azimuth, Angles measured from North and increasing to the East. For fireball trajectories - this is the direction the fireball is travelling toward.
 Reference Time, The time used for reference is the "Time of First Sighting". All times in this document are relative to that time
-Wind Direction, Winds are defined such that u is positive when winds are blowing toward the East and v is positive when winds are blowing towards the North (by ECMWF definition). The direction of wind is defined as arctan2(u, v)
+Wind Direction, Winds are defined such that u is positive when winds are blowing toward the East and v is positive when winds are blowing towards the North (by ECMWF definition). The direction of wind is defined as arctan2(u v)

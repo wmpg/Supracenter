@@ -61,7 +61,7 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
             norm_res += res**2
 
     print('Residual Norm: {:.4f} s'.format(norm_res/stat))
-    reses = [norm_res/stat]
+    reses = [np.sqrt(norm_res)/stat]
     if prefs.pert_en:
         for i in range(prefs.pert_num):
 

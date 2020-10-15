@@ -374,7 +374,7 @@ class ParticleMotion(QWidget):
         
         roi = self.selector[0].getRegion()
 
-        if 1 < np.abs(roi[1] - roi[0]) < 15:
+        if 1 < np.abs(roi[1] - roi[0]) < 15 or (1 < np.abs(roi[1] - roi[0]) and self.plot_type.currentText() == 'Azimuth Window'):
             
             ### TEMP
             stime = UTCDateTime(self.bam.setup.fireball_datetime) + roi[0]
@@ -447,28 +447,30 @@ class ParticleMotion(QWidget):
 
                 st_data[i] = waveform_data[pt_0:pt_1]
                 
-            e, n, z = st_data[0], st_data[1], st_data[2]
-            
+            e, n, z = st_data[0], st_data[1], st_data[2]            
+
             e = np.array(e)
             n = np.array(n)
 
             def fit_func(beta, x):
-                return beta[0]*x + beta[1]
+                return beta[0]*x
+
 
             data = scipy.odr.Data(e, n)
             model = scipy.odr.Model(fit_func)
-            odr = scipy.odr.ODR(data, model, beta0=[1.0, 1.0])
+            odr = scipy.odr.ODR(data, model, beta0=[1.0])
             out = odr.run()
             az_slope = out.beta[0]
             az_error = out.sd_beta[0]
             azimuth = np.arctan2(1.0, az_slope)
+            az_error = np.degrees(1.0 / ((1.0 ** 2 + az_slope ** 2) * azimuth) * az_error)
 
             z = np.array(z)
             r = np.sqrt(n**2 + e**2)*np.cos(azimuth - np.arctan2(n, e))
 
             data = scipy.odr.Data(r, z)
             model = scipy.odr.Model(fit_func)
-            odr = scipy.odr.ODR(data, model, beta0=[1.0, 1.0])
+            odr = scipy.odr.ODR(data, model, beta0=[1.0])
             out = odr.run()
             in_slope = out.beta[0]
             in_error = out.sd_beta[0]
@@ -477,7 +479,7 @@ class ParticleMotion(QWidget):
 
             data = scipy.odr.Data(x_h, y_h)
             model = scipy.odr.Model(fit_func)
-            odr = scipy.odr.ODR(data, model, beta0=[1.0, 1.0])
+            odr = scipy.odr.ODR(data, model, beta0=[1.0])
             out = odr.run()
             h_az_slope = out.beta[0]
             h_az_error = out.sd_beta[0]
@@ -487,7 +489,6 @@ class ParticleMotion(QWidget):
 
             incidence = np.arctan2(1.0, in_slope)
 
-            az_error = np.degrees(1.0/((1.0**2 + az_slope**2)*azimuth)*az_error)
             in_error = np.degrees(1.0/((1.0**2 + in_slope**2)*incidence)*in_error)
 
             azimuth = np.degrees(azimuth)
@@ -502,27 +503,29 @@ class ParticleMotion(QWidget):
                 brush = QColor(0, 0, 255, 125)
 
             if self.plot_type.currentText() == 'Azimuth':
-                p_mot_plot = pg.PlotCurveItem()
+                p_mot_plot = pg.ScatterPlotItem()
                 p_mot_plot.setData(x=e, y=n)
                 self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=90-azimuth, pen=pen))
                 self.particle_motion_canvas.setLabel('bottom', "Channel: {:}".format(self.condensed_stream[0].stats.channel))
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[1].stats.channel))
+
+                self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.addItem(pg.TextItem(text='Azimuth = {:.2f}° ± {:.2f}°'.format(azimuth, az_error), color=(255, 0, 0), \
                                         anchor=(0, 0)))
-                self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.setXRange(np.min(e), np.max(e), padding=0)
                 self.particle_motion_canvas.setYRange(np.min(n), np.max(n), padding=0)
 
 
             elif self.plot_type.currentText() == 'Incidence':
-                p_mot_plot = pg.PlotCurveItem()
+                p_mot_plot = pg.ScatterPlotItem()
                 p_mot_plot.setData(x=r, y=z)
                 self.particle_motion_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=90-incidence, pen=pen))
                 self.particle_motion_canvas.setLabel('bottom', "Horizontal in Direction of Azimuth")
                 self.particle_motion_canvas.setLabel('left', "Channel: {:}".format(self.condensed_stream[2].stats.channel))
+                self.particle_motion_canvas.addItem(p_mot_plot)
                 self.particle_motion_canvas.addItem(pg.TextItem(text='Incidence = {:.2f}° ± {:.2f}°'.format(incidence, in_error), color=(255, 0, 0), \
                                         anchor=(0, 0)))
-                self.particle_motion_canvas.addItem(p_mot_plot)
+                
                 self.particle_motion_canvas.setXRange(np.min(r), np.max(r), padding=0)
                 self.particle_motion_canvas.setYRange(np.min(z), np.max(z), padding=0)
 

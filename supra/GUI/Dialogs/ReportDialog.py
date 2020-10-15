@@ -94,8 +94,7 @@ class ReportWindow(QWidget):
         self.prefs = prefs
 
         plt.style.use('default')
-        fig = plt.figure(figsize=plt.figaspect(0.5))
-        fig.set_size_inches(8.0, 6.0)
+        fig = plt.figure()
 
         self.buildGUI()
 
@@ -378,6 +377,7 @@ class ReportWindow(QWidget):
 
     def makeStationMap(self, doc):
 
+
         for stat in self.bam.stn_list:
             plt.scatter(stat.metadata.position.lon, stat.metadata.position.lat, c='r', marker='^')
             plt.text(stat.metadata.position.lon, stat.metadata.position.lat, '{:}-{:}'.format(stat.metadata.network, stat.metadata.code))
@@ -389,6 +389,7 @@ class ReportWindow(QWidget):
         plt.savefig(pic_file)
         doc.add_picture(pic_file)
         os.remove(pic_file)
+        plt.clf()
 
 
     def makeWaveform(self, stn, times, time_err, doc, typ='frag', divs=[]):
@@ -475,11 +476,17 @@ class ReportWindow(QWidget):
         t_avg = np.nanmean(times)
         t_spr = np.nanstd(times)
 
+        # I just REALLY want these to be nice graphs
         if t_spr > 0:
             plt.xlim(t_avg - SPREAD*t_spr, t_avg + SPREAD*t_spr)
-        # else:
-        #     plt.xlim(times[0] - 5, times[0] + 5)
-
+        elif not np.isnan(t_avg):
+            plt.xlim(t_avg - 5, t_avg + 5)
+        elif not np.isnan(times[0]):
+            plt.xlim(times[0] - 5, times[0] + 5)
+        else:
+            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+            D = stn.stn_distance(ref_pos)
+            plt.xlim(D/330 - 5, D/330 + 5)
 
         plt.title('{:} | Channel: {:}'.format(title, chn_selected))        
 

@@ -65,6 +65,7 @@ class Station:
 
     def stn_distance(self, ref_pos):
         self.distance = self.metadata.position.pos_distance(ref_pos)
+        return self.distance
 
     def stn_ground_distance(self, ref_pos):
         self.ground_distance = self.metadata.position.ground_distance(ref_pos)
