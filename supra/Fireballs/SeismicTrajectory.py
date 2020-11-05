@@ -32,6 +32,7 @@ from supra.Supracenter.anglescan import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
 from supra.Utils.Classes import Position, Constants, Trajectory, Angle
 from supra.Utils.pso import pso
+from supra.Utils.Formatting import loadingBar
 from supra.Supracenter.cyscan2 import cyscan
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
@@ -217,15 +218,19 @@ def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic')
     steps = 90
     alpha = np.linspace(0, 360*((steps-1)/steps), steps)
     alpha = np.radians(alpha)
-    theta = setup.azimuth.rad
-    phi = setup.zenith.rad
+    theta = setup.trajectory.azimuth.rad
+    phi = setup.trajectory.zenith.rad
     tol = 25 #deg
     tol_fact = np.radians(np.linspace(-tol, tol, 10))
     v = [0]*(steps**2)
 
     results = []
+
+    
+
     if mode == 'ballistic':
-        for t in tol_fact:
+        n_steps = len(tol_fact)*len(points)*steps
+        for tt, t in enumerate(tol_fact):
             
             # restriction on beta for initial launch angle to be 90 deg to trajectory
             beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha)) + t
@@ -234,9 +239,12 @@ def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic')
             # c = np.cos(t)
             # d = np.sqrt(a**2 + b**2 - c**2)
             # beta = 2*np.arctan((a - d)/(b + c))
-            for p in points:
-                
-                for i in range(steps):
+            for pp, p in enumerate(points):
+
+                for ii, i in enumerate(range(steps)):
+
+                    step = ii + pp*steps + tt*steps*len(points)
+                    loadingBar("Contour Calculation", step, n_steps)
 
                     v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
                                      np.cos(alpha[i])*np.sin(beta[i]),\
@@ -255,28 +263,47 @@ def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic')
                     # z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
                     #      ref_loc, copy.copy(sounding), convert=True)
                     z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
-                    res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True)
+                    res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True, debug=False)
 
-                    if np.sqrt(res[0]**2 + res[1]**2) <= 150000:
+                    # This is the limit in distance from the trajectory (hardcoded)
+                    if np.sqrt(res[0]**2 + res[1]**2) <= 400000:
                         results.append(res)
 
     else:
+        n_steps = len(tol_fact)*len(points)*steps
+
         beta = np.linspace(90 + 0.01, 180, steps)
         beta = np.radians(beta)
         p = points
 
-        for i in range(steps):
-            for j in range(steps):
+        for ii, i in enumerate(range(steps)):
+            for jj, j in enumerate(range(steps)):
                 # print(np.degrees(beta[i]))
+                step = jj + ii*steps
+                loadingBar("Contour Calculation", step, n_steps)
+
 
                 v[i*steps + j] = np.array([np.sin(alpha[i])*np.sin(beta[j]),\
                                  np.cos(alpha[i])*np.sin(beta[j]),\
                                                 -np.cos(beta[j])]) 
                 s = p + p[2]/np.cos(beta[j])*v[i*steps + j]
-                z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
-                     ref_loc, copy.copy(sounding), convert=True)
-                res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[j]), z_profile, wind=True)
-                results.append(res)
+
+                S = Position(0, 0, 0)
+                P = Position(0, 0, 0)
+                S.x, S.y, S.z = s[0], s[1], s[2]
+                P.x, P.y, P.z = p[0], p[1], p[2]
+                S.pos_geo(ref_loc)
+                P.pos_geo(ref_loc)
+
+                lats = [P.lat, S.lat]
+                lons = [P.lon, S.lon]
+                elev = [P.elev, S.elev]
+
+                z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
+                res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[j]), z_profile, wind=True, debug=False)
+                
+                if np.sqrt(res[0]**2 + res[1]**2) <= 200000:
+                    results.append(res)
 
     return results
 

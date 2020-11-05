@@ -80,7 +80,7 @@ def butterworthBandpassFilter(lowcut, highcut, fs, order=5):
     high = highcut/nyq
 
     # Init the filter
-    b, a = scipy.signal.butter(order, [low, high], btype='band')
+    b, a = scipy.signal.butter(order, [low, high], btype='bandpass')
 
     return b, a
 

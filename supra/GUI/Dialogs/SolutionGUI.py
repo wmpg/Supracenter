@@ -655,7 +655,7 @@ class SolutionGUI(QMainWindow):
         print('Working on contour - This could take a while...')
         self.clearContour()
 
-        ref_pos = Position(45.9789390626, 14.9929810526, 0)
+        ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
 
         ### option to use a perturbation for the contour instead of nominal (change the 0 to the perturbation number)
@@ -665,7 +665,8 @@ class SolutionGUI(QMainWindow):
             if errorCodes(self.bam.setup, 'trajectory'):
                 return None
             try:    
-                points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=17000, max_p=50000)
+                # maybe use traj interp 2 here???
+                points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
             except AttributeError as e:
                 errorMessage('Trajectory is not defined!', 2, detail='{:}'.format(e))
                 return None
@@ -673,7 +674,7 @@ class SolutionGUI(QMainWindow):
             if errorCodes(self.bam.setup, 'fragmentation_point'):
                 return None
             try:
-                A = self.setup.fragmentation_point[0].position
+                A = self.bam.setup.fragmentation_point[0].position
                 A.pos_loc(ref_pos)
                 points = A.xyz
             except (TypeError, IndexError) as e:
@@ -700,9 +701,39 @@ class SolutionGUI(QMainWindow):
             data.append((A.lon, A.lat, dy, dx, T[i]))
             # return data in a form readable by Rectangle Object
 
-        self.contour_data_squares = RectangleItem(data)
-        self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
-        print('Contour Finished!')
+        lat = []
+        lon = []
+        Z = []
+        for line in data:
+            lat.append(line[1])
+            lon.append(line[0])
+            Z.append(line[-1])
+
+        # this method will triangulate the info needed (recommended by pyplot)
+        #https://matplotlib.org/3.1.1/gallery/images_contours_and_fields/irregulardatagrid.html
+
+        import matplotlib.tri as tri
+
+        plt.tricontour(lon, lat, Z, levels=14, linewidths=0.5, colors='w')
+        cntr = plt.tricontourf(lon, lat, Z, levels=14, cmap="RdBu_r")
+        plt.colorbar(cntr)
+
+        # add trajectory
+        traj = self.bam.setup.trajectory
+        plt.plot([traj.pos_i.lon, traj.pos_f.lon], [traj.pos_i.lat, traj.pos_f.lat], c='b')
+        plt.scatter([traj.pos_f.lon], [traj.pos_f.lat], c='b', marker='+')
+
+        # add stations
+        for stn in self.bam.stn_list:
+            plt.scatter(stn.metadata.position.lon, stn.metadata.position.lat, marker='^', c='g')
+            plt.text(stn.metadata.position.lon, stn.metadata.position.lat, ''.format(stn.metadata.code))
+
+        plt.show()
+
+        ### below will make a contour as before
+        # self.contour_data_squares = RectangleItem(data)
+        # self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
+        # print('Contour Finished!')
 
     def clearContour(self):
 
@@ -2454,7 +2485,7 @@ class SolutionGUI(QMainWindow):
             if count == 3:
                 
                 self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
-                self.gr.setGeometry(QRect(100, 100, 1200, 700))
+                self.gr.setGeometry(QRect(100, 100, 1600, 700))
                 self.gr.show()
             elif count < 3:
                 errorMessage("Not enough channel data for particle motion!", 2, \
@@ -2551,7 +2582,7 @@ class SolutionGUI(QMainWindow):
         
         # Try reading the mseed file, if it doesn't work, skip to the next frame
         try:
-            mseed = stn.stream
+            mseed = stn.stream.copy()
 
         except TypeError:
             if self.prefs.debug:
@@ -2581,15 +2612,14 @@ class SolutionGUI(QMainWindow):
         st = st.select(channel=chn_selected)
         # Unpact miniSEED data
 
-        if len(st2) > 0 and resp is not None and self.rm_resp.isChecked():
+        if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
             st = st2
 
 
             #TODO - bug, this shouldn't run every time the waveform is shown
             #Obspy says that this is because the response is removed on the actual data, use .copy() 
             
-
-            st = st[0].remove_response(inventory=resp, output="VEL")
+            st = st[0].remove_response(inventory=resp, output="DISP")
             st.remove_sensitivity(resp) 
             rm_resp = True
         else:
@@ -2646,7 +2676,7 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
         if rm_resp:
-            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m/s')
+            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
         else:
             self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
 

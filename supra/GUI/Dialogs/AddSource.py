@@ -142,8 +142,15 @@ class SourceWindow(QWidget):
                                                 float(self.time_edit.text()))
 
         elif source_type == "Ballistic":
-            initial_pos = Position(float(self.lat_i_edit.text()), float(self.lon_i_edit.text()), float(self.elev_i_edit.text()))
-            final_pos =   Position(float(self.lat_f_edit.text()), float(self.lon_f_edit.text()), float(self.elev_f_edit.text()))
+
+            try:
+                initial_pos = Position(float(self.lat_i_edit.text()), float(self.lon_i_edit.text()), float(self.elev_i_edit.text()))
+            except ValueError:
+                initial_pos = Position(None, None, None)
+            try:    
+                final_pos =   Position(float(self.lat_f_edit.text()), float(self.lon_f_edit.text()), float(self.elev_f_edit.text()))
+            except ValueError:
+                final_pos = Position(None, None, None)
 
             t = float(self.time_edit.text())
             v = float(self.velocity_edit.text())
@@ -152,7 +159,7 @@ class SourceWindow(QWidget):
 
             source = Trajectory(t, v, zenith=ze, azimuth=az, pos_i=initial_pos, pos_f=final_pos, v_f=None)
 
-
+            print(source)
         else:
             print("Error - unknown source")
 

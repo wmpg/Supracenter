@@ -286,11 +286,16 @@ class Trajectory:
 
             pos_i.pos_loc(pos_i)
 
-            scale = -pos_i.z / self.vector.z
+            scale = -pos_i.elev / self.vector.z
 
             pos_f = self.vector * scale + pos_i
 
             pos_f.pos_geo(pos_i)
+
+            pos_i.z = pos_i.elev
+            pos_f.z = 0
+            pos_f.elev = 0
+
 
         # Case 4: bottom point and angles are given
         elif pos_f.lat is not None and zenith is not None and azimuth is not None:

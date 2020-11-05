@@ -127,8 +127,8 @@ class Atmos:
                 print('ECMWF is not added yet')
         elif prefs.atm_type == 'radio':
             print('Not done yet')
-        elif pref.atm_type == 'none':
-            print('Not done yet') 
+        elif prefs.atm_type == 'none':
+            return self.default_weather, None
         else:
             print('Unrecognized weather type')
 

@@ -203,6 +203,9 @@ def loadSourcesIntoBam(bam):
     bam.setup.frag_metadata = []
     bam.setup.traj_metadata = []
 
+    if not hasattr(bam, 'source_list'):
+        return bam
+
     for src in bam.source_list:
 
         if src.source_type == "Fragmentation":

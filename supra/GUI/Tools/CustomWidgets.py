@@ -62,7 +62,7 @@ class SourceEx(QGroupBox):
     def buildFragSource(self, layout):
 
         self.srctype_label = QLabel(self.source.title)
-        self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
+        # self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
         layout.addWidget(self.srctype_label, 1, 1)
 
         self.notes_label = QLabel(self.source.notes)
@@ -87,7 +87,7 @@ class SourceEx(QGroupBox):
 
     def buildTrajSource(self, layout):
         self.srctype_label = QLabel(self.source.title)
-        self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
+        # self.srctype_label.setStyleSheet("background-color: %s" % self.source.color.name())
         layout.addWidget(self.srctype_label, 1, 1)
 
         self.notes_label = QLabel(self.source.notes)

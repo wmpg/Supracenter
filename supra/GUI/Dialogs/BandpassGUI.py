@@ -71,6 +71,11 @@ class BandpassWindow(QWidget):
         time_data = np.copy(self.current_waveform_time)
         
         st.detrend()
+
+        resp = stn.response
+        st = st.remove_response(inventory=resp, output="DISP")
+        st.remove_sensitivity(resp) 
+
         waveform_data = st.data
 
         self.orig_data = np.copy(waveform_data)

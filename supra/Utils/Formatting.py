@@ -47,6 +47,8 @@ def goodspinny(message, count, pattern=['+', 'x']):
     sys.stdout.flush()
 
 def meteorspinny(message, count, pattern=['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}', '¯_-0}', '_-¯0}']):
+    # count is the percent done)
+
     load_len = os.get_terminal_size().columns - len(message)
     a = random.randint(0, len(pattern)-1)
     count = count%load_len + len(pattern[0])
