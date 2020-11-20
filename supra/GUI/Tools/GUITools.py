@@ -275,13 +275,17 @@ def fileSearch(filters, obj):
 
     filename = dlg.selectedFiles()
 
+
     if obj != None:
         try:
             obj.setText(filename[0])
         except:
             errorMessage("File not Found!", 1)
     else:
-        return filename[0]
+        try:
+            return filename[0]
+        except IndexError:
+            return filename
 
 def saveFile(ext):
     dlg = QFileDialog.getSaveFileName(None, 'Save File')

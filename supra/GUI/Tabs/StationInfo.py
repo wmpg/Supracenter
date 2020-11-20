@@ -50,6 +50,13 @@ def refreshStation(obj):
     clearStationWidgets(obj)
     addStationWidgets(obj, obj.bam.stn_list)
 
+def outputStation(obj):
+
+    print("Station List\n")
+    for stn in obj.bam.stn_list:
+        meta = stn.metadata
+        print("['{:}-{:}', {:}, {:}, {:}],".format(meta.network, meta.code, \
+                    meta.position.lat, meta.position.lon, meta.position.elev))
 
 def getStations(obj):
 

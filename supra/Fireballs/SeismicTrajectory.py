@@ -212,62 +212,169 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
 
     return ti, ti_pert
 
-def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic'):
+def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='ballistic'):
     setup = bam.setup
     atmos = bam.atmos
-    steps = 90
+    steps = 360
     alpha = np.linspace(0, 360*((steps-1)/steps), steps)
     alpha = np.radians(alpha)
+    beta = np.linspace(0, 90*((steps-1)/steps), steps)
+    beta = np.radians(beta)
     theta = setup.trajectory.azimuth.rad
     phi = setup.trajectory.zenith.rad
     tol = 25 #deg
-    tol_fact = np.radians(np.linspace(-tol, tol, 10))
-    v = [0]*(steps**2)
+    # tol_fact = np.radians(np.linspace(-tol, tol, 10))
+    WIND = True
+    u = traj.getTrajVect()
+
+    v_list = []
+    for i in range(steps):
+        for j in range(steps):
+
+            v = np.array([np.sin(alpha[i])*np.sin(beta[j]),\
+                        np.cos(alpha[i])*np.sin(beta[j]),\
+                        -np.cos(beta[j])])
+            
+
+            if np.abs(90 - np.degrees(np.arccos(np.dot(u, v)))) <= tol:
+
+                v_list.append([alpha[i], beta[j]])
+
+    v_list = np.array(v_list)
+
 
     results = []
 
-    
-
+    # temp hotfix
     if mode == 'ballistic':
-        n_steps = len(tol_fact)*len(points)*steps
-        for tt, t in enumerate(tol_fact):
-            
-            # restriction on beta for initial launch angle to be 90 deg to trajectory
-            beta = np.arctan(-1/np.tan(phi)/np.cos(theta-alpha)) + t
-            # a = np.sin(phi)*np.cos(theta - alpha)
-            # b = np.cos(phi)
-            # c = np.cos(t)
-            # d = np.sqrt(a**2 + b**2 - c**2)
-            # beta = 2*np.arctan((a - d)/(b + c))
-            for pp, p in enumerate(points):
 
-                for ii, i in enumerate(range(steps)):
+        grid_space = 10
 
-                    step = ii + pp*steps + tt*steps*len(points)
+        p1 = Position(47.5, 12, 0)
+        p2 = Position(49, 15, 0)
+
+        p1.pos_loc(ref_loc)
+        p2.pos_loc(ref_loc)        
+
+        xs = np.linspace(p1.x, p2.x, grid_space)
+        ys = np.linspace(p1.y, p2.y, grid_space)
+
+
+        n_steps = grid_space**2*len(points)
+        for xnum, xx in enumerate(xs):
+            for ynum, yy in enumerate(ys):
+
+                angle_list = []
+                time_list = []
+                D = [xx, yy, 0]
+
+                for pnum, pp in enumerate(points):
+                    
+                    step = pnum + ynum*len(points) + xnum*grid_space*len(points)
                     loadingBar("Contour Calculation", step, n_steps)
 
-                    v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
-                                     np.cos(alpha[i])*np.sin(beta[i]),\
-                                                    -np.cos(beta[i])]) 
-                    s = p + p[2]/np.cos(beta[i])*v[i]
-                    S = Position(0, 0, 0)
-                    P = Position(0, 0, 0)
-                    S.x, S.y, S.z = s[0], s[1], s[2]
-                    P.x, P.y, P.z = p[0], p[1], p[2]
-                    S.pos_geo(ref_loc)
-                    P.pos_geo(ref_loc)
+                    P = Position(pp[0], pp[1], pp[2])
 
-                    lats = [P.lat, S.lat]
-                    lons = [P.lon, S.lon]
-                    elev = [P.elev, S.elev]
-                    # z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
-                    #      ref_loc, copy.copy(sounding), convert=True)
-                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
-                    res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[i]), z_profile, wind=True, debug=False)
+                    P.pos_loc(ref_loc)
 
-                    # This is the limit in distance from the trajectory (hardcoded)
-                    if np.sqrt(res[0]**2 + res[1]**2) <= 400000:
+                    S = P.xyz
+
+                    R = Position(0, 0, 0)
+                    R.x = D[0]
+                    R.y = D[1]
+                    R.z = D[2]
+                    R.pos_geo(ref_loc)
+
+                    lats = [P.lat, R.lat]
+                    lons = [P.lon, R.lon]
+                    elev = [P.elev, R.elev]
+
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=250)
+
+                    res = cyscan(np.array(S), np.array(D), z_profile, wind=True, n_theta=360, n_phi=360, h_tol=330, v_tol=3000, debug=False)
+
+                    alpha = np.radians(res[1])
+                    beta = np.radians(res[2]-90)
+
+                    res_vector = np.array([np.sin(alpha)*np.sin(beta),\
+                                np.cos(alpha)*np.sin(beta),\
+                                -np.cos(beta)])
+                    
+                    angle_list.append(np.abs(90 - np.degrees(np.arccos(np.dot(u, res_vector)))))
+                    time_list.append(res[0])
+
+                if np.nanmin(angle_list) <= tol:
+
+                    best_angle_index = np.nanargmin(angle_list)
+
+                    best_time = time_list[best_angle_index]
+
+                    if not np.isnan(best_time):
+                        res = [xx, yy, 0, best_time]
+
                         results.append(res)
+
+
+                    
+                    # np.array([t_arrival, azimuth, takeoff, E[k, l]])
+
+    if mode == 'ballistic_old':
+        n_steps = len(v_list)*len(points)
+
+        for pp, p in enumerate(points):
+
+            for vv, v in enumerate(v_list):
+
+                step = vv + pp*len(v_list)
+                loadingBar("Contour Calculation", step, n_steps)
+
+                # v[i] = np.array([np.sin(alpha[i])*np.sin(beta[i]),\
+                #                  np.cos(alpha[i])*np.sin(beta[i]),\
+                #                                 -np.cos(beta[i])]) 
+
+                P = Position(p[0], p[1], p[2])
+                S = Position(p[0], p[1], 0)
+
+                P.pos_loc(ref_loc)
+
+                pt = P.xyz
+                # s = p + p[2]/np.cos(beta[i])*v[i]
+                # S = Position(0, 0, 0)
+                # P = Position(0, 0, 0)
+                # S.x, S.y, S.z = s[0], s[1], s[2]
+                # P.x, P.y, P.z = p[0], p[1], p[2]
+                # S.pos_geo(ref_loc)
+                # P.pos_geo(ref_loc)
+
+                lats = [P.lat, S.lat]
+                lons = [P.lon, S.lon]
+                elev = [P.elev, S.elev]
+                # z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
+                #      ref_loc, copy.copy(sounding), convert=True)
+                if WIND:
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=200)
+
+                    res = anglescan(pt, np.degrees(v[0]), np.degrees(v[1]) + 90, z_profile, wind=True, debug=False)
+
+                else:
+                    # if no wind, just draw a straight line
+
+                    vect = np.array([np.sin(v[0])*np.sin(v[1]),\
+                            np.cos(v[0])*np.sin(v[1]),\
+                            -np.cos(v[1])])
+
+                    s = -pt[2]/vect[2]
+
+                    ground_point = pt + s*vect
+
+                    ground_time = s/330
+
+                    res = [ground_point[0], ground_point[1], ground_point[2], ground_time]
+
+                # This is the limit in distance from the trajectory (hardcoded)
+                if res[-1] <= 10000:
+                    # if np.sqrt(res[0]**2 + res[1]**2) <= 150000:
+                    results.append(res)
 
     else:
         n_steps = len(tol_fact)*len(points)*steps
@@ -302,8 +409,8 @@ def waveReleasePointWindsContour(bam, ref_loc, points, div=37, mode='ballistic')
                 z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
                 res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[j]), z_profile, wind=True, debug=False)
                 
-                if np.sqrt(res[0]**2 + res[1]**2) <= 200000:
-                    results.append(res)
+                # if np.sqrt(res[0]**2 + res[1]**2) <= 200000:
+                results.append(res)
 
     return results
 

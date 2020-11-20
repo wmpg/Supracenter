@@ -199,7 +199,7 @@ class SolutionGUI(QMainWindow):
 
     def trajInterpDialog(self):
 
-        self.t = TrajInterpWindow(self.bam.setup)
+        self.t = TrajInterpWindow(self.bam, self)
         self.t.setGeometry(QRect(500, 400, 500, 400))
         self.t.show()
 
@@ -666,7 +666,9 @@ class SolutionGUI(QMainWindow):
                 return None
             try:    
                 # maybe use traj interp 2 here???
-                points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
+                # points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
+                points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=50000)
+
             except AttributeError as e:
                 errorMessage('Trajectory is not defined!', 2, detail='{:}'.format(e))
                 return None
@@ -681,8 +683,7 @@ class SolutionGUI(QMainWindow):
                 errorMessage('Fragmentation Point not defined correctly!', 1, info='Please define the fragmentation point in the setup toolbar', detail='{:}'.format(e))
                 return None
 
-
-        results = waveReleasePointWindsContour(self.bam, ref_pos, points, mode=mode)
+        results = waveReleasePointWindsContour(self.bam, self.bam.setup.trajectory, ref_pos, points, mode=mode)
 
         results = np.array(results)
 
@@ -714,6 +715,10 @@ class SolutionGUI(QMainWindow):
 
         import matplotlib.tri as tri
 
+        A = np.array([lon, lat, Z])
+        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Ball_nowinds_fixed.npy", A)
+
+        # plt.scatter(lon, lat)
         plt.tricontour(lon, lat, Z, levels=14, linewidths=0.5, colors='w')
         cntr = plt.tricontourf(lon, lat, Z, levels=14, cmap="RdBu_r")
         plt.colorbar(cntr)
@@ -2150,8 +2155,13 @@ class SolutionGUI(QMainWindow):
                     stream = i
 
             # Unpack miniSEED data
+            if stream >= len(mseed):
+                stream = 0
+
             delta = mseed[stream].stats.delta
             waveform_data = mseed[stream].data
+
+
 
 
             # Extract time
@@ -2402,7 +2412,6 @@ class SolutionGUI(QMainWindow):
                 for pick in self.pick_list:
                     if pick.stn == stn:
                         stat_picks.append(pick)
-
 
                 self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks])
                 self.w.setGeometry(QRect(100, 100, 900, 900))

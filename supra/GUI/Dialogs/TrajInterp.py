@@ -12,14 +12,20 @@ import pyqtgraph as pg
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.GUITools import *
 from supra.Utils.TryObj import *
+from supra.Files.SaveLoad import save, loadSourcesIntoBam
+from supra.Utils.Classes import Position, Supracenter
+
+from supra.GUI.Dialogs.AddSource import Source 
 
 class TrajInterpWindow(QWidget):
 
-    def __init__(self, setup):
+    def __init__(self, bam, obj):
 
         QWidget.__init__(self)
         
-        self.setup = setup
+        self.obj = obj
+        self.bam = bam
+        self.setup = bam.setup
         self.buildGUI()
 
 
@@ -46,6 +52,10 @@ class TrajInterpWindow(QWidget):
         layout.addWidget(save_button, 3, 1)
         save_button.clicked.connect(self.trajInterp)
 
+        save_to_file_button = QPushButton('Save to Event')
+        layout.addWidget(save_to_file_button, 3, 2)
+        save_to_file_button.clicked.connect(self.saveEvent)
+
     def trajInterp(self):
 
         traj = self.setup.trajectory
@@ -60,5 +70,24 @@ class TrajInterpWindow(QWidget):
             for pt in points:
                 f.write('{:}, {:}, {:}, {:} \n'.format(pt[0], pt[1], pt[2], pt[3]))
 
+
+        self.close()
+
+    def saveEvent(self):
+        traj = self.setup.trajectory
+
+        points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
+                                  min_p=tryFloat(self.low_point.text()),\
+                                  max_p=tryFloat(self.high_point.text()))
+
+        for pt in points:
+            source = Supracenter(Position(pt[0], pt[1], pt[2]), pt[3])
+
+            S = Source('Traj point - {:.2f} km'.format(pt[2]/1000), 'Fragmentation', source)
+
+            self.bam.source_list.append(S)
+
+        save(self.obj)
+        loadSourcesIntoBam(self.obj.bam)
 
         self.close()

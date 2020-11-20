@@ -29,7 +29,7 @@ def loadingBar(message, step, max_steps):
     pattern = ['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}', '¯_-0}', '_-¯0}']
     a = random.randint(0, len(pattern)-1)
 
-    sys.stdout.write("\r{:} : {:}{:} {:7.2%} ".format(message, '*'*(load), pattern[a], percent))
+    sys.stdout.write("\r{:} : {:}{:} {:7.2%} ".format(message, '*'*(load - 1), pattern[a], percent))
     sys.stdout.flush()
 
 
@@ -47,7 +47,6 @@ def goodspinny(message, count, pattern=['+', 'x']):
     sys.stdout.flush()
 
 def meteorspinny(message, count, pattern=['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}', '¯_-0}', '_-¯0}']):
-    # count is the percent done)
 
     load_len = os.get_terminal_size().columns - len(message)
     a = random.randint(0, len(pattern)-1)

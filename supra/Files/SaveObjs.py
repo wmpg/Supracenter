@@ -128,7 +128,9 @@ class Atmos:
         elif prefs.atm_type == 'radio':
             print('Not done yet')
         elif prefs.atm_type == 'none':
-            return self.default_weather, None
+
+                return self.default_weather, None
+
         else:
             print('Unrecognized weather type')
 

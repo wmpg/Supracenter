@@ -58,6 +58,9 @@ class FragmentationStaff(QWidget):
         A.pos_loc(B)
         B.pos_loc(B)
 
+        self.dots_x = []
+        self.dots_y = []
+
         #######################
         # Plot nominal points
         #######################
@@ -66,6 +69,8 @@ class FragmentationStaff(QWidget):
             f_time = stn.times.fragmentation[i][0][0]
             X = self.setup.fragmentation_point[i].position.elev
             Y = f_time - nom_pick.time
+            self.dots_x.append(X)
+            self.dots_y.append(Y)
             base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 
 
@@ -116,6 +121,9 @@ class FragmentationStaff(QWidget):
             for pt in data:
                 
                 Y = (pt - nom_pick.time)
+
+                self.dots_x.append(X)
+                self.dots_y.append(Y)
                 prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
 
             self.height_canvas.addItem(prt_points, update=True)
@@ -126,7 +134,8 @@ class FragmentationStaff(QWidget):
             else:
                 self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
 
-
+        self.dots = np.array([self.dots_x, self.dots_y])
+        np.save("C:\\Users\\lmcfd\\Desktop\\dots.npy", self.dots)
         #####################
         # Angle Calculation
         #####################

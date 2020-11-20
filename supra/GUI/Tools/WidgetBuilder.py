@@ -224,6 +224,9 @@ def addStationsWidgets(obj):
     obj.station_button = createButton("Refresh Station", obj.station_control_layout, 2, 3, \
                                                         refreshStation, args=[obj])
 
+    obj.station_button = createButton("Output Station Metadata", obj.station_control_layout, 3, 1, \
+                                                        outputStation, args=[obj])    
+
     obj.station_layout.addLayout(obj.station_control_layout)
 
 
