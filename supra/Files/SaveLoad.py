@@ -240,8 +240,8 @@ def save(obj):
     with open(obj.bam.file_name, 'wb') as f:
         pickle.dump(obj.bam, f)
 
-    print('setup saved')
-
+    print('Program Status: Setup Saved')
+    loadDisplay(obj.bam.setup, obj)
 
 def load(obj):
 
