@@ -9,7 +9,6 @@
 # Stack Overflow - Frequent care and support
 # Western Meteor Python Group
 #################################################
-# https://docs.obspy.org/tutorial/code_snippets/seismometer_correction_simulation.html#calculating-response-from-filter-stages-using-evalresp
 # t_0 = impact time - fireball datetime
 
 import os
@@ -102,19 +101,6 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.4660*255, 0.6740*255, 0.1880*255),                
        (0.3010*255, 0.7450*255, 0.9330*255),                
        (0.6350*255, 0.0780*255, 0.1840*255)]
-
-
-
-def contourLoop(X, Y, ref_pos, dy, dx, T, i):
-
-    A = Position(0, 0, 0)
-    A.x = X[i]
-    A.y = Y[i]
-    A.z = 0
-    A.pos_geo(ref_pos)
-
-    # return data in a form readable by Rectangle Object
-    return (A.lon, A.lat, dy, dx, T[i]) 
 
 
 # Main Window
@@ -333,11 +319,15 @@ class SolutionGUI(QMainWindow):
 
         # TODO Rewrite this whole thing
         # Read station file
-
+        stat_file = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, self.bam.setup.station_picks_file)
+        
         try:
-            station_list = getStationList(os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, self.bam.setup.station_picks_file))
+            station_list = getStationList(stat_file)
         except TypeError as e:
             errorMessage('Unexpected station list location!', 2, info="Can not find where 'station_picks_file' is!", detail='{:}'.format(e))
+            return None
+        except FileNotFoundError as e:
+            errorMessage('Station Picks File was not found', 2, info="A .csv station picks file is required!", detail='{:}'.format(e))
             return None
 
         class StationPick:
@@ -716,7 +706,7 @@ class SolutionGUI(QMainWindow):
         import matplotlib.tri as tri
 
         A = np.array([lon, lat, Z])
-        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Ball_nowinds_fixed.npy", A)
+        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Final_Fragmentation_Winds", A)
 
         # plt.scatter(lon, lat)
         plt.tricontour(lon, lat, Z, levels=14, linewidths=0.5, colors='w')

@@ -245,10 +245,10 @@ def getStationData(picks_file, ref_pos):
     try:
         s_info, s_name, weights = convStationDat(picks_file, ref_pos)
     except TypeError as e:
-        errorMessage("Unable to use station picks file!", 2, info="Error in the given file name: '{:}'".format(self.bam.setup.station_picks_file), detail='{:}'.format(e))
+        errorMessage("Unable to use station picks file!", 2, info="Error in the given file name: '{:}'".format(picks_file), detail='{:}'.format(e))
         return None, None, None
     except FileNotFoundError as e:
-        errorMessage("Unable to find given station picks file!", 2, info="Could not find file: {:}".format(self.bam.setup.station_picks_file), detail='{:}'.format(e))
+        errorMessage("Unable to find given station picks file!", 2, info="Could not find file: {:}".format(picks_file), detail='{:}'.format(e))
         return None, None, None
     except ValueError as e:
         errorMessage("Error in station picks file!", 2, info="Make sure that the file is formatted correctly", detail='{:}'.format(e))

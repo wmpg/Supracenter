@@ -246,9 +246,9 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
     results = []
 
     # temp hotfix
-    if mode == 'ballistic':
+    if mode == 'ballistic_old':
 
-        grid_space = 10
+        grid_space = 50
 
         p1 = Position(47.5, 12, 0)
         p2 = Position(49, 15, 0)
@@ -289,18 +289,18 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     lons = [P.lon, R.lon]
                     elev = [P.elev, R.elev]
 
-                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=250)
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
 
-                    res = cyscan(np.array(S), np.array(D), z_profile, wind=True, n_theta=360, n_phi=360, h_tol=330, v_tol=3000, debug=False)
+                    res = cyscan(np.array(S), np.array(D), z_profile, wind=True, n_theta=90, n_phi=90, h_tol=330, v_tol=3000, debug=False)
 
                     alpha = np.radians(res[1])
-                    beta = np.radians(res[2]-90)
+                    beta = np.radians(180 - res[2])
 
                     res_vector = np.array([np.sin(alpha)*np.sin(beta),\
                                 np.cos(alpha)*np.sin(beta),\
                                 -np.cos(beta)])
-                    
-                    angle_list.append(np.abs(90 - np.degrees(np.arccos(np.dot(u, res_vector)))))
+
+                    angle_list.append(np.abs(90 - np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), res_vector/np.sqrt(res_vector.dot(res_vector)))))))
                     time_list.append(res[0])
 
                 if np.nanmin(angle_list) <= tol:
@@ -313,14 +313,41 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                         res = [xx, yy, 0, best_time]
 
                         results.append(res)
+            
+            # u = np.array([bam.setup.trajectory.vector.x,
+            #               bam.setup.trajectory.vector.y,
+            #               bam.setup.trajectory.vector.z])
 
+            # angle_off = []
+            # X = []
+            # for i in range(len(bam.setup.fragmentation_point)):
+            #     az = stn.times.fragmentation[i][0][1]
+            #     tf = stn.times.fragmentation[i][0][2]
+
+            #     az = np.radians(az)
+            #     tf = np.radians(180 - tf)
+            #     v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+            #     angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+            #     X.append(bam.setup.fragmentation_point[i].position.elev)
+            # angle_off = np.array(angle_off)
+            # try:
+            #     best_indx = np.nanargmin(abs(angle_off - 90))
+
+            # except ValueError:
+            #     best_indx = None
+            #     a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+            #     for pert in perturbations:
+            #         a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+            #     stn.times.ballistic.append(a)
+            #     continue
 
                     
                     # np.array([t_arrival, azimuth, takeoff, E[k, l]])
 
-    if mode == 'ballistic_old':
+    elif mode == 'ballistic':
         n_steps = len(v_list)*len(points)
-
+        WIND = False
         for pp, p in enumerate(points):
 
             for vv, v in enumerate(v_list):
@@ -372,12 +399,12 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     res = [ground_point[0], ground_point[1], ground_point[2], ground_time]
 
                 # This is the limit in distance from the trajectory (hardcoded)
-                if res[-1] <= 10000:
+                if res[-1] <= 1000:
                     # if np.sqrt(res[0]**2 + res[1]**2) <= 150000:
                     results.append(res)
 
     else:
-        n_steps = len(tol_fact)*len(points)*steps
+        # n_steps = len(tol_fact)*len(points)*steps
 
         beta = np.linspace(90 + 0.01, 180, steps)
         beta = np.radians(beta)

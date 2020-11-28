@@ -26,13 +26,22 @@ def errorMessage(message, level, info='', title='Yikes!', detail=''):
     detail: even more detail
     """
     msg = QMessageBox()
+    
+    app_icon = QtGui.QIcon()
+
 
     if level == 0:
         msg.setIcon(QMessageBox.Information)
+        app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Info.png'), QtCore.QSize(16, 16))
+        msg.setWindowIcon(app_icon)
     elif level == 1:
         msg.setIcon(QMessageBox.Warning)
+        app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Warning.png'), QtCore.QSize(16, 16))
+        msg.setWindowIcon(app_icon)
     else:
         msg.setIcon(QMessageBox.Critical)
+        app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Critical.png'), QtCore.QSize(16, 16))
+        msg.setWindowIcon(app_icon)
 
     msg.setText(message)
     
