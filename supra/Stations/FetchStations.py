@@ -11,6 +11,7 @@ from wmpl.Utils.OSTools import mkdirP
 
 from supra.Stations.StationObj import Station, Metadata
 from supra.Utils.Classes import Position
+from supra.Utils.Formatting import *
 
         # 'http://eida.gfz-potsdam.de/fdsnws/',
 def urlList():
@@ -37,14 +38,37 @@ def urlList():
         'http://fdsnws.raspberryshakedata.com/fdsnws/',
         'http://auspass.edu.au:8080/fdsnws/']
 
+    names =  ['IRIS Data Management Center',
+        'Northern California Earthquake Data Center', 
+        'Southern California Earthquake Data Center', 
+        'TexNet – Texas Earthquake Data Center', 
+        'BGR Hannover, Germany',
+        'Boğaziçi University, Kandilli Observatory', 
+        'ETHZ',
+        'GEOFON Program, GFZ',
+        'ICGC',
+        'IPGP Data Center', 
+        'INGV', 
+        'LMU Munich, Germany', 
+        'NIEP, Romania', 
+        'NOA, Greece', 
+        'ORFEUS Data Center', 
+        'RESIF', 
+        'USP Seismological Center, Brazil',
+        'Raspberry Shake, S.A',
+        'AusPass, Australia']
+
     refined_urls = []
+    refined_names = []
+
 
     for i in range(len(sources)):
         if sources[i] == 1:
-            refined_urls.append(urls[i])   
+            refined_urls.append(urls[i])
+            refined_names.append(names[i])
 
 
-    return refined_urls
+    return refined_urls, refined_names
 
 def filterStations(data_list):
 
@@ -74,7 +98,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
     mkdirP(dir_path)
 
     # Pull station urls that are being used (checks which ones the user has selected)
-    urls = urlList()
+    urls, noms = urlList()
 
     station_list = []
 
@@ -97,7 +121,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
     print('STATIONS')
 
     for ii, u in enumerate(urls):
-        print('Downloading from: {:}'.format(u))
+        print('Downloading from: {:}'.format(noms[ii]))
 
         query ="{:}station/1/query?network=*&latitude={:.3f}&longitude={:.3f}" \
             "&maxradius={:.3f}&start={:s}&end={:s}&channel=*&format=text" \
@@ -115,7 +139,8 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
             txt = ''
             
         if len(txt) > 0:
-            for entry in txt.split('\n')[1:]:
+            no_steps = len(txt.split('\n')[1:])
+            for ee, entry in enumerate(txt.split('\n')[1:]):
 
                 entry = entry.split('|')
 
@@ -125,6 +150,8 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
 
                 # Unpack the line
                 network_new, station_code, lat, lon, elev, station_name, start_work, end_work = entry
+
+                loadingBar('Downloading: {:2}-{:5}'.format(network_new, station_code), ee+2, no_steps)
 
                 if entry not in station_list:
                     
@@ -159,8 +186,6 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                     except:
                         pass
 
-
-                    print('{:2}-{:4}'.format(network_new, station_code))
 
                     with open(mseed_file_path,'wb') as f:
                         

@@ -29,8 +29,11 @@ def loadingBar(message, step, max_steps):
     pattern = ['¯-_0}', '-_¯0}', '_¯-0}', '-¯_0}', '¯_-0}', '_-¯0}']
     a = random.randint(0, len(pattern)-1)
 
-    sys.stdout.write("\r{:} : {:}{:} {:7.2%} ".format(message, '*'*(load - 1), pattern[a], percent))
-    sys.stdout.flush()
+    if percent == 1.00:
+        sys.stdout.write("\r{:} : {:}{:} {:7.2%}\n".format(message, '*'*(load - 1), pattern[a], percent))
+    else:
+        sys.stdout.write("\r{:} : {:}{:} {:7.2%} ".format(message, '*'*(load - 1), pattern[a], percent))
+        sys.stdout.flush()
 
 
 def randospinny(message):

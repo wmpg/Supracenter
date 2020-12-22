@@ -10,36 +10,7 @@
 Changelog
 #########
 
-August 19, 2020
----------------
-
-* Version Beta-2
-* Updated Docs
-* Added Polarization Maps
-
-July 6, 2020
----------------
-
-* Version Beta-1
-* Updated Docs
-* Added Station Source Manager
-
-Febuary 5, 2020
----------------
-
-* Yield Estimation complete
-* Docs update on using the yield estimation window
-   
-December 12, 2019
------------------
-
-* Groundwork for Yield Estimation
-* Docs update
-
-November 7, 2019
-----------------
-
-* Created changelog
+Looks empty
 
 
 .. toctree::

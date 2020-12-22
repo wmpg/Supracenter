@@ -50,13 +50,13 @@ def initMenuBar(obj, layout):
     file_qsave = QAction("Quick Save", obj)
     file_qsave.setShortcut('Ctrl+S')
     file_qsave.setStatusTip('Saves setup file')
-    file_qsave.triggered.connect(partial(save, obj, obj.bam))
+    file_qsave.triggered.connect(partial(save, obj))
     file_menu.addAction(file_qsave)
 
     file_save = QAction("Save", obj)
     file_save.setShortcut('Ctrl+Shift+S')
     file_save.setStatusTip('Saves setup file')
-    file_save.triggered.connect(partial(save, obj, obj.bam))
+    file_save.triggered.connect(partial(save, obj))
     file_menu.addAction(file_save)
 
     file_rep = QAction("Generate Report", obj)
