@@ -8,6 +8,7 @@ from supra.Utils.Classes import Position
 from supra.Fireballs.SeismicTrajectory import timeOfArrival
 from supra.Atmosphere.Parse import parseWeather
 from supra.Supracenter.cyscan2 import cyscan
+from supra.Utils.Formatting import *
 
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
@@ -97,7 +98,7 @@ def calcAllTimes(bam, prefs):
 
 
     for ii, stn in enumerate(bam.stn_list):
-        print("Calculating Station {:}/{:} ".format(ii+1, len(bam.stn_list)))
+        loadingBar('Calculating Station Times: ', ii+1, len(bam.stn_list))
 
         if not hasattr(stn, 'times'):
             stn.times = Times()

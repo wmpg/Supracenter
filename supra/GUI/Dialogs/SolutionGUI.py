@@ -1555,58 +1555,20 @@ class SolutionGUI(QMainWindow):
         ini_tabs.addTab(tab1, "General")
 
         self.fireball_name_label, self.fireball_name_edits = createLabelEditObj('Fireball Name:', tab1_content, 1, tool_tip='fireball_name')
-        # self.get_data_label, self.get_data_edits = createComboBoxObj('Get Data: ', tab1_content, 2, items=['False', 'True'], tool_tip='get_data')
-        # self.run_mode_label, self.run_mode_edits = createComboBoxObj('Run Mode: ', tab1_content, 3, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
-        # self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = createFileSearchObj('Arrival Times:', tab1_content, 6, width=1, h_shift=0, tool_tip='arrival_times_file')
-        # self.arrival_times_buton.clicked.connect(partial(fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
-        # self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = createFileSearchObj('Sounding File:', tab1_content, 7, width=1, h_shift=0, tool_tip='sounding_file')
-        # self.sounding_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)', 'CSV (*.csv)', 'TXT (*.txt)'], self.sounding_file_edits))
-        # self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = createFileSearchObj('Perturbation', tab1_content, 8, width=1, h_shift=0, tool_tip='perturbation_spread_file')
-        # self.perturbation_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
+     
         self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 15, width=1, h_shift=0, tool_tip='station_picks_file')
         self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
-        # self.points_name_label, self.points_name_edits, self.points_name_buton = createFileSearchObj('Replot Points File: ', tab1_content, 10, width=1, h_shift=0, tool_tip='points_name')
-        # self.points_name_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.points_name_edits))
+
         self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre', validate='float')
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
         self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius', validate='float')
         self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", tab1_content, 14, tool_tip='fireball_datetime')
-        # self.t0_label, self.t0_edits = createLabelEditObj('t0:', tab1_content, 16, width=3, tool_tip='t0', validate='float')
-        # self.v_label, self.v_edits = createLabelEditObj('v:', tab1_content, 17, width=3, tool_tip='v', validate='float')
-        # self.azim_label, self.azim_edits = createLabelEditObj('azim:', tab1_content, 18, width=3, tool_tip='azim', validate='float')
-        # self.zangle_label, self.zangle_edits = createLabelEditObj('zangle:', tab1_content, 19, width=3, tool_tip='zangle', validate='float')
-        # self.lat_i_label, self.lat_i_edits = createLabelEditObj('lat_i:', tab1_content, 20, tool_tip='lat_i', validate='float')
-        # self.lon_i_label, self.lon_i_edits = createLabelEditObj('lon_i:', tab1_content, 21, tool_tip='lon_i', validate='float')
-        # self.elev_i_label, self.elev_i_edits = createLabelEditObj('elev_i:', tab1_content, 22, tool_tip='elev_i', validate='float')
-        # self.lat_f_label, self.lat_f_edits = createLabelEditObj('lat_f:', tab1_content, 23, tool_tip='lat_f', validate='float')
-        # self.lon_f_label, self.lon_f_edits = createLabelEditObj('lon_f:', tab1_content, 24, tool_tip='lon_f', validate='float')
-        # self.elev_f_label, self.elev_f_edits = createLabelEditObj('elev_f:', tab1_content, 25, tool_tip='elev_f', validate='float')
-        # self.vf_label, self.vf_edits = createLabelEditObj('v_f:', tab1_content, 27, width=3, validate='float')
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
         tab2.setLayout(tab2_content)
         ini_tabs.addTab(tab2, "Sources")
 
-        # self.fragmentation_point_label = QLabel("Fragmentation Point(s)")
-        # self.fragmentation_point = QTableWidget(0, 4)
-        # tab2_content.addWidget(self.fragmentation_point, 1, 1, 1, 4)
-        # tab2_content.addWidget(self.fragmentation_point_label, 0, 1, 1, 2)
-        # self.fragmentation_csv = QPushButton("Load Points")
-        # tab2_content.addWidget(self.fragmentation_csv, 0, 3, 1, 1)
-        # self.fragmentation_csv.clicked.connect(self.loadFrags)
-        # self.fragmentation_point.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
-        # header = self.fragmentation_point.horizontalHeader()
-        # header.setSectionResizeMode(QHeaderView.Stretch)
-        # self.fragmentation_point_label.setToolTip(toolTime('fragmentation_point'))
-        # self.fragmentation_point_add = QPushButton("+")
-        # tab2_content.addWidget(self.fragmentation_point_add, 2, 3, 1, 2)
-        # self.fragmentation_point_add.clicked.connect(partial(changeRows, self.fragmentation_point, 1))
-        # self.fragmentation_point_add.setToolTip("Add row")
-        # self.fragmentation_point_min = QPushButton("-")
-        # tab2_content.addWidget(self.fragmentation_point_min, 2, 1, 1, 2)
-        # self.fragmentation_point_min.clicked.connect(partial(changeRows, self.fragmentation_point, -1))
-        # self.fragmentation_point_min.setToolTip("Remove row")
         self.manual_label = QLabel("Manual Fragmentation Search:")
         tab2_content.addWidget(self.manual_label, 4, 1, 1, 4)
         self.manual_label.setToolTip("manual_fragmentation_search")
@@ -1644,51 +1606,7 @@ class SolutionGUI(QMainWindow):
         self.t_max_label, self.t_max_edits = createLabelEditObj('t_max:', tab2_content, 15, h_shift=2, tool_tip='t_max', validate='float')
         self.v_min_label, self.v_min_edits = createLabelEditObj('v_min:', tab2_content, 16, tool_tip='v_min', validate='float')
         self.v_max_label, self.v_max_edits = createLabelEditObj('v_max:', tab2_content, 16, h_shift=2, tool_tip='v_max', validate='float')
-        # self.weight_distance_min_label, self.weight_distance_min_edits = createLabelEditObj('weight_distance_min', tab2_content, 17, tool_tip='weight_distance_min', validate='float')
-        # self.weight_distance_max_label, self.weight_distance_max_edits = createLabelEditObj('weight_distance_max', tab2_content, 17, h_shift=2, tool_tip='weight_distance_max', validate='float')
 
-        # tab3 = QWidget()
-        # tab3_content = QGridLayout()
-        # tab3.setLayout(tab3_content)
-        # ini_tabs.addTab(tab3, "Atmosphere")
-
-        # self.frag_no_label, self.frag_no_edits = createLabelEditObj('Fragmentation Number', tab3_content, 4, tool_tip='fragno', validate='int')
-
-        # tab4 = QWidget()
-        # tab4_content = QGridLayout()
-        # tab4.setLayout(tab4_content)
-        # ini_tabs.addTab(tab4, "Tweaks")
-
-        # self.high_f_label, self.high_f_edits = createLabelEditObj('Highlight Fragmentation:', tab4_content, 15, tool_tip='high_f')
-        # self.high_b_label, self.high_b_edits = createLabelEditObj('Highlight Ballistic:', tab4_content, 16, tool_tip='high_b')
-        # self.rm_stat_label, self.rm_stat_edits = createLabelEditObj('Remove Stations:', tab4_content, 17, tool_tip='rm_stat')
-
-        # tab5 = QWidget()
-        # tab5_content = QGridLayout()
-        # tab5.setLayout(tab5_content)
-        # ini_tabs.addTab(tab5, "Misc")
-
-        # self.extra_label = QLabel("Manually Added Stations")
-        # self.extra_point = QTableWidget(0, 8)
-        # tab5_content.addWidget(self.extra_point, 1, 1, 1, 2)
-        # tab5_content.addWidget(self.extra_label, 0, 1, 1, 2)
-        # self.extra_point.setHorizontalHeaderLabels(\
-        #     ['Station Network', 'Station Code', 'Latitude', 'Longitude', \
-        #     'Elevation', 'Station Display Name', 'Channel', 'File Name'])
-        # header = self.extra_point.horizontalHeader()
-        # header.setSectionResizeMode(QHeaderView.Stretch)
-        # self.extra_label.setToolTip(toolTime('stations'))
-        # self.extra_point_add = QPushButton("+")
-        # tab5_content.addWidget(self.extra_point_add, 2, 2, 1, 1)
-        # self.extra_point_add.clicked.connect(partial(changeRows, self.extra_point, 1))
-        # self.extra_point_min = QPushButton("-")
-        # tab5_content.addWidget(self.extra_point_min, 2, 1, 1, 1)
-        # self.extra_point_min.clicked.connect(partial(changeRows, self.extra_point, -1))
-
-        # tab6 = QWidget()
-        # tab6_content = QGridLayout()
-        # tab6.setLayout(tab6_content)
-        # ini_tabs.addTab(tab6, "Notes")
 
 
     def atmPlotProfile(self, lat, lon, var_typ='t', perturb='none'):
@@ -1850,7 +1768,7 @@ class SolutionGUI(QMainWindow):
         """
 
         self.v_sound = self.prefs.avg_sp_sound
-        self.t0 = self.bam.setup.t0
+        # self.t0 = self.bam.setup.t0
 
 
         # Filter out all stations for which the mseed file does not exist
@@ -2093,7 +2011,8 @@ class SolutionGUI(QMainWindow):
 
 
             mseed = stn.stream                
-  
+            
+            stream = 0
 
             for i in range(len(mseed)):
                 if mseed[i].stats.channel == 'BDF':
@@ -2120,14 +2039,9 @@ class SolutionGUI(QMainWindow):
                     stn.channel = 'SHZ'
                     stream = i
 
-            # Unpack miniSEED data
-            if stream >= len(mseed):
-                stream = 0
 
             delta = mseed[stream].stats.delta
             waveform_data = mseed[stream].data
-
-
 
 
             # Extract time
@@ -2196,10 +2110,10 @@ class SolutionGUI(QMainWindow):
             self.station_waveform[idx].setData(waveform_data*1000, time_data, pen=(255, 255, 255))
             self.make_picks_station_graph_canvas.addItem(self.station_waveform[idx])
 
-            if stn.metadata.code in self.bam.setup.high_f:
-                self.fragmentation_idx.append(idx)
-            if stn.metadata.code in self.bam.setup.high_b:
-                self.ballistic_idx.append(idx)
+            # if stn.metadata.code in self.bam.setup.high_f:
+            #     self.fragmentation_idx.append(idx)
+            # if stn.metadata.code in self.bam.setup.high_b:
+            #     self.ballistic_idx.append(idx)
 
 
         toa_line_time = np.linspace(0, max_time, 10)
@@ -2444,86 +2358,86 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen=self.colors[self.group_no], brush=self.colors[self.group_no], update=True)
             self.drawWaveform(station_no=self.current_station)
 
-        elif self.gnd_mot_picks.isChecked():
+        # elif self.gnd_mot_picks.isChecked():
 
-            # Open ground motion Dialog
-            current_chn_start = channel[0:2]
-            channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
+        #     # Open ground motion Dialog
+        #     current_chn_start = channel[0:2]
+        #     channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
             
-            # Check if zne/z12 is available
-            count = 0
+        #     # Check if zne/z12 is available
+        #     count = 0
 
-            for chn in channel_opts:
-                if current_chn_start in chn:
-                    count += 1
+        #     for chn in channel_opts:
+        #         if current_chn_start in chn:
+        #             count += 1
 
-            if count == 3:
+        #     if count == 3:
                 
-                self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
-                self.gr.setGeometry(QRect(100, 100, 1600, 700))
-                self.gr.show()
-            elif count < 3:
-                errorMessage("Not enough channel data for particle motion!", 2, \
-                        detail="Three orthogonal stations are needed to do particle motion!")
-            else:
-                errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
-                         2, detail="")
+        #         self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
+        #         self.gr.setGeometry(QRect(100, 100, 1600, 700))
+        #         self.gr.show()
+        #     elif count < 3:
+        #         errorMessage("Not enough channel data for particle motion!", 2, \
+        #                 detail="Three orthogonal stations are needed to do particle motion!")
+        #     else:
+        #         errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
+        #                  2, detail="")
 
-            save(self)
+        #     save(self)
 
-        elif self.bandpass_picks.isChecked():
-
-
-            # Open bandpass GUI
-            self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
-            self.bp.setGeometry(QRect(100, 100, 1200, 700))
-            self.bp.show()
-
-        elif self.polmap_picks.isChecked():
-
-            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
-            points = []
-
-            # Calculate all points here
-            for stn in self.bam.stn_list:
-
-                if not hasattr(stn, "polarization"):
-                    stn.polarization = Polarization()
-
-                if len(stn.polarization.azimuth) > 0: 
-
-                    D = propegateBackwards(ref_pos, stn, self.bam)
-
-                    for line in D:
-                        if not np.isnan(line[0]): 
-                            P = Position(0, 0, 0)
-                            P.x = line[0]
-                            P.y = line[1]
-                            P.z = line[2]
-                            P.pos_geo(ref_pos)
-                            S = Supracenter(P, line[3])
-                            points.append([S, stn.color])
-
-            # Pass grid to polmap
-            self.pm = Polmap(self.bam, points)
-            self.pm.setGeometry(QRect(100, 100, 1200, 700))
-            self.pm.show()
+        # elif self.bandpass_picks.isChecked():
 
 
-        elif self.annote_picks.isChecked():
+        #     # Open bandpass GUI
+        #     self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
+        #     self.bp.setGeometry(QRect(100, 100, 1200, 700))
+        #     self.bp.show()
 
-            # Create annotation
-            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+        # elif self.polmap_picks.isChecked():
 
-            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+        #     ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+        #     points = []
+
+        #     # Calculate all points here
+        #     for stn in self.bam.stn_list:
+
+        #         if not hasattr(stn, "polarization"):
+        #             stn.polarization = Polarization()
+
+        #         if len(stn.polarization.azimuth) > 0: 
+
+        #             D = propegateBackwards(ref_pos, stn, self.bam)
+
+        #             for line in D:
+        #                 if not np.isnan(line[0]): 
+        #                     P = Position(0, 0, 0)
+        #                     P.x = line[0]
+        #                     P.y = line[1]
+        #                     P.z = line[2]
+        #                     P.pos_geo(ref_pos)
+        #                     S = Supracenter(P, line[3])
+        #                     points.append([S, stn.color])
+
+        #     # Pass grid to polmap
+        #     self.pm = Polmap(self.bam, points)
+        #     self.pm.setGeometry(QRect(100, 100, 1200, 700))
+        #     self.pm.show()
 
 
-            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
-            self.a.setGeometry(QRect(400, 500, 400, 500))
-            self.a.show()
+        # elif self.annote_picks.isChecked():
+
+        #     # Create annotation
+        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+
+        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+
+
+        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
+        #     self.a.setGeometry(QRect(400, 500, 400, 500))
+        #     self.a.show()
             
-            self.drawWaveform()
-            self.alt_pressed = False
+        #     self.drawWaveform()
+        #     self.alt_pressed = False
             
 
     def addAnnotes(self):
