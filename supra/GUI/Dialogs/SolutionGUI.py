@@ -1124,33 +1124,6 @@ class SolutionGUI(QMainWindow):
                         info = info + str(element) + ','
                 f.write(info)
 
-        # if self.fatm_perts.isChecked():
-        #     dataset = parseWeather(self.setup)
-        #     for ptb_n in range(self.setup.perturb_times):
-        #         sounding_p = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-        #         zProfile, _ = getWeather(np.array([self.setup.lat_centre, self.setup.lon_centre, 73721.58]), \
-        #                                  np.array([self.setup.lat_centre, self.setup.lon_centre, 100]), \
-        #                                  self.setup.weather_type, \
-        #                                 [self.setup.lat_centre, self.setup.lon_centre, 100], \
-        #                                 copy.copy(sounding_p), convert=False)
-        #         zProfile = zInterp(100, 73721.58, zProfile, div=100)
-        #         zProfile_ext = []
-        #         for line in zProfile:
-        #             zProfile_ext.append((line[0]/1000, line[1], line[2], line[3], estPressure(line[0])/100))
-                    
-        #             with open(str(filename) + str(ptb_n), 'w+') as f:
-            
-        #                 f.write(header)
-
-        #                 for line in zProfile_ext:
-        #                     info = ''
-        #                     for element in line:
-        #                         if element == line[-1]:
-        #                             info = info + str(element) + '\n'
-        #                         else:
-        #                             info = info + str(element) + ','
-        #                     f.write(info)
-
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
 
@@ -1582,18 +1555,18 @@ class SolutionGUI(QMainWindow):
         ini_tabs.addTab(tab1, "General")
 
         self.fireball_name_label, self.fireball_name_edits = createLabelEditObj('Fireball Name:', tab1_content, 1, tool_tip='fireball_name')
-        self.get_data_label, self.get_data_edits = createComboBoxObj('Get Data: ', tab1_content, 2, items=['False', 'True'], tool_tip='get_data')
-        self.run_mode_label, self.run_mode_edits = createComboBoxObj('Run Mode: ', tab1_content, 3, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
-        self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = createFileSearchObj('Arrival Times:', tab1_content, 6, width=1, h_shift=0, tool_tip='arrival_times_file')
-        self.arrival_times_buton.clicked.connect(partial(fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
+        # self.get_data_label, self.get_data_edits = createComboBoxObj('Get Data: ', tab1_content, 2, items=['False', 'True'], tool_tip='get_data')
+        # self.run_mode_label, self.run_mode_edits = createComboBoxObj('Run Mode: ', tab1_content, 3, items=['Search', 'Replot', 'Manual'], tool_tip='run_mode')
+        # self.arrival_times_label, self.arrival_times_edits, self.arrival_times_buton = createFileSearchObj('Arrival Times:', tab1_content, 6, width=1, h_shift=0, tool_tip='arrival_times_file')
+        # self.arrival_times_buton.clicked.connect(partial(fileSearch, ['Numpy Array (*.npy)'], self.arrival_times_edits))
         # self.sounding_file_label, self.sounding_file_edits, self.sounding_file_buton = createFileSearchObj('Sounding File:', tab1_content, 7, width=1, h_shift=0, tool_tip='sounding_file')
         # self.sounding_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)', 'HDF (*.HDF)', 'CSV (*.csv)', 'TXT (*.txt)'], self.sounding_file_edits))
         # self.perturbation_file_label, self.perturbation_file_edits, self.perturbation_file_buton = createFileSearchObj('Perturbation', tab1_content, 8, width=1, h_shift=0, tool_tip='perturbation_spread_file')
         # self.perturbation_file_buton.clicked.connect(partial(fileSearch, ['NetCDF (*.nc)'], self.perturbation_file_edits))
         self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 9, width=1, h_shift=0, tool_tip='station_picks_file')
         self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
-        self.points_name_label, self.points_name_edits, self.points_name_buton = createFileSearchObj('Replot Points File: ', tab1_content, 10, width=1, h_shift=0, tool_tip='points_name')
-        self.points_name_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.points_name_edits))
+        # self.points_name_label, self.points_name_edits, self.points_name_buton = createFileSearchObj('Replot Points File: ', tab1_content, 10, width=1, h_shift=0, tool_tip='points_name')
+        # self.points_name_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.points_name_edits))
         self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre', validate='float')
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
         self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius', validate='float')
@@ -1615,25 +1588,25 @@ class SolutionGUI(QMainWindow):
         tab2.setLayout(tab2_content)
         ini_tabs.addTab(tab2, "Sources")
 
-        self.fragmentation_point_label = QLabel("Fragmentation Point(s)")
-        self.fragmentation_point = QTableWidget(0, 4)
-        tab2_content.addWidget(self.fragmentation_point, 1, 1, 1, 4)
-        tab2_content.addWidget(self.fragmentation_point_label, 0, 1, 1, 2)
-        self.fragmentation_csv = QPushButton("Load Points")
-        tab2_content.addWidget(self.fragmentation_csv, 0, 3, 1, 1)
-        self.fragmentation_csv.clicked.connect(self.loadFrags)
-        self.fragmentation_point.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
-        header = self.fragmentation_point.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        self.fragmentation_point_label.setToolTip(toolTime('fragmentation_point'))
-        self.fragmentation_point_add = QPushButton("+")
-        tab2_content.addWidget(self.fragmentation_point_add, 2, 3, 1, 2)
-        self.fragmentation_point_add.clicked.connect(partial(changeRows, self.fragmentation_point, 1))
-        self.fragmentation_point_add.setToolTip("Add row")
-        self.fragmentation_point_min = QPushButton("-")
-        tab2_content.addWidget(self.fragmentation_point_min, 2, 1, 1, 2)
-        self.fragmentation_point_min.clicked.connect(partial(changeRows, self.fragmentation_point, -1))
-        self.fragmentation_point_min.setToolTip("Remove row")
+        # self.fragmentation_point_label = QLabel("Fragmentation Point(s)")
+        # self.fragmentation_point = QTableWidget(0, 4)
+        # tab2_content.addWidget(self.fragmentation_point, 1, 1, 1, 4)
+        # tab2_content.addWidget(self.fragmentation_point_label, 0, 1, 1, 2)
+        # self.fragmentation_csv = QPushButton("Load Points")
+        # tab2_content.addWidget(self.fragmentation_csv, 0, 3, 1, 1)
+        # self.fragmentation_csv.clicked.connect(self.loadFrags)
+        # self.fragmentation_point.setHorizontalHeaderLabels(['Latitude', 'Longitude', 'Elevation', 'Time'])
+        # header = self.fragmentation_point.horizontalHeader()
+        # header.setSectionResizeMode(QHeaderView.Stretch)
+        # self.fragmentation_point_label.setToolTip(toolTime('fragmentation_point'))
+        # self.fragmentation_point_add = QPushButton("+")
+        # tab2_content.addWidget(self.fragmentation_point_add, 2, 3, 1, 2)
+        # self.fragmentation_point_add.clicked.connect(partial(changeRows, self.fragmentation_point, 1))
+        # self.fragmentation_point_add.setToolTip("Add row")
+        # self.fragmentation_point_min = QPushButton("-")
+        # tab2_content.addWidget(self.fragmentation_point_min, 2, 1, 1, 2)
+        # self.fragmentation_point_min.clicked.connect(partial(changeRows, self.fragmentation_point, -1))
+        # self.fragmentation_point_min.setToolTip("Remove row")
         self.manual_label = QLabel("Manual Fragmentation Search:")
         tab2_content.addWidget(self.manual_label, 4, 1, 1, 4)
         self.manual_label.setToolTip("manual_fragmentation_search")
@@ -1671,51 +1644,51 @@ class SolutionGUI(QMainWindow):
         self.t_max_label, self.t_max_edits = createLabelEditObj('t_max:', tab2_content, 15, h_shift=2, tool_tip='t_max', validate='float')
         self.v_min_label, self.v_min_edits = createLabelEditObj('v_min:', tab2_content, 16, tool_tip='v_min', validate='float')
         self.v_max_label, self.v_max_edits = createLabelEditObj('v_max:', tab2_content, 16, h_shift=2, tool_tip='v_max', validate='float')
-        self.weight_distance_min_label, self.weight_distance_min_edits = createLabelEditObj('weight_distance_min', tab2_content, 17, tool_tip='weight_distance_min', validate='float')
-        self.weight_distance_max_label, self.weight_distance_max_edits = createLabelEditObj('weight_distance_max', tab2_content, 17, h_shift=2, tool_tip='weight_distance_max', validate='float')
+        # self.weight_distance_min_label, self.weight_distance_min_edits = createLabelEditObj('weight_distance_min', tab2_content, 17, tool_tip='weight_distance_min', validate='float')
+        # self.weight_distance_max_label, self.weight_distance_max_edits = createLabelEditObj('weight_distance_max', tab2_content, 17, h_shift=2, tool_tip='weight_distance_max', validate='float')
 
-        tab3 = QWidget()
-        tab3_content = QGridLayout()
-        tab3.setLayout(tab3_content)
-        ini_tabs.addTab(tab3, "Atmosphere")
+        # tab3 = QWidget()
+        # tab3_content = QGridLayout()
+        # tab3.setLayout(tab3_content)
+        # ini_tabs.addTab(tab3, "Atmosphere")
 
-        self.frag_no_label, self.frag_no_edits = createLabelEditObj('Fragmentation Number', tab3_content, 4, tool_tip='fragno', validate='int')
+        # self.frag_no_label, self.frag_no_edits = createLabelEditObj('Fragmentation Number', tab3_content, 4, tool_tip='fragno', validate='int')
 
-        tab4 = QWidget()
-        tab4_content = QGridLayout()
-        tab4.setLayout(tab4_content)
-        ini_tabs.addTab(tab4, "Tweaks")
+        # tab4 = QWidget()
+        # tab4_content = QGridLayout()
+        # tab4.setLayout(tab4_content)
+        # ini_tabs.addTab(tab4, "Tweaks")
 
-        self.high_f_label, self.high_f_edits = createLabelEditObj('Highlight Fragmentation:', tab4_content, 15, tool_tip='high_f')
-        self.high_b_label, self.high_b_edits = createLabelEditObj('Highlight Ballistic:', tab4_content, 16, tool_tip='high_b')
-        self.rm_stat_label, self.rm_stat_edits = createLabelEditObj('Remove Stations:', tab4_content, 17, tool_tip='rm_stat')
+        # self.high_f_label, self.high_f_edits = createLabelEditObj('Highlight Fragmentation:', tab4_content, 15, tool_tip='high_f')
+        # self.high_b_label, self.high_b_edits = createLabelEditObj('Highlight Ballistic:', tab4_content, 16, tool_tip='high_b')
+        # self.rm_stat_label, self.rm_stat_edits = createLabelEditObj('Remove Stations:', tab4_content, 17, tool_tip='rm_stat')
 
-        tab5 = QWidget()
-        tab5_content = QGridLayout()
-        tab5.setLayout(tab5_content)
-        ini_tabs.addTab(tab5, "Misc")
+        # tab5 = QWidget()
+        # tab5_content = QGridLayout()
+        # tab5.setLayout(tab5_content)
+        # ini_tabs.addTab(tab5, "Misc")
 
-        self.extra_label = QLabel("Manually Added Stations")
-        self.extra_point = QTableWidget(0, 8)
-        tab5_content.addWidget(self.extra_point, 1, 1, 1, 2)
-        tab5_content.addWidget(self.extra_label, 0, 1, 1, 2)
-        self.extra_point.setHorizontalHeaderLabels(\
-            ['Station Network', 'Station Code', 'Latitude', 'Longitude', \
-            'Elevation', 'Station Display Name', 'Channel', 'File Name'])
-        header = self.extra_point.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.Stretch)
-        self.extra_label.setToolTip(toolTime('stations'))
-        self.extra_point_add = QPushButton("+")
-        tab5_content.addWidget(self.extra_point_add, 2, 2, 1, 1)
-        self.extra_point_add.clicked.connect(partial(changeRows, self.extra_point, 1))
-        self.extra_point_min = QPushButton("-")
-        tab5_content.addWidget(self.extra_point_min, 2, 1, 1, 1)
-        self.extra_point_min.clicked.connect(partial(changeRows, self.extra_point, -1))
+        # self.extra_label = QLabel("Manually Added Stations")
+        # self.extra_point = QTableWidget(0, 8)
+        # tab5_content.addWidget(self.extra_point, 1, 1, 1, 2)
+        # tab5_content.addWidget(self.extra_label, 0, 1, 1, 2)
+        # self.extra_point.setHorizontalHeaderLabels(\
+        #     ['Station Network', 'Station Code', 'Latitude', 'Longitude', \
+        #     'Elevation', 'Station Display Name', 'Channel', 'File Name'])
+        # header = self.extra_point.horizontalHeader()
+        # header.setSectionResizeMode(QHeaderView.Stretch)
+        # self.extra_label.setToolTip(toolTime('stations'))
+        # self.extra_point_add = QPushButton("+")
+        # tab5_content.addWidget(self.extra_point_add, 2, 2, 1, 1)
+        # self.extra_point_add.clicked.connect(partial(changeRows, self.extra_point, 1))
+        # self.extra_point_min = QPushButton("-")
+        # tab5_content.addWidget(self.extra_point_min, 2, 1, 1, 1)
+        # self.extra_point_min.clicked.connect(partial(changeRows, self.extra_point, -1))
 
-        tab6 = QWidget()
-        tab6_content = QGridLayout()
-        tab6.setLayout(tab6_content)
-        ini_tabs.addTab(tab6, "Notes")
+        # tab6 = QWidget()
+        # tab6_content = QGridLayout()
+        # tab6.setLayout(tab6_content)
+        # ini_tabs.addTab(tab6, "Notes")
 
 
     def atmPlotProfile(self, lat, lon, var_typ='t', perturb='none'):

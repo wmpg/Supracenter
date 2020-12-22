@@ -627,9 +627,9 @@ def addMakePicksWidgets(obj):
     check_group_layout.addWidget(obj.show_ball)
     obj.show_ball.stateChanged.connect(partial(obj.updatePlot, True))
 
-    obj.show_prec = QCheckBox('Show Precursors')
-    check_group_layout.addWidget(obj.show_prec)
-    obj.show_prec.stateChanged.connect(partial(obj.updatePlot, True))
+    # obj.show_prec = QCheckBox('Show Precursors')
+    # check_group_layout.addWidget(obj.show_prec)
+    # obj.show_prec.stateChanged.connect(partial(obj.updatePlot, True))
 
     # obj.rm_resp = QCheckBox('Remove Response (EXPERIMENTAL)')
     # check_group_layout.addWidget(obj.rm_resp)
@@ -642,8 +642,8 @@ def addMakePicksWidgets(obj):
     obj.show_height = QCheckBox('Show Height Prediction')
     check_group_layout.addWidget(obj.show_height)
 
-    obj.solve_height = QCheckBox('Solve Heights')
-    check_group_layout.addWidget(obj.solve_height)
+    # obj.solve_height = QCheckBox('Solve Heights')
+    # check_group_layout.addWidget(obj.solve_height)
 
     make_picks_plot_tools_group = QGroupBox("Plot Tools")
     make_picks_control_panel.addWidget(make_picks_plot_tools_group)
