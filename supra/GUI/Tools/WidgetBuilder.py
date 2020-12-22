@@ -33,7 +33,7 @@ def initTabs(obj):
     addSupraWidgets(obj)
     addSeisTrajWidgets(obj)
     addFetchATMWidgets(obj)
-    addProfileWidgets(obj)
+    # addProfileWidgets(obj)
     # addRayTracerWidgets(obj)
     # addRefineWidgets(obj)
 

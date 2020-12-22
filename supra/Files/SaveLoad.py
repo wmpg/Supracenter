@@ -7,6 +7,7 @@ from supra.Utils.Formatting import *
 from supra.Utils.TryObj import *
 from supra.Utils.Classes import *
 from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.ReportHelper import byteify
 
 def openPkl(filename):
 
@@ -15,20 +16,25 @@ def openPkl(filename):
             pkl = pickle.load(f)
         return pkl
     except EOFError as e:
-        errorMessage('Unable to read file', 2, info='file: {:}'.format(filename[0]), detail='{:}'.format(e))
+        errorMessage('Unable to read file', 2, info='File: {:}'.format(filename[0]), detail='{:}'.format(e))
         return None
+    except TypeError as e:
+        errorMessage('Unable to read file', 2, info="File not of readable type")
+        return None
+    except PermissionError as e:
+        errorMessage('Unable to read file', 2, info='File "{:}" is unable to be read. A folder may have been selected.'.format(filename), detail='{:}'.format(e))
 
 def saveSetup(obj):
 
     setup = Config()
 
     setup.fireball_name = obj.fireball_name_edits.text()
-    setup.get_data = tryBool(obj.get_data_edits.currentText())
-    setup.run_mode = obj.run_mode_edits.currentText()
+    setup.get_data = True
+    # setup.run_mode = obj.run_mode_edits.currentText()
 
-    setup.arrival_times_file = obj.arrival_times_edits.text()
+    # setup.arrival_times_file = obj.arrival_times_edits.text()
     setup.station_picks_file = obj.station_picks_edits.text()
-    setup.replot_points_file = obj.points_name_edits.text()
+    # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
     setup.lon_centre = tryFloat(obj.lon_centre_edits.text())
@@ -36,21 +42,21 @@ def saveSetup(obj):
     setup.fireball_datetime = obj.fireball_datetime_edits.dateTime().toPyDateTime()
     obj.fatm_datetime_edits.setDateTime(setup.fireball_datetime)
 
-    setup.t0 = tryFloat(obj.t0_edits.text())
-    setup.v = tryFloat(obj.v_edits.text())
-    setup.azimuth = tryAngle(obj.azim_edits.text())
-    setup.zenith = tryAngle(obj.zangle_edits.text())
-    setup.lat_i = tryFloat(obj.lat_i_edits.text())
-    setup.lon_i = tryFloat(obj.lon_i_edits.text())
-    setup.elev_i = tryFloat(obj.elev_i_edits.text())
-    setup.lat_f = tryFloat(obj.lat_f_edits.text())
-    setup.lon_f = tryFloat(obj.lon_f_edits.text())
-    setup.elev_f = tryFloat(obj.elev_f_edits.text())
+    # setup.t0 = tryFloat(obj.t0_edits.text())
+    # setup.v = tryFloat(obj.v_edits.text())
+    # setup.azimuth = tryAngle(obj.azim_edits.text())
+    # setup.zenith = tryAngle(obj.zangle_edits.text())
+    # setup.lat_i = tryFloat(obj.lat_i_edits.text())
+    # setup.lon_i = tryFloat(obj.lon_i_edits.text())
+    # setup.elev_i = tryFloat(obj.elev_i_edits.text())
+    # setup.lat_f = tryFloat(obj.lat_f_edits.text())
+    # setup.lon_f = tryFloat(obj.lon_f_edits.text())
+    # setup.elev_f = tryFloat(obj.elev_f_edits.text())
 
-    setup.pos_i = tryPosition(setup.lat_i, setup.lon_i, setup.elev_i)
-    setup.pos_f = tryPosition(setup.lat_f, setup.lon_f, setup.elev_f)
+    # setup.pos_i = tryPosition(setup.lat_i, setup.lon_i, setup.elev_i)
+    # setup.pos_f = tryPosition(setup.lat_f, setup.lon_f, setup.elev_f)
 
-    setup.v_f = tryFloat(obj.vf_edits.text())
+    # setup.v_f = tryFloat(obj.vf_edits.text())
 
     # try:
     #     setup.trajectory = tryTrajectory(setup.t0, setup.v, setup.azimuth, setup.zenith, setup.pos_i, setup.pos_f, v_f=setup.v_f)
@@ -83,8 +89,8 @@ def saveSetup(obj):
     setup.t_max = tryFloat(obj.t_max_edits.text())
     setup.v_min = tryFloat(obj.v_min_edits.text())
     setup.v_max = tryFloat(obj.v_max_edits.text())
-    setup.weight_distance_min = tryFloat(obj.weight_distance_min_edits.text())
-    setup.weight_distance_max = tryFloat(obj.weight_distance_max_edits.text())
+    # setup.weight_distance_min = tryFloat(obj.weight_distance_min_edits.text())
+    # setup.weight_distance_max = tryFloat(obj.weight_distance_max_edits.text())
 
     setup.pos_min = tryPosition(setup.lat_min, setup.lon_min, setup.elev_min)
     setup.pos_max = tryPosition(setup.lat_max, setup.lon_max, setup.elev_max)
@@ -100,39 +106,39 @@ def saveSetup(obj):
     except AttributeError as e:
         errorMessage("Unable to build trajectory with given data", 0, info="Ignore if not using minimum or maximum trajectories", detail='{:}'.format(e))
 
-    setup.observe_frag_no = tryInt(obj.frag_no_edits.text())
+    # setup.observe_frag_no = tryInt(obj.frag_no_edits.text())
 
-    setup.high_f = obj.high_f_edits.text()
-    setup.high_b = obj.high_b_edits.text()
-    setup.rm_stat = obj.rm_stat_edits.text()
+    # setup.high_f = obj.high_f_edits.text()
+    # setup.high_b = obj.high_b_edits.text()
+    # setup.rm_stat = obj.rm_stat_edits.text()
 
-    setup.stations = []
-    temp_stats = fromTable(obj.extra_point)
-    for stn in temp_stats:
-        try:
-            setup.stations.append(Station(stn[0], stn[1], Position(stn[2], stn[3], stn[4]), stn[5], stn[7]))
-        except TypeError:
-            print("WARNING: Station: {:}-{:} could not be read".format(stn[0], stn[1]))
+    # setup.stations = []
+    # temp_stats = fromTable(obj.extra_point)
+    # for stn in temp_stats:
+    #     try:
+    #         setup.stations.append(Station(stn[0], stn[1], Position(stn[2], stn[3], stn[4]), stn[5], stn[7]))
+    #     except TypeError:
+    #         print("WARNING: Station: {:}-{:} could not be read".format(stn[0], stn[1]))
 
     return setup
 
 def loadDisplay(setup, obj):
 
     obj.fireball_name_edits.setText(setup.fireball_name)
-    comboSet(obj.get_data_edits, setup.get_data)
-    comboSet(obj.run_mode_edits, setup.run_mode)
+    # comboSet(obj.get_data_edits, setup.get_data)
+    # comboSet(obj.run_mode_edits, setup.run_mode)
 
-    obj.arrival_times_edits.setText(setup.arrival_times_file)
+    # obj.arrival_times_edits.setText(setup.arrival_times_file)
     obj.station_picks_edits.setText(setup.station_picks_file)
-    obj.points_name_edits.setText(setup.replot_points_file)
+    # obj.points_name_edits.setText(setup.replot_points_file)
 
-    obj.lat_centre_edits.setText(str(setup.lat_centre))
-    obj.lon_centre_edits.setText(str(setup.lon_centre))
-    obj.fatm_start_lat.setText(str(setup.lat_centre))
-    obj.fatm_start_lon.setText(str(setup.lon_centre))
-    obj.fatm_end_lat.setText(str(setup.lat_centre))
-    obj.fatm_end_lon.setText(str(setup.lon_centre))
-    obj.deg_radius_edits.setText(str(setup.deg_radius))
+    # obj.lat_centre_edits.setText(str(setup.lat_centre))
+    # obj.lon_centre_edits.setText(str(setup.lon_centre))
+    # obj.fatm_start_lat.setText(str(setup.lat_centre))
+    # obj.fatm_start_lon.setText(str(setup.lon_centre))
+    # obj.fatm_end_lat.setText(str(setup.lat_centre))
+    # obj.fatm_end_lon.setText(str(setup.lon_centre))
+    # obj.deg_radius_edits.setText(str(setup.deg_radius))
     obj.fireball_datetime_edits.setDateTime(setup.fireball_datetime)
     obj.fatm_datetime_edits.setDateTime(setup.fireball_datetime)
 
@@ -147,7 +153,7 @@ def loadDisplay(setup, obj):
     # obj.lon_f_edits.setText(str(setup.trajectory.pos_f.lon))
     # obj.elev_f_edits.setText(str(setup.trajectory.pos_f.elev))
 
-    obj.vf_edits.setText(str(setup.v_f))
+    # obj.vf_edits.setText(str(setup.v_f))
 
     # frag_list = []
     # for element in setup.fragmentation_point:
@@ -184,14 +190,14 @@ def loadDisplay(setup, obj):
     obj.t_max_edits.setText(str(setup.traj_max.t))
     obj.v_min_edits.setText(str(setup.traj_min.v))
     obj.v_max_edits.setText(str(setup.traj_max.v))
-    obj.weight_distance_min_edits.setText(str(setup.weight_distance_min))
-    obj.weight_distance_max_edits.setText(str(setup.weight_distance_max))
+    # obj.weight_distance_min_edits.setText(str(setup.weight_distance_min))
+    # obj.weight_distance_max_edits.setText(str(setup.weight_distance_max))
 
-    obj.frag_no_edits.setText(str(setup.observe_frag_no))
+    # obj.frag_no_edits.setText(str(setup.observe_frag_no))
 
-    obj.high_f_edits.setText(str(setup.high_f))
-    obj.high_b_edits.setText(str(setup.high_b))
-    obj.rm_stat_edits.setText(str(setup.rm_stat))
+    # obj.high_f_edits.setText(str(setup.high_f))
+    # obj.high_b_edits.setText(str(setup.high_b))
+    # obj.rm_stat_edits.setText(str(setup.rm_stat))
 
     # toTableFromStn(obj.extra_point, setup.stations)
 
@@ -231,6 +237,10 @@ def loadAtmos(bam, obj):
 
 def save(obj):
     
+    if len(obj.fireball_name_edits.text()) == 0:
+        errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
+        return None
+
     #save setup
     obj.bam.setup = saveSetup(obj)
 
@@ -240,8 +250,12 @@ def save(obj):
     with open(obj.bam.file_name, 'wb') as f:
         pickle.dump(obj.bam, f)
 
-    print('Program Status: Setup Saved')
+    file_size = byteify(os.stat(obj.bam.file_name).st_size)
+
+    print('STATUS: Setup Saved')
     loadDisplay(obj.bam.setup, obj)
+    errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, title="Saved")
+
 
 def load(obj):
 
@@ -250,6 +264,10 @@ def load(obj):
 
     # bam file to obj
     bam = openPkl(filename)
+
+    if bam is None:
+        print("STATUS: No file has been loaded")
+        return None
 
     # save filename for autosaving feature
     bam.file_name = filename
@@ -260,4 +278,5 @@ def load(obj):
     # loadAtmos(bam, obj)
     # print(bam.stats)
     obj.bam = bam
+    print("STATUS: {:} has been loaded".format(bam.file_name))
     

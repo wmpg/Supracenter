@@ -59,7 +59,7 @@ class PreferenceWindow(QWidget):
         atmos_tab, atmos_tab_layout = createTab(tab_widget, 'Atmospheric')
         self.wind_en = createToggle('Enable Winds', atmos_tab_layout, 0, width=1, h_shift=1, tool_tip='')
         self.pert_en = createToggle('Enable Perturbations', atmos_tab_layout, 1, width=1, h_shift=1, tool_tip='')
-        _, self.atm_type = createComboBoxObj('Atmosphere Type', atmos_tab_layout, 2, items=['none', 'ecmwf', 'radio'], width=1, h_shift=0, tool_tip='')
+        _, self.atm_type = createComboBoxObj('Atmosphere Type', atmos_tab_layout, 2, items=['none', 'ecmwf'], width=1, h_shift=0, tool_tip='')
         _, self.pert_type = createComboBoxObj('Perturbation Type', atmos_tab_layout, 3, items=['none', 'spread'], width=1, h_shift=0, tool_tip='')
         _, self.pert_num = createLabelEditObj('Perturb Times', atmos_tab_layout, 4, width=1, h_shift=0, tool_tip='', validate='int', default_txt='1')
 
