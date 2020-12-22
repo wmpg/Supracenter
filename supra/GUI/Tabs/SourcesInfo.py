@@ -27,7 +27,7 @@ def loadSource(obj):
     clearSource(obj)
 
     for src in obj.bam.source_list:
-
+        print(src.source)
         widget = SourceEx(src)
         obj.sources_table_layout.addWidget(widget)
 

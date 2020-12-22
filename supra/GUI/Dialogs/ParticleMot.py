@@ -108,8 +108,39 @@ def jurkevicWindows(z, n, e, stats, window_size=5, window_overlap=1.0, bandpass=
 
     return az_list, t
 
+# class AzimuthWindow(QWidget):
 
-    
+#     def __init__(self):
+#         QWidget.__init__(self)
+
+#         self.buildGUI()
+
+#     def buildGUI(self):
+#         self.setWindowTitle('Particle Motion')
+
+#         app_icon = QtGui.QIcon()
+#         app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'BAM_no_wave.png'), QtCore.QSize(16, 16))
+#         self.setWindowIcon(app_icon)
+        
+#         p = self.palette()
+#         p.setColor(self.backgroundRole(), Qt.black)
+#         self.setPalette(p)
+
+#         theme(self)
+
+#         layout = QGridLayout()
+#         self.setLayout(layout)
+
+#         _, self.azimuthedits = createLabelEditObj("Azimuth", layout, 0, validate='float')
+#         _, self.azimutherroredits = createLabelEditObj("Azimuth Error", layout, 1, validate='float')
+#         self.close_button = createButton("Mark", layout, 2, 1, self.onClose, args=[])
+
+#     def onClose(self):
+
+#         self.azimuth = float(self.azimuthedits.text())
+#         self.azimuth_err = float(self.azimutherroredits.text())
+#         # self.close()
+
 class ParticleMotion(QWidget):
 
     def __init__(self, stn_map_canvas, bam, stn, channel, t_arrival=0, group_no=0):
@@ -468,14 +499,27 @@ class ParticleMotion(QWidget):
         if not hasattr(self.stn, "polarization"):
             self.stn.polarization = Polarization()
 
-        self.stn.polarization.azimuth.append(self.azimuth)
-        self.stn.polarization.azimuth_error.append(self.az_error)
+        if self.plot_type.currentText() != 'Azimuth Colourmap':
+            
+            self.stn.polarization.azimuth.append(self.azimuth)
+            self.stn.polarization.azimuth_error.append(self.az_error)
+        
+        else:
+
+            az =     float(input("Please enter in azimuth value: "))
+            az_err = float(input("Please enter in azimuth error: "))
+
+            self.stn.polarization.azimuth.append(az)
+            self.stn.polarization.azimuth_error.append(az_err)
+
 
         # Time is start of the region
         self.stn.polarization.time.append(self.selector[0].getRegion()[0])
 
         a = Color()
         self.stn.color = a.generate() 
+
+        print(self.stn.polarization.azimuth, self.stn.polarization.azimuth_error)
 
         self.close()
 
@@ -539,6 +583,7 @@ class ParticleMotion(QWidget):
             st_data = [None]*3
             ti_data = [None]*3
             raw_data = [None]*3
+            noise_data = [None]*3
 
             for i in range(len(self.condensed_stream)):
 
@@ -585,6 +630,7 @@ class ParticleMotion(QWidget):
                 pt_1 = int(pt_0 + num_of_pts_in_roi)
 
                 raw_data[i] = waveform_data[pt_0:pt_1]
+                noise_data[i] = waveform_data[0:(pt_1-pt_0)]
 
                 #####
                 # Bandpass
@@ -613,6 +659,7 @@ class ParticleMotion(QWidget):
                 ti_data[i] = time_data[pt_0:pt_1]
 
             e_r, n_r, z_r = raw_data[0], raw_data[1], raw_data[2]
+            e_n, n_n, z_n = noise_data[0], noise_data[1], noise_data[2]
             e, n, z = st_data[0], st_data[1], st_data[2]
             et, nt, zt = ti_data[0], ti_data[1], ti_data[2]        
 
@@ -739,7 +786,6 @@ class ParticleMotion(QWidget):
                 for i in range(len(lows)):
                     bndps.append([lows[i], highs[i]])
 
-                print(bndps)
                 total_list = []
                 for bb, b in enumerate(bndps):
                     az_list, t_list = jurkevicWindows(z_r, n_r, e_r, st.stats, window_size=win_len, window_overlap=1.0, bandpass=b)
@@ -816,13 +862,21 @@ class ParticleMotion(QWidget):
             sps = st.stats.sampling_rate
             dt = 1/st.stats.sampling_rate
             length = len(z_r)
-            freq = np.arange(1e-4, length)*sps/length
+            freq = np.linspace(1/len_of_region, (sps/2), length)*sps/length
             
             FAS = abs(fft(z_r))
+            FAS_n = abs(fft(z_n))
             fas_data = pg.PlotDataItem()
-            fas_data.setData(x=freq, y=FAS)
+            fas_data.setData(x=freq, y=FAS, pen=(255, 0, 0))
+
+            fas_noise_data = pg.PlotDataItem()
+            fas_noise_data.setData(x=freq, y=FAS_n, pen=(255, 255, 255))
+
+            fas_diff_data = pg.PlotDataItem()
+            fas_diff_data.setData(x=freq, y=np.abs(FAS/FAS_n), pen=(0, 125, 255))
 
             self.waveform_fft_canvas.addItem(fas_data)
-
+            self.waveform_fft_canvas.addItem(fas_noise_data)
+            self.waveform_fft_canvas.addItem(fas_diff_data)
 
             # self.rescalePlot()

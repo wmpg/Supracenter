@@ -706,7 +706,7 @@ class SolutionGUI(QMainWindow):
         import matplotlib.tri as tri
 
         A = np.array([lon, lat, Z])
-        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Final_Fragmentation_Winds", A)
+        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Ball_Winds_final", A)
 
         # plt.scatter(lon, lat)
         plt.tricontour(lon, lat, Z, levels=14, linewidths=0.5, colors='w')
@@ -1055,6 +1055,8 @@ class SolutionGUI(QMainWindow):
         
         filename = QFileDialog.getSaveFileName(self, 'Save File', '', 'Text File (*.txt)')
 
+        self.setup = self.bam.setup
+
         self.setup.lat_centre = tryFloat(self.fatm_end_lat.text())
         self.setup.lon_centre = tryFloat(self.fatm_end_lon.text())
         self.setup.sounding_file = self.fatm_name_edits.text()
@@ -1062,14 +1064,14 @@ class SolutionGUI(QMainWindow):
 
         variables = []
 
-        if self.setup.weather_type == 'ecmwf':
+        if self.prefs.atm_type == 'ecmwf':
             if self.fatm_temp.isChecked():
                 variables.append('t')
             if self.fatm_u_wind.isChecked():
                 variables.append('u')
             if self.fatm_v_wind.isChecked():
                 variables.append('v')
-        elif self.setup.weather_type == 'merra':
+        elif self.prefs.atm_type == 'merra':
             if self.fatm_temp.isChecked():
                 variables.append('T')
             if self.fatm_u_wind.isChecked():
@@ -1087,8 +1089,15 @@ class SolutionGUI(QMainWindow):
             errorMessage('Lat centre and/or lon centre are not floats or are not defined!', 2, detail='{:}'.format(e))
             return None
 
-        sounding = parseGeneralECMWF(self.setup.weather_type, self.setup.sounding_file, self.setup.lat_centre, \
-                        self.setup.lon_centre, atm_time, variables)
+        lat = [tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_end_lat.text())]
+        lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
+        elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
+
+
+        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+
+        # sounding = parseGeneralECMWF(self.prefs.atm_type, self.setup.sounding_file, self.setup.lat_centre, \
+        #                 self.setup.lon_centre, atm_time, variables)
 
         filename = checkExt(filename[0], '.txt')
 
@@ -1115,32 +1124,32 @@ class SolutionGUI(QMainWindow):
                         info = info + str(element) + ','
                 f.write(info)
 
-        if self.fatm_perts.isChecked():
-            dataset = parseWeather(self.setup)
-            for ptb_n in range(self.setup.perturb_times):
-                sounding_p = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-                zProfile, _ = getWeather(np.array([self.setup.lat_centre, self.setup.lon_centre, 73721.58]), \
-                                         np.array([self.setup.lat_centre, self.setup.lon_centre, 100]), \
-                                         self.setup.weather_type, \
-                                        [self.setup.lat_centre, self.setup.lon_centre, 100], \
-                                        copy.copy(sounding_p), convert=False)
-                zProfile = zInterp(100, 73721.58, zProfile, div=100)
-                zProfile_ext = []
-                for line in zProfile:
-                    zProfile_ext.append((line[0]/1000, line[1], line[2], line[3], estPressure(line[0])/100))
+        # if self.fatm_perts.isChecked():
+        #     dataset = parseWeather(self.setup)
+        #     for ptb_n in range(self.setup.perturb_times):
+        #         sounding_p = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+        #         zProfile, _ = getWeather(np.array([self.setup.lat_centre, self.setup.lon_centre, 73721.58]), \
+        #                                  np.array([self.setup.lat_centre, self.setup.lon_centre, 100]), \
+        #                                  self.setup.weather_type, \
+        #                                 [self.setup.lat_centre, self.setup.lon_centre, 100], \
+        #                                 copy.copy(sounding_p), convert=False)
+        #         zProfile = zInterp(100, 73721.58, zProfile, div=100)
+        #         zProfile_ext = []
+        #         for line in zProfile:
+        #             zProfile_ext.append((line[0]/1000, line[1], line[2], line[3], estPressure(line[0])/100))
                     
-                    with open(str(filename) + str(ptb_n), 'w+') as f:
+        #             with open(str(filename) + str(ptb_n), 'w+') as f:
             
-                        f.write(header)
+        #                 f.write(header)
 
-                        for line in zProfile_ext:
-                            info = ''
-                            for element in line:
-                                if element == line[-1]:
-                                    info = info + str(element) + '\n'
-                                else:
-                                    info = info + str(element) + ','
-                            f.write(info)
+        #                 for line in zProfile_ext:
+        #                     info = ''
+        #                     for element in line:
+        #                         if element == line[-1]:
+        #                             info = info + str(element) + '\n'
+        #                         else:
+        #                             info = info + str(element) + ','
+        #                     f.write(info)
 
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
@@ -1829,21 +1838,12 @@ class SolutionGUI(QMainWindow):
         if not self.checkForWorkDir():
             return None
 
-        #     #Build seismic data path
-        # self.dir_path = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name)
+        if self.bam.setup.lat_centre is None or \
+            self.bam.setup.lon_centre is None or \
+            self.bam.setup.deg_radius is None:
 
-        # # Load the station and waveform files list
-        # data_file_path = os.path.join(self.dir_path, DATA_FILE)
-        # if os.path.isfile(data_file_path):
-            
-        #     stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=self.bam.setup.rm_stat)
-
-        # else:
-        #     errorMessage('Station and waveform data file not found! Download the waveform files first!', 2)
-        #     return None
-
-        # if self.setup.stations is not None:
-        #     stn_list = stn_list + self.makeStationObj(self.setup.stations)
+            errorMessage("Warning: Reference latitude, longitude, and/or search radius is not defined!", 1)
+            return None
 
         # Init the constants
         self.bam.setup.search_area = [self.bam.setup.lat_centre - self.bam.setup.deg_radius, 
@@ -1851,12 +1851,6 @@ class SolutionGUI(QMainWindow):
                                       self.bam.setup.lon_centre - self.bam.setup.deg_radius,
                                       self.bam.setup.lon_centre + self.bam.setup.deg_radius]
 
-
-        # sounding = parseWeather(self.setup)
-
-        # if len(stn_list) == 0:
-        #     errorMessage('No Stations to load', 2)
-        #     return None 
 
         try:
             #turn coordinates into position objects
@@ -1986,7 +1980,11 @@ class SolutionGUI(QMainWindow):
             self.make_picks_map_graph_canvas.addItem(txt)
 
         if self.prefs.frag_en:
-            
+
+            if not hasattr(self.bam.setup, 'fragmentation_point'):
+                self.bam.setup.fragmentation_point = []
+                errorMessage('"Show fragmentations" is checked, but could not find any fragmentation sources', 0)
+
             # Fragmentation plot
             for i, line in enumerate(self.bam.setup.fragmentation_point):
                 self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
@@ -2000,8 +1998,13 @@ class SolutionGUI(QMainWindow):
 
             try:
 
+                if self.bam.setup.trajectory is None:
+                    raise TypeError
+
                 if self.bam.setup.trajectory.pos_i.isNone():
                     raise TypeError
+
+
                 # Plot the trajectory with the bottom point known
                 self.make_picks_map_graph_canvas.plot([self.bam.setup.trajectory.pos_i.lon, self.bam.setup.trajectory.pos_f.lon],\
                                                       [self.bam.setup.trajectory.pos_i.lat, self.bam.setup.trajectory.pos_f.lat],\
@@ -2762,7 +2765,8 @@ class SolutionGUI(QMainWindow):
                 print('Range {:7.3f} km'.format(xyz_range/1000))
                 if not np.isnan(f_time):
                     # Plot Fragmentation Prediction
-                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2), label='Fragmentation')
+                    #pen=pg.mkPen(color=src.color, width=2)
+                    self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=(0, 255, 0), label='Fragmentation')
                     
                     if self.show_prec.isChecked():
                         # Plot Precursor Arrivals
@@ -2790,7 +2794,7 @@ class SolutionGUI(QMainWindow):
                             if not np.isnan(data[j]):
                                 self.make_picks_waveform_canvas.plot(x=[data[j]]*2, y=[np.min(waveform_data),\
                                     np.max(waveform_data)], alpha=0.3,\
-                                    pen=pg.mkPen(color=src.color, style=QtCore.Qt.DotLine), zorder=3)
+                                    pen=pg.mkPen(color=(0, 255, 0), style=QtCore.Qt.DotLine), zorder=3)
                         except IndexError:
                             errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                             return None
@@ -2864,8 +2868,11 @@ class SolutionGUI(QMainWindow):
         if errorCodes(self, 'current_station', debug=self.prefs.debug):
             return None
 
+        if len(self.bam.stn_list) == 0:
+            errorMessage('No stations were found!', 1, detail='Stations were not found. On the "Stations" tab, stations may be downloaded automatically through the "Download Stations" button, or added manually.')
+            return None
+
         stn = self.bam.stn_list[self.current_station]
-        print(stn.polarization.azimuth)
 
         self.make_picks_waveform_canvas.clear()
 

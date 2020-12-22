@@ -121,6 +121,9 @@ class ReportWindow(QWidget):
 
         if docx_import:
             print("Printing Report...")
+
+            file_name = fileSearch(['docx (*.docx)'], None)
+
             doc = Document()
 
             try:
@@ -158,7 +161,7 @@ class ReportWindow(QWidget):
             self.writeSupSol(doc)
 
 
-            doc.save('C:\\Users\\lmcfd\\Desktop\\test.docx')
+            doc.save(file_name)
 
         else:
             print('python-docx not detected: I`m not generating anything now')

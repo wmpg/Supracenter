@@ -75,23 +75,11 @@ def getStations(obj):
                 obj.bam.setup.deg_radius, obj.bam.setup.fireball_datetime, \
                 obj.dir_path, obj=obj)
 
+        addStationWidgets(obj, stn_list)
+
     else:
-        print("WARNING: get_data is turned off, this is the data only on this machine!")
-        
-    # data_file_path = os.path.join(obj.dir_path, DATA_FILE)
+        print('Get data is turned off, so that data is not accidentally downloaded. If this was intentional, please turn it back on')
 
-    # if os.path.isfile(data_file_path):
-        
-    #     stn_list = readStationAndWaveformsListFile(data_file_path)
-
-    # else:
-    #     # print('Station and waveform data file not found! Download the waveform files first!')
-    #     errorMessage("Station and waveform data file not found!", 1, detail='Download the waveform files first, make sure get data is on')
-    #     return None
-
-    addStationWidgets(obj, stn_list)
-    # display all stations
-    # but don't save
 
 def loadStations(obj):
 
