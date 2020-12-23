@@ -90,8 +90,16 @@ def timeFunction(x, *args):
 
                 # Sounding is a specfic perturbation number
                 # TODO: Go back and fix how this is done, not all perts need to be generated, just one here 
-                _, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
-                sounding = sounding[pert_num - 1]
+                nom, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+                
+                # sounding is none when there is an error in getting sounding
+                if sounding is not None:
+                
+                    sounding = sounding[pert_num - 1]
+                
+                else:
+                
+                    sounding = nom
 
             # Use distance and atmospheric data to find path time
             time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \

@@ -125,15 +125,15 @@ class Atmos:
             if hasattr(self, 'ecmwf'):
                 return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
             else:
-                print('ECMWF has not been imported, using default weather system instead!')
                 return self.default_weather, None
         elif prefs.atm_type == 'radio':
-            print('Not done yet')
+            return self.default_weather, None
         elif prefs.atm_type == 'none':
 
-                return self.default_weather, None
+            return self.default_weather, None
 
         else:
             print('Unrecognized weather type')
+            return self.default_weather, None
 
 

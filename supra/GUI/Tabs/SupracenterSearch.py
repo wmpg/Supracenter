@@ -349,7 +349,7 @@ def supScatterPlot(bam, prefs, results, xstn, s_name, parent, manual=True, pert_
 
     if not manual:
         for i in range(len(sup)):
-            sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(bam.setup.ref_pos.lat, bam.setup.ref_pos.lon, bam.setup.ref_pos.elev, sup[i, :])
+            sup[i, 0], sup[i, 1], sup[i, 2] = loc2Geo(bam.setup.lat_centre, bam.setup.lon_centre, 0, sup[i, :])
         sc = ax.scatter(sup[:, 0], sup[:, 1], sup[:, 2], c=errors, cmap='inferno_r', depthshade=False)
         a = plt.colorbar(sc, ax=ax)
         a.set_label("Error in Supracenter (s)")
