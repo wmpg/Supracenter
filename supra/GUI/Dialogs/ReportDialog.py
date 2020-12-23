@@ -113,8 +113,29 @@ class ReportWindow(QWidget):
         layout = QGridLayout()
         self.setLayout(layout)
 
+        self.general_info = QCheckBox('General Information')
+        layout.addWidget(self.general_info, 0, 1)
+
+        self.def_info = QCheckBox('Definitions/Methods')
+        layout.addWidget(self.def_info, 1, 1)
+
+        self.traj_info = QCheckBox('Trajectory')
+        layout.addWidget(self.traj_info, 2, 1)
+
+        self.frag_info = QCheckBox('Fragmentation(s)')
+        layout.addWidget(self.frag_info, 3, 1)
+
+        self.stat_info = QCheckBox('Stations')
+        layout.addWidget(self.stat_info, 4, 1)
+
+        self.atmos_info = QCheckBox('Atmosphere')
+        layout.addWidget(self.atmos_info, 5, 1)
+
+        self.supra_info = QCheckBox('Supracenter Solution')
+        layout.addWidget(self.supra_info, 6, 1)
+
         save_button = QPushButton('Generate Report')
-        layout.addWidget(save_button, 2, 2)
+        layout.addWidget(save_button, 8, 2)
         save_button.clicked.connect(self.genRep)
      
     def genRep(self):
@@ -132,33 +153,43 @@ class ReportWindow(QWidget):
                 doc.add_heading('METEOR REPORT', 0)   
                 doc.add_paragraph('No fireball name detected -> Possible error in document, proceed with caution!')
 
-            print("... General Information")
-            doc.add_heading('General Information', 1)
-            self.writeEvtPreamble(doc)
+            if self.general_info.isChecked():
+                print("... General Information")
+                doc.add_heading('General Information', 1)
+                self.writeEvtPreamble(doc)
 
-            print("... Definitions/Methods")
-            doc.add_heading('Definitions/Methods', 1)
-            self.writeDefs(doc)
+            if self.def_info.isChecked():
+                print("... Definitions/Methods")
+                doc.add_heading('Definitions/Methods', 1)
+                self.writeDefs(doc)
 
-            print("... Trajectory")
-            doc.add_heading('Trajectory')
-            self.writeTraj(doc)
+            if self.traj_info.isChecked():
+                try:
+                    print("... Trajectory")
+                    doc.add_heading('Trajectory')
+                    self.writeTraj(doc)
+                except:
+                    pass
 
-            print("... Fragmentation(s)")
-            doc.add_heading('Fragmentation(s)')
-            self.writeFrags(doc)
+            if self.frag_info.isChecked():
+                print("... Fragmentation(s)")
+                doc.add_heading('Fragmentation(s)')
+                self.writeFrags(doc)
 
-            print("... Stations")
-            doc.add_heading('Stations', 1)
-            self.writeStats(doc)
+            if self.stat_info.isChecked():
+                print("... Stations")
+                doc.add_heading('Stations', 1)
+                self.writeStats(doc)
 
-            print("... Atmosphere")
-            doc.add_heading('Atmosphere', 1)
-            self.writeAtm(doc)
+            if self.atmos_info.isChecked():
+                print("... Atmosphere")
+                doc.add_heading('Atmosphere', 1)
+                self.writeAtm(doc)
 
-            print("... Supracenter Solution")
-            doc.add_heading('Supracenter Solution', 1)
-            self.writeSupSol(doc)
+            if self.supra_info.isChecked():
+                print("... Supracenter Solution")
+                doc.add_heading('Supracenter Solution', 1)
+                self.writeSupSol(doc)
 
 
             doc.save(file_name)

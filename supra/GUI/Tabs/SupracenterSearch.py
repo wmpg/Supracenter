@@ -32,6 +32,17 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
 
     results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=0)
 
+    # Check for if results returns None
+    try:
+        # Error function is the absolute L1 norm ??
+        print("Nominal Results")
+        print("Error Function: {:5.2f}".format(results.f_opt))
+        print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
+            .format(results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, results.motc))
+    except AttributeError as e:
+        errorMessage('Unable to find Supracenter Solution', 2, detail='{:}'.format(e))
+        return None
+
     # Perturbation Runs
     if prefs.pert_en:
         pert_results = [None]*prefs.pert_num
@@ -42,11 +53,7 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
 
             pert_results[i] = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=i+1)
 
-    # Error function is the absolute L1 norm ??
-    print("Nominal Results")
-    print("Error Function: {:5.2f}".format(results.f_opt))
-    print("Opt: {:.4f} {:.4f} {:.2f} {:.4f}"\
-        .format(results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, results.motc))
+
     
     # Results show an L2 norm, normalized by the number of stations that have arrivals
     print('Residuals:')
@@ -306,11 +313,14 @@ def supScatterPlot(bam, prefs, results, xstn, s_name, parent, manual=True, pert_
     ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
 
     
-
-    ax.plot3D([bam.setup.trajectory.pos_f.lat,  bam.setup.trajectory.pos_i.lat ],\
-              [bam.setup.trajectory.pos_f.lon,  bam.setup.trajectory.pos_i.lon ],\
-              [bam.setup.trajectory.pos_f.elev, bam.setup.trajectory.pos_i.elev],
-              'blue')
+    # Try and plot trajectory if defined
+    try:
+        ax.plot3D([bam.setup.trajectory.pos_f.lat,  bam.setup.trajectory.pos_i.lat ],\
+                  [bam.setup.trajectory.pos_f.lon,  bam.setup.trajectory.pos_i.lon ],\
+                  [bam.setup.trajectory.pos_f.elev, bam.setup.trajectory.pos_i.elev],
+                  'blue')
+    except AttributeError:
+        pass
 
 
     for ptb in range(prefs.pert_num):

@@ -13,6 +13,7 @@ from supra.Utils.Classes import Constants
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.slowscan2 import cyscan as slowscan
+from supra.GUI.Tools.GUITools import *
 
 def pointsList(sounding, points):
     """ Helper function: Divides list sounding into 'length of points' divisions and expands each point into 
@@ -106,7 +107,9 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
         D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
         D.pos_geo(ref_pos)
 
+
         sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev])
+
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
 

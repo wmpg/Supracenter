@@ -11,6 +11,7 @@ import pyqtgraph as pg
 
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.ReportHelper import *
 
 from supra.Files.SaveObjs import Prefs
 
@@ -86,6 +87,8 @@ class PreferenceWindow(QWidget):
 
         pref_obj = Prefs()
         pref_obj.save(self)
+        file_name = os.path.join('supra', 'Misc', 'BAMprefs.bam')
+        errorMessage('Preferences Saved!', 0, title='Saved!', info='File saved to {:} ({:})'.format(file_name, byteify(os.stat(file_name).st_size)))
         self.close()
 
     def loadPref(self):

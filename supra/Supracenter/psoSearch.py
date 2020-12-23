@@ -12,6 +12,7 @@ pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.plot import outputWeather
+from supra.GUI.Tools.GUITools import *
 
 def timeFunction(x, *args):
     ''' Helper function for PSO
@@ -222,12 +223,14 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
     search_min = Position(setup.lat_min, setup.lon_min, setup.elev_min)
     search_max = Position(setup.lat_max, setup.lon_max, setup.elev_max)
 
-    try:
-        search_min.pos_loc(ref_pos)
-        search_max.pos_loc(ref_pos)
-    except (AttributeError, TypeError):
-        print('Search min and search max have not been defined! Aborting search!')
-        return None
+    if not manual:
+        try:
+            search_min.pos_loc(ref_pos)
+            search_max.pos_loc(ref_pos)
+        except (AttributeError, TypeError) as e:
+            errorMessage('Search min and search max have not been defined! Aborting search!', 2, info='Please define a search area in the "Sources" tab on the left side of the screen!', detail='{:}'.format(e))
+            return None
+
 
     output_name = prefs.workdir
     
@@ -235,6 +238,10 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         single_point = override_supra
     else:    
         single_point = setup.manual_fragmentation_search[0]
+
+    if single_point.toList()[0] is None and manual:
+        errorMessage('Manual Fragmentation Point undefined', 2, info='Unable to parse: Lat: {:} Lon: {:} Elev: {:} Time: {:}'.format(*single_point.toList()))
+        return None        
 
 
     ref_time = setup.fireball_datetime
@@ -287,15 +294,15 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         if prefs.debug:
             print("Free Search")
 
-    # Prevent search below stations
-    if search_min.elev < max(xstn[:, 2]):
-
-        # Must be just above the stations
-        search_min.elev = max(xstn[:, 2]) + 0.0001
-
 
     # If automatic search
     if not manual:
+
+        # Prevent search below stations
+        if search_min.elev < max(xstn[:, 2]):
+
+            # Must be just above the stations
+            search_min.elev = max(xstn[:, 2]) + 0.0001
 
         # Boundaries of search volume
         #  [x, y, z] local coordinates
@@ -339,7 +346,6 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
 
     # If manual search
     else:
-
         single_point.position.pos_loc(ref_pos)
         x_opt = single_point.position
         sup = single_point.position.xyz
@@ -372,7 +378,8 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
 
     try:
         otc = (datetime.datetime.min + datetime.timedelta(seconds=time_diff)).time()
-    except ValueError:
+    except (ValueError, OverflowError):
+        print('STATUS: Unable to parse otc')
         otc = None
 
     try:

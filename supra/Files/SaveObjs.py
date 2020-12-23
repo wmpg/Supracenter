@@ -6,6 +6,7 @@ from supra.Utils.TryObj import *
 from supra.Atmosphere.AtmosClass import *
 from supra.Utils.Classes import Config
 import numpy as np
+from supra.GUI.Tools.GUITools import *
 
 class BAMFile:
 
@@ -65,7 +66,7 @@ class Prefs:
         with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'wb') as f:
             pickle.dump(self, f)
 
-        print('saved preferences')
+        print('STATUS: Saved Preferences')
 
     def load(self):
         try:
@@ -124,7 +125,8 @@ class Atmos:
             if hasattr(self, 'ecmwf'):
                 return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
             else:
-                print('ECMWF is not added yet')
+                print('ECMWF has not been imported, using default weather system instead!')
+                return self.default_weather, None
         elif prefs.atm_type == 'radio':
             print('Not done yet')
         elif prefs.atm_type == 'none':
