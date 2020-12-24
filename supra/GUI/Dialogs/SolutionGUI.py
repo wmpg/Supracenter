@@ -249,53 +249,57 @@ class SolutionGUI(QMainWindow):
 
         supSearch(self.bam, self.prefs, manual=manual, results_print=False, obj=self)
 
-    def psoTrajectory(self, station_list, sounding):
+    def psoTrajectory(self, station_list):
 
-        ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+        ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
-        self.setup.pos_min.pos_loc(ref_pos)
-        self.setup.pos_max.pos_loc(ref_pos)
+        if self.bam.setup.pos_min.isNone() or self.bam.setup.pos_max.isNone():
+            errorMessage('Search boundaries are not defined!', 2, info='Please define the minimum and maximum parameters in the "Sources" tab on the left side of the screen!')
+            return None
+
+        self.bam.setup.pos_min.pos_loc(ref_pos)
+        self.bam.setup.pos_max.pos_loc(ref_pos)
 
         bounds = [
-            (self.setup.pos_min.x, self.setup.pos_max.x), # X0
-            (self.setup.pos_min.y, self.setup.pos_max.y), # Y0
-            (self.setup.t_min, self.setup.t_max), # t0
-            (self.setup.v_min, self.setup.v_max), # Velocity (m/s)
-            (self.setup.azimuth_min.deg, self.setup.azimuth_max.deg),     # Azimuth
-            (self.setup.zenith_min.deg, self.setup.zenith_max.deg)  # Zenith angle
+            (self.bam.setup.pos_min.x, self.bam.setup.pos_max.x), # X0
+            (self.bam.setup.pos_min.y, self.bam.setup.pos_max.y), # Y0
+            (self.bam.setup.t_min, self.bam.setup.t_max), # t0
+            (self.bam.setup.v_min, self.bam.setup.v_max), # Velocity (m/s)
+            (self.bam.setup.azimuth_min.deg, self.bam.setup.azimuth_max.deg),     # Azimuth
+            (self.bam.setup.zenith_min.deg, self.bam.setup.zenith_max.deg)  # Zenith angle
             ]
 
         lower_bounds = [bound[0] for bound in bounds]
         upper_bounds = [bound[1] for bound in bounds]
 
-        try:
-            plane = fromTable(self.seis_plane)
+        # try:
+        #     plane = fromTable(self.seis_plane)
             
-            p = []
+        #     p = []
 
-            for ii, point in enumerate(plane):
+        #     for ii, point in enumerate(plane):
 
-                p.append(Position(point[0], point[1], point[2]))
-                p[ii].pos_loc(ref_pos)
+        #         p.append(Position(point[0], point[1], point[2]))
+        #         p[ii].pos_loc(ref_pos)
 
-            rest_plane = Plane(p[0].xyz, p[1].xyz, p[2].xyz)
-        except:
-            rest_plane = None
+        #     rest_plane = Plane(p[0].xyz, p[1].xyz, p[2].xyz)
+        # except:
+        #     rest_plane = None
     
-        if rest_plane == None:
-            if self.prefs.debug:
-                print('Free Search')
-            x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, sounding, ref_pos, self.setup, rest_plane), \
-                maxiter=self.setup.maxiter, swarmsize=self.setup.swarmsize, \
-                phip=self.setup.phip, phig=self.setup.phig, debug=False, omega=self.setup.omega, \
+        # if rest_plane == None:
+        if self.prefs.debug:
+            print('Free Search')
+            x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, self.bam.setup), \
+                maxiter=self.prefs.pso_max_iter, swarmsize=self.prefs.pso_swarm_size, \
+                phip=self.prefs.pso_phi_p, phig=self.prefs.pso_phi_g, debug=False, omega=self.prefs.pso_omega, \
                 particle_output=False)
-        else:
-            if self.prefs.debug:
-                print('Plane Search')
-            x, fopt = pso(trajSearch, lower_bounds, upper_bounds, ieqcons=[planeConst], args=(station_list, sounding, ref_pos, self.setup, rest_plane), \
-                maxiter=self.setup.maxiter, swarmsize=self.setup.swarmsize, \
-                phip=self.setup.phip, phig=self.setup.phig, debug=False, omega=self.setup.omega, \
-                particle_output=False)
+        # else:
+        #     if self.prefs.debug:
+        #         print('Plane Search')
+        #     x, fopt = pso(trajSearch, lower_bounds, upper_bounds, ieqcons=[planeConst], args=(station_list, sounding, ref_pos, self.setup, rest_plane), \
+        #         maxiter=self.setup.maxiter, swarmsize=self.setup.swarmsize, \
+        #         phip=self.setup.phip, phig=self.setup.phig, debug=False, omega=self.setup.omega, \
+        #         particle_output=False)
 
         print('Results:')
         print('X: {:.4f}'.format(x[0]))
@@ -353,10 +357,7 @@ class SolutionGUI(QMainWindow):
                                     stnp.position.x, stnp.position.y, stnp.position.z, \
                                     stnp.time])
 
-        # This line is gone
-        sounding = parseWeather(self.setup)
-
-        self.psoTrajectory(station_obj_list, sounding)
+        self.psoTrajectory(station_obj_list)
 
     def rayTrace(self):
 
@@ -2655,9 +2656,9 @@ class SolutionGUI(QMainWindow):
                     #pen=pg.mkPen(color=src.color, width=2)
                     self.make_picks_waveform_canvas.plot(x=[f_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=(0, 255, 0), label='Fragmentation')
                     
-                    if self.show_prec.isChecked():
-                        # Plot Precursor Arrivals
-                        self.make_picks_waveform_canvas.plot(x=[p_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=(210, 235, 52), label='Fragmentation')
+                    # if self.show_prec.isChecked():
+                    #     # Plot Precursor Arrivals
+                    #     self.make_picks_waveform_canvas.plot(x=[p_time]*2, y=[np.min(waveform_data), np.max(waveform_data)], pen=(210, 235, 52), label='Fragmentation')
 
 
                     stn.stn_distance(frag.position)

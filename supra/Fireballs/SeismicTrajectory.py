@@ -614,7 +614,7 @@ def planeConst(params, station_list, sounding, ref_pos, setup, rest_plane):
     else:
         return -1
 
-def trajSearch(params, station_list, sounding, ref_pos, setup, rest_plane):
+def trajSearch(params, station_list, ref_pos, setup):
     
     x0, y0, t0, v, azim, zangle = params
 
@@ -632,7 +632,7 @@ def trajSearch(params, station_list, sounding, ref_pos, setup, rest_plane):
     cost_value = 0
 
     for stn in station_list:
-        t_theo = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, setup, points, sounding=sounding, ref_loc=ref_pos, theo=True)
+        t_theo = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, setup, points, ref_loc=ref_pos, theo=True)
 
         t_obs = stn[6]
 

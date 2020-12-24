@@ -137,12 +137,13 @@ def calcAllTimes(bam, prefs):
 
                 results = []
 
-                for pert in perturbations:
-                    temp = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
-                        wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                        h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
-                    temp[0] += offset
-                    results.append(temp) 
+                if perturbations is not None:
+                    for pert in perturbations:
+                        temp = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
+                            wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
+                            h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                        temp[0] += offset
+                        results.append(temp) 
 
                 a.append([f_time + offset, frag_azimuth, frag_takeoff, frag_err])
                 a.append(results)
