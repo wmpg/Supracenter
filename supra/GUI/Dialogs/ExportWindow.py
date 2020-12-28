@@ -15,7 +15,7 @@ from supra.Utils.Classes import Position
 from supra.Atmosphere.Parse import parseWeather
 from supra.Supracenter.cyscan2 import cyscan
 
-from supra.Fireballs.SeismicTrajectory import getStationList, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
+from supra.Fireballs.SeismicTrajectory import estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
 from supra.Utils.Formatting import *
 
 class ExportWindow(QScrollArea):

@@ -305,7 +305,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
 
     # If automatic search
     if not manual:
-
+        
         # Prevent search below stations
         if search_min.elev < max(xstn[:, 2]):
 

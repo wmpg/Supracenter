@@ -492,28 +492,31 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     T_nom = getTimes(np.array(cyscan_res), u, a)
     
     T_pert = []
-    for p in range(len(perturbations)):
 
-        cyscan_res = []
-        for i in range(a):
+    if perturbations is not None:
 
-            S = np.array(points[i])
-            traj_point = angle2Geo(points[i], ref_loc)
-            stat_point = angle2Geo(stat_coord, ref_loc)
+        for p in range(len(perturbations)):
 
-            lats = [traj_point.lat, stat_point.lat]
-            lons = [traj_point.lon, stat_point.lon]
-            heights = [traj_point.elev, stat_point.elev]
+            cyscan_res = []
+            for i in range(a):
 
-            sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
+                S = np.array(points[i])
+                traj_point = angle2Geo(points[i], ref_loc)
+                stat_point = angle2Geo(stat_coord, ref_loc)
 
-            A_p = cyscan(S, D, perturbations[p], \
-             wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                lats = [traj_point.lat, stat_point.lat]
+                lons = [traj_point.lon, stat_point.lon]
+                heights = [traj_point.elev, stat_point.elev]
 
-            cyscan_res.append(A_p)
+                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
 
-        T_pert.append(getTimes(np.array(cyscan_res), u, a))
+                A_p = cyscan(S, D, perturbations[p], \
+                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
+                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+
+                cyscan_res.append(A_p)
+
+            T_pert.append(getTimes(np.array(cyscan_res), u, a))
 
     return T_nom, T_pert
 
@@ -614,7 +617,7 @@ def planeConst(params, station_list, sounding, ref_pos, setup, rest_plane):
     else:
         return -1
 
-def trajSearch(params, station_list, ref_pos, setup):
+def trajSearch(params, station_list, ref_pos, bam, prefs):
     
     x0, y0, t0, v, azim, zangle = params
 
@@ -632,18 +635,20 @@ def trajSearch(params, station_list, ref_pos, setup):
     cost_value = 0
 
     for stn in station_list:
-        t_theo = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, setup, points, ref_loc=ref_pos, theo=True)
+        
+        t_theo, t_pert = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, bam, prefs, points, ref_loc=ref_pos)
 
+        print(t_theo, t_pert)
         t_obs = stn[6]
 
         cost_value += 2*((1 + (t_theo - t_obs)**2)**0.5 - 1)
 
         if np.isnan(t_theo): 
-            if setup.debug:
+            if prefs.debug:
                 print(np.inf)
             return np.inf   
 
-    if setup.debug:
+    if prefs.debug:
         print(cost_value)
     return cost_value
 
@@ -1107,44 +1112,6 @@ def plotStationsAndTrajectory(station_list, params, setup, sounding, x_perturb=[
 
     ##########################################################################################################
     return residuals
-def getStationList(file_name): 
-    """ Reads station .csv file and produces a list containing the station's position and signal time. 
-        Accepts files exported from MakeIRISPicks.py. A custom file can be made in the following form:
-        *header
-        pick_group, station_network, station_code, latitude (deg), longitude (deg), zangle (m), time_of_arrival (Julian Date)
-
-    Arguments:
-        file_name: [string] location of the station.csv file
-
-    Returns:
-        data: [ndarray] parsed station location and times
-    """   
-    with open(file_name) as f:
-
-        # Skip the header
-        for i in range(1):
-            next(f)
-
-        data = []
-        for line in f:
-
-            # Remove the newline char
-            line = line.replace('\n', '').replace('\r', '').replace('\t', '')
-
-            # Split the line by the delimiter
-            line = line.split(',')
-
-            # Strip whitespaces from individual entries in the line
-            for i, entry in enumerate(line):
-                line[i] = (entry.strip())
-                if i in [3, 4, 5, 6]:
-                    line[i] = float(line[i])
-                if i in [3, 4]:
-                    line[i] = np.radians(line[i])
-            # Add the contents of the line to the data list
-            data.append(line)
-
-        return data
 
 
 def readPoints(output, header=0):

@@ -702,7 +702,8 @@ def addSeisTrajWidgets(obj):
 
     obj.seis_search = QPushButton('Search')
     tab_layout.addWidget(obj.seis_search, 0, 1, 1, 100)
-    obj.seis_search.clicked.connect(obj.seisSearch)
+    obj.seis_search.clicked.connect(obj.trajSearchSetup)
+    #obj.seis_search.clicked.connect(obj.seisSearch)
     
     obj.seis_table = QTableWidget()
     table_group.addWidget(obj.seis_table, 1, 1, 1, 100)
@@ -710,9 +711,9 @@ def addSeisTrajWidgets(obj):
     obj.seis_resids = QTableWidget()
     table_group.addWidget(obj.seis_resids, 2, 1, 1, 100)
 
-    obj.seis_plane = QTableWidget()
-    table_group.addWidget(obj.seis_plane, 3, 1, 1, 100)
-    defTable(obj.seis_plane, 3, 3, headers=['Latitude', 'Longitude', 'Height'])
+    # obj.seis_plane = QTableWidget()
+    # table_group.addWidget(obj.seis_plane, 3, 1, 1, 100)
+    # defTable(obj.seis_plane, 3, 3, headers=['Latitude', 'Longitude', 'Height'])
     #obj.seis_three_canvas = FigureCanvas(Figure(figsize=(5, 5)))
     # obj.seis_three_canvas.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
 
