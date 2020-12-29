@@ -252,7 +252,22 @@ class SolutionGUI(QMainWindow):
 
     def trajSearchSetup(self):
 
-        trajectorySearch(self.bam, self.prefs)
+        x, fopt, geo = trajectorySearch(self.bam, self.prefs)
+
+        defTable(self.seis_table, 9, 2, headers=['Parameter', 'Value'])
+
+        data_table = [['Error', fopt], 
+                      ['X', x[0]],
+                      ['Y', x[1]],
+                      ['Time', x[2]],
+                      ['Velocity', x[3]],
+                      ['Azimuth', x[4]],
+                      ['Zenith', x[5]],
+                      ['Latitude', geo.lat],
+                      ['Longitude', geo.lon]]
+
+
+        toTable(self.seis_table, data_table)
 
 
     def rayTrace(self):

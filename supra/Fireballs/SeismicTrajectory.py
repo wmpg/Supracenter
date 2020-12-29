@@ -189,7 +189,6 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
 
     R = waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u)
 
-
     # if travel:
     #     # travel from trajectory only
     #     ti = R[3]*beta
@@ -488,7 +487,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
                 h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
 
         cyscan_res.append(A)
-    
+
     T_nom = getTimes(np.array(cyscan_res), u, a)
     
     T_pert = []
@@ -633,24 +632,36 @@ def trajSearch(params, station_list, ref_pos, bam, prefs):
     u = temp_traj.vector.xyz
 
     cost_value = 0
+    failed_stats = 0
 
     for stn in station_list:
         
         t_theo, t_pert = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, bam, prefs, points, ref_loc=ref_pos)
 
-        print(t_theo, t_pert)
         t_obs = stn[6]
 
-        cost_value += 2*((1 + (t_theo - t_obs)**2)**0.5 - 1)
+        if not np.isnan(t_theo):
 
-        if np.isnan(t_theo): 
-            if prefs.debug:
-                print(np.inf)
-            return np.inf   
+            cost_value += 2*((1 + (t_theo - t_obs)**2)**0.5 - 1)
+
+        else:
+            failed_stats += 1
+        # if np.isnan(t_theo): 
+        #     if prefs.debug:
+        #         print(np.inf)
+        #     return np.inf   
+
+    perc_fail = 100 - failed_stats/len(station_list)*100
+
+    if cost_value == 0:
+        if prefs.debug:
+            print("Error {:.2f} | Failed Stats {:} [{:.2f}%]".format(np.inf, failed_stats, perc_fail))
+        return np.inf
 
     if prefs.debug:
-        print(cost_value)
-    return cost_value
+        print("Error {:.2f} | Failed Stats {:} [{:.2f}%]".format(cost_value, failed_stats, perc_fail))
+        # Quick adjustment to try and better include stations
+    return cost_value*(2 - perc_fail/100)
 
 # def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding, v_fixed=None, \
 #         print_residuals=False, pool=[]):

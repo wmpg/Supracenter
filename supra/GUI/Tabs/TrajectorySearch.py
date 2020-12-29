@@ -42,11 +42,11 @@ def psoTrajectory(station_list, bam, prefs):
     print('Results:')
     print('X: {:.4f}'.format(x[0]))
     print('Y: {:.4f}'.format(x[1]))
-    print('t: {:.4f}'.format(x[2]))
-    print('v: {:.4f}'.format(x[3]))
-    print('az: {:.4f}'.format(x[4]))
-    print('ze: {:.4f}'.format(x[5]))
-    print('err: {:.4f}'.format(fopt))
+    print('Time: {:.4f}'.format(x[2]))
+    print('Velocity: {:.4f}'.format(x[3]))
+    print('Azimuth: {:.4f}'.format(x[4]))
+    print('Zenith: {:.4f}'.format(x[5]))
+    print('Adjusted Error: {:.4f}'.format(fopt))
 
     geo = Position(0, 0, 0)
     geo.x = x[0]
@@ -57,6 +57,7 @@ def psoTrajectory(station_list, bam, prefs):
     print('Geometric Landing Point:')
     print(geo)
 
+    return [x, fopt, geo]
 
 def getStationList(file_name): 
     """ Reads station .csv file and produces a list containing the station's position and signal time. 
@@ -134,4 +135,5 @@ def trajectorySearch(bam, prefs):
                                 stnp.position.x, stnp.position.y, stnp.position.z, \
                                 stnp.time])
 
-    psoTrajectory(station_obj_list, bam, prefs)
+    x, fopt, geo = psoTrajectory(station_obj_list, bam, prefs)
+    return x, fopt, geo
