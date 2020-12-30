@@ -2,10 +2,10 @@ import os
 
 from supra.GUI.Tools.GUITools import *
 
-from supra.Utils.Classes import Position
+from supra.Utils.Classes import Position, Trajectory, Angle
 from supra.Utils.pso import pso
 
-from supra.Fireballs.SeismicTrajectory import trajSearch
+from supra.Fireballs.SeismicTrajectory import trajSearch, timeOfArrival
 
 def psoTrajectory(station_list, bam, prefs):
 
@@ -29,7 +29,7 @@ def psoTrajectory(station_list, bam, prefs):
 
     lower_bounds = [bound[0] for bound in bounds]
     upper_bounds = [bound[1] for bound in bounds]
-
+    
     if prefs.debug:
         print('Free Search')
 
@@ -57,7 +57,21 @@ def psoTrajectory(station_list, bam, prefs):
     print('Geometric Landing Point:')
     print(geo)
 
-    return [x, fopt, geo]
+    stat_names = []
+    stat_pick = []
+
+    final_traj = Trajectory(x[2], x[3], zenith=Angle(x[5]), azimuth=Angle(x[4]), pos_f=geo)
+    points = final_traj.findPoints(gridspace=100, min_p=17000, max_p=50000)
+
+    for stn in station_list:
+        stat_names.append("{:}-{:}".format(stn[1], stn[2]))
+
+        t_nom, t_pert = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), final_traj, bam, prefs, points, ref_loc=ref_pos)
+        
+        stat_pick.append(t_nom - stn[6])
+
+
+    return [x, fopt, geo, stat_names, stat_pick]
 
 def getStationList(file_name): 
     """ Reads station .csv file and produces a list containing the station's position and signal time. 
@@ -135,5 +149,4 @@ def trajectorySearch(bam, prefs):
                                 stnp.position.x, stnp.position.y, stnp.position.z, \
                                 stnp.time])
 
-    x, fopt, geo = psoTrajectory(station_obj_list, bam, prefs)
-    return x, fopt, geo
+    return psoTrajectory(station_obj_list, bam, prefs)

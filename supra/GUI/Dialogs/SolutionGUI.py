@@ -252,8 +252,13 @@ class SolutionGUI(QMainWindow):
 
     def trajSearchSetup(self):
 
-        x, fopt, geo = trajectorySearch(self.bam, self.prefs)
+        x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
 
+        ##########
+        # Display
+        ##########
+
+        ### Solution Table
         defTable(self.seis_table, 9, 2, headers=['Parameter', 'Value'])
 
         data_table = [['Error', fopt], 
@@ -268,6 +273,17 @@ class SolutionGUI(QMainWindow):
 
 
         toTable(self.seis_table, data_table)
+
+
+        ### Residual Table
+        defTable(self.seis_resids, 0, 2, headers=['Station', 'Residual'])
+
+        res_table = []
+
+        for ss in range(len(stat_names)):
+            res_table.append([stat_names[ss], stat_picks[ss]])
+
+        toTable(self.seis_resids, res_table)
 
 
     def rayTrace(self):
