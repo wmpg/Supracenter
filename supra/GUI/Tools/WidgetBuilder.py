@@ -807,44 +807,44 @@ def addFetchATMWidgets(obj):
 
     #############################
 
-    indep_group = QGroupBox('Inependant Variables (x)')
-    fetch_content.addWidget(indep_group, 5, 1, 1, 2)
+    # indep_group = QGroupBox('Inependent Variables (x)')
+    # fetch_content.addWidget(indep_group, 5, 1, 1, 2)
 
-    group_box = QGridLayout()
-    indep_group.setLayout(group_box)
+    # group_box = QGridLayout()
+    # indep_group.setLayout(group_box)
 
-    obj.fatm_temp = QCheckBox('Temperature')
-    group_box.addWidget(obj.fatm_temp, 1, 1)
+    # obj.fatm_temp = QCheckBox('Temperature')
+    # group_box.addWidget(obj.fatm_temp, 1, 1)
 
-    obj.fatm_u_wind = QCheckBox('U Wind')
-    group_box.addWidget(obj.fatm_u_wind, 1, 2)
+    # obj.fatm_u_wind = QCheckBox('U Wind')
+    # group_box.addWidget(obj.fatm_u_wind, 1, 2)
 
-    obj.fatm_v_wind = QCheckBox('V Wind')
-    group_box.addWidget(obj.fatm_v_wind, 1, 3)
+    # obj.fatm_v_wind = QCheckBox('V Wind')
+    # group_box.addWidget(obj.fatm_v_wind, 1, 3)
 
-    ##############################
+    # ##############################
 
-    dep_group = QGroupBox('Dependant Variables (y)')
-    fetch_content.addWidget(dep_group, 6, 1, 1, 2)
+    # dep_group = QGroupBox('Dependent Variables (y)')
+    # fetch_content.addWidget(dep_group, 6, 1, 1, 2)
 
-    dgroup_box = QGridLayout()
-    dep_group.setLayout(dgroup_box)
+    # dgroup_box = QGridLayout()
+    # dep_group.setLayout(dgroup_box)
 
-    obj.fatm_geo_height = QCheckBox('Geopotential Height')
-    dgroup_box.addWidget(obj.fatm_geo_height, 1, 1)
+    # obj.fatm_geo_height = QCheckBox('Geopotential Height')
+    # dgroup_box.addWidget(obj.fatm_geo_height, 1, 1)
 
-    obj.fatm_pressure = QCheckBox('Pressure')
-    dgroup_box.addWidget(obj.fatm_pressure, 1, 2)
+    # obj.fatm_pressure = QCheckBox('Pressure')
+    # dgroup_box.addWidget(obj.fatm_pressure, 1, 2)
 
     ###############################
-    op_group = QGroupBox('Options')
-    fetch_content.addWidget(op_group, 7, 1, 1, 2)
+    # op_group = QGroupBox('Options')
+    # fetch_content.addWidget(op_group, 7, 1, 1, 2)
 
-    opgroup_box = QGridLayout()
-    op_group.setLayout(opgroup_box)
+    # opgroup_box = QGridLayout()
+    # op_group.setLayout(opgroup_box)
 
-    obj.fatm_perts = QCheckBox('Perturbations')
-    opgroup_box.addWidget(obj.fatm_perts, 2, 1)
+    # obj.fatm_perts = QCheckBox('Show Perturbations')
+    # opgroup_box.addWidget(obj.fatm_perts, 2, 1)
     #############################################
 
     obj.fatm_fetch = QPushButton("Download")

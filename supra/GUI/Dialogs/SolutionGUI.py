@@ -908,6 +908,7 @@ class SolutionGUI(QMainWindow):
 
     def fatmFetch(self, download):
 
+        # ECMWF
         if self.fatm_source_type.currentIndex() == 0:
 
             year = str(self.fatm_datetime_edits.dateTime().date().year())
@@ -919,18 +920,18 @@ class SolutionGUI(QMainWindow):
 
             loc = self.fatm_name_edits.text()
 
-            variables = []
             self.fatm_variable_combo.clear() 
-            if self.fatm_temp.isChecked():
-                variables.append('temperature')
-            if self.fatm_u_wind.isChecked():
-                variables.append('u_component_of_wind')
-            if self.fatm_v_wind.isChecked():
-                variables.append('v_component_of_wind')
+
+            variables = ['temperature', 'u_component_of_wind', 'v_component_of_wind']
 
             if download:
-            
-                if self.fatm_perts.isChecked():
+                
+                loc = saveFile(".nc")
+                
+                qm = QtGui.QMessageBox
+                ret = qm.question(self, '', "Only Download Perturbations?", qm.Yes | qm.No)
+
+                if ret == qm.yes:
                     print("Downloading Perturbation Ensemble")
                 else:
                     print("Downloading Reanalysis")
@@ -954,7 +955,11 @@ class SolutionGUI(QMainWindow):
                     self.fatm_variable_combo.addItem('Wind Direction')
                 self.fatmPlot()
 
+        # Radio
         elif self.fatm_source_type.currentIndex() == 1:
+
+            errorMessage("Radio download not yet supported", 1)
+            return None
 
             loc = self.fatm_name_edits.text()
 
