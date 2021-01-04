@@ -883,6 +883,12 @@ class SolutionGUI(QMainWindow):
         SolutionGUI.update(self)
 
     def fatmSaveAtm(self):
+
+        filename = self.fatm_name_edits.text()
+
+        if len(filename) == 0:
+            errorMessage("File name cannot be blank!", 1, info='"{:}" is not an acceptable file name'.format(filename))
+            return None
         
         if self.fatm_source_type.currentText() == "Copernicus Climate Change Service (ECMWF)":
             weather_type = 'ecmwf'
@@ -903,12 +909,26 @@ class SolutionGUI(QMainWindow):
         lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
         elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
 
-        self.fatmPlot(*self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev))
+        if elev[0] is None or elev[1] is None:
+            errorMessage("Unaccepted start and end heights, please fill in below", 1, \
+                detail="{:} and {:} are not formatted correctly".format(tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())))
+            return None
+            
+        try:
+            atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+        except Exception as e:
+            errorMessage("Unable to load sounding data from BAM", 1, detail="{:}".format(e))
+            return None
+        
+        self.fatmPlot(*atmos)
 
 
     def fatmFetch(self, download):
 
         # ECMWF
+
+        perts = False
+
         if self.fatm_source_type.currentIndex() == 0:
 
             year = str(self.fatm_datetime_edits.dateTime().date().year())
@@ -920,9 +940,7 @@ class SolutionGUI(QMainWindow):
 
             loc = self.fatm_name_edits.text()
 
-            self.fatm_variable_combo.clear() 
-
-            variables = ['temperature', 'u_component_of_wind', 'v_component_of_wind']
+            variables = ['temperature', 'u_component_of_wind', 'v_component_of_wind', 'geopotential']
 
             if download:
                 
@@ -931,29 +949,49 @@ class SolutionGUI(QMainWindow):
                 qm = QtGui.QMessageBox
                 ret = qm.question(self, '', "Only Download Perturbations?", qm.Yes | qm.No)
 
-                if ret == qm.yes:
-                    print("Downloading Perturbation Ensemble")
-                else:
-                    print("Downloading Reanalysis")
+                try:
+                    if ret == qm.Yes:
+                        print("Downloading Perturbation Ensemble")
+                        perts = True
+                    else:
+                        print("Downloading Reanalysis")
+                        perts = False
+                except AttributeError:
+                    print("Attribute Error")
+                    # If the "x" is clicked
+                    return None
+
+                errorMessage("Downloading weather profile to {:}...".format(loc), 0)
+
+                clat = self.bam.setup.lat_centre
+                clon = self.bam.setup.lon_centre
+                deg_rad = self.bam.setup.deg_radius
+
+                GRID = 0.25
+                #area = [north, west, south, east]
+                area = [clat + deg_rad + (GRID - (clat + deg_rad)%GRID),
+                        clon - deg_rad - (GRID + (clon - deg_rad)%GRID), 
+                        clat - deg_rad - (GRID + (clat - deg_rad)%GRID), 
+                        clon + deg_rad + (GRID - (clon + deg_rad)%GRID)]
 
                 try:
-                    copernicusAPI(variables, year, month, day, time_of, loc, ensemble=self.fatm_perts.isChecked())
+                    copernicusAPI(variables, year, month, day, time_of, loc, area, ensemble=perts)
                 except Exception as e:
                     errorMessage("Error downloading weather data from CDS", 1, detail='{:}'.format(e))
+                except:
+                    print("Other Exception")
+
+                errorMessage("Weather profile downloaded to {:}".format(loc), 0)
 
                 return None
             else:
-                self.fatm_variable_combo.clear() 
-                if self.fatm_temp.isChecked():
-                    self.fatm_variable_combo.addItem('Temperature')
-                if self.fatm_u_wind.isChecked():
-                    self.fatm_variable_combo.addItem('U-Component of Wind')
-                if self.fatm_v_wind.isChecked():
-                    self.fatm_variable_combo.addItem('V-Component of Wind')
-                if self.fatm_u_wind.isChecked() and self.fatm_v_wind.isChecked():
-                    self.fatm_variable_combo.addItem('Wind Magnitude')
-                    self.fatm_variable_combo.addItem('Wind Direction')
-                self.fatmPlot()
+                try:
+                    atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+                except Exception as e:
+                    errorMessage("Unable to load sounding data from BAM", 1, detail="{:}".format(e))
+                    return None
+        
+                self.fatmPlot(*atmos)
 
         # Radio
         elif self.fatm_source_type.currentIndex() == 1:
@@ -998,19 +1036,7 @@ class SolutionGUI(QMainWindow):
         variables = []
 
         if self.prefs.atm_type == 'ecmwf':
-            if self.fatm_temp.isChecked():
-                variables.append('t')
-            if self.fatm_u_wind.isChecked():
-                variables.append('u')
-            if self.fatm_v_wind.isChecked():
-                variables.append('v')
-        elif self.prefs.atm_type == 'merra':
-            if self.fatm_temp.isChecked():
-                variables.append('T')
-            if self.fatm_u_wind.isChecked():
-                variables.append('U')
-            if self.fatm_v_wind.isChecked():
-                variables.append('V')
+            variables = ['t', 'u', 'v']
 
         if errorCodes(self.setup, 'sounding_file'):
             return None
@@ -1026,11 +1052,12 @@ class SolutionGUI(QMainWindow):
         lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
         elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
 
+        try:
+            sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+        except Exception as e:
+            errorMessage('Unable to find specified profile!', 2, detail='{:}'.format(e))
+            return None
 
-        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
-
-        # sounding = parseGeneralECMWF(self.prefs.atm_type, self.setup.sounding_file, self.setup.lat_centre, \
-        #                 self.setup.lon_centre, atm_time, variables)
 
         filename = checkExt(filename[0], '.txt')
 

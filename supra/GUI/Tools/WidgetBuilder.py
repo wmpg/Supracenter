@@ -768,8 +768,8 @@ def addFetchATMWidgets(obj):
 
     obj.fatm_variable_combo.addItem('Sound Speed')
     obj.fatm_variable_combo.addItem('Effective Sound Speed')
-    # obj.fatm_variable_combo.addItem('U-Component of Wind')
-    # obj.fatm_variable_combo.addItem('V-Component of Wind')
+    obj.fatm_variable_combo.addItem('U-Component of Wind')
+    obj.fatm_variable_combo.addItem('V-Component of Wind')
     obj.fatm_variable_combo.addItem('Wind Magnitude')
     obj.fatm_variable_combo.addItem('Wind Direction')
 

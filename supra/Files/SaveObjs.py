@@ -125,6 +125,7 @@ class Atmos:
             if hasattr(self, 'ecmwf'):
                 return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
             else:
+                raise Exception("ECMWF is not loaded into the BAM file, trying to export default weather")
                 return self.default_weather, None
         elif prefs.atm_type == 'radio':
             return self.default_weather, None

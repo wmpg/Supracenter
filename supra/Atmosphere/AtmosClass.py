@@ -111,7 +111,7 @@ class ECMWF(AtmosType):
         latitude = np.array(dataset.variables['latitude'])
 
         lat = roundToNearest(lat, div)
-        lon = roundToNearest(lon, div)%360
+        lon = roundToNearest(lon, div)
 
         lon_index = int(np.where(longitude==lon)[0])
         lat_index = int(np.where(latitude==lat)[0])
@@ -188,6 +188,8 @@ class ECMWF(AtmosType):
             lat = [start lat, end lat]
         '''
 
+        spread = True
+
         perturb = prefs.pert_num
 
         pts = self.interp(lat, lon, div=0.25)
@@ -239,26 +241,32 @@ class ECMWF(AtmosType):
                 lat = roundToNearest(pt[0], 0.5)
                 lon = roundToNearest(pt[1], 0.5)%360
 
-
+                # I'm so sorry
                 try:
-                    lon_index = int(np.where(self.lons_spr==lon)[0])
-                except TypeError:
-                    if np.abs(lon - self.lons_spr[-1]) < np.abs(lon - self.lons_spr[0]):
-                        lon_index = 0
-                    else:
-                        lon_index = len(self.lons_spr) - 1
-                try:
-                    lat_index = int(np.where(self.lats_spr==lat)[0])
-                except TypeError:
-                    if np.abs(lat - self.lats_spr[-1]) < np.abs(lat - self.lats_spr[0]):
-                        lat_index = 0
-                    else:
-                        lat_index = len(self.lats_spr) - 1
+                    try:
+                        lon_index = int(np.where(self.lons_spr==lon)[0])
+                    except TypeError:
+                        if np.abs(lon - self.lons_spr[-1]) < np.abs(lon - self.lons_spr[0]):
+                            lon_index = 0
+                        else:
+                            lon_index = len(self.lons_spr) - 1
+                    try:
+                        lat_index = int(np.where(self.lats_spr==lat)[0])
+                    except TypeError:
+                        if np.abs(lat - self.lats_spr[-1]) < np.abs(lat - self.lats_spr[0]):
+                            lat_index = 0
+                        else:
+                            lat_index = len(self.lats_spr) - 1
 
-                t_spr.append(self.temperature_spr[last_frac:frac, lat_index, lon_index])
-                u_spr.append(self.x_wind_spr[last_frac:frac, lat_index, lon_index])
-                v_spr.append(self.y_wind_spr[last_frac:frac, lat_index, lon_index])
-                z_spr.append(self.geo_spr[last_frac:frac, lat_index, lon_index])
+                    t_spr.append(self.temperature_spr[last_frac:frac, lat_index, lon_index])
+                    u_spr.append(self.x_wind_spr[last_frac:frac, lat_index, lon_index])
+                    v_spr.append(self.y_wind_spr[last_frac:frac, lat_index, lon_index])
+                    z_spr.append(self.geo_spr[last_frac:frac, lat_index, lon_index])
+
+                except AttributeError:
+                    spread = False
+                    # no spread has been added
+                    pass
 
             last_frac = frac
 
@@ -276,7 +284,7 @@ class ECMWF(AtmosType):
 
         perturbations = []
 
-        if perturb > 0 and prefs.pert_en:
+        if perturb > 0 and prefs.pert_en and spread:
             
             for i in range(perturb):
 
