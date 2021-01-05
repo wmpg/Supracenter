@@ -21,16 +21,17 @@ Before running events on BAM, it may be useful to configure the program-wide set
 
 I recommend defining the workspace to a place that is easy to find. The .bam files are best put in that working directory, and any information are best put in <working directory>/<fireball name>/ since the program will make these folders for you anyways.
 
+
 Setting Up an Event
 ===================
 
 .. image:: BAM.png
 
-An individual event is defined by its .bam file, the idea being that .bam files can be saved on one computer and opened on another for group analysis of an event. It is recommended that every simulation that you run should be on a separate .bam file. This file may contain the metadata, stations, and atmospheric data for that event, if they are used.
+An individual event is defined by its .bam file, the idea being that .bam files can be saved on one computer and opened on another for group analysis of an event. It is recommended that every simulation that you run should be on a separate .bam file. This file may contain the metadata, stations, and atmospheric data for that event, if they are used. All the data can be loaded into the .bam file so that the raw data may be deleted if needed (although it is recommended that backups are kept).
 
-The parameters of the event should be entered in the "variables" toolbar on the left side. This toolbar is dragable, dockable, and can be shown/hidden by pressing "v" (thanks to the wonderful PYQT GUI Library). It is not necessary to completely fill in every entry, the program actually has enough defaults in place to run without needing much filled in. 
+The parameters of the event should be entered in the "variables" toolbar on the left side. This toolbar is dragable, dockable, and can be shown/hidden by pressing "v". It is not necessary to completely fill in every entry, the program actually has enough defaults in place to run without needing much filled in. 
 
-If you are just starting with an event, the key is to fill in as much of the "General" section as known. The program will fill in the rest of the defaults in this section, and calculate the other parameters of the trajectory if not filled in. If either of the fragmentation or ballistic searches are being done, then it is important to fill in the "Sources" tab with your search area, specifically the bottom half. 
+If you are just starting with an event, the key is to fill in as much of the "General" section as known. The program will fill in the rest of the defaults in this section. If either of the fragmentation or ballistic searches are being done, then it is important to fill in the "Sources" tab with your search area. 
 
 Once this is done, you can save your .bam file anywhere on your computer. I recommend putting all of your .bam files in the same place, such as your working directory.
 

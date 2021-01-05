@@ -13,11 +13,11 @@ Created by the Western Meteor Physics Group, specifically:
 * Peter Brown
 * Luke McFadden
 
-Current Version: Beta-2 (August 17, 2020) 
+Current Version: January 5, 2021
 
 If you have any questions about this program, email Luke: lmcfadd6@uwo.ca
 
-GitHub: https://github.com/dvida/Supracenter
+GitHub: https://github.com/wmpg/Supracenter
 
 .. toctree::
    :maxdepth: 2
