@@ -67,7 +67,12 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
             stat += 1
             norm_res += res**2
 
-    print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+    if stat != 0:
+        print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+    else:
+        print('Residual Norm: Undefined')
+
+    pert_results = []
     reses = [np.sqrt(norm_res)/stat]
     if prefs.pert_en:
         for i in range(prefs.pert_num):
@@ -90,7 +95,10 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
                     stat += 1
                     norm_res += res**2
 
-            print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+            if stat != 0:
+                print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+            else:
+                print('Residual Norm: Undefined')
             reses.append(norm_res/stat)
 
 
@@ -106,10 +114,20 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
 
         defTable(obj.supra_res_table, n_stations + 1, 5, headers=['Station Name', "Latitude", "Longitude", "Elevation", "Residuals"])
 
-        setTableRow(obj.supra_res_table, 0, terms=["Total (Time = ({:}s)".format(results.motc), results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, norm_res/stat])
+        if stat != 0:
+            resids = norm_res/stat
+        else:
+            resids = np.nan
+
+        setTableRow(obj.supra_res_table, 0, terms=["Total (Time = ({:} s))".format(results.motc), results.x_opt.lat, results.x_opt.lon, results.x_opt.elev, resids])
 
         for i in range(n_stations):
-            setTableRow(obj.supra_res_table, i + 1, terms=[s_name[i], xstn[i][0], xstn[i][1], xstn[i][2], results.r[i]])
+            
+            stn_pos = Position(0, 0, 0)
+            stn_pos.x, stn_pos.y, stn_pos.z = xstn[i][0], xstn[i][1], xstn[i][2]
+            stn_pos.pos_geo(ref_pos)
+
+            setTableRow(obj.supra_res_table, i + 1, terms=[s_name[i], stn_pos.lat, stn_pos.lon, stn_pos.elev, results.r[i]])
 
         clearLayout(obj.plots)
 
@@ -312,7 +330,7 @@ def supScatterPlot(bam, prefs, results, xstn, s_name, parent, manual=True, pert_
     # Add stations with color based off of residual
     ax.scatter(xstn[:, 0], xstn[:, 1], xstn[:, 2], c=abs(c), marker='^', cmap='viridis_r', depthshade=False)
 
-    
+    ax.scatter(x_opt.lat, x_opt.lon, x_opt.elev, c = 'r', marker='*')
     # Try and plot trajectory if defined
     try:
         ax.plot3D([bam.setup.trajectory.pos_f.lat,  bam.setup.trajectory.pos_i.lat ],\
@@ -325,7 +343,7 @@ def supScatterPlot(bam, prefs, results, xstn, s_name, parent, manual=True, pert_
 
     for ptb in range(prefs.pert_num):
         
-        ax.scatter(x_opt.lat, x_opt.lon, x_opt.elev, c = 'r', marker='*')
+        
         ax.scatter(pert_results[ptb].x_opt.lat, pert_results[ptb].x_opt.lon, pert_results[ptb].x_opt.elev, c = 'g', marker='*', alpha=0.7)
 
         lat_list.append(pert_results[ptb].x_opt.lat)   
@@ -374,12 +392,24 @@ def residPlot(bam, prefs, results_arr, pert_res, s_name, xstn, output_name, pare
     x_opt = results_arr.x_opt
     resid = results_arr.r
 
+    # Hotfix to deal with nan stations not appearing
+    new_resid = []
+    for r in resid:
+        if np.isnan(r):
+            r = 999
+        new_resid.append(r)
+
+    resid = np.array(new_resid)
+
     plt.style.use('dark_background')
     fig = plt.figure(figsize=plt.figaspect(0.5))
     fig.set_size_inches(20.9, 11.7)
     ax = fig.add_subplot(1, 1, 1)
     res = ax.scatter(xstn[:, 1], xstn[:, 0], c=abs(resid), marker='^', cmap='viridis_r', s=21)
-    
+
+    for nn in range(n_stations):
+        ax.text(xstn[nn, 1], xstn[nn, 0],  '%s' % ('{:}'.format(s_name[nn])), size=10, zorder=1, color='w')
+
 
     ax.text(x_opt.lon, x_opt.lat,  '%s' % ('Supracenter'), size=10, zorder=1, color='w')
 
