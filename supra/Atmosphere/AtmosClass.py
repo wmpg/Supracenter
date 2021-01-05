@@ -111,7 +111,7 @@ class ECMWF(AtmosType):
         latitude = np.array(dataset.variables['latitude'])
 
         lat = roundToNearest(lat, div)
-        lon = roundToNearest(lon, div)
+        lon = roundToNearest(lon, div)%360
 
         lon_index = int(np.where(longitude==lon)[0])
         lat_index = int(np.where(latitude==lat)[0])
@@ -179,6 +179,7 @@ class ECMWF(AtmosType):
             sounding.append([level[i], speed[i], mags[i], dirs[i]])
         
         sounding = zInteg(h[0], h[1], np.array(sounding))
+
         
         return sounding
 
@@ -229,8 +230,8 @@ class ECMWF(AtmosType):
                     lat_index = len(self.lats) - 1
             
 
-
             frac = int(np.around((ii+1)/num_pts*num_lvl) + 1)
+
 
             t.append(self.temperature[last_frac:frac, lat_index, lon_index])
             u.append(self.x_wind[last_frac:frac, lat_index, lon_index])
@@ -267,6 +268,7 @@ class ECMWF(AtmosType):
                     spread = False
                     # no spread has been added
                     pass
+
 
             last_frac = frac
 

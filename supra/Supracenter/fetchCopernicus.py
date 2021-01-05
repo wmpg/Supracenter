@@ -4,10 +4,11 @@ try:
 except ModuleNotFoundError:
     print('Not able to find cdsapi - Weather retrieval will not work!')
 
-def copernicusAPI(variables, year, month, day, time, loc, area, ensemble=False):
+def copernicusAPI(variables, year, month, day, time, loc, ensemble=False):
 
     if ensemble:
-        product = 'ensemble_members'
+        #product = 'ensemble_members'
+        product = 'ensemble_spread'
     else:
         product = "reanalysis"
 
@@ -48,7 +49,6 @@ def copernicusAPI(variables, year, month, day, time, loc, area, ensemble=False):
                 '925','950','975',
                 '1000'
             ],
-        "area": area,
         "product_type": product,
         "year": str(year),
         "month": str(month),

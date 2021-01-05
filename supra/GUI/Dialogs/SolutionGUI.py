@@ -815,19 +815,18 @@ class SolutionGUI(QMainWindow):
             self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = np.degrees(sounding[:, 3])
-            self.fatm_canvas.addItem(pg.InfiniteLine(pos=(310, 0), angle=90, pen=QColor(255, 0, 0)))
             self.fatm_canvas.setLabel('bottom', "Wind Direction", units='deg from N', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
             X, nom_range, nom_ray_range = self.effectiveSoundSpeed(sounding)
             self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')    
-        # elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
-        #     dirs = angle2NDE(np.degrees(sounding[:, 3]))
-        #     mags = sounding[:, 2]
-        #     X = mags*np.cos(np.radians(dirs))
-        # elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
-        #     dirs = angle2NDE(np.degrees(sounding[:, 3]))
-        #     mags = sounding[:, 2]
-        #     X = mags*np.sin(np.radians(dirs))
+        elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
+            dirs = angle2NDE(np.degrees(sounding[:, 3]))
+            mags = sounding[:, 2]
+            X = mags*np.cos(np.radians(dirs))
+        elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
+            dirs = angle2NDE(np.degrees(sounding[:, 3]))
+            mags = sounding[:, 2]
+            X = mags*np.sin(np.radians(dirs))
         else:
             return None
         Y = sounding[:, 0]
@@ -848,14 +847,14 @@ class SolutionGUI(QMainWindow):
                 elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
                     X, nom_range, pert_ray_range = self.effectiveSoundSpeed(ptb)
                     perts_range.append(pert_ray_range)
-                # elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
-                #     dirs = angle2NDE(np.degrees(ptb[:, 3]))
-                #     mags = ptb[:, 2]
-                #     X = mags*np.cos(np.radians(dirs))
-                # elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
-                #     dirs = angle2NDE(np.degrees(ptb[:, 3]))
-                #     mags = ptb[:, 2]
-                #     X = mags*np.sin(np.radians(dirs))
+                elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
+                    dirs = angle2NDE(np.degrees(ptb[:, 3]))
+                    mags = ptb[:, 2]
+                    X = mags*np.cos(np.radians(dirs))
+                elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
+                    dirs = angle2NDE(np.degrees(ptb[:, 3]))
+                    mags = ptb[:, 2]
+                    X = mags*np.sin(np.radians(dirs))
                 else:
                     return None
                 Y = ptb[:, 0]
@@ -913,7 +912,7 @@ class SolutionGUI(QMainWindow):
             errorMessage("Unaccepted start and end heights, please fill in below", 1, \
                 detail="{:} and {:} are not formatted correctly".format(tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())))
             return None
-            
+
         try:
             atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
         except Exception as e:
@@ -967,15 +966,9 @@ class SolutionGUI(QMainWindow):
                 clon = self.bam.setup.lon_centre
                 deg_rad = self.bam.setup.deg_radius
 
-                GRID = 0.25
-                #area = [north, west, south, east]
-                area = [clat + deg_rad + (GRID - (clat + deg_rad)%GRID),
-                        clon - deg_rad - (GRID + (clon - deg_rad)%GRID), 
-                        clat - deg_rad - (GRID + (clat - deg_rad)%GRID), 
-                        clon + deg_rad + (GRID - (clon + deg_rad)%GRID)]
 
                 try:
-                    copernicusAPI(variables, year, month, day, time_of, loc, area, ensemble=perts)
+                    copernicusAPI(variables, year, month, day, time_of, loc, ensemble=perts)
                 except Exception as e:
                     errorMessage("Error downloading weather data from CDS", 1, detail='{:}'.format(e))
                 except:
@@ -985,6 +978,16 @@ class SolutionGUI(QMainWindow):
 
                 return None
             else:
+
+                lat = [tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_end_lat.text())]
+                lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
+                elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
+
+                if elev[0] is None or elev[1] is None:
+                    errorMessage("Unaccepted start and end heights, please fill in below", 1, \
+                        detail="{:} and {:} are not formatted correctly".format(tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())))
+                    return None
+            
                 try:
                     atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
                 except Exception as e:
@@ -1052,6 +1055,11 @@ class SolutionGUI(QMainWindow):
         lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
         elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
 
+        if elev[0] is None or elev[1] is None:
+            errorMessage("Unaccepted start and end heights, please fill in below", 1, \
+            detail="{:} and {:} are not formatted correctly".format(tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())))
+            return None
+
         try:
             sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
         except Exception as e:
@@ -1061,7 +1069,7 @@ class SolutionGUI(QMainWindow):
 
         filename = checkExt(filename[0], '.txt')
 
-        header = 'Pressures (hPa)'
+        header = 'Height'
 
         for element in variables:
 
