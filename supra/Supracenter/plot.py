@@ -175,11 +175,13 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
     #     motc = setup.manual_fragmentation_search[3]
 
     # Unknown occurrence time
+
     else:
+        w =np.array([1]*len(sotc))
+
         index = np.isnan(sotc)
         sotc[index] = 0
         motc = np.dot(w, sotc)/sum(w)
-
     # Station residuals (from average)
 
     r = sotc - motc
