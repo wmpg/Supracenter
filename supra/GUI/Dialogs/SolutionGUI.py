@@ -1711,14 +1711,14 @@ class SolutionGUI(QMainWindow):
                                       self.bam.setup.lon_centre + self.bam.setup.deg_radius]
 
 
-        try:
-            #turn coordinates into position objects
-            self.bam.setup.traj_i = Position(self.bam.setup.lat_i, self.bam.setup.lon_i, self.bam.setup.elev_i)
-            self.bam.setup.traj_f = Position(self.bam.setup.lat_f, self.bam.setup.lon_f, self.bam.setup.elev_f)
-        except:
-            self.bam.setup.traj_i = Position(0, 0, 0)
-            self.bam.setup.traj_f = Position(0, 0, 0)
-            errorMessage("Warning: Unable to build trajectory points", 1)
+        # try:
+        #     # turn coordinates into position objects
+        #     self.bam.setup.traj_i = Position(self.bam.setup.lat_i, self.bam.setup.lon_i, self.bam.setup.elev_i)
+        #     self.bam.setup.traj_f = Position(self.bam.setup.lat_f, self.bam.setup.lon_f, self.bam.setup.elev_f)
+        # except:
+        #     self.bam.setup.traj_i = Position(0, 0, 0)
+        #     self.bam.setup.traj_f = Position(0, 0, 0)
+        #     errorMessage("Warning: Unable to build trajectory points", 1)
 
         self.waveformPicker()
 
