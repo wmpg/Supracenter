@@ -602,8 +602,8 @@ def addMakePicksWidgets(obj):
     obj.export_to_csv = QPushButton('Export Picks to CSV')
     pick_group_layout.addWidget(obj.export_to_csv)
 
-    obj.export_to_all_times = QPushButton('Export Arrival Times')
-    pick_group_layout.addWidget(obj.export_to_all_times)
+    # obj.export_to_all_times = QPushButton('Export Arrival Times')
+    # pick_group_layout.addWidget(obj.export_to_all_times)
 
     obj.export_to_image = QPushButton('Export Image')
     pick_group_layout.addWidget(obj.export_to_image)
