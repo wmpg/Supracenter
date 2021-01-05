@@ -27,7 +27,7 @@ def loadSource(obj):
     clearSource(obj)
 
     if not hasattr(obj.bam, "source_list"):
-        errorMessage("No sources found!", 0)
+        errorMessage("No sources found!", 0, info="You can add sources in the 'Add Source' tab below")
         return None
 
     for src in obj.bam.source_list:

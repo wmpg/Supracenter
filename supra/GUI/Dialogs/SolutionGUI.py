@@ -570,6 +570,8 @@ class SolutionGUI(QMainWindow):
 
     def showContour(self, mode):
 
+        filename = saveFile('.npy')
+
         print('Working on contour - This could take a while...')
         self.clearContour()
 
@@ -583,7 +585,6 @@ class SolutionGUI(QMainWindow):
             if errorCodes(self.bam.setup, 'trajectory'):
                 return None
             try:    
-                # maybe use traj interp 2 here???
                 # points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
                 points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=50000)
 
@@ -634,7 +635,9 @@ class SolutionGUI(QMainWindow):
         import matplotlib.tri as tri
 
         A = np.array([lon, lat, Z])
-        np.save("C:\\Users\\lmcfd\\Desktop\\New Maps\\Ball_Winds_final", A)
+
+        # Save the data for basemap plotting
+        np.save(filename, A)
 
         # plt.scatter(lon, lat)
         plt.tricontour(lon, lat, Z, levels=14, linewidths=0.5, colors='w')

@@ -655,9 +655,9 @@ def addMakePicksWidgets(obj):
     plot_tweaks_layout.addWidget(obj.invert)
     obj.invert.stateChanged.connect(obj.invertGraph)
 
-    obj.show_title = QCheckBox('Show Title')
-    plot_tweaks_layout.addWidget(obj.show_title)
-    obj.show_title.stateChanged.connect(obj.showTitle)
+    # obj.show_title = QCheckBox('Show Title')
+    # plot_tweaks_layout.addWidget(obj.show_title)
+    # obj.show_title.stateChanged.connect(obj.showTitle)
 
     obj.show_contour = QPushButton('Show Ballistic Contour')
     plot_tweaks_layout.addWidget(obj.show_contour)
@@ -667,17 +667,17 @@ def addMakePicksWidgets(obj):
     plot_tweaks_layout.addWidget(obj.show_f_contour)
     obj.show_f_contour.clicked.connect(partial(obj.showContour, 'fragmentation'))
 
-    obj.save_contour = QPushButton('Save Contour')
-    plot_tweaks_layout.addWidget(obj.save_contour)
-    obj.save_contour.clicked.connect(obj.saveContour)
+    # obj.save_contour = QPushButton('Save Contour')
+    # plot_tweaks_layout.addWidget(obj.save_contour)
+    # obj.save_contour.clicked.connect(obj.saveContour)
 
-    obj.load_contour = QPushButton('Load Contour')
-    plot_tweaks_layout.addWidget(obj.load_contour)
-    obj.load_contour.clicked.connect(obj.loadContour)
+    # obj.load_contour = QPushButton('Load Contour')
+    # plot_tweaks_layout.addWidget(obj.load_contour)
+    # obj.load_contour.clicked.connect(obj.loadContour)
 
-    obj.clear_contour = QPushButton('Clear Contour')
-    plot_tweaks_layout.addWidget(obj.clear_contour)
-    obj.clear_contour.clicked.connect(obj.clearContour)
+    # obj.clear_contour = QPushButton('Clear Contour')
+    # plot_tweaks_layout.addWidget(obj.clear_contour)
+    # obj.clear_contour.clicked.connect(obj.clearContour)
 
     obj.tab_widget.addTab(make_picks_master_tab, 'Make Picks')  
 
