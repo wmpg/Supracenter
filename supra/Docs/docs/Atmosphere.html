@@ -94,7 +94,6 @@
 <li class="toctree-l2"><a class="reference internal" href="#effect-of-weather-on-rays">Effect of Weather on Rays</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#setting-up-atmospheric-fetching">Setting Up Atmospheric Fetching</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#era5">ERA5</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#radiosonde">Radiosonde</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a></li>
 </ul>
 </li>
@@ -194,7 +193,7 @@
 <h2>Setting Up Atmospheric Fetching<a class="headerlink" href="#setting-up-atmospheric-fetching" title="Permalink to this headline">¶</a></h2>
 <div class="admonition note">
 <p class="admonition-title">Note</p>
-<p>Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required. See netCDFconv.py for more details.</p>
+<p>Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required.</p>
 </div>
 <div class="section" id="era5">
 <h3>ERA5<a class="headerlink" href="#era5" title="Permalink to this headline">¶</a></h3>
@@ -208,11 +207,6 @@
 <p class="admonition-title">Warning</p>
 <p>Cancelling the program while it is using the weather data may corrupt it! Since these files are so large to download (usually between 1 and 6 GB), it is recommended to keep a copy of the weather file on your computer, just in case!</p>
 </div>
-</div>
-<div class="section" id="radiosonde">
-<h3>Radiosonde<a class="headerlink" href="#radiosonde" title="Permalink to this headline">¶</a></h3>
-<p>Follow the Fetch Atmosphere GUI. It will download the closest active station data to the lat/lon_centre.</p>
-<p>When inputting a file name, do not include an extension</p>
 </div>
 <div class="section" id="isotropic-atmospheric-data">
 <h3>Isotropic Atmospheric Data<a class="headerlink" href="#isotropic-atmospheric-data" title="Permalink to this headline">¶</a></h3>
@@ -230,8 +224,18 @@
 </div>
 <div class="section" id="loading-data-into-an-event">
 <h2>Loading Data into an Event<a class="headerlink" href="#loading-data-into-an-event" title="Permalink to this headline">¶</a></h2>
-<p>Data may be loaded into an event .bam file by selecting the Fetch Atmosphere tab. To automatically download an atmosphere or perturbation file, indicate the desired download location in the Name field and click download. If a perturbation file is required, click the Perturbation check box. Alternatively, the files may be downloaded from the Copernicus site directly: <a class="reference external" href="https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels">https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels</a></p>
-<p>To save a file, indicate the file in the name field, and indicate what file type it is (nominal, spread, or radiosonde data). Then click save into BAM, which will load a subsection of the data into the BAM file which is within the search radius. Once the atmospheric file is saved into BAM, the atmospheric file is no longer needed, and can be deleted (although it is recommended to keep it on your computer - the files may become corrupted if the program is cancelled at the wrong time).</p>
+<p>Data may be loaded into an event .bam file by selecting the Fetch Atmosphere tab. To automatically download an atmosphere or perturbation file, click Download. The GUI will ask for the download location, and if you would like to download the nominal data or perturbations only. Alternatively, the files may be downloaded from the Copernicus site directly: <a class="reference external" href="https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels">https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels</a></p>
+<p>To save a file, indicate the file in the name field, and indicate what file type it is (nominal or spread). Then click save into BAM, which will load a subsection of the data into the BAM file which is within the search radius. Once the atmospheric file is saved into BAM, the atmospheric file is no longer needed, and can be deleted (although it is recommended to keep it on your computer - the files may become corrupted if the program is cancelled at the wrong time).</p>
+<img alt="../_images/fetch.png" src="../_images/fetch.png" />
+<p>A complete atmospheric model will be added like this: The user clicks download, and opts NOT to download perturbations. A .nc file will be downloaded to the computer. The user clicks download again and opts to download perturbations. A second .nc file (with a different name) will be downloaded to the computer. This downloads the weather data to the computer, but does not implement it into the current event. If you already have atmospheric data, the data does not need to be downloaded. To implement the atmospheric data into the event, select the nominal atmospheric file in the Name field by selecting Browse. Make sure the combo box says “Copernicus Climate Change Service (ECMWF)” and does NOT say “Spread”, and click Save to BAM. This imports a subset of the weather data into the .bam file for future analysis. Repeat this for the perturbation file, but this time making sure the combo box says “Copernicus Climate Change Service (ECMWF) - Spread”.</p>
+<p>To check if the weather data has been correctly implemented, select Load from BAM to load the current weather model that the event is using. Make sure that the start and end heights have been selected. The plot on the left should now show the atmospheric profile defined from the start and end positions given with the number of perturbations indicated in preferences.</p>
+<p>Here is a summary of what every button on this page does:</p>
+<ul class="simple">
+<li><p>Save into BAM - Saves a subset of the weather profile given in the Name field into the .bam file</p></li>
+<li><p>Load from BAM - Loads the current weather program that is saved in the .bam file (note that the Name field may be blank here)</p></li>
+<li><p>Download - Opens up a GUI to download from the Copernicus Climate Change Service</p></li>
+<li><p>Print - Does the same as Load from BAM, but outputs a text file instead of a plot</p></li>
+</ul>
 <div class="toctree-wrapper compound">
 </div>
 </div>

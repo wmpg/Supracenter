@@ -34,7 +34,7 @@ Setting Up Atmospheric Fetching
 ===============================
 
 .. note::
- 	Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required. See netCDFconv.py for more details. 
+ 	Weather data has been tested with recent files, older files may have a different format, in which a custom script to read them is required.
 
 ERA5
 ----
@@ -141,12 +141,13 @@ Step 3: Does not need to be done, the Fetch Atmosphere tab does this for you, an
 
 .. Note: Data conversion may not work for older files, and may need to be read with a script
 
-Radiosonde
-----------
+.. Radiosonde
+.. ----------
 
-Follow the Fetch Atmosphere GUI. It will download the closest active station data to the lat/lon_centre.
 
-When inputting a file name, do not include an extension
+.. Follow the Fetch Atmosphere GUI. It will download the closest active station data to the lat/lon_centre.
+
+.. When inputting a file name, do not include an extension
 
 .. Custom Atmospheric Data
 .. =======================
@@ -184,9 +185,22 @@ The number of perturbations run in a simulation can be configured in the prefere
 Loading Data into an Event
 ==========================
 
-Data may be loaded into an event .bam file by selecting the Fetch Atmosphere tab. To automatically download an atmosphere or perturbation file, indicate the desired download location in the Name field and click download. If a perturbation file is required, click the Perturbation check box. Alternatively, the files may be downloaded from the Copernicus site directly: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels
+Data may be loaded into an event .bam file by selecting the Fetch Atmosphere tab. To automatically download an atmosphere or perturbation file, click Download. The GUI will ask for the download location, and if you would like to download the nominal data or perturbations only. Alternatively, the files may be downloaded from the Copernicus site directly: https://cds.climate.copernicus.eu/cdsapp#!/dataset/reanalysis-era5-pressure-levels
 
-To save a file, indicate the file in the name field, and indicate what file type it is (nominal, spread, or radiosonde data). Then click save into BAM, which will load a subsection of the data into the BAM file which is within the search radius. Once the atmospheric file is saved into BAM, the atmospheric file is no longer needed, and can be deleted (although it is recommended to keep it on your computer - the files may become corrupted if the program is cancelled at the wrong time).
+To save a file, indicate the file in the name field, and indicate what file type it is (nominal or spread). Then click save into BAM, which will load a subsection of the data into the BAM file which is within the search radius. Once the atmospheric file is saved into BAM, the atmospheric file is no longer needed, and can be deleted (although it is recommended to keep it on your computer - the files may become corrupted if the program is cancelled at the wrong time).
+
+.. image:: fetch.png
+
+A complete atmospheric model will be added like this: The user clicks download, and opts NOT to download perturbations. A .nc file will be downloaded to the computer. The user clicks download again and opts to download perturbations. A second .nc file (with a different name) will be downloaded to the computer. This downloads the weather data to the computer, but does not implement it into the current event. If you already have atmospheric data, the data does not need to be downloaded. To implement the atmospheric data into the event, select the nominal atmospheric file in the Name field by selecting Browse. Make sure the combo box says "Copernicus Climate Change Service (ECMWF)" and does NOT say "Spread", and click Save to BAM. This imports a subset of the weather data into the .bam file for future analysis. Repeat this for the perturbation file, but this time making sure the combo box says "Copernicus Climate Change Service (ECMWF) - Spread". 
+
+To check if the weather data has been correctly implemented, select Load from BAM to load the current weather model that the event is using. Make sure that the start and end heights have been selected. The plot on the left should now show the atmospheric profile defined from the start and end positions given with the number of perturbations indicated in preferences.
+
+Here is a summary of what every button on this page does:
+
+* Save into BAM - Saves a subset of the weather profile given in the Name field into the .bam file
+* Load from BAM - Loads the current weather program that is saved in the .bam file (note that the Name field may be blank here)
+* Download - Opens up a GUI to download from the Copernicus Climate Change Service
+* Print - Does the same as Load from BAM, but outputs a text file instead of a plot
 
 .. toctree::
    :maxdepth: 2

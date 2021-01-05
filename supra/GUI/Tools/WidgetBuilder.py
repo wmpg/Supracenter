@@ -851,9 +851,9 @@ def addFetchATMWidgets(obj):
     fetch_content.addWidget(obj.fatm_fetch, 8, 1, 1, 2)
     obj.fatm_fetch.clicked.connect(partial(obj.fatmFetch, True))
 
-    obj.fatm_open = QPushButton("Open")
-    fetch_content.addWidget(obj.fatm_open, 9, 1, 1, 2)
-    obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
+    # obj.fatm_open = QPushButton("Open")
+    # fetch_content.addWidget(obj.fatm_open, 9, 1, 1, 2)
+    # obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
 
     obj.fatm_print = QPushButton("Print")
     fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 2)
