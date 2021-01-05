@@ -1,1 +1,0 @@
-$ gcc -shared -Wl,-soname,testlib -o testlib.so -fPIC testlib.c
