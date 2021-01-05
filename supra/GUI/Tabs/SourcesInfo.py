@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 
 from supra.GUI.Tools.CustomWidgets import SourceEx
-from supra.GUI.Tools.GUITools import clearLayout
+from supra.GUI.Tools.GUITools import *
 from supra.GUI.Dialogs.AddSource import SourceWindow
 from supra.Files.SaveLoad import save, loadSourcesIntoBam
 
@@ -25,6 +25,10 @@ def saveSource(obj):
 def loadSource(obj):
 
     clearSource(obj)
+
+    if not hasattr(obj.bam, "source_list"):
+        errorMessage("No sources found!", 0)
+        return None
 
     for src in obj.bam.source_list:
         print(src.source)
