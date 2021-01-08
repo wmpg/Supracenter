@@ -1827,6 +1827,10 @@ class SolutionGUI(QMainWindow):
 
         # Extract coordinates of the reference station
         gmap_filename = htmlBuilder(self.bam.setup, self.prefs, self.bam.stn_list)
+
+        if self.prefs.debug:
+            print("STATUS: HTML map generated: {:}".format(gmap_filename))
+        
         self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
 
         self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
