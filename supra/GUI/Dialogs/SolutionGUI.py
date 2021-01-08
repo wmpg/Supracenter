@@ -1877,7 +1877,7 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_map_graph_canvas.scatterPlot(x=[self.bam.setup.trajectory.pos_f.lon], \
                                                              y=[self.bam.setup.trajectory.pos_f.lat], \
                                                                 symbol='+', pen=(0, 0, 255))
-            except TypeError as e:
+            except (TypeError, AttributeError) as e:
                 errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform', detail='{:}'.format(e))
                 self.prefs.ballistic_en = False
 
