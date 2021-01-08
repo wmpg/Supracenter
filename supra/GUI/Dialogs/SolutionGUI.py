@@ -131,10 +131,6 @@ class SolutionGUI(QMainWindow):
             
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'wb') as f:
                 pickle.dump(self.prefs, f)
-       
-
-
-
 
         self.bam = BAMFile()
         self.color = Color()
@@ -1545,6 +1541,8 @@ class SolutionGUI(QMainWindow):
      
         self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 15, width=1, h_shift=0, tool_tip='station_picks_file')
         self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
+        self.station_picks_buton.clicked.connect(partial(save, self))
+        
 
         self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre', validate='float')
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
