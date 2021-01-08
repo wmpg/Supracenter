@@ -33,7 +33,31 @@ class BAMFile:
 class Prefs:
 
     def __init__(self):
-        pass
+        self.workdir = os.path.expanduser("~")
+        self.avg_sp_sound = 330
+        self.contour_res = 25
+        self.debug = True
+        self.ballistic_en = False
+        self.frag_en = False
+        self.recalc_times = False
+        self.wind_en = False
+        self.pert_en = False
+        self.atm_type = 'none'
+        self.pert_type = 'none'
+        self.pert_num = 0
+        self.pso_debug = False
+        self.pso_theta      = 90
+        self.pso_phi        = 90
+        self.pso_min_ang    = 330.0
+        self.pso_min_dist   = 3000.0
+        self.pso_max_iter   = 100
+        self.pso_swarm_size = 100
+        self.pso_run_times  = 1
+        self.pso_min_error  = 1e-8
+        self.pso_min_step   = 1e-8
+        self.pso_phi_p      = 0.5
+        self.pso_phi_g      = 0.5
+        self.pso_omega      = 0.5
 
     def save(self, obj):
 

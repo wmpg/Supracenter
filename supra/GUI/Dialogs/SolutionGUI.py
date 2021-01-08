@@ -117,9 +117,18 @@ class SolutionGUI(QMainWindow):
         try:
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'rb') as f:
                 self.prefs = pickle.load(f)
-        except EOFError as e:
-            # Prefs file missing? - Not sure how to handle this yet
-            pass
+        except FileNotFoundError as e:
+            
+            # Prefs file missing - use default settings
+            
+            print("STATUS: Preferences file not found (Was deleted, or fresh install) - Generating a default preference file.")
+            
+            with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'wb') as f:
+                pickle.dump(self.prefs, f)
+       
+
+
+
 
         self.bam = BAMFile()
         self.color = Color()
