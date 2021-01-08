@@ -17,7 +17,7 @@ app.processEvents()
 
 gui = SolutionGUI()
 
-gui.showFullScreen()
+# gui.showFullScreen()
 gui.showMaximized()
 gui.show()
 

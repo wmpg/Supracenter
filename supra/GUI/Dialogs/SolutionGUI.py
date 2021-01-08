@@ -113,6 +113,12 @@ class SolutionGUI(QMainWindow):
         ##############################
         # Load system-wide preferences
         ##############################
+
+        qtRectangle = self.frameGeometry()
+        centerPoint = QDesktopWidget().availableGeometry().center()
+        qtRectangle.moveCenter(centerPoint)
+        self.move(qtRectangle.topLeft())
+
         self.prefs = Prefs()
         try:
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'rb') as f:
@@ -139,6 +145,7 @@ class SolutionGUI(QMainWindow):
 
         # Add widgets to the floating box
         self.addIniDockWidgets()
+
 
     def viewToolbar(self):
 
