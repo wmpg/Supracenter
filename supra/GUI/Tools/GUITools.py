@@ -296,8 +296,8 @@ def fileSearch(filters, obj):
         except IndexError:
             return filename
 
-def saveFile(ext):
-    dlg = QFileDialog.getSaveFileName(None, 'Save File')
+def saveFile(ext, note=""):
+    dlg = QFileDialog.getSaveFileName(None, 'Save File', "", "{:} (*.{:})".format(note, ext))
     file_name = checkExt(dlg[0], ext)
     return file_name
 

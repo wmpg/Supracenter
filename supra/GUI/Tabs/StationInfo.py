@@ -7,6 +7,7 @@ from PyQt5.QtCore import *
 
 from supra.GUI.Tools.CustomWidgets import StationEx
 from supra.GUI.Dialogs.StationSource import StationWindow
+from supra.GUI.Tools.GUITools import *
 from supra.Utils.Classes import Position
 from supra.Files.SaveLoad import save
 from supra.Stations.FetchStations import getAllStations
@@ -64,12 +65,18 @@ def getStations(obj):
     if not obj.checkForWorkDir():
         return None
 
+    if not hasattr(obj.bam.setup, "fireball_name"):
+        errorMessage("The .bam file has not been created, please save your event file before downloading stations", 1)
+        return None
+
     # #Build seismic data path
     obj.dir_path = os.path.join(obj.prefs.workdir, obj.bam.setup.fireball_name)
 
 
     if obj.bam.setup.get_data:
         
+        errorMessage("Stations are being downloaded", 0, info="Check terminal for download status", title="Station Download")
+
         #Download all waveform files which are within the given geographical and temporal range ###
         stn_list = getAllStations(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, \
                 obj.bam.setup.deg_radius, obj.bam.setup.fireball_datetime, \
