@@ -95,7 +95,7 @@ def calcAllTimes(bam, prefs):
 
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
     
-    if not has_attr(bam.setup, "fragmentation_point"):
+    if not hasattr(bam.setup, "fragmentation_point"):
         no_of_frags = 0
     else:
         no_of_frags = len(bam.setup.fragmentation_point)
