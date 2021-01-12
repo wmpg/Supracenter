@@ -1,4 +1,5 @@
 import pickle
+import sys
 
 from PyQt5.QtCore import *
 
@@ -254,9 +255,21 @@ def save(obj):
 
     file_size = byteify(os.stat(obj.bam.file_name).st_size)
 
+    detail = 'CONTENTS: \n'
+
+    if hasattr(obj.bam, "setup"):
+        detail += 'SETUP - TRUE\n'
+
+    if hasattr(obj.bam, "stn_list"):
+        detail += 'STATION LIST - TRUE\n'
+
+    if hasattr(obj.bam, "atmos"):
+        detail += 'ATMOSPHERE - TRUE\n'
+
     print('STATUS: Setup Saved')
     loadDisplay(obj.bam.setup, obj)
-    errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, title="Saved")
+    errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
+                title="Saved", detail=detail)
 
 
 def load(obj):

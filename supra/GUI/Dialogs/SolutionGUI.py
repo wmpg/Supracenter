@@ -1859,6 +1859,36 @@ class SolutionGUI(QMainWindow):
             txt.setPos(stn.metadata.position.lon, stn.metadata.position.lat)
             self.make_picks_map_graph_canvas.addItem(txt)
 
+        self.make_picks_map_graph_canvas.setXRange(self.bam.setup.lon_centre - self.bam.setup.deg_radius, \
+                                                   self.bam.setup.lon_centre + self.bam.setup.deg_radius)
+
+        self.make_picks_map_graph_canvas.setYRange(self.bam.setup.lat_centre - self.bam.setup.deg_radius, \
+                                                   self.bam.setup.lat_centre + self.bam.setup.deg_radius)
+
+        ###
+        # Plot reasonably close CTBTO stations (no waveforms)
+        with open(os.path.join("supra", "Misc", "CTBTO_stats.csv"), "r+") as f:
+
+            a = f.readlines()
+            for stat in a:
+                stat_dat = stat.strip().split(',')
+
+                stat_name = stat_dat[0]
+                stat_lat = float(stat_dat[1])
+                stat_lon = float(stat_dat[2])
+
+                approx_dis = np.sqrt((stat_lat - self.bam.setup.lat_centre)**2 + (stat_lon - self.bam.setup.lon_centre)**2)
+
+                if approx_dis <= 2*self.bam.setup.deg_radius:
+
+                    marker = pg.ScatterPlotItem()
+                    marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
+                    txt = pg.TextItem("{:}".format(stat_name))
+                    txt.setPos(stat_lon, stat_lat)
+                    self.make_picks_map_graph_canvas.addItem(marker, update=True)
+                    self.make_picks_map_graph_canvas.addItem(txt)
+
+
         if self.prefs.frag_en:
 
             if not hasattr(self.bam.setup, 'fragmentation_point'):
