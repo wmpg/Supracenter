@@ -194,6 +194,8 @@ class Yield(QWidget):
 
         sounding, perturbations = self.bam.atmos.getSounding(lats, lons, elevs, spline=50)
 
+        print(sounding)
+
         trans = []
         ints = []
         ts = []

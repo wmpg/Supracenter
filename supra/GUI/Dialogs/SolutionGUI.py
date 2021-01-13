@@ -2535,7 +2535,7 @@ class SolutionGUI(QMainWindow):
             if chn_selected != "BDF":
                 st = st[0].remove_response(inventory=resp, output="DISP")
             else:
-                st = st[0]
+                st = st[0].remove_response(inventory=resp, output="DISP")
             st.remove_sensitivity(resp) 
             rm_resp = True
         else:
