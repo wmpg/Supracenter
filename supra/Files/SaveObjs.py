@@ -151,6 +151,9 @@ class Atmos:
                 return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
             else:
                 raise Exception("ECMWF is not loaded into the BAM file, trying to export default weather")
+                self.default_weather = np.array([[heights[1], avg_sp_sound, 0.0, 0.0],
+                                                 [heights[1], avg_sp_sound, 0.0, 0.0],
+                                                 [heights[0], avg_sp_sound, 0.0, 0.0]])
                 return self.default_weather, None
         elif prefs.atm_type == 'radio':
             return self.default_weather, None

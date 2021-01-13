@@ -149,18 +149,31 @@ def getData(height):
 			indx = i - 1
 			break
 
-	max_height = geopot[indx]
-	min_height = geopot[indx + 1]
-
-	f = (height - min_height)/(max_height - min_height)
-
 	term = ['n', 'a[Pa]', 'b', 'ph[hPa]', 'pf[hPa]', 'Geopotential Altitude[m]', 'Geometric Altitide[m]', 'T[K]', 'Density [kg/m^3]']
 	val = []
 
-	for i in range(9):
+	if indx is not None:
+
+		max_height = geopot[indx]
+		min_height = geopot[indx + 1]
+
+		f = (height - min_height)/(max_height - min_height)
+
+		for i in range(9):
 		
-		# print("{:} = {:}".format(term[i], f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i]))
-		val.append(f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i])
+			# print("{:} = {:}".format(term[i], f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i]))
+			val.append(f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i])
+
+
+	else:
+
+		# If out of range, just return the last value
+		for i in range(9):
+			
+			print("Atmosphere interpolation out of range, assuming top layer")
+			# print("{:} = {:}".format(term[i], f*(dataset[indx, i] - dataset[indx + 1, i]) + dataset[indx + 1, i]))
+			val.append(dataset[-1, i])
+
 
 	return val
 
