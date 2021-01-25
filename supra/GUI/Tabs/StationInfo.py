@@ -53,11 +53,31 @@ def refreshStation(obj):
 
 def outputStation(obj):
 
-    print("Station List\n")
+    print("Station List:\n")
     for stn in obj.bam.stn_list:
         meta = stn.metadata
         print("['{:}-{:}', {:}, {:}, {:}],".format(meta.network, meta.code, \
                     meta.position.lat, meta.position.lon, meta.position.elev))
+
+def countStation(obj):
+    
+    print("Station Count:\n")
+    print("##########################")
+    
+    seis_count = 0
+    infra_count = 0
+
+    for stn in obj.bam.stn_list:
+        stream = stn.stream
+
+        if len(stn.stream.select(channel="*HZ")) > 0:
+            seis_count += 1
+
+        if len(stn.stream.select(channel="*DF")) > 0:
+            infra_count += 1
+
+    print("Seismic Stations:    {:}".format(seis_count))
+    print("Infrasound Stations: {:}".format(infra_count))
 
 def getStations(obj):
 

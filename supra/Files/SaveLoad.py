@@ -248,7 +248,7 @@ def save(obj):
     obj.bam.setup = saveSetup(obj)
 
     if obj.bam.file_name is None:
-        obj.bam.file_name = saveFile('.bam', note="BAM file")
+        obj.bam.file_name = saveFile('bam', note="BAM file")
 
     with open(obj.bam.file_name, 'wb') as f:
         pickle.dump(obj.bam, f)
