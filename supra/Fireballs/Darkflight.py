@@ -121,20 +121,36 @@ def runDarkflight(params, mass, uncertainty=False):
     drg = str(params.drag)
 
     # Directory of Darkflight
-    darkflight_dir = "C:\\Users\\lmcfd\\Desktop\\"
+    dir1 = "/home/dvida/source/darkflight"
+    dir2 = "C:\\Users\\lmcfd\\Desktop\\"
+    dir3 = "/srv/meteor/fireballs/darkflight"
+    if os.path.isdir(dir1):
+        darkflight_dir = dir1
+    elif os.path.isdir(dir2):
+        darkflight_dir = dir2
+    elif os.path.isdir(dir3):
+        darkflight_dir = dir3
+    else:
+        print("The directory with the darkflight code cannot be found!")
+        print("Tried these directories:")
+        print(dir1)
+        print(dir2)
+        sys.exit()
 
     # Run Darkflight through terminal calls
 
+    print("Running the darkflight binary...")
+
     # darkflight.c help menu
     if params.help:
-        p = subprocess.Popen(['.\\darkflight', '--help'], cwd=darkflight_dir)
+        p = subprocess.Popen(['./darkflight', '--help'], cwd=darkflight_dir)
         exit()
 
     # Monte-Carlo simulations
     if uncertainty:
         # Fragmentation simulation
         if params.frag:
-            p = subprocess.Popen(['.\\darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -144,7 +160,7 @@ def runDarkflight(params, mass, uncertainty=False):
         
         # no fragmentation
         else:
-            p = subprocess.Popen(['.\\darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+            p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        '--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
@@ -156,13 +172,13 @@ def runDarkflight(params, mass, uncertainty=False):
     else:
 
 
-        p = subprocess.Popen(['darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
+        p = subprocess.Popen(['./darkflight', '--src', lat + ',' + lon + ',' + elev, '--vel', v, '--az', az, '--zn', ze, '--mas', mass, \
                        #'--tan', tan, '--sig', sig, \
                        '--den', den, '--end', end, '--shp', shape, \
                        #'--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        #'--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, \
-                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir, shell=True)
+                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir)
 
     # Run terminal call
     p.communicate()
