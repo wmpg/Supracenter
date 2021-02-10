@@ -175,7 +175,11 @@ class Yield(QWidget):
 
     def integrate(self, height, D_ANGLE=1.5, tf=1, az=1):
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-        point = self.setup.trajectory.findGeo(height)
+        try:
+            point = self.setup.trajectory.findGeo(height)
+        except AttributeError:
+            print("STATUS: No trajectory given, assuming lat/lon center")
+            point = Position(self.setup.lat_centre, self.setup.lon_centre, height)
         point.pos_loc(ref_pos)
 
         stn = self.stn_list[self.current_station]
@@ -187,7 +191,10 @@ class Yield(QWidget):
 
         # make the spline lower to save time here
 
+
         sounding, perturbations = self.bam.atmos.getSounding(lats, lons, elevs, spline=50)
+
+        print(sounding)
 
         trans = []
         ints = []
@@ -195,7 +202,15 @@ class Yield(QWidget):
         ps = []
         rfs = []
 
-        for ptb_n in range(len(perturbations) + 1):
+
+
+        if perturbations is None:
+            ptb_len = 1
+        else:
+            ptb_len = len(perturbations) + 1
+
+
+        for ptb_n in range(ptb_len):
 
             # Temporary adjustment to remove randomness from perts
         
@@ -218,6 +233,7 @@ class Yield(QWidget):
             ps.append(P)
 
             rfs.append(rf)
+
 
         return trans, ints, ts, ps, rfs
 
@@ -262,7 +278,13 @@ class Yield(QWidget):
             self.c_edits.setText('{:.4f}'.format(t_val))
             self.pressure_edits.setText('{:.4f}'.format(p_val))
             self.p_a_edits.setText('{:.4f}'.format(estPressure(stn.metadata.position.elev)))
-            frag_pos = self.setup.trajectory.findGeo(height)
+
+            try:
+                frag_pos = self.setup.trajectory.findGeo(height)
+            except AttributeError:
+                print("STATUS: No trajectory given, assuming lat/lon center")
+                frag_pos = Position(self.setup.lat_centre, self.setup.lon_centre, height)
+            
             self.geo_edits.setText('{:.4f}'.format(r_val))
             stn_pos = stn.metadata.position
             dist = stn_pos.pos_distance(frag_pos)

@@ -1867,6 +1867,7 @@ class SolutionGUI(QMainWindow):
 
         ###
         # Plot reasonably close CTBTO stations (no waveforms)
+        #####
         with open(os.path.join("supra", "Misc", "CTBTO_stats.csv"), "r+") as f:
 
             a = f.readlines()
@@ -1879,14 +1880,14 @@ class SolutionGUI(QMainWindow):
 
                 approx_dis = np.sqrt((stat_lat - self.bam.setup.lat_centre)**2 + (stat_lon - self.bam.setup.lon_centre)**2)
 
-                if approx_dis <= 2*self.bam.setup.deg_radius:
+                #if approx_dis <= 2*self.bam.setup.deg_radius:
 
-                    marker = pg.ScatterPlotItem()
-                    marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
-                    txt = pg.TextItem("{:}".format(stat_name))
-                    txt.setPos(stat_lon, stat_lat)
-                    self.make_picks_map_graph_canvas.addItem(marker, update=True)
-                    self.make_picks_map_graph_canvas.addItem(txt)
+                marker = pg.ScatterPlotItem()
+                marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
+                txt = pg.TextItem("{:}".format(stat_name))
+                txt.setPos(stat_lon, stat_lat)
+                self.make_picks_map_graph_canvas.addItem(marker, update=True)
+                self.make_picks_map_graph_canvas.addItem(txt)
 
 
         if self.prefs.frag_en:
@@ -2144,6 +2145,7 @@ class SolutionGUI(QMainWindow):
             self.make_picks_station_graph_canvas.plot((toa_line_time)*310, (toa_line_time), pen=(255, 0, 0))
         print('')
         
+
         self.make_picks_station_graph_canvas.setLabel('bottom', "Distance", units='m')
         self.make_picks_station_graph_canvas.setLabel('left', "Time", units='s')
 
@@ -2510,6 +2512,10 @@ class SolutionGUI(QMainWindow):
 
         resp = stn.response
 
+        # nominal way to get trace metadata        
+        # stn_id = mseed[current_channel].get_id()
+        # print(resp.get_channel_metadata(stn_id))
+
         st = mseed
 
         # A second stream containing channels with the response
@@ -2526,8 +2532,10 @@ class SolutionGUI(QMainWindow):
 
             #TODO - bug, this shouldn't run every time the waveform is shown
             #Obspy says that this is because the response is removed on the actual data, use .copy() 
-            
-            st = st[0].remove_response(inventory=resp, output="DISP")
+            if chn_selected != "BDF":
+                st = st[0].remove_response(inventory=resp, output="DISP")
+            else:
+                st = st[0].remove_response(inventory=resp, output="DISP")
             st.remove_sensitivity(resp) 
             rm_resp = True
         else:
@@ -2584,7 +2592,10 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
         if rm_resp:
-            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+            if chn_selected != "BDF":
+                self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+            else:
+                self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
         else:
             self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
 
@@ -2614,12 +2625,12 @@ class SolutionGUI(QMainWindow):
         try:
             stn.stn_ground_distance(self.bam.setup.trajectory.pos_f)
 
-            print('####################')
-            print("Current Station: {:}-{:}".format(stn.network, stn.code))
-            print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
         except:
+            stn.stn_ground_distance(ref_pos)
 
-            pass
+        print('####################')
+        print("Current Station: {:}-{:}".format(stn.metadata.network, stn.metadata.code))
+        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
 
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():

@@ -119,7 +119,7 @@ class SourceEx(QGroupBox):
         self.az_label = QLabel("Azimuth {:.2f}°".format(az))
         layout.addWidget(self.az_label, 3, 2)
 
-        self.ze_label = QLabel("Zenith {:.2f} s".format(ze))
+        self.ze_label = QLabel("Zenith {:.2f}°".format(ze))
         layout.addWidget(self.ze_label, 3, 3)
 
 

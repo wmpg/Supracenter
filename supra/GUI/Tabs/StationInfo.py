@@ -53,11 +53,53 @@ def refreshStation(obj):
 
 def outputStation(obj):
 
-    print("Station List\n")
+    print("Station List:\n")
     for stn in obj.bam.stn_list:
         meta = stn.metadata
         print("['{:}-{:}', {:}, {:}, {:}],".format(meta.network, meta.code, \
                     meta.position.lat, meta.position.lon, meta.position.elev))
+
+def countStation(obj):
+    
+    print("Station Count:\n")
+    print("##########################")
+    
+    seis_count = 0
+    infra_count = 0
+
+    seis_dist = 999999
+    infra_dist = 999999
+
+    # Extract coordinates of the reference station
+    ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
+
+    for stn in obj.bam.stn_list:
+        stream = stn.stream
+
+        # Calculate ground distances
+        try:
+            stn.stn_ground_distance(obj.bam.setup.trajectory.pos_f)
+
+        except:
+            stn.stn_ground_distance(ref_pos)
+
+        if len(stn.stream.select(channel="*HZ")) > 0:
+            seis_count += 1
+            seis_temp = stn.ground_distance
+            if seis_temp <= seis_dist:
+                seis_dist = seis_temp
+
+        if len(stn.stream.select(channel="*DF")) > 0:
+            infra_count += 1
+            infra_temp = stn.ground_distance
+            if infra_temp <= infra_dist:
+                infra_dist = infra_temp
+
+    print("Seismic Stations:    {:}".format(seis_count))
+    print("Infrasound Stations: {:}".format(infra_count))
+
+    print("Closest Seismic Station:    {:.3f} km".format(seis_dist/1000))
+    print("Closest Infrasound Station: {:.3f} km".format(infra_dist/1000))
 
 def getStations(obj):
 
