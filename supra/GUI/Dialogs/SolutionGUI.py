@@ -2625,12 +2625,12 @@ class SolutionGUI(QMainWindow):
         try:
             stn.stn_ground_distance(self.bam.setup.trajectory.pos_f)
 
-            print('####################')
-            print("Current Station: {:}-{:}".format(stn.network, stn.code))
-            print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
         except:
+            stn.stn_ground_distance(ref_pos)
 
-            pass
+        print('####################')
+        print("Current Station: {:}-{:}".format(stn.metadata.network, stn.metadata.code))
+        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
 
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():
