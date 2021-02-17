@@ -1,6 +1,8 @@
 
 import os
 
+import numpy as np
+
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -67,39 +69,76 @@ def countStation(obj):
     seis_count = 0
     infra_count = 0
 
-    seis_dist = 999999
-    infra_dist = 999999
+    seis_dist =  np.inf
+    infra_dist = np.inf
+    ctbto_dist = np.inf
+
+    ctbto_stats = []
+
+    with open(os.path.join("supra", "Misc", "CTBTO_stats.csv"), "r+") as f:
+
+        a = f.readlines()
+        for stat in a:
+            stat_dat = stat.strip().split(',')
+
+            stat_name = stat_dat[0]
+            stat_lat = float(stat_dat[1])
+            stat_lon = float(stat_dat[2])
+
+            ctbto_stats.append(Position(stat_lat, stat_lon, 0))
 
     # Extract coordinates of the reference station
-    ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
+    if obj.prefs.frag_en and len(obj.bam.setup.fragmentation_point) >= 1:
+        rng = True
+        ref_pos = obj.bam.setup.fragmentation_point[0].position
+    else:
+        rng = False
+        ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
 
     for stn in obj.bam.stn_list:
         stream = stn.stream
 
-        # Calculate ground distances
-        try:
-            stn.stn_ground_distance(obj.bam.setup.trajectory.pos_f)
-
-        except:
+        if rng:
+            stn.stn_distance(ref_pos)
+        else:
             stn.stn_ground_distance(ref_pos)
+
 
         if len(stn.stream.select(channel="*HZ")) > 0:
             seis_count += 1
-            seis_temp = stn.ground_distance
+            if rng:
+                seis_temp = stn.distance
+            else:
+                seis_temp = stn.ground_distance
             if seis_temp <= seis_dist:
                 seis_dist = seis_temp
 
         if len(stn.stream.select(channel="*DF")) > 0:
             infra_count += 1
-            infra_temp = stn.ground_distance
+            if rng:
+                infra_temp = stn.distance
+            else:
+                infra_temp = stn.ground_distance
             if infra_temp <= infra_dist:
                 infra_dist = infra_temp
+
+    for pos in ctbto_stats:
+        dist = pos.ground_distance(ref_pos)
+
+        if dist <= ctbto_dist:
+            ctbto_dist = dist
 
     print("Seismic Stations:    {:}".format(seis_count))
     print("Infrasound Stations: {:}".format(infra_count))
 
-    print("Closest Seismic Station:    {:.3f} km".format(seis_dist/1000))
-    print("Closest Infrasound Station: {:.3f} km".format(infra_dist/1000))
+    if rng:
+        print("Closest Seismic Station (Range):    {:.3f} km".format(seis_dist/1000))
+        print("Closest Infrasound Station (Range): {:.3f} km".format(infra_dist/1000))
+        print("Closest CTBTO Station (Range):      {:.3f} km".format(ctbto_dist/1000))
+    else:
+        print("Closest Seismic Station (Ground Distance):    {:.3f} km".format(seis_dist/1000))
+        print("Closest Infrasound Station (Ground Distance): {:.3f} km".format(infra_dist/1000))
+        print("Closest CTBTO Station (Ground Distance):      {:.3f} km".format(ctbto_dist/1000))
 
 def getStations(obj):
 

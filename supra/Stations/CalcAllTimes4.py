@@ -182,8 +182,9 @@ def calcAllTimes(bam, prefs):
             except ValueError:
                 best_indx = None
                 a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
-                for pert in perturbations:
-                    a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+                if perturbations is not None:
+                    for pert in perturbations:
+                        a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
                 stn.times.ballistic.append(a)
                 continue
 
@@ -199,13 +200,13 @@ def calcAllTimes(bam, prefs):
             timing = distance/speed
 
             results = []
-
-            for pert in perturbations:
-                e, b, c, d = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
-                    wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
-                e += timing
-                results.append(np.array([e, b, c, d])) 
+            if perturbations is not None:
+                for pert in perturbations:
+                    e, b, c, d = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
+                        wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
+                        h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                    e += timing
+                    results.append(np.array([e, b, c, d])) 
 
             a.append([f_time + timing, frag_azimuth, frag_takeoff, frag_err])
             a.append(results)
