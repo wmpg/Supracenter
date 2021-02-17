@@ -88,12 +88,14 @@ def countStation(obj):
             ctbto_stats.append(Position(stat_lat, stat_lon, 0))
 
     # Extract coordinates of the reference station
-    if obj.prefs.frag_en and len(obj.bam.setup.fragmentation_point) >= 1:
-        rng = True
-        ref_pos = obj.bam.setup.fragmentation_point[0].position
-    else:
-        rng = False
-        ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
+    rng = False
+    if hasattr(obj.bam.setup, "fragmentation_point"):
+        if obj.prefs.frag_en and len(obj.bam.setup.fragmentation_point) >= 1:
+            rng = True
+            ref_pos = obj.bam.setup.fragmentation_point[0].position
+        else:
+            rng = False
+            ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
 
     for stn in obj.bam.stn_list:
         stream = stn.stream
