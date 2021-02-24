@@ -2523,7 +2523,6 @@ class SolutionGUI(QMainWindow):
 
         # Use st2 if able to, else use st
         st2 = st2.select(channel=chn_selected)
-        st = st.select(channel=chn_selected)
         # Unpact miniSEED data
 
         if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
@@ -2536,7 +2535,7 @@ class SolutionGUI(QMainWindow):
                 st = st[0].remove_response(inventory=resp, output="DISP")
             else:
                 st = st[0].remove_response(inventory=resp, output="DISP")
-            st.remove_sensitivity(resp) 
+            # st.remove_sensitivity(resp) 
             rm_resp = True
         else:
             st = st[0]
@@ -2552,8 +2551,8 @@ class SolutionGUI(QMainWindow):
 
         # Check if the waveform data is already given or not
         if waveform_data is None or channel_changed != 2:
-            waveform_data = mseed[current_channel].data
-
+            #waveform_data = mseed[current_channel].data
+            waveform_data = st.data
             # Store raw data for bookkeeping on first open
             self.current_waveform_raw = waveform_data
 

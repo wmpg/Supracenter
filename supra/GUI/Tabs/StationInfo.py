@@ -89,6 +89,8 @@ def countStation(obj):
 
     # Extract coordinates of the reference station
     rng = False
+    ref_pos = Position(obj.bam.setup.lat_centre, obj.bam.setup.lon_centre, 0)
+
     if hasattr(obj.bam.setup, "fragmentation_point"):
         if obj.prefs.frag_en and len(obj.bam.setup.fragmentation_point) >= 1:
             rng = True
