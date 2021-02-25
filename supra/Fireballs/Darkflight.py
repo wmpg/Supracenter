@@ -493,14 +493,15 @@ def readInfile(infile):
     try:
         params.mass_min =    float(config.get('Variables', 'mass_min'))
     except:
-        params.mass_min = 0.00001
-        print('Using default mass: {:.2f} kg'.format(params.mass_min))
+        # 1 gram
+        params.mass_min = 0.001
+        print('Using default minimum mass: {:.3f} kg'.format(params.mass_min))
 
     try:
         params.mass_max =    float(config.get('Variables', 'mass_max'))
     except:
         params.mass_max = 25
-        print('Using default mass: {:.2f} kg'.format(params.mass_max))
+        print('Using default mass: {:.3f} kg'.format(params.mass_max))
     
     try:
         params.tan =     float(config.get('Variables', 'tan'))
@@ -621,8 +622,11 @@ if __name__ == "__main__":
     params = readInfile(cml_args.input_file)
 
     # What masses are chosen
-    #mass_list = halfMags(params.mass_min, params.mass_max, params.mags)
-    mass_list = [1, 0.1, 0.05, 0.02, 0.01, 0.001]
+    mass_list = halfMags(params.mass_min, params.mass_max, params.mags)
+    #mass_list = [1, 0.1, 0.05, 0.02, 0.01, 0.001]
+
+    print("Masses used:", mass_list)
+
     params.error = (params.error.lower() == 'true')
 
     if not os.path.exists(params.output):
