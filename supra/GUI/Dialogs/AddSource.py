@@ -39,7 +39,7 @@ class SourceWindow(QWidget):
         QWidget.__init__(self)
         
         self.bam = bam
-        self.annote_color = (0, 0, 0)
+        self.annote_color = (255, 255, 255)
 
         self.buildGUI()
 
