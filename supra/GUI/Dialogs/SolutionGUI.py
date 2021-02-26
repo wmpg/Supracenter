@@ -127,7 +127,7 @@ class SolutionGUI(QMainWindow):
             
             # Prefs file missing - use default settings
             
-            print("STATUS: Preferences file not found (Was deleted, or fresh install) - Generating a default preference file.")
+            print(printMessage("status"), "Preferences file not found (Was deleted, or fresh install) - Generating a default preference file.")
             
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'wb') as f:
                 pickle.dump(self.prefs, f)
@@ -348,7 +348,7 @@ class SolutionGUI(QMainWindow):
             if ptb_n > 0 and self.ray_enable_perts.isChecked():
                 
                 if self.prefs.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
+                    print(printMessage("status"), "Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturb(self.setup, sounding, self.setup.perturb_method, \
@@ -1653,7 +1653,7 @@ class SolutionGUI(QMainWindow):
             for ptb_n in range(1, self.setup.perturb_times):
 
                 if self.prefs.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
+                    print(printMessage("status"), "Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturbation_method(self.setup, dataset, self.setup.perturb_method, \
@@ -1668,7 +1668,7 @@ class SolutionGUI(QMainWindow):
                 elif self.var_typ == 'd':
                     X = sounding_p[:, 3]
                 else:
-                    print('error, atmPlotProfile')
+                    print(printMessage("error"), 'atmPlotProfile')
 
                 Y = sounding_p[:, 0]
                 
@@ -1843,7 +1843,7 @@ class SolutionGUI(QMainWindow):
         gmap_filename = htmlBuilder(self.bam.setup, self.prefs, self.bam.stn_list)
 
         if self.prefs.debug:
-            print("STATUS: HTML map generated: {:}".format(gmap_filename))
+            print(printMessage("status"), "HTML map generated: {:}".format(gmap_filename))
         
         self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
 
@@ -1992,7 +1992,7 @@ class SolutionGUI(QMainWindow):
             self.station_marker[ii] = pg.ScatterPlotItem()
             self.station_waveform[ii] = pg.PlotCurveItem()
 
-        self.make_picks_station_choice.currentTextChanged.connect(self.navStats)
+        self.make_picks_station_choice.activated.connect(self.navStats)
 
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
@@ -2232,7 +2232,6 @@ class SolutionGUI(QMainWindow):
         #     self.current_station += 1
         #     if self.current_station >= len(self.bam.stn_list):
         #         self.current_station = 0
-
 
         self.updatePlot()
 
@@ -2636,21 +2635,22 @@ class SolutionGUI(QMainWindow):
 
             src = self.bam.setup.traj_metadata[0]
 
+            print(src.color)
             b_time = stn.times.ballistic[0][0][0]
 
             if b_time == b_time:
                 self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2) , label='Ballistic')
-                print("Ballistic Arrival: {:.3f} s".format(b_time))
+                print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
             else:
-                print("No Ballistic Arrival")
+                print(printMessage("ballistic"), "No Nominal Arrival")
 
             if self.prefs.pert_en:
                 data, remove = chauvenet(stn.times.ballistic[0][1][0])
                 try:
-                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                    print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
                     print('Removed points {:}'.format(remove))
                 except ValueError:
-                    print('No Perturbation Arrivals')
+                    print(printMessage("ballistic"), 'No Perturbation Arrivals')
 
                 for i in range(len(data)):
                     if self.show_perts.isChecked():
@@ -2673,7 +2673,7 @@ class SolutionGUI(QMainWindow):
                 h_time = frag.position.ground_distance(stn.metadata.position)/1000
                 p_time = h_time + v_time
                 print('++++++++++++++++')
-                print('Fragmentation {:} ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
+                print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 frag.position.pos_loc(stn.metadata.position)
                 stn.metadata.position.pos_loc(stn.metadata.position)
                 xyz_range = np.sqrt((frag.position.x - stn.metadata.position.x)**2 + \
@@ -2696,15 +2696,15 @@ class SolutionGUI(QMainWindow):
 
                 else:
                     pass
-                    print('No Fragmentation {:} ({:6.2f} km) Arrival'.format(i+1, frag.position.elev/1000))
+                    print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
 
                 if self.prefs.pert_en:
                     data, remove = self.obtainPerts(stn.times.fragmentation, i)
                     try:
-                        print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                        print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
                         print('Removed points {:}'.format(remove))
                     except ValueError:
-                        print('No Perturbation Arrivals')
+                        print(printMessage("fragmentation"), 'No Perturbation Arrivals')
                     for j in range(len(data)):
                         if self.show_perts.isChecked():
                             

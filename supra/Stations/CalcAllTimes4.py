@@ -75,38 +75,38 @@ def checkSkip(bam, prefs):
     # Check if the user has requested times to be recalculated
     if prefs.recalc_times:
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - User override')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - User override')
         return False
 
     for stn in bam.stn_list:
         # Check if any times
         if not hasattr(stn, 'times'):
             if prefs.debug:
-                print('DEBUG: Not skipping CalcAllTimes - No previously calculated times')
+                print(printMessage("debug"), 'Not skipping CalcAllTimes - No previously calculated times')
             return False
 
     # Check Ballistic
     if not checkNomBall(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No nominal ballistic times')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No nominal ballistic times')
         return False
 
     # Check Fragmentations
     if not checkNomFrag(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No nominal fragmentation times')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No nominal fragmentation times')
         return False
 
     # Check Ballistic Perturb
     if not checkPertBall(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No perturbed ballistic arrivals')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No perturbed ballistic arrivals')
         return False
 
     # Check Fragmentation Perturb
     if not checkPertFrag(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No perturbed fragmentation arrivals')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No perturbed fragmentation arrivals')
         return False
 
 
@@ -128,6 +128,9 @@ def printStatus(bam, prefs):
     print("NOMINAL BALLISTIC CALCULATIONS " , printTrue(checkNomBall(bam, prefs)))
     print("PERTURBATIONS FRAGMENTATION CALCULATIONS ", printTrue(checkPertFrag(bam, prefs)))
     print("PERTURBATIONS BALLISTIC CALCULATIONS " , printTrue(checkPertBall(bam, prefs)))
+
+    print("################################")
+    print("")
 
 
 
