@@ -105,8 +105,8 @@ class SourceWindow(QWidget):
 
             _, self.lat_edit = createLabelEditObj('Latitude: ', self.layout, 4)
             _, self.lon_edit = createLabelEditObj('Longitude: ', self.layout, 5)
-            _, self.elev_edit = createLabelEditObj('Elevation: ', self.layout, 6)
-            _, self.time_edit = createLabelEditObj('Time after reference: ', self.layout, 7)
+            _, self.elev_edit = createLabelEditObj('Elevation [m]: ', self.layout, 6)
+            _, self.time_edit = createLabelEditObj('Time after reference [s]: ', self.layout, 7)
 
         elif source_type == "Ballistic":
 
@@ -114,12 +114,12 @@ class SourceWindow(QWidget):
             _, self.lat_f_edit = createLabelEditObj('Latitude (final): ', self.layout, 5)
             _, self.lon_i_edit = createLabelEditObj('Longitude (initial): ', self.layout, 6)
             _, self.lon_f_edit = createLabelEditObj('Longitude (final): ', self.layout, 7)
-            _, self.elev_i_edit = createLabelEditObj('Elevation (initial): ', self.layout, 8)
-            _, self.elev_f_edit = createLabelEditObj('Elevation (final): ', self.layout, 9)
+            _, self.elev_i_edit = createLabelEditObj('Elevation (initial) [m]: ', self.layout, 8)
+            _, self.elev_f_edit = createLabelEditObj('Elevation (final) [m]: ', self.layout, 9)
             _, self.azimuth_edit = createLabelEditObj('Azimuth: ', self.layout, 10)
             _, self.zenith_edit = createLabelEditObj('Zenith: ', self.layout, 11)
-            _, self.time_edit = createLabelEditObj('Time: ', self.layout, 12)
-            _, self.velocity_edit = createLabelEditObj('Velocity: ', self.layout, 13)
+            _, self.time_edit = createLabelEditObj('Time after reference [s]: ', self.layout, 12)
+            _, self.velocity_edit = createLabelEditObj('Velocity [m/s]: ', self.layout, 13)
 
         else:
             print("Unknown source")
@@ -154,8 +154,16 @@ class SourceWindow(QWidget):
 
             t = float(self.time_edit.text())
             v = float(self.velocity_edit.text())
-            az = Angle(float(self.azimuth_edit.text()))
-            ze = Angle(float(self.zenith_edit.text()))
+            
+            try:
+                az = Angle(float(self.azimuth_edit.text()))
+            except ValueError:
+                az = None
+
+            try:    
+                ze = Angle(float(self.zenith_edit.text()))
+            except ValueError:
+                ze = None
 
             source = Trajectory(t, v, zenith=ze, azimuth=az, pos_i=initial_pos, pos_f=final_pos, v_f=None)
 

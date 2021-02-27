@@ -66,6 +66,7 @@ class FragmentationStaff(QWidget):
         #######################
         base_points = pg.ScatterPlotItem()
         for i in range(len(self.setup.fragmentation_point)):
+
             f_time = stn.times.fragmentation[i][0][0]
             X = self.setup.fragmentation_point[i].position.elev
             Y = f_time - nom_pick.time
@@ -135,7 +136,7 @@ class FragmentationStaff(QWidget):
                 self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
 
         self.dots = np.array([self.dots_x, self.dots_y])
-        np.save("C:\\Users\\lmcfd\\Desktop\\dots.npy", self.dots)
+
         #####################
         # Angle Calculation
         #####################
@@ -218,7 +219,7 @@ class FragmentationStaff(QWidget):
         self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
         self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
 
-        self.height_canvas.setLimits(xMin=0, xMax=50000, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
+        self.height_canvas.setLimits(xMin=B.elev, xMax=A.elev, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
 
         # Fonts
         font= QFont()

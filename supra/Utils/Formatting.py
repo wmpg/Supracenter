@@ -2,6 +2,12 @@ import os
 import sys
 import random
 
+try:
+    from termcolor import colored
+    termclr = True
+except ModuleNotFoundError:
+    termclr = False
+
 def splashMessage():
     print('#########################################')
     print('#     Western Meteor Python Library     #')
@@ -11,6 +17,18 @@ def splashMessage():
     print('#              Peter Brown              #')
     print('#              2018 - 2020              #')
     print('#########################################')
+
+def printTrue(result):
+    if result:
+        if termclr:
+            return "< " + colored('TRUE', 'green') + " >"
+        else:
+            return "< TRUE >"
+    else:
+        if termclr:
+            return "< " + colored('FALSE', 'red') + " >"
+        else:
+            return "< FALSE >"
 
 def printWidth(char='#'):
 
