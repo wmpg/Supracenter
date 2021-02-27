@@ -139,8 +139,6 @@ def calcAllTimes(bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
 
-
-
     #######################################
     # Check if times need to be calculated
     #######################################
