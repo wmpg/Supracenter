@@ -2523,7 +2523,6 @@ class SolutionGUI(QMainWindow):
 
         # Use st2 if able to, else use st
         st2 = st2.select(channel=chn_selected)
-        st = st.select(channel=chn_selected)
         # Unpact miniSEED data
 
         if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
@@ -2536,7 +2535,7 @@ class SolutionGUI(QMainWindow):
                 st = st[0].remove_response(inventory=resp, output="DISP")
             else:
                 st = st[0].remove_response(inventory=resp, output="DISP")
-            st.remove_sensitivity(resp) 
+            # st.remove_sensitivity(resp) 
             rm_resp = True
         else:
             st = st[0]
@@ -2552,8 +2551,8 @@ class SolutionGUI(QMainWindow):
 
         # Check if the waveform data is already given or not
         if waveform_data is None or channel_changed != 2:
-            waveform_data = mseed[current_channel].data
-
+            #waveform_data = mseed[current_channel].data
+            waveform_data = st.data
             # Store raw data for bookkeeping on first open
             self.current_waveform_raw = waveform_data
 
@@ -2645,25 +2644,26 @@ class SolutionGUI(QMainWindow):
             else:
                 print("No Ballistic Arrival")
 
-            data, remove = chauvenet(stn.times.ballistic[0][1][0])
-            try:
-                print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                print('Removed points {:}'.format(remove))
-            except ValueError:
-                print('No Perturbation Arrivals')
+            if self.prefs.pert_en:
+                data, remove = chauvenet(stn.times.ballistic[0][1][0])
+                try:
+                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                    print('Removed points {:}'.format(remove))
+                except ValueError:
+                    print('No Perturbation Arrivals')
 
-            for i in range(len(data)):
-                if self.show_perts.isChecked():
-                    try:
-                        self.make_picks_waveform_canvas.plot(x=[data[i]]*2, \
-                         y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, style=QtCore.Qt.DotLine) )
-                    except:
-                        pass
-            # Fragmentation Prediction
+                for i in range(len(data)):
+                    if self.show_perts.isChecked():
+                        try:
+                            self.make_picks_waveform_canvas.plot(x=[data[i]]*2, \
+                             y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, style=QtCore.Qt.DotLine) )
+                        except:
+                            pass
+                # Fragmentation Prediction
 
             # If manual fragmentation search is on
         if self.prefs.frag_en and self.show_frags.isChecked():
-
+            
             for i, frag in enumerate(self.bam.setup.fragmentation_point):
 
                 src = self.bam.setup.frag_metadata[i]
@@ -2698,23 +2698,24 @@ class SolutionGUI(QMainWindow):
                     pass
                     print('No Fragmentation {:} ({:6.2f} km) Arrival'.format(i+1, frag.position.elev/1000))
 
-                data, remove = self.obtainPerts(stn.times.fragmentation, i)
-                try:
-                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                    print('Removed points {:}'.format(remove))
-                except ValueError:
-                    print('No Perturbation Arrivals')
-                for j in range(len(data)):
-                    if self.show_perts.isChecked():
-                        
-                        try:
-                            if not np.isnan(data[j]):
-                                self.make_picks_waveform_canvas.plot(x=[data[j]]*2, y=[np.min(waveform_data),\
-                                    np.max(waveform_data)], alpha=0.3,\
-                                    pen=pg.mkPen(color=(0, 255, 0), style=QtCore.Qt.DotLine), zorder=3)
-                        except IndexError:
-                            errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
-                            return None
+                if self.prefs.pert_en:
+                    data, remove = self.obtainPerts(stn.times.fragmentation, i)
+                    try:
+                        print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                        print('Removed points {:}'.format(remove))
+                    except ValueError:
+                        print('No Perturbation Arrivals')
+                    for j in range(len(data)):
+                        if self.show_perts.isChecked():
+                            
+                            try:
+                                if not np.isnan(data[j]):
+                                    self.make_picks_waveform_canvas.plot(x=[data[j]]*2, y=[np.min(waveform_data),\
+                                        np.max(waveform_data)], alpha=0.3,\
+                                        pen=pg.mkPen(color=(0, 255, 0), style=QtCore.Qt.DotLine), zorder=3)
+                            except IndexError:
+                                errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
+                                return None
 
         self.addAnnotes()
     def obtainPerts(self, data, frag):
