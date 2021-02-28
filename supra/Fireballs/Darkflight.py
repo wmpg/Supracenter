@@ -336,7 +336,7 @@ def plotData(data, del_data, params, mass_list):
         for j in range(len(mass_list)):
             mass[j] = kml.newfolder(name=massString(mass_list[j]))
             for i in range(len(del_lat[j])):
-            # pnt[j] = traj.newpoint(coords=[(lon[j][i], lat[j][i], alt[j][i]*1000)], altitudemode='relativeToGround')
+            # pnt[j] = traj.newpoint(coords=[(lon[j][i], lat[j][i], alt[j][i]*1000)], altitudemode='clampToGround')
 
             # if j%10 == 0:
             #     pnt[j].style.iconstyle.color = simplekml.Color.blue
@@ -372,7 +372,7 @@ def plotData(data, del_data, params, mass_list):
 
 
                 # Monte Carlo points
-                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], altitudemode='relativeToGround')
+                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], altitudemode='clampToGround')
 
                 if j%10 == 0:
                     pnt[j].style.iconstyle.color = simplekml.Color.blue
@@ -420,13 +420,13 @@ def plotData(data, del_data, params, mass_list):
 
         #Best ground points
         if params.enable_time and params.error:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}, {:5.2f} +/- {:3.2f} s'.format(massString(mas[j][-1]), best_t, dt))
         elif params.enable_time:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}, {:5.2f} s'.format(massString(mas[j][-1]), best_t))
         else:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}'.format(massString(mas[j][-1])))
 
 
