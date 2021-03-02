@@ -139,7 +139,8 @@ def runDarkflight(params, mass, uncertainty=False):
 
     # Run Darkflight through terminal calls
 
-    print("Running the darkflight binary...")
+    print()
+    print("Running the darkflight binary for the {:.3f} kg mass bin...".format(float(mass)))
 
     # darkflight.c help menu
     if params.help:
@@ -476,7 +477,7 @@ def readInfile(infile):
     try:
         params.mags = float(config.get('Tweaks', 'mags'))
     except:
-        params.mags = 10
+        params.mags = 5
 
     try:
         params.x =       float(config.get('Variables', 'lat'))
