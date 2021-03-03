@@ -2378,86 +2378,86 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen=self.colors[self.group_no], brush=self.colors[self.group_no], update=True)
             self.drawWaveform(station_no=self.current_station)
 
-        # elif self.gnd_mot_picks.isChecked():
+        elif self.gnd_mot_picks.isChecked():
 
-        #     # Open ground motion Dialog
-        #     current_chn_start = channel[0:2]
-        #     channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
+            # Open ground motion Dialog
+            current_chn_start = channel[0:2]
+            channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
             
-        #     # Check if zne/z12 is available
-        #     count = 0
+            # Check if zne/z12 is available
+            count = 0
 
-        #     for chn in channel_opts:
-        #         if current_chn_start in chn:
-        #             count += 1
+            for chn in channel_opts:
+                if current_chn_start in chn:
+                    count += 1
 
-        #     if count == 3:
+            if count == 3:
                 
-        #         self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
-        #         self.gr.setGeometry(QRect(100, 100, 1600, 700))
-        #         self.gr.show()
-        #     elif count < 3:
-        #         errorMessage("Not enough channel data for particle motion!", 2, \
-        #                 detail="Three orthogonal stations are needed to do particle motion!")
-        #     else:
-        #         errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
-        #                  2, detail="")
+                self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
+                self.gr.setGeometry(QRect(100, 100, 1600, 700))
+                self.gr.show()
+            elif count < 3:
+                errorMessage("Not enough channel data for particle motion!", 2, \
+                        detail="Three orthogonal stations are needed to do particle motion!")
+            else:
+                errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
+                         2, detail="")
 
-        #     save(self)
+            save(self)
 
-        # elif self.bandpass_picks.isChecked():
-
-
-        #     # Open bandpass GUI
-        #     self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
-        #     self.bp.setGeometry(QRect(100, 100, 1200, 700))
-        #     self.bp.show()
-
-        # elif self.polmap_picks.isChecked():
-
-        #     ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
-        #     points = []
-
-        #     # Calculate all points here
-        #     for stn in self.bam.stn_list:
-
-        #         if not hasattr(stn, "polarization"):
-        #             stn.polarization = Polarization()
-
-        #         if len(stn.polarization.azimuth) > 0: 
-
-        #             D = propegateBackwards(ref_pos, stn, self.bam)
-
-        #             for line in D:
-        #                 if not np.isnan(line[0]): 
-        #                     P = Position(0, 0, 0)
-        #                     P.x = line[0]
-        #                     P.y = line[1]
-        #                     P.z = line[2]
-        #                     P.pos_geo(ref_pos)
-        #                     S = Supracenter(P, line[3])
-        #                     points.append([S, stn.color])
-
-        #     # Pass grid to polmap
-        #     self.pm = Polmap(self.bam, points)
-        #     self.pm.setGeometry(QRect(100, 100, 1200, 700))
-        #     self.pm.show()
+        elif self.bandpass_picks.isChecked():
 
 
-        # elif self.annote_picks.isChecked():
+            # Open bandpass GUI
+            self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
+            self.bp.setGeometry(QRect(100, 100, 1200, 700))
+            self.bp.show()
 
-        #     # Create annotation
-        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+        elif self.polmap_picks.isChecked():
 
-        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+            points = []
+
+            # Calculate all points here
+            for stn in self.bam.stn_list:
+
+                if not hasattr(stn, "polarization"):
+                    stn.polarization = Polarization()
+
+                if len(stn.polarization.azimuth) > 0: 
+
+                    D = propegateBackwards(ref_pos, stn, self.bam)
+
+                    for line in D:
+                        if not np.isnan(line[0]): 
+                            P = Position(0, 0, 0)
+                            P.x = line[0]
+                            P.y = line[1]
+                            P.z = line[2]
+                            P.pos_geo(ref_pos)
+                            S = Supracenter(P, line[3])
+                            points.append([S, stn.color])
+
+            # Pass grid to polmap
+            self.pm = Polmap(self.bam, points)
+            self.pm.setGeometry(QRect(100, 100, 1200, 700))
+            self.pm.show()
 
 
-        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
-        #     self.a.setGeometry(QRect(400, 500, 400, 500))
-        #     self.a.show()
+        elif self.annote_picks.isChecked():
+
+            # Create annotation
+            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+
+            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+
+
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
+            self.a.setGeometry(QRect(400, 500, 400, 500))
+            self.a.show()
             
-        #     self.drawWaveform()
-        #     self.alt_pressed = False
+            self.drawWaveform()
+            self.alt_pressed = False
             
 
     def addAnnotes(self):
