@@ -2561,13 +2561,13 @@ class SolutionGUI(QMainWindow):
                 print('mseed file could not be read:', mseed_file_path)
             return None
 
-
-        # Populate channel list
-        self.make_picks_channel_choice.blockSignals(True)
-        self.make_picks_channel_choice.clear()
-        for i in range(len(mseed)):
-            self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
-        self.make_picks_channel_choice.blockSignals(False)
+        if channel_changed == 0:
+            # Populate channel list
+            self.make_picks_channel_choice.blockSignals(True)
+            self.make_picks_channel_choice.clear()
+            for i in range(len(mseed)):
+                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
+            self.make_picks_channel_choice.blockSignals(False)
         
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
@@ -2578,61 +2578,9 @@ class SolutionGUI(QMainWindow):
         # A second stream containing channels with the response
         st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
 
-
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
 
-
-        # # Use st2 if able to, else use st
-        # st2 = st2.select(channel=chn_selected)
-        # # Unpact miniSEED data
-
-        # if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
-        #     st = st2
-
-
-        #     #TODO - bug, this shouldn't run every time the waveform is shown
-        #     #Obspy says that this is because the response is removed on the actual data, use .copy() 
-        #     if chn_selected != "BDF":
-        #         st = st[0].remove_response(inventory=resp, output="DISP")
-        #     else:
-        #         st = st[0].remove_response(inventory=resp, output="DISP")
-        #     # st.remove_sensitivity(resp) 
-        #     rm_resp = True
-        # else:
-        #     st = st[0]
-        #     rm_resp = False
-
-        # st.detrend()
-
-        # delta = st.stats.delta
-        # start_datetime = st.stats.starttime.datetime
-        # end_datetime = st.stats.endtime.datetime
-
-        # stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
-
-        # # Check if the waveform data is already given or not
-        # if waveform_data is None or channel_changed != 2:
-        #     #waveform_data = mseed[current_channel].data
-        #     waveform_data = st.data
-        #     # Store raw data for bookkeeping on first open
-        #     self.current_waveform_raw = waveform_data
-
-        # self.current_waveform_delta = delta
-        # self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
-        #      delta)
-        # # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
-        # #     delta)
-
-        # # Construct time array, 0 is at start_datetime
-        # time_data = np.copy(self.current_waveform_time)
-
-        # # Cut the waveform data length to match the time data
-        # waveform_data = waveform_data[:len(time_data)]
-        # time_data = time_data[:len(waveform_data)] + stn.offset
-
-        # # Store currently plotted waveform
-        # self.current_waveform_processed = waveform_data
 
         # Calculate the time of arrival assuming constant propagation with the given speed of sound
         try:

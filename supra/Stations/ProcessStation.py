@@ -2,6 +2,7 @@
 import numpy as np
 
 from supra.Stations.Filters import butterworthBandpassFilter
+import scipy.signal
 
 def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False):
     ''' procTrace filters a waveform given a response file and a reference time
@@ -20,7 +21,6 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
 
     raw_trace = trace.copy()
 
-    print(trace)
 
     # Obtain metadata from trace
     delta           = trace.stats.delta
@@ -49,14 +49,14 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     ampl_data = ampl_data[:len(time_data)]
     time_data = time_data[:len(ampl_data)] + offset
 
-
+    print("Bandpass")
     # Init the butterworth bandpass filter
     if bandpass is not None:
 
         low =  bandpass[0]
         high = bandpass[1]
 
-        butter_b, butter_a = butterworthBandpassFilter(low, high, 1.0/delta)
+        butter_b, butter_a = butterworthBandpassFilter(low, high, 1.0/delta, order=2)
 
         # Filter the data
         ampl_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(ampl_data))
@@ -66,6 +66,6 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         return ampl_data, time_data, raw_trace
 
 
-
+    print("Return")
     return ampl_data, time_data      
 
