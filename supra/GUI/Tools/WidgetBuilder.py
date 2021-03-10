@@ -645,6 +645,10 @@ def addMakePicksWidgets(obj):
     obj.show_height = QCheckBox('Show Height Prediction')
     check_group_layout.addWidget(obj.show_height)
 
+    # obj.psd = QCheckBox('[EXPERIMENTAL] PSD')
+    # check_group_layout.addWidget(obj.psd)
+    # obj.psd.stateChanged.connect(obj.psdPlot)
+
     # obj.solve_height = QCheckBox('Solve Heights')
     # check_group_layout.addWidget(obj.solve_height)
 

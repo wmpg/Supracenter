@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 import scipy.signal
+from scipy.fft import fft
+
 import pyqtgraph.exporters
 
 from matplotlib.backends.backend_qt5agg import FigureCanvas
@@ -2392,7 +2394,6 @@ class SolutionGUI(QMainWindow):
                     count += 1
 
             if count == 3:
-                
                 self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
                 self.gr.setGeometry(QRect(100, 100, 1600, 700))
                 self.gr.show()
@@ -2471,6 +2472,67 @@ class SolutionGUI(QMainWindow):
 
     def onClick(self):
         print('It Worked!')
+
+    def psdPlot(self):
+
+        if self.psd.isChecked():
+
+            print(printMessage("status"), "Calculating PSD")
+            stn = self.bam.stn_list[self.current_station]
+
+            mseed = stn.stream.copy()
+            current_channel = self.make_picks_channel_choice.currentIndex()
+            chn_selected = self.make_picks_channel_choice.currentText()
+            # A second stream containing channels with the response
+            resp = stn.response
+            st = mseed.select(inventory=resp.select(channel=chn_selected))
+
+            # Use st2 if able to, else use st
+            st = st.select(channel=chn_selected)
+
+            # Unpact miniSEED data
+            st = st[0].remove_response(inventory=resp, output="DISP")
+            st.detrend()
+
+
+            delta = st.stats.delta
+            start_datetime = st.stats.starttime.datetime
+            end_datetime = st.stats.endtime.datetime
+
+            waveform_data = st.data
+            self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
+                         delta)
+            # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
+            #     delta)
+
+            # Construct time array, 0 is at start_datetime
+            time_data = np.copy(self.current_waveform_time)
+
+            # Cut the waveform data length to match the time data
+            waveform_data = waveform_data[:len(time_data)]
+            time_data = time_data[:len(waveform_data)] + stn.offset
+
+            sps = st.stats.sampling_rate
+            dt = 1/st.stats.sampling_rate
+            length = len(waveform_data)
+            freq = np.linspace(1/length, (sps/2), length)*sps/length
+            
+            FAS = abs(fft(waveform_data))
+            # FAS_n = abs(fft(z_n))
+            # fas_data = pg.PlotDataItem()
+            plt.semilogx(freq, FAS)
+
+            # fas_noise_data = pg.PlotDataItem()
+            # fas_noise_data.setData(x=freq, y=FAS_n, pen=(255, 255, 255))
+
+            # fas_diff_data = pg.PlotDataItem()
+            # fas_diff_data.setData(x=freq, y=np.abs(FAS/FAS_n), pen=(0, 125, 255))
+
+            plt.xlabel("Frequency [Hz]")
+            plt.ylabel("Response")
+            plt.show()
+        else:
+            print(printMessage("debug"), "Turning off PSD")
 
     def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 

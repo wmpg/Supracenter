@@ -367,7 +367,7 @@ class ParticleMotion(QWidget):
             resp = stn.response
             st2 = st.copy()
             st2 = st2.remove_response(inventory=resp, output="DISP")
-            st2.remove_sensitivity(resp) 
+            # st2.remove_sensitivity(resp) 
 
             waveform_data = st2.data
 
@@ -877,6 +877,7 @@ class ParticleMotion(QWidget):
             fas_diff_data = pg.PlotDataItem()
             fas_diff_data.setData(x=freq, y=np.abs(FAS/FAS_n), pen=(0, 125, 255))
 
+            print("Red - Data", "White - Noise", "Blue - Data/Noise")
             self.waveform_fft_canvas.addItem(fas_data)
             self.waveform_fft_canvas.addItem(fas_noise_data)
             self.waveform_fft_canvas.addItem(fas_diff_data)
