@@ -74,6 +74,7 @@ from supra.GUI.Tabs.SupracenterSearch import supSearch
 from supra.GUI.Tabs.TrajectorySearch import trajectorySearch
 
 from supra.Stations.Filters import *
+from supra.Stations.ProcessStation import procTrace 
 from supra.Stations.CalcAllTimes4 import calcAllTimes
 from supra.Stations.StationObj import Polarization
 
@@ -2534,7 +2535,7 @@ class SolutionGUI(QMainWindow):
         else:
             print(printMessage("debug"), "Turning off PSD")
 
-    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0):
+    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0, bandpass=None):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 
             can be given an drawn, which is used when bandpass filtering is performed. 
 
@@ -2560,78 +2561,78 @@ class SolutionGUI(QMainWindow):
                 print('mseed file could not be read:', mseed_file_path)
             return None
 
-        if channel_changed == 0:
-            # Populate channel list
-            self.make_picks_channel_choice.blockSignals(True)
-            self.make_picks_channel_choice.clear()
-            for i in range(len(mseed)):
-                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
-            self.make_picks_channel_choice.blockSignals(False)
+
+        # Populate channel list
+        self.make_picks_channel_choice.blockSignals(True)
+        self.make_picks_channel_choice.clear()
+        for i in range(len(mseed)):
+            self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
+        self.make_picks_channel_choice.blockSignals(False)
         
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
-
-        resp = stn.response
-
         # nominal way to get trace metadata        
         # stn_id = mseed[current_channel].get_id()
         # print(resp.get_channel_metadata(stn_id))
-
-        st = mseed
-
+        resp = stn.response
         # A second stream containing channels with the response
-        st2 = mseed.select(inventory=resp.select(channel=chn_selected))
-
-        # Use st2 if able to, else use st
-        st2 = st2.select(channel=chn_selected)
-        # Unpact miniSEED data
-
-        if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
-            st = st2
+        st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
 
 
-            #TODO - bug, this shouldn't run every time the waveform is shown
-            #Obspy says that this is because the response is removed on the actual data, use .copy() 
-            if chn_selected != "BDF":
-                st = st[0].remove_response(inventory=resp, output="DISP")
-            else:
-                st = st[0].remove_response(inventory=resp, output="DISP")
-            # st.remove_sensitivity(resp) 
-            rm_resp = True
-        else:
-            st = st[0]
-            rm_resp = False
+        waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
+                        resp=resp, bandpass=bandpass)
 
-        st.detrend()
 
-        delta = st.stats.delta
-        start_datetime = st.stats.starttime.datetime
-        end_datetime = st.stats.endtime.datetime
+        # # Use st2 if able to, else use st
+        # st2 = st2.select(channel=chn_selected)
+        # # Unpact miniSEED data
 
-        stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
+        # if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
+        #     st = st2
 
-        # Check if the waveform data is already given or not
-        if waveform_data is None or channel_changed != 2:
-            #waveform_data = mseed[current_channel].data
-            waveform_data = st.data
-            # Store raw data for bookkeeping on first open
-            self.current_waveform_raw = waveform_data
 
-        self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
-             delta)
-        # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
-        #     delta)
+        #     #TODO - bug, this shouldn't run every time the waveform is shown
+        #     #Obspy says that this is because the response is removed on the actual data, use .copy() 
+        #     if chn_selected != "BDF":
+        #         st = st[0].remove_response(inventory=resp, output="DISP")
+        #     else:
+        #         st = st[0].remove_response(inventory=resp, output="DISP")
+        #     # st.remove_sensitivity(resp) 
+        #     rm_resp = True
+        # else:
+        #     st = st[0]
+        #     rm_resp = False
 
-        # Construct time array, 0 is at start_datetime
-        time_data = np.copy(self.current_waveform_time)
+        # st.detrend()
 
-        # Cut the waveform data length to match the time data
-        waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + stn.offset
+        # delta = st.stats.delta
+        # start_datetime = st.stats.starttime.datetime
+        # end_datetime = st.stats.endtime.datetime
 
-        # Store currently plotted waveform
-        self.current_waveform_processed = waveform_data
+        # stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
+
+        # # Check if the waveform data is already given or not
+        # if waveform_data is None or channel_changed != 2:
+        #     #waveform_data = mseed[current_channel].data
+        #     waveform_data = st.data
+        #     # Store raw data for bookkeeping on first open
+        #     self.current_waveform_raw = waveform_data
+
+        # self.current_waveform_delta = delta
+        # self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
+        #      delta)
+        # # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
+        # #     delta)
+
+        # # Construct time array, 0 is at start_datetime
+        # time_data = np.copy(self.current_waveform_time)
+
+        # # Cut the waveform data length to match the time data
+        # waveform_data = waveform_data[:len(time_data)]
+        # time_data = time_data[:len(waveform_data)] + stn.offset
+
+        # # Store currently plotted waveform
+        # self.current_waveform_processed = waveform_data
 
         # Calculate the time of arrival assuming constant propagation with the given speed of sound
         try:
@@ -2651,13 +2652,12 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-        if rm_resp:
-            if chn_selected != "BDF":
-                self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
-            else:
-                self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+
+        if chn_selected != "BDF":
+            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
         else:
-            self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
+            self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+
 
         # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
@@ -2814,24 +2814,25 @@ class SolutionGUI(QMainWindow):
 
 
         # Limit the high frequency to be lower than the Nyquist frequency
-        max_freq = (1.0/self.current_waveform_delta)/2
+        # max_freq = (1.0/self.current_waveform_delta)/2
 
-        if bandpass_high > max_freq:
-            bandpass_high = max_freq - 0.1
+        # if bandpass_high > max_freq:
+        #     bandpass_high = max_freq - 0.1
 
-            self.high_bandpass_slider.setValue(bandpass_high*self.bandpass_scale)
+        #     self.high_bandpass_slider.setValue(bandpass_high*self.bandpass_scale)
         
 
-        # Init the butterworth bandpass filter
-        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_waveform_delta, order=6)
+        # # Init the butterworth bandpass filter
+        # butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
+        #     1.0/self.current_waveform_delta, order=6)
 
-        # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
+        # # Filter the data
+        # waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
 
 
         # Plot the updated waveform
-        self.drawWaveform(channel_changed=2, waveform_data=waveform_data, station_no=self.current_station)
+        self.drawWaveform(channel_changed=2, \
+                station_no=self.current_station, bandpass=[bandpass_low, bandpass_high])
 
 
     def filterConvolution(self, event=None):
