@@ -46,6 +46,8 @@ def cluster(data, maxgap):
         groups [list] - a list of clusters, each of which is its own list of Pick Objects
 
     '''
+    if len(data) == 0:
+        return None
 
     # First point will be in the first group
     groups = [[data[0]]]
@@ -79,6 +81,8 @@ def degroupPicks(groups):
     filtered_list [list] - a list of Pick Objects, each cluster of Pick Objects from the input combined
                             into one Pick Object
     '''
+    if groups is None:
+        return None
 
     filtered_list = []
     for cluster in groups:

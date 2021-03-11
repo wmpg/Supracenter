@@ -24,9 +24,9 @@ import matplotlib.pyplot as plt
 import more_itertools as mit
 from scipy.stats import median_abs_deviation
 
-from pick import Pick
-from obspyhelper import loadStreamFromFile, cleanWaveform
-from listhelper import rmBelow, cluster, degroupPicks
+from supra.Stations.Pick import Pick
+from supra.Stations.obspyhelper import loadStreamFromFile, cleanWaveform
+from supra.Stations.listhelper import rmBelow, cluster, degroupPicks
 
 
 def statRemove(waveform_data, window_size=0, window_overlap=1.0, std_range=5):
@@ -146,7 +146,7 @@ def groups2PickObjs(groups, conversion_factor):
 
 
 
-def sourceFinder(file_name, channel=None, verbose=False, plot=False, length_of_signal=5, \
+def sourceFinder(stream, channel=None, verbose=False, plot=False, length_of_signal=5, \
         bandpass={"freqmin": 2, "freqmax":8, "corners":4, "zerophase":False}, \
         window_size=15, window_overlap=1.0, std_range=10):
     
@@ -172,8 +172,7 @@ def sourceFinder(file_name, channel=None, verbose=False, plot=False, length_of_s
     returned in a human-readable form.
 
     Arguments:
-    file_name [String] - Location of the .mseed file to load 
-                        (will work with any file format accepted by Obspy's read function)
+    stream [Obspy Stream Obj] - stream
 
     Keyword Arguments:
     channel [String] - Channel of the trace to do analysis on, defaults to the first one in the Stream
@@ -209,10 +208,10 @@ def sourceFinder(file_name, channel=None, verbose=False, plot=False, length_of_s
     # LOAD STREAM #
     ###############
 
-    if verbose:
-        print("[INFO] Loading stream from file ({:})".format(file_name))
+    # if verbose:
+    #     print("[INFO] Loading stream from file ({:})".format(file_name))
 
-    stream = loadStreamFromFile(file_name)
+    # stream = loadStreamFromFile(file_name)
     
     # No traces in stream (empty file), or couldn't find file
     if len(stream) == 0:
@@ -313,6 +312,9 @@ def sourceFinder(file_name, channel=None, verbose=False, plot=False, length_of_s
     # For points within a default length beside each other, combine them
     filtered_list = degroupPicks(cluster(pick_list, length_of_signal))
     
+    if filtered_list is None:
+        return None
+
     """Put as list for single function output
     Bolide Acoustic Modeling uses the pick objects, so the return would be here when added to that
     """
@@ -357,17 +359,6 @@ if __name__ == "__main__":
     WINDOW_OVERLAP = 1.0 # frac
     STD_RANGE = 10.0 # num of std away from mean noise to call it a pick
 
-    ### Working Directory
-    dir_url = "C:\\Users\\lmcfd\\Desktop\\Project5\\assignment5-lmcfadd6"
-
-    ### File to use
-    # Use channel='HHZ'
-    file_name = dir_url + "\\data\\SL_CRES_14.mseed"
-    # file_name = dir_url + "\\data\\SL_BOJS_14.mseed"   
-
-    # Use channel='BDF'
-    # file_name = dir_url + "\\data\\GR_I26H1_0.mseed"
-
 
     ##########################################################################################
     # Function call
@@ -378,22 +369,4 @@ if __name__ == "__main__":
         window_size=WINDOW_SIZE, window_overlap=WINDOW_OVERLAP, std_range=STD_RANGE)
     print(results)
 
-    ###################
-    # Example output
-    ###################
-
-    '''Using the default parameters, each example should produce the following outputs:
-        note that different machines might have slightly different outputs which may cause this to fail'''
-
-    # # SL_CRES_14.mseed
-    if "SL_CRES_14.mseed" in file_name: 
-        print("SL_CRES_14", results == [[410.23, 415.125], [415.445, 420.45], [420.52, 425.46000000000004], [425.71500000000003, 430.705], [431.125, 435.645], [436.17, 441.175], [441.195, 446.18], [446.21500000000003, 451.225], [451.27500000000003, 456.25], [456.3, 461.3], [461.51, 465.42], [469.015, 473.71000000000004], [474.195, 474.795], [2490.08, 2490.105], [2619.42, 2619.445]])
-
-    # # SL_BOJS_14.mseed
-    if "SL_BOJS_14.mseed" in file_name: 
-        print("SL_BOJS_14", results == [[418.765, 423.805], [423.84000000000003, 428.42], [428.89, 433.875], [433.96500000000003, 438.98], [439.0, 443.975], [444.01, 448.99], [449.02500000000003, 454.065], [454.185, 459.17], [459.36, 464.285], [464.40500000000003, 469.325], [469.415, 474.425], [474.94, 479.5], [480.205, 485.25], [485.595, 490.635], [490.685, 492.365], [496.65000000000003, 498.8], [503.635, 506.19], [513.515, 513.61], [524.5600000000001, 524.57], [1771.29, 1772.135]])
-
-    # # GR_I26H1_0.mseed
-    if "GR_I26H1_0.mseed" in file_name: 
-        print("GR_I26H1_0", results == [[577.5, 582.25], [587.4, 590.3000000000001], [596.45, 601.5500000000001], [601.65, 606.65], [606.75, 611.85], [611.95, 615.9000000000001], [617.35, 622.1500000000001], [623.3000000000001, 626.5], [1171.0, 1175.75], [1177.15, 1182.25], [1182.5, 1186.0], [1188.3, 1190.2], [1193.9, 1196.15]])
-
+ 

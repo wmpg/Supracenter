@@ -76,6 +76,7 @@ from supra.GUI.Tabs.TrajectorySearch import trajectorySearch
 from supra.Stations.Filters import *
 from supra.Stations.ProcessStation import procTrace 
 from supra.Stations.CalcAllTimes4 import calcAllTimes
+from supra.Stations.CalcAllSigs import calcAllSigs
 from supra.Stations.StationObj import Polarization
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
@@ -1935,6 +1936,7 @@ class SolutionGUI(QMainWindow):
 
 
         self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
+        self.bam.stn_list = calcAllSigs(self.bam, self.prefs)
         save(self)
         SolutionGUI.update(self)
 
@@ -2639,6 +2641,23 @@ class SolutionGUI(QMainWindow):
         print('####################')
         print("Current Station: {:}-{:}".format(stn.metadata.network, stn.metadata.code))
         print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+
+
+        # If shouing computer found signals
+        if self.show_sigs.isChecked() and stn.signals is not None:
+
+
+            offset = (st.stats.starttime.datetime - self.bam.setup.fireball_datetime).total_seconds()
+
+            for sig in stn.signals:
+
+                start   = sig[0] + offset
+                finish  = sig[1] + offset
+
+                roi_box = pg.LinearRegionItem(values=(start, finish))
+                roi_box.setMovable(False)
+
+                self.make_picks_waveform_canvas.addItem(roi_box)
 
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():
