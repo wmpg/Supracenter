@@ -463,7 +463,7 @@ class Trajectory:
             scale = -self.pos_i.elev/u[2]
 
         else:
-            scale = -50000/u[2]
+            scale = -100000/u[2]
 
         # define line top boundary
         top_point = ground_point - scale*u

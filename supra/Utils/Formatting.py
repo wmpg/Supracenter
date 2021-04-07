@@ -60,6 +60,14 @@ def printMessage(t):
     else:
         return termchkr(t, color='white')
 
+def printPercent(num):
+
+    if num >= 67:       
+        return termchkr("{:.2f}%".format(num), color='green')
+    elif num >= 33:
+        return termchkr("{:.2f}%".format(num), color='yellow')
+    else:
+        return termchkr("{:.2f}%".format(num), color='red')
 
 
 def printWidth(char='#'):
@@ -114,3 +122,13 @@ def checkExt(file, ext):
     else:
         return file
 
+def stationFormat(network, code, available_channels, ground_distance):
+
+    a = (" # # # {:}-{:} # # # ").format(network, code)
+    print(a)
+    print("#"*len(a))
+    for chn in available_channels:
+        print(chn)
+
+    print("Ground Distance: {:7.3f} km".format(ground_distance/1000))
+    print("")

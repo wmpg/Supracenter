@@ -33,7 +33,34 @@ def psoTrajectory(station_list, bam, prefs):
     if prefs.debug:
         print('Free Search')
 
-    x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, bam, prefs), \
+    import matplotlib.pyplot as plt
+
+    plt.ion()
+
+    fig, ax = plt.subplots(2, 3, sharey='row')
+    ax[0, 0].set_ylabel("Total Error")
+    ax[1, 0].set_ylabel("Total Error")
+    ax[0, 0].set_xlabel("Latitude")
+    ax[0, 1].set_xlabel("Longitude")
+    ax[0, 2].set_xlabel("Time")
+    ax[1, 0].set_xlabel("Velocity")
+    ax[1, 1].set_xlabel("Azimuth")
+    ax[1, 2].set_xlabel("Zenith")
+
+
+
+    plot = []
+
+    for i in range(2):
+        for j in range(3):
+
+            plot.append(ax[i, j].scatter([], []))
+
+
+
+    
+
+    x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, bam, prefs, plot, ax, fig), \
         maxiter=prefs.pso_max_iter, swarmsize=prefs.pso_swarm_size, \
         phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega, \
         particle_output=False)
@@ -148,5 +175,7 @@ def trajectorySearch(bam, prefs):
         station_obj_list.append([stnp.group, stnp.network, stnp.code, \
                                 stnp.position.x, stnp.position.y, stnp.position.z, \
                                 stnp.time])
+
+
 
     return psoTrajectory(station_obj_list, bam, prefs)

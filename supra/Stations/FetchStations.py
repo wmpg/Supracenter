@@ -112,7 +112,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
     start_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(sd.year, sd.month, sd.day, \
         sd.hour, sd.minute, sd.second, sd.microsecond//1000)
 
-    ed = fireball_datetime + datetime.timedelta(minutes=55)
+    ed = fireball_datetime + datetime.timedelta(minutes=15)
     end_time = "{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}.{:03d}".format(ed.year, ed.month, ed.day, \
         ed.hour, ed.minute, ed.second, ed.microsecond//1000)
 

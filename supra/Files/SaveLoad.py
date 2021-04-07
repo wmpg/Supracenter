@@ -281,7 +281,7 @@ def load(obj):
     bam = openPkl(filename)
 
     if bam is None:
-        print("STATUS: No file has been loaded")
+        print(printMessage("status"), "No file has been loaded")
         return None
 
     # save filename for autosaving feature
@@ -293,5 +293,5 @@ def load(obj):
     # loadAtmos(bam, obj)
     # print(bam.stats)
     obj.bam = bam
-    print("STATUS: {:} has been loaded".format(bam.file_name))
+    print(printMessage("status"), "{:} has been loaded".format(bam.file_name))
     
