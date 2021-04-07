@@ -2638,10 +2638,12 @@ class SolutionGUI(QMainWindow):
         except:
             stn.stn_ground_distance(ref_pos)
 
-        print('####################')
-        print("Current Station: {:}-{:}".format(stn.metadata.network, stn.metadata.code))
-        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+        available_channels = []
 
+        for i in range(len(mseed)):
+            available_channels.append(mseed[i].stats.channel)
+
+        station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
 
         # If shouing computer found signals
         if self.show_sigs.isChecked() and stn.signals is not None:

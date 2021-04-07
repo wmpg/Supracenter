@@ -230,6 +230,7 @@ def addStationsWidgets(obj):
     obj.station_button = createButton("Count Stations", obj.station_control_layout, 3, 2, \
                                                         countStation, args=[obj])    
 
+
     obj.station_layout.addLayout(obj.station_control_layout)
 
 

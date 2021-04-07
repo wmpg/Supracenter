@@ -32,7 +32,7 @@ from supra.Supracenter.anglescan import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
 from supra.Utils.Classes import Position, Constants, Trajectory, Angle
 from supra.Utils.pso import pso
-from supra.Utils.Formatting import loadingBar
+from supra.Utils.Formatting import *
 from supra.Supracenter.cyscan2 import cyscan
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
@@ -616,23 +616,27 @@ def planeConst(params, station_list, sounding, ref_pos, setup, rest_plane):
     else:
         return -1
 
-def trajSearch(params, station_list, ref_pos, bam, prefs):
+def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
     
     x0, y0, t0, v, azim, zangle = params
 
-    pos_f = Position(x0, y0, 0)
-    pos_f.x = 0
-    pos_f.y = 0
+    pos_f = Position(0, 0, 0)
+    pos_f.x = x0
+    pos_f.y = y0
     pos_f.z = 0
     pos_f.pos_geo(ref_pos)
 
     temp_traj = Trajectory(t0, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
 
-    points = temp_traj.findPoints(gridspace=100, min_p=np.max((17000, pos_f.elev)), max_p=50000)
+    points = temp_traj.findPoints(gridspace=100, min_p=pos_f.elev, max_p=100000)
     u = temp_traj.vector.xyz
 
     cost_value = 0
     failed_stats = 0
+    error_list = []
+    N = len(station_list)
+
+
 
     for stn in station_list:
         
@@ -642,7 +646,8 @@ def trajSearch(params, station_list, ref_pos, bam, prefs):
 
         if not np.isnan(t_theo):
 
-            cost_value += 2*((1 + (t_theo - t_obs)**2)**0.5 - 1)
+            cost_value = ((1 + (t_theo - t_obs)**2)**0.5 - 1)
+            error_list.append(cost_value)
 
         else:
             failed_stats += 1
@@ -653,15 +658,48 @@ def trajSearch(params, station_list, ref_pos, bam, prefs):
 
     perc_fail = 100 - failed_stats/len(station_list)*100
 
-    if cost_value == 0:
-        if prefs.debug:
-            print("Error {:.2f} | Failed Stats {:} [{:.2f}%]".format(np.inf, failed_stats, perc_fail))
-        return np.inf
+
+    # temporary adjustment to try and get the most stations
+    if N - failed_stats != 0:
+        total_error = sum(error_list)/(N - failed_stats)# + 2*max(error_list)*(failed_stats)
+    else:
+        total_error = np.inf
 
     if prefs.debug:
-        print("Error {:.2f} | Failed Stats {:} [{:.2f}%]".format(cost_value, failed_stats, perc_fail))
+        print("Error {:10.4f} | Failed Stats {:3} {:}".format(total_error, failed_stats, printPercent(perc_fail)))
         # Quick adjustment to try and better include stations
-    return cost_value*(2 - perc_fail/100)
+
+    for i in range(6):
+
+        array = np.array(plot[i].get_offsets())
+
+        if not np.isinf(total_error):
+            if i == 0:
+                point = np.array([pos_f.lat, total_error])
+            elif i == 1:
+                point = np.array([pos_f.lon, total_error])
+            elif i == 2:
+                point = np.array([t0, total_error])
+            elif i == 3:
+                point = np.array([v, total_error])
+            elif i == 4:
+                point = np.array([azim, total_error])
+            elif i == 5:
+                point = np.array([zangle, total_error])
+
+            # add the points to the plot
+            array = np.append(array, [point], axis=0)
+            plot[i].set_offsets(array)
+        
+            # # update x and ylim to show all points:
+            ax[i//3, i%3].set_xlim(array[:, 0].min() - 0.01, array[:, 0].max() + 0.01)
+            ax[i//3, i%3].set_ylim(array[:, 1].min() - 0.01, array[:, 1].max() + 0.01)
+
+        # update the figure
+    fig.canvas.draw()
+    plt.pause(0.05)
+
+    return total_error
 
 # def timeResidualsAzimuth(params, stat_coord_list, arrival_times, setup, sounding, v_fixed=None, \
 #         print_residuals=False, pool=[]):
