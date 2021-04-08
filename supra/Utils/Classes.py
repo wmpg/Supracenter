@@ -220,6 +220,7 @@ class Annote:
         self.notes = notes
         self.color = color
 
+
     def __str__(self):
 
         return 'Annotation Object "{:}" located at {:.2f} s'.format(self.title, self.time)

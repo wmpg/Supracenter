@@ -27,6 +27,8 @@ class AnnoteWindow(QWidget):
         self.an = an
 
         self.bam = bam
+
+        self.mode = mode
         
         if mode == "edit":
             trace = self.stn.stream[0]
@@ -38,11 +40,23 @@ class AnnoteWindow(QWidget):
             station_waveform = pg.PlotDataItem(x=cut_time, y=cut_waveform, pen='w')
             self.annote_waveform_canvas.addItem(station_waveform)
 
+            self.loadAnnote(an)
+
     def color_picker(self):
         color = QColorDialog.getColor()
         
         self.color_button.setStyleSheet("background-color: %s" % color.name())
         self.annote_color = color
+
+    def loadAnnote(self, an):
+        self.title_edits.setText(an.title)
+        self.time_edits.setText(str(an.time))
+        self.length_edits.setText(str(an.length))
+        # group = self.group_edits.currentText()
+        # source = self.source_edits.currentText()
+        # height = float(self.height_edits.text())
+        # notes = self.notes_box.toPlainText()
+        # color = self.annote_color
 
     def addAnnote(self):
         
@@ -56,11 +70,16 @@ class AnnoteWindow(QWidget):
         color = self.annote_color
 
         an = Annote(title, time, length, group, source, height, notes, color)
-        self.stn.annotation.add(an)
+
+        if self.mode == 'new':
+            self.stn.annotation.add(an)
+        elif self.mode == 'edit':
+            self.stn.annotation.overwrite(an)
         self.close()
 
     def delAnnote(self):
-        pass
+        self.stn.annotation.remove(self.an)
+        self.close()
 
     def buildGUI(self, time):
         self.setWindowTitle('Edit Annotation')

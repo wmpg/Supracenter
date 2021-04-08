@@ -45,6 +45,29 @@ class AnnotationList:
 
         self.annotation_list.append(an)
 
+    def overwrite(self, an):
+
+        new_list = []
+
+        for annote in self.annotation_list:
+            if annote.title != an.title:
+                new_list.append(annote)
+
+        new_list.append(an)
+
+        self.annotation_list = new_list
+
+    def remove(self, an):
+        
+        new_list = []
+
+        for annote in self.annotation_list:
+            if annote.title != an.title:
+                new_list.append(annote)
+
+        self.annotation_list = new_list
+
+
 class Station:
 
     """

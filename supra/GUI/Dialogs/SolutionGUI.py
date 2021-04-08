@@ -2848,6 +2848,7 @@ class SolutionGUI(QMainWindow):
 
         if not hasattr(stn, "annotation"):
             stn.annotation = AnnotationList()
+        print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
 
