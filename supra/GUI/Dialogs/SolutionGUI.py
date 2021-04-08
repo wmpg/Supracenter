@@ -1919,10 +1919,20 @@ class SolutionGUI(QMainWindow):
                 if self.bam.setup.trajectory.pos_i.isNone():
                     raise TypeError
 
+                points = self.bam.setup.trajectory.trajInterp2(div=100, \
+                            min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
+
+                print(self.bam.setup.trajectory.pos_i.elev, self.bam.setup.trajectory.pos_f.elev)
+                b_lats = []
+                b_lons = []
+
+                for pt in points:
+                    b_lats.append(pt[0])
+                    b_lons.append(pt[1])
 
                 # Plot the trajectory with the bottom point known
-                self.make_picks_map_graph_canvas.plot([self.bam.setup.trajectory.pos_i.lon, self.bam.setup.trajectory.pos_f.lon],\
-                                                      [self.bam.setup.trajectory.pos_i.lat, self.bam.setup.trajectory.pos_f.lat],\
+                self.make_picks_map_graph_canvas.plot(b_lons,\
+                                                      b_lats,\
                                                         pen=(0, 0, 255))
 
 

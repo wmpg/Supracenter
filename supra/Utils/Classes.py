@@ -449,6 +449,7 @@ class Trajectory:
 
         A = []
         for pt in P:
+
             if min_p <= pt.elev <= max_p:
                 A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
 
