@@ -36,9 +36,16 @@ class AnnoteWindow(QWidget):
             start_time = self.an.time
             end_time = self.an.time + self.an.length
 
-            cut_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime)
+            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : [2, 8], "backup" : False}
+
+            cut_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime, clean=clean)
             station_waveform = pg.PlotDataItem(x=cut_time, y=cut_waveform, pen='w')
             self.annote_waveform_canvas.addItem(station_waveform)
+
+            freq, fas = genFFT(cut_waveform, cut_time)
+
+            station_fft = pg.PlotDataItem(x=freq, y=fas)
+            self.annote_fft_canvas.addItem(station_fft)
 
             self.loadAnnote(an)
 
@@ -144,7 +151,16 @@ class AnnoteWindow(QWidget):
 
         self.annote_waveform_view = pg.GraphicsLayoutWidget()
         self.annote_waveform_canvas = self.annote_waveform_view.addPlot()
-        layout.addWidget(self.annote_waveform_view, 8, 1, 1, 2)
+        layout.addWidget(self.annote_waveform_view, 8, 1, 1, 4)
+        self.annote_waveform_canvas.setLabel('bottom', "Time after Reference", units='s')
+        self.annote_waveform_canvas.setLabel('left', "Amplitude")
+
+        self.annote_fft_view = pg.GraphicsLayoutWidget()
+        self.annote_fft_canvas = self.annote_fft_view.addPlot()
+        layout.addWidget(self.annote_fft_view, 2, 3, 1, 4)
+        self.annote_fft_canvas.setLogMode(True, True)
+        self.annote_fft_canvas.setLabel('bottom', "Frequency", units='Hz')
+        self.annote_fft_canvas.setLabel('left', "Amplitude")
 
         save_button = QPushButton('Save')
         layout.addWidget(save_button, 10, 2, 1, 1)

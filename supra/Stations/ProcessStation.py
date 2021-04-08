@@ -3,6 +3,7 @@ import numpy as np
 
 from supra.Stations.Filters import butterworthBandpassFilter
 import scipy.signal
+from scipy.fft import fft
 
 def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False):
     ''' procTrace filters a waveform given a response file and a reference time
@@ -69,22 +70,25 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     print("Return")
     return ampl_data, time_data      
 
-def subTrace(trace, begin_time, end_time, ref_time):
+def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     """ Returns the trace between beginTime and endTime given as two times after reference"""
     
+
     delta = trace.stats.delta
     start_datetime = trace.stats.starttime.datetime
     end_datetime = trace.stats.endtime.datetime
 
-    time_data = np.arange(0, trace.stats.npts / trace.stats.sampling_rate, \
-                     delta)
-
     offset = (start_datetime - ref_time).total_seconds()
 
-    waveform_data = trace.data
+    if clean is not None:
+        waveform_data, time_data = procTrace(trace, **clean)
+    else:
+        waveform_data = trace.data
+        time_data = np.arange(0, trace.stats.npts / trace.stats.sampling_rate, \
+                     delta)
 
-    waveform_data = waveform_data[:len(time_data)]
-    time_data = time_data[:len(waveform_data)] + offset
+        waveform_data = waveform_data[:len(time_data)]
+        time_data = time_data[:len(waveform_data)] + offset
 
     number_of_pts_per_s = trace.stats.sampling_rate
 
@@ -103,3 +107,17 @@ def subTrace(trace, begin_time, end_time, ref_time):
     cut_time = time_data[pt_0:pt_1]
 
     return cut_waveform, cut_time
+
+def genFFT(waveform, time_data):
+
+    sampling_rate = 1/(time_data[1] - time_data[0])
+    sps = sampling_rate
+    dt = 1/sampling_rate
+    length = len(waveform)
+    len_of_region = time_data[-1] - time_data[0]
+
+    freq = np.linspace(1/len_of_region, (sps/2), length)*sps/length
+
+    FAS = abs(fft(waveform))
+
+    return freq, FAS
