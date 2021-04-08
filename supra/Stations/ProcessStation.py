@@ -69,3 +69,37 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     print("Return")
     return ampl_data, time_data      
 
+def subTrace(trace, begin_time, end_time, ref_time):
+    """ Returns the trace between beginTime and endTime given as two times after reference"""
+    
+    delta = trace.stats.delta
+    start_datetime = trace.stats.starttime.datetime
+    end_datetime = trace.stats.endtime.datetime
+
+    time_data = np.arange(0, trace.stats.npts / trace.stats.sampling_rate, \
+                     delta)
+
+    offset = (start_datetime - ref_time).total_seconds()
+
+    waveform_data = trace.data
+
+    waveform_data = waveform_data[:len(time_data)]
+    time_data = time_data[:len(waveform_data)] + offset
+
+    number_of_pts_per_s = trace.stats.sampling_rate
+
+    len_of_region = end_time - begin_time
+
+    num_of_pts_in_roi = len_of_region*number_of_pts_per_s
+
+    num_of_pts_in_offset = np.abs(number_of_pts_per_s*offset)
+
+    num_of_pts_to_roi = begin_time*number_of_pts_per_s
+
+    pt_0 = int(num_of_pts_in_offset + num_of_pts_to_roi)
+    pt_1 = int(pt_0 + num_of_pts_in_roi)
+
+    cut_waveform = waveform_data[pt_0:pt_1]
+    cut_time = time_data[pt_0:pt_1]
+
+    return cut_waveform, cut_time

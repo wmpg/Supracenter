@@ -9,11 +9,12 @@ import pyqtgraph as pg
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.WidgetBuilder import center
 from supra.Utils.Classes import Annote
+from supra.Stations.ProcessStation import *
 
 
 class AnnoteWindow(QWidget):
 
-    def __init__(self, time, stn):
+    def __init__(self, time, stn, bam, mode="new", an=None):
 
         QWidget.__init__(self)
         
@@ -22,7 +23,20 @@ class AnnoteWindow(QWidget):
         self.annote_color = QColor(0, 0, 255)
 
         self.stn = stn
+
+        self.an = an
+
+        self.bam = bam
         
+        if mode == "edit":
+            trace = self.stn.stream[0]
+
+            start_time = self.an.time
+            end_time = self.an.time + self.an.length
+
+            cut_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime)
+            station_waveform = pg.PlotDataItem(x=cut_time, y=cut_waveform, pen='w')
+            self.annote_waveform_canvas.addItem(station_waveform)
 
     def color_picker(self):
         color = QColorDialog.getColor()
@@ -42,7 +56,7 @@ class AnnoteWindow(QWidget):
         color = self.annote_color
 
         an = Annote(title, time, length, group, source, height, notes, color)
-        self.stn.annotations.append(an)
+        self.stn.annotation.add(an)
         self.close()
 
     def delAnnote(self):
@@ -109,10 +123,14 @@ class AnnoteWindow(QWidget):
         self.notes_box = QPlainTextEdit()
         layout.addWidget(self.notes_box, 7, 2, 1, 2)
 
+        self.annote_waveform_view = pg.GraphicsLayoutWidget()
+        self.annote_waveform_canvas = self.annote_waveform_view.addPlot()
+        layout.addWidget(self.annote_waveform_view, 8, 1, 1, 2)
+
         save_button = QPushButton('Save')
-        layout.addWidget(save_button, 8, 2, 1, 1)
+        layout.addWidget(save_button, 10, 2, 1, 1)
         save_button.clicked.connect(self.addAnnote)
 
         del_button = QPushButton('Delete')
-        layout.addWidget(del_button, 8, 1, 1, 1)
+        layout.addWidget(del_button, 10, 1, 1, 1)
         del_button.clicked.connect(self.delAnnote)

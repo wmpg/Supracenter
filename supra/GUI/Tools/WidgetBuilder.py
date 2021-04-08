@@ -278,6 +278,9 @@ def addSourceWidgets(obj):
     obj.sources_del_button = createButton("Delete Sources", obj.sources_control_layout, 2, 1, \
                                                 delSource, args=[obj])
 
+    obj.sources_del_button = createButton("Delete All", obj.sources_control_layout, 3, 1, \
+                                                delAllSource, args=[obj])
+
 
     obj.sources_layout.addLayout(obj.sources_control_layout)
 

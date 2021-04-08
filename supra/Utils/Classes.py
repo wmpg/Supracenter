@@ -243,7 +243,19 @@ class Supracenter:
 
 class Trajectory:
     def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None), v_f=None):
-        
+        """ A trajectory object
+
+        Arguements:
+        t [float] - time after reference the trajectory intersects with the ground (if continued at velocity v) [s]
+        v [float] - average velocity of the meteor [m/s]
+        zenith [Angle Obj] - zenith angle (angle between vertical and meteor if meteor was coming towards observer)
+        azimuth [Angle Obj] - azimuth angle (angle East from North the trajectory vector points)
+        pos_i [Position Obj] - 3D starting position of meteor
+        pos_f [Position Obj] - 3D final position of meteor
+        v_f -- old variable
+        """
+
+
         self.t = t
 
         # Find vector from angles
@@ -420,21 +432,20 @@ class Trajectory:
         self.pos_i.pos_loc(ref_loc)
         self.pos_f.pos_loc(ref_loc)
 
-        v = self.vector * self.scale
+        A = self.pos_i.xyz
+        B = self.pos_f.xyz
 
-        dv = v * (1/(div-1))
-
-        P = [None]*div
-        for i in range(div):
+        P = [None]*(div + 1)
+        for i in range(div + 1):
 
             P[i] = Position(0, 0, 0)
 
-            P[i].x = self.pos_i.x + i*dv.x
-            P[i].y = self.pos_i.y + i*dv.y
-            P[i].z = self.pos_i.z + i*dv.z
+            P[i].x = self.pos_i.x - i*A[0]/div
+            P[i].y = self.pos_i.y - i*A[1]/div
+            P[i].z = self.pos_i.z - i*A[2]/div
 
-            P[i].pos_geo(self.pos_f)
-            
+            P[i].pos_geo(ref_loc)
+
         A = []
         for pt in P:
             if min_p <= pt.elev <= max_p:

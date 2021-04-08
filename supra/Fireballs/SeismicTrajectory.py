@@ -628,7 +628,7 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
 
     temp_traj = Trajectory(t0, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
 
-    points = temp_traj.findPoints(gridspace=100, min_p=pos_f.elev, max_p=100000)
+    points = temp_traj.findPoints(gridspace=1000, min_p=pos_f.elev, max_p=100000)
     u = temp_traj.vector.xyz
 
     cost_value = 0
@@ -660,13 +660,13 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
 
 
     # temporary adjustment to try and get the most stations
-    if N - failed_stats != 0:
+    if N - failed_stats >= 4:
         total_error = sum(error_list)/(N - failed_stats)# + 2*max(error_list)*(failed_stats)
     else:
         total_error = np.inf
 
     if prefs.debug:
-        print("Error {:10.4f} | Failed Stats {:3} {:}".format(total_error, failed_stats, printPercent(perc_fail)))
+        print("Error {:10.4f} | Failed Stats {:3} {:}".format(total_error, failed_stats, printPercent(perc_fail, N - failed_stats)))
         # Quick adjustment to try and better include stations
 
     for i in range(6):

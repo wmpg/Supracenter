@@ -52,3 +52,11 @@ def delSource(obj):
     clearSource(obj)
     loadSource(obj)
     saveSource(obj)
+
+def delAllSource(obj):
+
+    obj.bam.source_list = []
+
+    clearSource(obj)
+    loadSource(obj)
+    saveSource(obj)
