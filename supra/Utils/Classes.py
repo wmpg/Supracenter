@@ -315,7 +315,7 @@ class Trajectory:
 
             pos_f.pos_loc(pos_f)
 
-            scale = -50000 / self.vector.z
+            scale = -100000 / self.vector.z
 
             pos_i = self.vector * -scale + pos_f 
 
@@ -425,10 +425,11 @@ class Trajectory:
 
         return P
 
-    def trajInterp2(self, div=250, min_p=17000, max_p=50000):
+    def trajInterp2(self, div=250, min_p=17000, max_p=80000, xyz=False, ref_loc=None):
         
-        ref_loc = self.pos_f
-        ref_loc.elev = 0
+        if ref_loc is None:
+            ref_loc = self.pos_f
+            ref_loc.elev = 0
 
         self.pos_i.pos_loc(ref_loc)
         self.pos_f.pos_loc(ref_loc)
@@ -441,17 +442,21 @@ class Trajectory:
 
             P[i] = Position(0, 0, 0)
 
-            P[i].x = self.pos_i.x - i*A[0]/div
-            P[i].y = self.pos_i.y - i*A[1]/div
-            P[i].z = self.pos_i.z - i*A[2]/div
+            P[i].x = self.pos_i.x + i*(B[0] - A[0])/div
+            P[i].y = self.pos_i.y + i*(B[1] - A[1])/div
+            P[i].z = self.pos_i.z + i*(B[2] - A[2])/div
 
-            P[i].pos_geo(ref_loc)
+            if not xyz:
+                P[i].pos_geo(ref_loc)
 
         A = []
         for pt in P:
-
-            if min_p <= pt.elev <= max_p:
-                A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
+            if xyz:
+                if min_p <= pt.z <= max_p:
+                    A.append([pt.x, pt.y, pt.z, self.findTime(pt.z)])
+            else:
+                if min_p <= pt.elev <= max_p:
+                    A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
 
         return np.array(A)
     

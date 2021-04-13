@@ -13,6 +13,7 @@ from supra.Supracenter.cyscan2 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.plot import outputWeather
 from supra.GUI.Tools.GUITools import *
+from supra.Utils.Formatting import *
 
 def timeFunction(x, *args):
     ''' Helper function for PSO
@@ -112,9 +113,9 @@ def timeFunction(x, *args):
         else:
             sotc[j] = tobs[j]
     
-    motc = np.dot(wn, sotc)/sum(wn)
+    motc = np.mean(sotc)
     ##########
-
+    N_s = np.count_nonzero(~np.isnan(sotc))
     # User defined occurrence time
     if kotc != None:
 
@@ -123,14 +124,36 @@ def timeFunction(x, *args):
 
     # Unknown occurrence time
     else:
-        err = np.dot(wn, np.absolute(sotc - motc))/nwn
+        #err = np.dot(wn, np.absolute(sotc - motc))/nwn
+        err = 0
+        for s in sotc:
+            err += (1 + (s - motc)**2)**0.5 - 1
+
+        err = err/N_s
 
     # if setup.debug:
     #     # print out current search location
     #     print("Supracenter: {:10.2f} m x {:10.2f} m y {:10.2f} m z  Time: {:8.2f} Error: {:25.2f}".format(x[0], x[1], x[2], motc, err))
 
     # variable to be minimized by the particle swarm optimization
-    return err
+    
+    perc_fail = 100 - (n_stations-N_s)/n_stations*100
+
+    # temporary adjustment to try and get the most stations
+    if N_s >= 3:
+        total_error = err# + 2*max(error_list)*(failed_stats)
+    else:
+        total_error = np.inf
+
+    if np.isnan(total_error):
+        total_error = np.inf
+
+    if prefs.debug:
+        print("Error {:10.4f} | Solution {:10.4f}N {:10.4f}E {:8.2f} km {:8.2f} s | Failed Stats {:3} {:}".format(total_error, S.lat, S.lon, S.elev/1000, motc, n_stations-N_s, printPercent(perc_fail, N_s)))
+        # Quick adjustment to try and better include stations
+
+
+    return total_error
 
 def timeConstraints(x, *args):
     

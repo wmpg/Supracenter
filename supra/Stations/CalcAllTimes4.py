@@ -36,7 +36,8 @@ def checkNomBall(bam, prefs):
 def checkNomFrag(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
-        if not (prefs.frag_en and len(stn.times.fragmentation) != len(bam.setup.fragmentation_point)):
+
+        if not (prefs.frag_en and len(stn.times.fragmentation) == len(bam.setup.fragmentation_point)):
 
             return False
 
@@ -300,7 +301,7 @@ def calcAllTimes(bam, prefs):
                     results.append(np.array([e, b, c, d])) 
 
 
-            a.append([ref_time - f_time , frag_azimuth, frag_takeoff, frag_err])
+            a.append([ref_time + f_time , frag_azimuth, frag_takeoff, frag_err])
             a.append(results)
 
             stn.times.ballistic.append(a)

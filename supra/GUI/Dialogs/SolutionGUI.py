@@ -269,6 +269,8 @@ class SolutionGUI(QMainWindow):
     def trajSearchSetup(self):
 
         x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
+        # x, fopt = trajectorySearch(self.bam, self.prefs)
+
 
         ##########
         # Display
@@ -1922,7 +1924,6 @@ class SolutionGUI(QMainWindow):
                 points = self.bam.setup.trajectory.trajInterp2(div=100, \
                             min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
 
-                print(self.bam.setup.trajectory.pos_i.elev, self.bam.setup.trajectory.pos_f.elev)
                 b_lats = []
                 b_lons = []
 
@@ -2698,7 +2699,6 @@ class SolutionGUI(QMainWindow):
 
             src = self.bam.setup.traj_metadata[0]
 
-            print(src.color)
             b_time = stn.times.ballistic[0][0][0]
 
             if b_time == b_time:

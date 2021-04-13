@@ -50,7 +50,6 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     ampl_data = ampl_data[:len(time_data)]
     time_data = time_data[:len(ampl_data)] + offset
 
-    print("Bandpass")
     # Init the butterworth bandpass filter
     if bandpass is not None:
 
@@ -66,8 +65,6 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     if backup:
         return ampl_data, time_data, raw_trace
 
-
-    print("Return")
     return ampl_data, time_data      
 
 def subTrace(trace, begin_time, end_time, ref_time, clean=None):
