@@ -67,7 +67,7 @@ class AnnoteWindow(QWidget):
         comboSet(self.group_edits, str(an.group))
         comboSet(self.source_edits, str(an.source))
         self.height_edits.setText(str(an.height))
-
+        self.notes_box.setPlainText(an.notes)
 
     def addAnnote(self):
         
