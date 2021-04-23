@@ -2333,54 +2333,54 @@ class SolutionGUI(QMainWindow):
                 self.w.setGeometry(QRect(100, 100, 900, 900))
                 self.w.show()
 
-            elif self.solve_height.isChecked():
-                ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-                P = self.setup.trajectory.trajInterp(div=HEIGHT_SOLVER_DIV)
-                stn = self.stn_list[self.current_station]
-                stn.position.pos_loc(ref_pos)
-                dataset = parseWeather(self.setup)
-                C = []
-                max_steps = len(P)*self.setup.perturb_times + 1
-                count = 0
-                loadingBar("Trying Heights", 0, max_steps)
-                A = self.setup.trajectory.pos_i
-                B = self.setup.trajectory.pos_f
+            # elif self.solve_height.isChecked():
+            #     ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+            #     P = self.setup.trajectory.trajInterp(div=HEIGHT_SOLVER_DIV)
+            #     stn = self.stn_list[self.current_station]
+            #     stn.position.pos_loc(ref_pos)
+            #     dataset = parseWeather(self.setup)
+            #     C = []
+            #     max_steps = len(P)*self.setup.perturb_times + 1
+            #     count = 0
+            #     loadingBar("Trying Heights", 0, max_steps)
+            #     A = self.setup.trajectory.pos_i
+            #     B = self.setup.trajectory.pos_f
 
-                A.pos_loc(B)
-                B.pos_loc(B)
+            #     A.pos_loc(B)
+            #     B.pos_loc(B)
 
-                # Get prediction of time of the meteor, so the timing of each fragmentation can be known
-                length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
-                time_of_meteor = length_of_meteor/self.setup.trajectory.v
-                for ii, point in enumerate(P):
-                    point.pos_loc(ref_pos)
-                    for ptb_n in range(self.setup.perturb_times):
+            #     # Get prediction of time of the meteor, so the timing of each fragmentation can be known
+            #     length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+            #     time_of_meteor = length_of_meteor/self.setup.trajectory.v
+            #     for ii, point in enumerate(P):
+            #         point.pos_loc(ref_pos)
+            #         for ptb_n in range(self.setup.perturb_times):
                         
-                        self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+            #             self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+            #             zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+            #                     [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
                         
-                        #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
+            #             #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
 
-                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            #             f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+            #                 n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
-                        correction = time_of_meteor - A.z/self.setup.trajectory.pos_i.elev*(time_of_meteor)
-                        C.append(f_time + correction)
-                        count += 1
-                        loadingBar("Trying Heights", count, max_steps)
-                C = np.array(C)
+            #             correction = time_of_meteor - A.z/self.setup.trajectory.pos_i.elev*(time_of_meteor)
+            #             C.append(f_time + correction)
+            #             count += 1
+            #             loadingBar("Trying Heights", count, max_steps)
+            #     C = np.array(C)
 
-                idx = np.nanargmin(np.abs(C - pick.time))
-                print("Error in time: {:.2f} s".format(np.abs(C - pick.time)[idx]))
-                height_idx = idx//self.setup.perturb_times
-                pert_idx = idx%self.setup.perturb_times
+            #     idx = np.nanargmin(np.abs(C - pick.time))
+            #     print("Error in time: {:.2f} s".format(np.abs(C - pick.time)[idx]))
+            #     height_idx = idx//self.setup.perturb_times
+            #     pert_idx = idx%self.setup.perturb_times
 
-                self.position.append(P[height_idx])
+            #     self.position.append(P[height_idx])
 
-                self.x = AllWaveformViewer(self.setup, self.stn_list, self.position, pert_idx)
-                self.x.setGeometry(QRect(100, 100, 900, 900))
-                self.x.show()
+            #     self.x = AllWaveformViewer(self.setup, self.stn_list, self.position, pert_idx)
+            #     self.x.setGeometry(QRect(100, 100, 900, 900))
+            #     self.x.show()
 
         elif self.tog_rm_picks.isChecked():
 
@@ -2394,85 +2394,85 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen=self.colors[self.group_no], brush=self.colors[self.group_no], update=True)
             self.drawWaveform(station_no=self.current_station)
 
-        elif self.gnd_mot_picks.isChecked():
+        # elif self.gnd_mot_picks.isChecked():
 
-            # Open ground motion Dialog
-            current_chn_start = channel[0:2]
-            channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
+        #     # Open ground motion Dialog
+        #     current_chn_start = channel[0:2]
+        #     channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
             
-            # Check if zne/z12 is available
-            count = 0
+        #     # Check if zne/z12 is available
+        #     count = 0
 
-            for chn in channel_opts:
-                if current_chn_start in chn:
-                    count += 1
+        #     for chn in channel_opts:
+        #         if current_chn_start in chn:
+        #             count += 1
 
-            if count == 3:
-                self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
-                self.gr.setGeometry(QRect(100, 100, 1600, 700))
-                self.gr.show()
-            elif count < 3:
-                errorMessage("Not enough channel data for particle motion!", 2, \
-                        detail="Three orthogonal stations are needed to do particle motion!")
-            else:
-                errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
-                         2, detail="")
+        #     if count == 3:
+        #         self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
+        #         self.gr.setGeometry(QRect(100, 100, 1600, 700))
+        #         self.gr.show()
+        #     elif count < 3:
+        #         errorMessage("Not enough channel data for particle motion!", 2, \
+        #                 detail="Three orthogonal stations are needed to do particle motion!")
+        #     else:
+        #         errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
+        #                  2, detail="")
 
-            save(self)
+        #     save(self)
 
-        elif self.bandpass_picks.isChecked():
-
-
-            # Open bandpass GUI
-            self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
-            self.bp.setGeometry(QRect(100, 100, 1200, 700))
-            self.bp.show()
-
-        elif self.polmap_picks.isChecked():
-
-            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
-            points = []
-
-            # Calculate all points here
-            for stn in self.bam.stn_list:
-
-                if not hasattr(stn, "polarization"):
-                    stn.polarization = Polarization()
-
-                if len(stn.polarization.azimuth) > 0: 
-
-                    D = propegateBackwards(ref_pos, stn, self.bam)
-
-                    for line in D:
-                        if not np.isnan(line[0]): 
-                            P = Position(0, 0, 0)
-                            P.x = line[0]
-                            P.y = line[1]
-                            P.z = line[2]
-                            P.pos_geo(ref_pos)
-                            S = Supracenter(P, line[3])
-                            points.append([S, stn.color])
-
-            # Pass grid to polmap
-            self.pm = Polmap(self.bam, points)
-            self.pm.setGeometry(QRect(100, 100, 1200, 700))
-            self.pm.show()
-
-        ### Annotations
-        elif self.annote_picks.isChecked():
-
-            # Create annotation
-            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
-
-            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+        # elif self.bandpass_picks.isChecked():
 
 
-            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
-            self.a.setGeometry(QRect(200, 300, 1600, 800))
-            self.a.show()
+        #     # Open bandpass GUI
+        #     self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
+        #     self.bp.setGeometry(QRect(100, 100, 1200, 700))
+        #     self.bp.show()
+
+        # elif self.polmap_picks.isChecked():
+
+        #     ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+        #     points = []
+
+        #     # Calculate all points here
+        #     for stn in self.bam.stn_list:
+
+        #         if not hasattr(stn, "polarization"):
+        #             stn.polarization = Polarization()
+
+        #         if len(stn.polarization.azimuth) > 0: 
+
+        #             D = propegateBackwards(ref_pos, stn, self.bam)
+
+        #             for line in D:
+        #                 if not np.isnan(line[0]): 
+        #                     P = Position(0, 0, 0)
+        #                     P.x = line[0]
+        #                     P.y = line[1]
+        #                     P.z = line[2]
+        #                     P.pos_geo(ref_pos)
+        #                     S = Supracenter(P, line[3])
+        #                     points.append([S, stn.color])
+
+        #     # Pass grid to polmap
+        #     self.pm = Polmap(self.bam, points)
+        #     self.pm.setGeometry(QRect(100, 100, 1200, 700))
+        #     self.pm.show()
+
+        # ### Annotations
+        # elif self.annote_picks.isChecked():
+
+        #     # Create annotation
+        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+
+        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+
+
+        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
+        #     self.a.setGeometry(QRect(200, 300, 1600, 800))
+        #     self.a.show()
             
-            self.drawWaveform()
-            self.alt_pressed = False
+        #     self.drawWaveform()
+        #     self.alt_pressed = False
             
 
     def addAnnotes(self):
@@ -2781,7 +2781,7 @@ class SolutionGUI(QMainWindow):
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
 
-        self.addAnnotes()
+        # self.addAnnotes()
     def obtainPerts(self, data, frag):
         data_new = []
 
