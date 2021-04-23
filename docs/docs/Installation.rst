@@ -16,10 +16,11 @@ In addition, install these files::
 
 	conda install -c conda-forge pyhdf obspy simplekml pyopengl pyqtgraph folium
 	conda install -c anaconda netcdf4
-	pip install pyqt5 pyswarm
+	pip install pyqt5==5.11.3
+	pip install pyswarm
 
 See here for further instructions:
-https://github.com/dvida/Supracenter
+https://github.com/wmpg/Supracenter
 
 .. toctree::
    :maxdepth: 2
