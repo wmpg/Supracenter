@@ -10,8 +10,6 @@ from supra.Fireballs.SeismicTrajectory import trajSearch, timeOfArrival
 def psoTrajectory(station_list, bam, prefs):
 
     point_on_traj = None
-    # point_on_traj = Supracenter(Position(46.31, -121.80, 50000), -40.0)
-    # point_on_traj = Supracenter(Position(45.8, -122.00, 20000), -7.0)
 
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
     # ref_pos = bam.setup.trajectory.pos_f
