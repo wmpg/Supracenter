@@ -13,7 +13,7 @@ Created by the Western Meteor Physics Group, specifically:
 * Peter Brown
 * Luke McFadden
 
-Current Version: January 5, 2021
+Current Version: April 23, 2021
 
 If you have any questions about this program, email Luke: lmcfadd6@uwo.ca
 

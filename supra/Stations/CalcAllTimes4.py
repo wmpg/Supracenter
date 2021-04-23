@@ -36,7 +36,8 @@ def checkNomBall(bam, prefs):
 def checkNomFrag(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
-        if not (prefs.frag_en and len(stn.times.fragmentation) != len(bam.setup.fragmentation_point)):
+
+        if not (prefs.frag_en and len(stn.times.fragmentation) == len(bam.setup.fragmentation_point)):
 
             return False
 
@@ -225,7 +226,7 @@ def calcAllTimes(bam, prefs):
             min_height = bam.setup.trajectory.pos_f.elev
 
             points = bam.setup.trajectory.trajInterp2(div=100, min_p=min_height, max_p=max_height)
- 
+
 
             u = np.array([bam.setup.trajectory.vector.x,
                           bam.setup.trajectory.vector.y,
@@ -271,8 +272,10 @@ def calcAllTimes(bam, prefs):
                 continue
 
             supra = points[best_indx]
+            ref_time = supra[3]
             supra = Position(supra[0], supra[1], supra[2])
             supra.pos_loc(ref_pos)
+
 
             lats = [supra.lat, stn.metadata.position.lat]
             lons = [supra.lon, stn.metadata.position.lon]
@@ -284,9 +287,9 @@ def calcAllTimes(bam, prefs):
                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
                 h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
 
-            speed = bam.setup.trajectory.v
-            distance = supra.pos_distance(bam.setup.trajectory.pos_f)
-            timing = distance/speed
+            # speed = bam.setup.trajectory.v
+            # distance = supra.pos_distance(bam.setup.trajectory.pos_f)
+            # timing = distance/speed
 
             results = []
             if perturbations is not None:
@@ -297,8 +300,10 @@ def calcAllTimes(bam, prefs):
                     e += timing
                     results.append(np.array([e, b, c, d])) 
 
-            a.append([f_time + timing, frag_azimuth, frag_takeoff, frag_err])
+
+            a.append([ref_time + f_time , frag_azimuth, frag_takeoff, frag_err])
             a.append(results)
+
             stn.times.ballistic.append(a)
 
     if prefs.debug:

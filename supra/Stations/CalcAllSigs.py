@@ -3,7 +3,7 @@ from supra.Stations.sourcefinder import sourceFinder
 from supra.Utils.Formatting import *
 
 CHANNEL = "HHZ"
-VERBOSE_MODE = True
+VERBOSE_MODE = False
 SHOW_PLOT = False
 LEGNTH_OF_SIGNAL = 5.00 # maximum length of a signal [s]
 BANDPASS = {"freqmin": 2, "freqmax":8, "corners":4, "zerophase":False}
@@ -19,12 +19,12 @@ def calcAllSigs(bam, prefs):
         if prefs.recalc_sigs:
             print(printMessage("debug"), 'Not Skipping CalcSigs - User Override')
 
-        elif not hasattr(stn_list[0], "signal"):
-            print(printMessage("debug"), 'Not Skipping CalcSigs - No Signals Available')
+        # elif not hasattr(stn_list[0], "signal"):
+        #     print(printMessage("debug"), 'Not Skipping CalcSigs - No Signals Available')
     
 
 
-    if prefs.recalc_sigs or not hasattr(stn_list[0], "signal"):
+    if prefs.recalc_sigs:
         
 
         for stn in stn_list:

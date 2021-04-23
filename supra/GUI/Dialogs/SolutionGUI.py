@@ -77,7 +77,7 @@ from supra.Stations.Filters import *
 from supra.Stations.ProcessStation import procTrace 
 from supra.Stations.CalcAllTimes4 import calcAllTimes
 from supra.Stations.CalcAllSigs import calcAllSigs
-from supra.Stations.StationObj import Polarization
+from supra.Stations.StationObj import Polarization, AnnotationList
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
@@ -269,6 +269,8 @@ class SolutionGUI(QMainWindow):
     def trajSearchSetup(self):
 
         x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
+        # x, fopt = trajectorySearch(self.bam, self.prefs)
+
 
         ##########
         # Display
@@ -1919,10 +1921,19 @@ class SolutionGUI(QMainWindow):
                 if self.bam.setup.trajectory.pos_i.isNone():
                     raise TypeError
 
+                points = self.bam.setup.trajectory.trajInterp2(div=100, \
+                            min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
+
+                b_lats = []
+                b_lons = []
+
+                for pt in points:
+                    b_lats.append(pt[0])
+                    b_lons.append(pt[1])
 
                 # Plot the trajectory with the bottom point known
-                self.make_picks_map_graph_canvas.plot([self.bam.setup.trajectory.pos_i.lon, self.bam.setup.trajectory.pos_f.lon],\
-                                                      [self.bam.setup.trajectory.pos_i.lat, self.bam.setup.trajectory.pos_f.lat],\
+                self.make_picks_map_graph_canvas.plot(b_lons,\
+                                                      b_lats,\
                                                         pen=(0, 0, 255))
 
 
@@ -2447,7 +2458,7 @@ class SolutionGUI(QMainWindow):
             self.pm.setGeometry(QRect(100, 100, 1200, 700))
             self.pm.show()
 
-
+        ### Annotations
         elif self.annote_picks.isChecked():
 
             # Create annotation
@@ -2456,8 +2467,8 @@ class SolutionGUI(QMainWindow):
             # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
-            self.a.setGeometry(QRect(400, 500, 400, 500))
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
+            self.a.setGeometry(QRect(200, 300, 1600, 800))
             self.a.show()
             
             self.drawWaveform()
@@ -2466,15 +2477,37 @@ class SolutionGUI(QMainWindow):
 
     def addAnnotes(self):
 
-        pass
-        # for an in self.bam.stn_list[self.current_station].annotations:
-        #     line = pg.InfiniteLine(pos=(an.time, 0), angle=90, pen=an.color, label=an.title)
-        #     self.make_picks_waveform_canvas.addItem(line, update=True)
-        #     # line.make_picks_waveform_canvas.mpl_connect('button_press_event', self.onClick)
-        
+        TOP = self.make_picks_waveform_canvas.getAxis('left').range[1]
+        BOT = self.make_picks_waveform_canvas.getAxis('left').range[0]
+        stn = self.bam.stn_list[self.current_station]
 
-    def onClick(self):
-        print('It Worked!')
+        for an in stn.annotation.annotation_list:
+
+            # line = pg.InfiniteLine(pos=(an.time, 0), angle=90, pen=an.color, label=an.title)
+            # line2 = pg.InfiniteLine(pos=(an.time+an.length, 0), angle=90, pen=an.color)
+            # self.make_picks_waveform_canvas.addItem(line, update=True)
+            # self.make_picks_waveform_canvas.addItem(line2, update=True)
+            length = an.length
+            if length == 0: length = 0.01
+            annote_area = pg.ROI((an.time, BOT), size=(length, TOP-BOT), pen=pg.mkPen(an.color),\
+                                movable=False, \
+                                rotatable=False, resizable=False)  
+            annote_area.setAcceptedMouseButtons(QtCore.Qt.LeftButton)      
+            annote_area.sigClicked.connect(partial(self.onAnnoteClick, an))
+            self.make_picks_waveform_canvas.addItem(annote_area, update=True)
+
+
+    def onAnnoteClick(self, an):
+        
+        if not self.annote_picks.isChecked():
+            stn = self.bam.stn_list[self.current_station]
+
+            annote_list = stn.annotation.annotation_list
+
+            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an)
+            self.a.setGeometry(QRect(200, 300, 1600, 800))
+            self.a.show()
+
 
     def psdPlot(self):
 
@@ -2666,7 +2699,6 @@ class SolutionGUI(QMainWindow):
 
             src = self.bam.setup.traj_metadata[0]
 
-            print(src.color)
             b_time = stn.times.ballistic[0][0][0]
 
             if b_time == b_time:
@@ -2823,6 +2855,10 @@ class SolutionGUI(QMainWindow):
             return None
 
         stn = self.bam.stn_list[self.current_station]
+
+        if not hasattr(stn, "annotation"):
+            stn.annotation = AnnotationList()
+        print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
 

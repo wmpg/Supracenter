@@ -607,7 +607,7 @@ class ParticleMotion(QWidget):
                 resp = stn.response
                 st2 = st.copy()
                 st2 = st2.remove_response(inventory=resp, output="DISP")
-                st2.remove_sensitivity(resp) 
+                # st2.remove_sensitivity(resp) 
 
                 waveform_data = st2.data
 

@@ -75,7 +75,7 @@ class TrajInterpWindow(QWidget):
 
     def saveEvent(self):
         traj = self.setup.trajectory
-
+        
         points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
                                   min_p=tryFloat(self.low_point.text()),\
                                   max_p=tryFloat(self.high_point.text()))

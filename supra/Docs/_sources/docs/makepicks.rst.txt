@@ -72,11 +72,12 @@ Remove Picks
 
 Selecting a pick while this tool is enabled will remove a pick from the waveform of any group.
 
-.. Annote Waveform
-.. ---------------
+Annote Waveform
+---------------
 
+Still testing to make sure this works - you can try it in the dev version at your own risk
 
-.. Not yet implemented
+.. image:: Annote_up.png
 
 .. Ground Motion Plot
 .. ------------------

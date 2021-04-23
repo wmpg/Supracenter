@@ -31,8 +31,9 @@ Users may use the built in program version, or access the HTML via browser by 'C
    docs/Theory
    docs/Features
    docs/Methods
-   docs/Changelog
    docs/References
+.. docs/Changelog
+
 
 
 

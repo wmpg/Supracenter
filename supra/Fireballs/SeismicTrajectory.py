@@ -472,8 +472,8 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     # Compute time of flight residuals for all stations
     for i in range(a):
 
-        S = np.array(points[i])
-        traj_point = angle2Geo(points[i], ref_loc)
+        S = np.array(points[i][0:3])
+        traj_point = angle2Geo(points[i][0:3], ref_loc)
         stat_point = angle2Geo(stat_coord, ref_loc)
 
         lats = [traj_point.lat, stat_point.lat]
@@ -482,9 +482,21 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
 
         sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
 
-        A = cyscan(S, D, sounding, \
-             wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+        if prefs.wind_en:
+            A = cyscan(S, D, sounding, \
+                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
+                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+        else:
+
+            dx, dy, dz = D[0] - S[0], D[1] - S[1], D[2] - S[2]
+
+            r = (dx**2 + dy**2 + dz**2)**0.5
+            h = (dx**2 + dy**2)**0.5
+            T = r/330
+            az = np.arctan2(dx, dy)
+            tf = np.pi/2 + np.arctan2(dz, h)
+
+            A = np.array([T, az, tf, np.nan])
 
         cyscan_res.append(A)
 
@@ -500,7 +512,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
             for i in range(a):
 
                 S = np.array(points[i])
-                traj_point = angle2Geo(points[i], ref_loc)
+                traj_point = angle2Geo(points[i][0:3], ref_loc)
                 stat_point = angle2Geo(stat_coord, ref_loc)
 
                 lats = [traj_point.lat, stat_point.lat]
@@ -521,7 +533,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
 
 def getTimes(arr, u, a):
     ANGLE_TOL = 25 #degrees
-    angle = [999]*a
+    angle = []
 
     cyscan_res = arr
     T = cyscan_res[:, 0]
@@ -533,20 +545,20 @@ def getTimes(arr, u, a):
 
     mag_u = u/np.sqrt(u.dot(u))
 
-    v = [0]*a
+    v = []
 
     for ii in range(a):
-        v[ii] = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
+        v = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
 
-        mag_v = v[ii]/np.sqrt(v[ii].dot(v[ii]))
-        angle[ii] = np.absolute(90 - np.degrees(np.arccos(np.dot(mag_u, mag_v))))
+        mag_v = v/np.sqrt(v.dot(v))
+        angle.append(np.degrees(np.arccos(np.dot(mag_u, mag_v))))
 
-    try:
-        best_indx = np.nanargmin(angle)
-    except:
-        return np.array(np.nan)
 
-    if angle[best_indx] > ANGLE_TOL:
+    angle = np.array(angle)    
+    best_indx = np.nanargmin(abs(angle - 90))
+    best_angle = abs(90 - angle[best_indx])
+
+    if best_angle > ANGLE_TOL:
 
         return np.array(np.nan)
 
@@ -616,19 +628,42 @@ def planeConst(params, station_list, sounding, ref_pos, setup, rest_plane):
     else:
         return -1
 
-def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
+def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_on_traj):
     
-    x0, y0, t0, v, azim, zangle = params
+    if point_on_traj is None:
+            
+        x0, y0, t0, v, azim, zangle = params
 
-    pos_f = Position(0, 0, 0)
-    pos_f.x = x0
-    pos_f.y = y0
-    pos_f.z = 0
-    pos_f.pos_geo(ref_pos)
+        pos_f = Position(0, 0, 0)
+        pos_f.x = x0
+        pos_f.y = y0
+        pos_f.z = 0
+        pos_f.pos_geo(ref_pos)
 
-    temp_traj = Trajectory(t0, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
+        temp_traj = Trajectory(t0, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
 
-    points = temp_traj.findPoints(gridspace=100, min_p=pos_f.elev, max_p=100000)
+    else:
+    
+        v, azim, zangle = params
+
+
+        temp_traj = Trajectory(point_on_traj.time, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_i=point_on_traj.position)
+
+        pos_f = temp_traj.pos_f
+
+        temp_traj = Trajectory(point_on_traj.time, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
+
+    #points = temp_traj.findPoints(gridspace=1000, min_p=pos_f.elev, max_p=100000)
+
+    points = temp_traj.trajInterp2(div=2500, min_p=17000, max_p=100000, xyz=True, ref_loc=ref_pos)
+
+    if prefs.debug:
+        dif = points[1] - points[0]
+        dis = (dif[0]**2 + dif[1]**2 + dif[2]**2)**0.5
+        tim = dis/330
+
+
+
     u = temp_traj.vector.xyz
 
     cost_value = 0
@@ -660,13 +695,13 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
 
 
     # temporary adjustment to try and get the most stations
-    if N - failed_stats != 0:
+    if N - failed_stats >= 3:
         total_error = sum(error_list)/(N - failed_stats)# + 2*max(error_list)*(failed_stats)
     else:
         total_error = np.inf
 
     if prefs.debug:
-        print("Error {:10.4f} | Failed Stats {:3} {:}".format(total_error, failed_stats, printPercent(perc_fail)))
+        print("Error {:10.4f} | Failed Stats {:3} {:} | Error between points: {:.2f} km ({:.2f} s)".format(total_error, failed_stats, printPercent(perc_fail, N - failed_stats), dis/1000, tim))
         # Quick adjustment to try and better include stations
 
     for i in range(6):
@@ -674,11 +709,14 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig):
         array = np.array(plot[i].get_offsets())
 
         if not np.isinf(total_error):
+
             if i == 0:
                 point = np.array([pos_f.lat, total_error])
             elif i == 1:
                 point = np.array([pos_f.lon, total_error])
             elif i == 2:
+                if point_on_traj is not None:
+                    t0 = 0
                 point = np.array([t0, total_error])
             elif i == 3:
                 point = np.array([v, total_error])
