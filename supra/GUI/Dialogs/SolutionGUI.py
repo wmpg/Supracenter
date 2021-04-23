@@ -2679,7 +2679,8 @@ class SolutionGUI(QMainWindow):
         station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
 
         # If shouing computer found signals
-        if self.show_sigs.isChecked() and stn.signals is not None:
+        if False: # Will be added in a future update
+        # if self.show_sigs.isChecked() and stn.signals is not None:
 
 
             offset = (st.stats.starttime.datetime - self.bam.setup.fireball_datetime).total_seconds()
@@ -2856,9 +2857,9 @@ class SolutionGUI(QMainWindow):
 
         stn = self.bam.stn_list[self.current_station]
 
-        if not hasattr(stn, "annotation"):
-            stn.annotation = AnnotationList()
-        print(stn.annotation)
+        # if not hasattr(stn, "annotation"):
+        #     stn.annotation = AnnotationList()
+        # print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
 

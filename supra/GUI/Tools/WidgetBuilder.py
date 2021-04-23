@@ -649,9 +649,9 @@ def addMakePicksWidgets(obj):
     obj.show_height = QCheckBox('Show Height Prediction')
     check_group_layout.addWidget(obj.show_height)
 
-    obj.show_sigs = QCheckBox('Show Signals')
-    check_group_layout.addWidget(obj.show_sigs)
-    obj.show_sigs.stateChanged.connect(partial(obj.updatePlot, True))
+    # obj.show_sigs = QCheckBox('Show Signals')
+    # check_group_layout.addWidget(obj.show_sigs)
+    # obj.show_sigs.stateChanged.connect(partial(obj.updatePlot, True))
 
     # obj.psd = QCheckBox('[EXPERIMENTAL] PSD')
     # check_group_layout.addWidget(obj.psd)
