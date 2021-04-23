@@ -367,7 +367,7 @@ class ParticleMotion(QWidget):
             resp = stn.response
             st2 = st.copy()
             st2 = st2.remove_response(inventory=resp, output="DISP")
-            st2.remove_sensitivity(resp) 
+            # st2.remove_sensitivity(resp) 
 
             waveform_data = st2.data
 
@@ -607,7 +607,7 @@ class ParticleMotion(QWidget):
                 resp = stn.response
                 st2 = st.copy()
                 st2 = st2.remove_response(inventory=resp, output="DISP")
-                st2.remove_sensitivity(resp) 
+                # st2.remove_sensitivity(resp) 
 
                 waveform_data = st2.data
 
@@ -745,7 +745,7 @@ class ParticleMotion(QWidget):
 
             elif self.plot_type.currentText() == 'Jurkevic Azimuth':
                 # fix this
-                bndps = [[low, high]]
+                bndps = [[0.001, 10], [0.1, 20], [1, 30]]
                 
                 for bb, b in enumerate(bndps):
                     az_list, t_list = jurkevicWindows(z_r, n_r, e_r, st.stats, window_size=win_len, window_overlap=win_frac, bandpass=b)
@@ -755,7 +755,7 @@ class ParticleMotion(QWidget):
                                 brush=pg.intColor(bb), name="Bandpass: {:} - {:} Hz".format(b[0], b[1]))
                     self.particle_motion_canvas.addItem(p_mot_plot)
 
-                    print("{:} -> Bandpass: {:} - {:} Hz".format(pg.intColor(bb), b[0], b[1]))
+                    # print("{:} -> Bandpass: {:} - {:} Hz".format(pg.intColor(bb), b[0], b[1]))
                     
 
                 self.particle_motion_canvas.setLabel('bottom', "Time")
@@ -763,6 +763,8 @@ class ParticleMotion(QWidget):
                 
                 self.particle_motion_canvas.setXRange(0, np.max(t_list), padding=0)
                 self.particle_motion_canvas.setYRange(0, 180, padding=0)
+                self.particle_motion_canvas.setLimits(xMin=0, xMax=np.max(t_list), yMin=0, yMax=180)
+
 
             elif self.plot_type.currentText() == 'Azimuth Colourmap':
 
@@ -855,7 +857,7 @@ class ParticleMotion(QWidget):
             roi_waveform = pg.PlotDataItem()
             pts = np.linspace(pt_0/st.stats.sampling_rate + stn.offset - roi[0], \
                                 pt_1/st.stats.sampling_rate + stn.offset - roi[0], num=len(z))
-            roi_waveform.setData(x=pts, y=z)            
+            roi_waveform.setData(x=pts, y=bandpassFunc(z, 2, 8, st.stats.delta))            
             self.waveform_canvas.addItem(roi_waveform)
 
             
@@ -875,6 +877,7 @@ class ParticleMotion(QWidget):
             fas_diff_data = pg.PlotDataItem()
             fas_diff_data.setData(x=freq, y=np.abs(FAS/FAS_n), pen=(0, 125, 255))
 
+            print("Red - Data", "White - Noise", "Blue - Data/Noise")
             self.waveform_fft_canvas.addItem(fas_data)
             self.waveform_fft_canvas.addItem(fas_noise_data)
             self.waveform_fft_canvas.addItem(fas_diff_data)

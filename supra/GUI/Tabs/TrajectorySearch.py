@@ -2,14 +2,17 @@ import os
 
 from supra.GUI.Tools.GUITools import *
 
-from supra.Utils.Classes import Position, Trajectory, Angle
+from supra.Utils.Classes import Position, Trajectory, Angle, Supracenter
 from supra.Utils.pso import pso
 
 from supra.Fireballs.SeismicTrajectory import trajSearch, timeOfArrival
 
 def psoTrajectory(station_list, bam, prefs):
 
+    point_on_traj = None
+
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
+    # ref_pos = bam.setup.trajectory.pos_f
 
     if bam.setup.pos_min.isNone() or bam.setup.pos_max.isNone():
         errorMessage('Search boundaries are not defined!', 2, info='Please define the minimum and maximum parameters in the "Sources" tab on the left side of the screen!')
@@ -18,14 +21,24 @@ def psoTrajectory(station_list, bam, prefs):
     bam.setup.pos_min.pos_loc(ref_pos)
     bam.setup.pos_max.pos_loc(ref_pos)
 
-    bounds = [
-        (bam.setup.pos_min.x, bam.setup.pos_max.x), # X0
-        (bam.setup.pos_min.y, bam.setup.pos_max.y), # Y0
-        (bam.setup.t_min, bam.setup.t_max), # t0
-        (bam.setup.v_min, bam.setup.v_max), # Velocity (m/s)
-        (bam.setup.azimuth_min.deg, bam.setup.azimuth_max.deg),     # Azimuth
-        (bam.setup.zenith_min.deg, bam.setup.zenith_max.deg)  # Zenith angle
-        ]
+    if point_on_traj is None:
+
+        bounds = [
+            (bam.setup.pos_min.x, bam.setup.pos_max.x), # X0
+            (bam.setup.pos_min.y, bam.setup.pos_max.y), # Y0
+            (bam.setup.t_min, bam.setup.t_max), # t0
+            (bam.setup.v_min, bam.setup.v_max), # Velocity (m/s)
+            (bam.setup.azimuth_min.deg, bam.setup.azimuth_max.deg),     # Azimuth
+            (bam.setup.zenith_min.deg, bam.setup.zenith_max.deg)  # Zenith angle
+            ]
+
+    else:
+
+        bounds = [
+            (bam.setup.v_min, bam.setup.v_max), # Velocity (m/s)
+            (bam.setup.azimuth_min.deg, bam.setup.azimuth_max.deg),     # Azimuth
+            (bam.setup.zenith_min.deg, bam.setup.zenith_max.deg)  # Zenith angle
+            ]
 
     lower_bounds = [bound[0] for bound in bounds]
     upper_bounds = [bound[1] for bound in bounds]
@@ -33,12 +46,35 @@ def psoTrajectory(station_list, bam, prefs):
     if prefs.debug:
         print('Free Search')
 
-    x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, bam, prefs), \
+    import matplotlib.pyplot as plt
+
+    plt.ion()
+
+    fig, ax = plt.subplots(2, 3, sharey='row')
+    ax[0, 0].set_ylabel("Total Error")
+    ax[1, 0].set_ylabel("Total Error")
+    ax[0, 0].set_xlabel("Latitude")
+    ax[0, 1].set_xlabel("Longitude")
+    ax[0, 2].set_xlabel("Time")
+    ax[1, 0].set_xlabel("Velocity")
+    ax[1, 1].set_xlabel("Azimuth")
+    ax[1, 2].set_xlabel("Zenith")
+
+
+
+    plot = []
+
+    for i in range(2):
+        for j in range(3):
+
+            plot.append(ax[i, j].scatter([], []))
+
+    x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, bam, prefs, plot, ax, fig, point_on_traj), \
         maxiter=prefs.pso_max_iter, swarmsize=prefs.pso_swarm_size, \
         phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega, \
         particle_output=False)
 
-
+    # if point_on_traj is None:
     print('Results:')
     print('X: {:.4f}'.format(x[0]))
     print('Y: {:.4f}'.format(x[1]))
@@ -47,7 +83,14 @@ def psoTrajectory(station_list, bam, prefs):
     print('Azimuth: {:.4f}'.format(x[4]))
     print('Zenith: {:.4f}'.format(x[5]))
     print('Adjusted Error: {:.4f}'.format(fopt))
+    # else:
+    #     print('Results:')
+    #     print('Velocity: {:.4f}'.format(x[0]))
+    #     print('Azimuth: {:.4f}'.format(x[1]))
+    #     print('Zenith: {:.4f}'.format(x[2]))
+    #     print('Adjusted Error: {:.4f}'.format(fopt))
 
+    # if point_on_traj is None:
     geo = Position(0, 0, 0)
     geo.x = x[0]
     geo.y = x[1]
@@ -72,6 +115,9 @@ def psoTrajectory(station_list, bam, prefs):
 
 
     return [x, fopt, geo, stat_names, stat_pick]
+
+    # else:
+    #     return [x, fopt]
 
 def getStationList(file_name): 
     """ Reads station .csv file and produces a list containing the station's position and signal time. 
@@ -148,5 +194,7 @@ def trajectorySearch(bam, prefs):
         station_obj_list.append([stnp.group, stnp.network, stnp.code, \
                                 stnp.position.x, stnp.position.y, stnp.position.z, \
                                 stnp.time])
+
+
 
     return psoTrajectory(station_obj_list, bam, prefs)

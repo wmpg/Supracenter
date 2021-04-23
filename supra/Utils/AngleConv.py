@@ -77,7 +77,7 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     local_coord = np.array(ecef2ENU(lat0, lon0, *local_coord))
 
     # Ignore height component transformation
-    return local_coord[0], local_coord[1], local_coord[2]
+    return local_coord[0], local_coord[1], elev#local_coord[2]
 
 def loc2Geo(lat0, lon0, elev0, local_coord):
     """ Converts local coordinates to geographic, while keeping the elevation the same
@@ -111,7 +111,7 @@ def loc2Geo(lat0, lon0, elev0, local_coord):
     lat, lon = np.degrees(lat), np.degrees(lon)
 
     # Ignore height component transformation
-    return lat, lon, elev
+    return lat, lon, local_coord[2]#elev
 
 
 def roundToNearest(number, nearest):

@@ -21,7 +21,7 @@ from supra.Utils.Classes import Position, Supracenter, Trajectory, Angle
 
 class Source:
 
-    def __init__(self, title, source_type, source, notes='', color=(0, 0, 0)):
+    def __init__(self, title, source_type, source, notes='', color=(255, 255, 255)):
 
         self.title = title
         self.color = color
@@ -39,7 +39,7 @@ class SourceWindow(QWidget):
         QWidget.__init__(self)
         
         self.bam = bam
-        self.annote_color = (0, 0, 0)
+        self.annote_color = (255, 255, 255)
 
         self.buildGUI()
 

@@ -174,7 +174,7 @@ def cyscan(supra_pos, detec_pos, z_profile, wind=True, n_theta=180, n_phi=180, h
         # Check for all nan error function
         if k.shape == (0, ):
             # As handled in original Supracenter
-            return np.array([np.nan, np.nan, np.nan, np.nan])
+            return np.array([np.nan, np.nan, np.nan, np.nan, np.nan])
 
         # If there are mulitple, take one closest to phi (in the middle)
         if len(k > 1):

@@ -22,6 +22,52 @@ class Polarization:
     def __str__(self):
         return "Polarization object with azimuth = {:} +/- {:}".format(self.azimuth, self.azimuth_error)
 
+
+class AnnotationList:
+
+    def __init__(self):
+
+        self.annotation_list = []
+
+    def __str__(self):
+
+        A = ""
+
+        if len(self.annotation_list) > 0:
+            for item in self.annotation_list:
+                A += "{:}\n".format(item.title)
+        else:
+            A = "No annotations"
+
+        return A
+
+    def add(self, an):
+
+        self.annotation_list.append(an)
+
+    def overwrite(self, an):
+
+        new_list = []
+
+        for annote in self.annotation_list:
+            if annote.title != an.title:
+                new_list.append(annote)
+
+        new_list.append(an)
+
+        self.annotation_list = new_list
+
+    def remove(self, an):
+        
+        new_list = []
+
+        for annote in self.annotation_list:
+            if annote.title != an.title:
+                new_list.append(annote)
+
+        self.annotation_list = new_list
+
+
 class Station:
 
     """
@@ -44,6 +90,7 @@ class Station:
         self.edits = edits
         self.response = response
         self.polarization = Polarization()
+        self.annotation = AnnotationList()
 
     def __str__(self):
         A = "Station: {:}\n".format(self.metadata.name)

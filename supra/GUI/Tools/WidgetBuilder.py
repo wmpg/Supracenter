@@ -230,6 +230,7 @@ def addStationsWidgets(obj):
     obj.station_button = createButton("Count Stations", obj.station_control_layout, 3, 2, \
                                                         countStation, args=[obj])    
 
+
     obj.station_layout.addLayout(obj.station_control_layout)
 
 
@@ -276,6 +277,9 @@ def addSourceWidgets(obj):
 
     obj.sources_del_button = createButton("Delete Sources", obj.sources_control_layout, 2, 1, \
                                                 delSource, args=[obj])
+
+    obj.sources_del_button = createButton("Delete All", obj.sources_control_layout, 3, 1, \
+                                                delAllSource, args=[obj])
 
 
     obj.sources_layout.addLayout(obj.sources_control_layout)
@@ -644,6 +648,14 @@ def addMakePicksWidgets(obj):
 
     obj.show_height = QCheckBox('Show Height Prediction')
     check_group_layout.addWidget(obj.show_height)
+
+    # obj.show_sigs = QCheckBox('Show Signals')
+    # check_group_layout.addWidget(obj.show_sigs)
+    # obj.show_sigs.stateChanged.connect(partial(obj.updatePlot, True))
+
+    # obj.psd = QCheckBox('[EXPERIMENTAL] PSD')
+    # check_group_layout.addWidget(obj.psd)
+    # obj.psd.stateChanged.connect(obj.psdPlot)
 
     # obj.solve_height = QCheckBox('Solve Heights')
     # check_group_layout.addWidget(obj.solve_height)

@@ -33,6 +33,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import obspy
 import scipy.signal
+from scipy.fft import fft
+
 import pyqtgraph.exporters
 
 from matplotlib.backends.backend_qt5agg import FigureCanvas
@@ -72,8 +74,10 @@ from supra.GUI.Tabs.SupracenterSearch import supSearch
 from supra.GUI.Tabs.TrajectorySearch import trajectorySearch
 
 from supra.Stations.Filters import *
+from supra.Stations.ProcessStation import procTrace 
 from supra.Stations.CalcAllTimes4 import calcAllTimes
-from supra.Stations.StationObj import Polarization
+from supra.Stations.CalcAllSigs import calcAllSigs
+from supra.Stations.StationObj import Polarization, AnnotationList
 
 from wmpl.Utils.TrajConversions import datetime2JD, jd2Date
 from wmpl.Utils.Earth import greatCircleDistance
@@ -127,7 +131,7 @@ class SolutionGUI(QMainWindow):
             
             # Prefs file missing - use default settings
             
-            print("STATUS: Preferences file not found (Was deleted, or fresh install) - Generating a default preference file.")
+            print(printMessage("status"), "Preferences file not found (Was deleted, or fresh install) - Generating a default preference file.")
             
             with open(os.path.join('supra', 'Misc', 'BAMprefs.bam'), 'wb') as f:
                 pickle.dump(self.prefs, f)
@@ -265,6 +269,8 @@ class SolutionGUI(QMainWindow):
     def trajSearchSetup(self):
 
         x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
+        # x, fopt = trajectorySearch(self.bam, self.prefs)
+
 
         ##########
         # Display
@@ -348,7 +354,7 @@ class SolutionGUI(QMainWindow):
             if ptb_n > 0 and self.ray_enable_perts.isChecked():
                 
                 if self.prefs.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
+                    print(printMessage("status"), "Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturb(self.setup, sounding, self.setup.perturb_method, \
@@ -1653,7 +1659,7 @@ class SolutionGUI(QMainWindow):
             for ptb_n in range(1, self.setup.perturb_times):
 
                 if self.prefs.debug:
-                    print("STATUS: Perturbation {:}".format(ptb_n))
+                    print(printMessage("status"), "Perturbation {:}".format(ptb_n))
 
                 # generate a perturbed sounding profile
                 sounding_p = perturbation_method(self.setup, dataset, self.setup.perturb_method, \
@@ -1668,7 +1674,7 @@ class SolutionGUI(QMainWindow):
                 elif self.var_typ == 'd':
                     X = sounding_p[:, 3]
                 else:
-                    print('error, atmPlotProfile')
+                    print(printMessage("error"), 'atmPlotProfile')
 
                 Y = sounding_p[:, 0]
                 
@@ -1843,7 +1849,7 @@ class SolutionGUI(QMainWindow):
         gmap_filename = htmlBuilder(self.bam.setup, self.prefs, self.bam.stn_list)
 
         if self.prefs.debug:
-            print("STATUS: HTML map generated: {:}".format(gmap_filename))
+            print(printMessage("status"), "HTML map generated: {:}".format(gmap_filename))
         
         self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
 
@@ -1915,10 +1921,19 @@ class SolutionGUI(QMainWindow):
                 if self.bam.setup.trajectory.pos_i.isNone():
                     raise TypeError
 
+                points = self.bam.setup.trajectory.trajInterp2(div=100, \
+                            min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
+
+                b_lats = []
+                b_lons = []
+
+                for pt in points:
+                    b_lats.append(pt[0])
+                    b_lons.append(pt[1])
 
                 # Plot the trajectory with the bottom point known
-                self.make_picks_map_graph_canvas.plot([self.bam.setup.trajectory.pos_i.lon, self.bam.setup.trajectory.pos_f.lon],\
-                                                      [self.bam.setup.trajectory.pos_i.lat, self.bam.setup.trajectory.pos_f.lat],\
+                self.make_picks_map_graph_canvas.plot(b_lons,\
+                                                      b_lats,\
                                                         pen=(0, 0, 255))
 
 
@@ -1932,6 +1947,7 @@ class SolutionGUI(QMainWindow):
 
 
         self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
+        self.bam.stn_list = calcAllSigs(self.bam, self.prefs)
         save(self)
         SolutionGUI.update(self)
 
@@ -1992,7 +2008,7 @@ class SolutionGUI(QMainWindow):
             self.station_marker[ii] = pg.ScatterPlotItem()
             self.station_waveform[ii] = pg.PlotCurveItem()
 
-        self.make_picks_station_choice.currentTextChanged.connect(self.navStats)
+        self.make_picks_station_choice.activated.connect(self.navStats)
 
         plt.style.use('dark_background')
         fig = plt.figure(figsize=plt.figaspect(0.5))
@@ -2233,7 +2249,6 @@ class SolutionGUI(QMainWindow):
         #     if self.current_station >= len(self.bam.stn_list):
         #         self.current_station = 0
 
-
         self.updatePlot()
 
 
@@ -2379,101 +2394,183 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_waveform_canvas.scatterPlot(x=[pick.time], y=[0], pen=self.colors[self.group_no], brush=self.colors[self.group_no], update=True)
             self.drawWaveform(station_no=self.current_station)
 
-        # elif self.gnd_mot_picks.isChecked():
+        elif self.gnd_mot_picks.isChecked():
 
-        #     # Open ground motion Dialog
-        #     current_chn_start = channel[0:2]
-        #     channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
+            # Open ground motion Dialog
+            current_chn_start = channel[0:2]
+            channel_opts = [self.make_picks_channel_choice.itemText(i) for i in range(self.make_picks_channel_choice.count())]
             
-        #     # Check if zne/z12 is available
-        #     count = 0
+            # Check if zne/z12 is available
+            count = 0
 
-        #     for chn in channel_opts:
-        #         if current_chn_start in chn:
-        #             count += 1
+            for chn in channel_opts:
+                if current_chn_start in chn:
+                    count += 1
 
-        #     if count == 3:
-                
-        #         self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
-        #         self.gr.setGeometry(QRect(100, 100, 1600, 700))
-        #         self.gr.show()
-        #     elif count < 3:
-        #         errorMessage("Not enough channel data for particle motion!", 2, \
-        #                 detail="Three orthogonal stations are needed to do particle motion!")
-        #     else:
-        #         errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
-        #                  2, detail="")
+            if count == 3:
+                self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
+                self.gr.setGeometry(QRect(100, 100, 1600, 700))
+                self.gr.show()
+            elif count < 3:
+                errorMessage("Not enough channel data for particle motion!", 2, \
+                        detail="Three orthogonal stations are needed to do particle motion!")
+            else:
+                errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
+                         2, detail="")
 
-        #     save(self)
+            save(self)
 
-        # elif self.bandpass_picks.isChecked():
-
-
-        #     # Open bandpass GUI
-        #     self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
-        #     self.bp.setGeometry(QRect(100, 100, 1200, 700))
-        #     self.bp.show()
-
-        # elif self.polmap_picks.isChecked():
-
-        #     ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
-        #     points = []
-
-        #     # Calculate all points here
-        #     for stn in self.bam.stn_list:
-
-        #         if not hasattr(stn, "polarization"):
-        #             stn.polarization = Polarization()
-
-        #         if len(stn.polarization.azimuth) > 0: 
-
-        #             D = propegateBackwards(ref_pos, stn, self.bam)
-
-        #             for line in D:
-        #                 if not np.isnan(line[0]): 
-        #                     P = Position(0, 0, 0)
-        #                     P.x = line[0]
-        #                     P.y = line[1]
-        #                     P.z = line[2]
-        #                     P.pos_geo(ref_pos)
-        #                     S = Supracenter(P, line[3])
-        #                     points.append([S, stn.color])
-
-        #     # Pass grid to polmap
-        #     self.pm = Polmap(self.bam, points)
-        #     self.pm.setGeometry(QRect(100, 100, 1200, 700))
-        #     self.pm.show()
+        elif self.bandpass_picks.isChecked():
 
 
-        # elif self.annote_picks.isChecked():
+            # Open bandpass GUI
+            self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
+            self.bp.setGeometry(QRect(100, 100, 1200, 700))
+            self.bp.show()
 
-        #     # Create annotation
-        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+        elif self.polmap_picks.isChecked():
 
-        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+            points = []
+
+            # Calculate all points here
+            for stn in self.bam.stn_list:
+
+                if not hasattr(stn, "polarization"):
+                    stn.polarization = Polarization()
+
+                if len(stn.polarization.azimuth) > 0: 
+
+                    D = propegateBackwards(ref_pos, stn, self.bam)
+
+                    for line in D:
+                        if not np.isnan(line[0]): 
+                            P = Position(0, 0, 0)
+                            P.x = line[0]
+                            P.y = line[1]
+                            P.z = line[2]
+                            P.pos_geo(ref_pos)
+                            S = Supracenter(P, line[3])
+                            points.append([S, stn.color])
+
+            # Pass grid to polmap
+            self.pm = Polmap(self.bam, points)
+            self.pm.setGeometry(QRect(100, 100, 1200, 700))
+            self.pm.show()
+
+        ### Annotations
+        elif self.annote_picks.isChecked():
+
+            # Create annotation
+            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+
+            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station])
-        #     self.a.setGeometry(QRect(400, 500, 400, 500))
-        #     self.a.show()
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
+            self.a.setGeometry(QRect(200, 300, 1600, 800))
+            self.a.show()
             
-        #     self.drawWaveform()
-        #     self.alt_pressed = False
+            self.drawWaveform()
+            self.alt_pressed = False
             
 
     def addAnnotes(self):
 
-        pass
-        # for an in self.bam.stn_list[self.current_station].annotations:
-        #     line = pg.InfiniteLine(pos=(an.time, 0), angle=90, pen=an.color, label=an.title)
-        #     self.make_picks_waveform_canvas.addItem(line, update=True)
-        #     # line.make_picks_waveform_canvas.mpl_connect('button_press_event', self.onClick)
+        TOP = self.make_picks_waveform_canvas.getAxis('left').range[1]
+        BOT = self.make_picks_waveform_canvas.getAxis('left').range[0]
+        stn = self.bam.stn_list[self.current_station]
+
+        for an in stn.annotation.annotation_list:
+
+            # line = pg.InfiniteLine(pos=(an.time, 0), angle=90, pen=an.color, label=an.title)
+            # line2 = pg.InfiniteLine(pos=(an.time+an.length, 0), angle=90, pen=an.color)
+            # self.make_picks_waveform_canvas.addItem(line, update=True)
+            # self.make_picks_waveform_canvas.addItem(line2, update=True)
+            length = an.length
+            if length == 0: length = 0.01
+            annote_area = pg.ROI((an.time, BOT), size=(length, TOP-BOT), pen=pg.mkPen(an.color),\
+                                movable=False, \
+                                rotatable=False, resizable=False)  
+            annote_area.setAcceptedMouseButtons(QtCore.Qt.LeftButton)      
+            annote_area.sigClicked.connect(partial(self.onAnnoteClick, an))
+            self.make_picks_waveform_canvas.addItem(annote_area, update=True)
+
+
+    def onAnnoteClick(self, an):
         
+        if not self.annote_picks.isChecked():
+            stn = self.bam.stn_list[self.current_station]
 
-    def onClick(self):
-        print('It Worked!')
+            annote_list = stn.annotation.annotation_list
 
-    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0):
+            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an)
+            self.a.setGeometry(QRect(200, 300, 1600, 800))
+            self.a.show()
+
+
+    def psdPlot(self):
+
+        if self.psd.isChecked():
+
+            print(printMessage("status"), "Calculating PSD")
+            stn = self.bam.stn_list[self.current_station]
+
+            mseed = stn.stream.copy()
+            current_channel = self.make_picks_channel_choice.currentIndex()
+            chn_selected = self.make_picks_channel_choice.currentText()
+            # A second stream containing channels with the response
+            resp = stn.response
+            st = mseed.select(inventory=resp.select(channel=chn_selected))
+
+            # Use st2 if able to, else use st
+            st = st.select(channel=chn_selected)
+
+            # Unpact miniSEED data
+            st = st[0].remove_response(inventory=resp, output="DISP")
+            st.detrend()
+
+
+            delta = st.stats.delta
+            start_datetime = st.stats.starttime.datetime
+            end_datetime = st.stats.endtime.datetime
+
+            waveform_data = st.data
+            self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
+                         delta)
+            # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
+            #     delta)
+
+            # Construct time array, 0 is at start_datetime
+            time_data = np.copy(self.current_waveform_time)
+
+            # Cut the waveform data length to match the time data
+            waveform_data = waveform_data[:len(time_data)]
+            time_data = time_data[:len(waveform_data)] + stn.offset
+
+            sps = st.stats.sampling_rate
+            dt = 1/st.stats.sampling_rate
+            length = len(waveform_data)
+            freq = np.linspace(1/length, (sps/2), length)*sps/length
+            
+            FAS = abs(fft(waveform_data))
+            # FAS_n = abs(fft(z_n))
+            # fas_data = pg.PlotDataItem()
+            plt.semilogx(freq, FAS)
+
+            # fas_noise_data = pg.PlotDataItem()
+            # fas_noise_data.setData(x=freq, y=FAS_n, pen=(255, 255, 255))
+
+            # fas_diff_data = pg.PlotDataItem()
+            # fas_diff_data.setData(x=freq, y=np.abs(FAS/FAS_n), pen=(0, 125, 255))
+
+            plt.xlabel("Frequency [Hz]")
+            plt.ylabel("Response")
+            plt.show()
+        else:
+            print(printMessage("debug"), "Turning off PSD")
+
+    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0, bandpass=None):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 
             can be given an drawn, which is used when bandpass filtering is performed. 
 
@@ -2509,68 +2606,16 @@ class SolutionGUI(QMainWindow):
         
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
-
-        resp = stn.response
-
         # nominal way to get trace metadata        
         # stn_id = mseed[current_channel].get_id()
         # print(resp.get_channel_metadata(stn_id))
-
-        st = mseed
-
+        resp = stn.response
         # A second stream containing channels with the response
-        st2 = mseed.select(inventory=resp.select(channel=chn_selected))
+        st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
 
-        # Use st2 if able to, else use st
-        st2 = st2.select(channel=chn_selected)
-        # Unpact miniSEED data
+        waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
+                        resp=resp, bandpass=bandpass)
 
-        if len(st2) > 0 and resp is not None:# and self.rm_resp.isChecked():
-            st = st2
-
-
-            #TODO - bug, this shouldn't run every time the waveform is shown
-            #Obspy says that this is because the response is removed on the actual data, use .copy() 
-            if chn_selected != "BDF":
-                st = st[0].remove_response(inventory=resp, output="DISP")
-            else:
-                st = st[0].remove_response(inventory=resp, output="DISP")
-            # st.remove_sensitivity(resp) 
-            rm_resp = True
-        else:
-            st = st[0]
-            rm_resp = False
-
-        st.detrend()
-
-        delta = st.stats.delta
-        start_datetime = st.stats.starttime.datetime
-        end_datetime = st.stats.endtime.datetime
-
-        stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
-
-        # Check if the waveform data is already given or not
-        if waveform_data is None or channel_changed != 2:
-            #waveform_data = mseed[current_channel].data
-            waveform_data = st.data
-            # Store raw data for bookkeeping on first open
-            self.current_waveform_raw = waveform_data
-
-        self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, mseed[current_channel].stats.npts / mseed[current_channel].stats.sampling_rate, \
-             delta)
-        # self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds(), \
-        #     delta)
-
-        # Construct time array, 0 is at start_datetime
-        time_data = np.copy(self.current_waveform_time)
-
-        # Cut the waveform data length to match the time data
-        waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + stn.offset
-
-        # Store currently plotted waveform
-        self.current_waveform_processed = waveform_data
 
         # Calculate the time of arrival assuming constant propagation with the given speed of sound
         try:
@@ -2590,13 +2635,12 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-        if rm_resp:
-            if chn_selected != "BDF":
-                self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
-            else:
-                self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+
+        if chn_selected != "BDF":
+            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
         else:
-            self.make_picks_waveform_canvas.setLabel('left', "Signal Response")
+            self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+
 
         # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
@@ -2627,9 +2671,29 @@ class SolutionGUI(QMainWindow):
         except:
             stn.stn_ground_distance(ref_pos)
 
-        print('####################')
-        print("Current Station: {:}-{:}".format(stn.metadata.network, stn.metadata.code))
-        print("Ground Distance: {:7.3f} km".format(stn.ground_distance/1000))
+        available_channels = []
+
+        for i in range(len(mseed)):
+            available_channels.append(mseed[i].stats.channel)
+
+        station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
+
+        # If shouing computer found signals
+        if False: # Will be added in a future update
+        # if self.show_sigs.isChecked() and stn.signals is not None:
+
+
+            offset = (st.stats.starttime.datetime - self.bam.setup.fireball_datetime).total_seconds()
+
+            for sig in stn.signals:
+
+                start   = sig[0] + offset
+                finish  = sig[1] + offset
+
+                roi_box = pg.LinearRegionItem(values=(start, finish))
+                roi_box.setMovable(False)
+
+                self.make_picks_waveform_canvas.addItem(roi_box)
 
         # If manual ballistic search is on
         if self.prefs.ballistic_en and self.show_ball.isChecked():
@@ -2640,17 +2704,17 @@ class SolutionGUI(QMainWindow):
 
             if b_time == b_time:
                 self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2) , label='Ballistic')
-                print("Ballistic Arrival: {:.3f} s".format(b_time))
+                print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
             else:
-                print("No Ballistic Arrival")
+                print(printMessage("ballistic"), "No Nominal Arrival")
 
             if self.prefs.pert_en:
                 data, remove = chauvenet(stn.times.ballistic[0][1][0])
                 try:
-                    print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                    print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
                     print('Removed points {:}'.format(remove))
                 except ValueError:
-                    print('No Perturbation Arrivals')
+                    print(printMessage("ballistic"), 'No Perturbation Arrivals')
 
                 for i in range(len(data)):
                     if self.show_perts.isChecked():
@@ -2673,7 +2737,7 @@ class SolutionGUI(QMainWindow):
                 h_time = frag.position.ground_distance(stn.metadata.position)/1000
                 p_time = h_time + v_time
                 print('++++++++++++++++')
-                print('Fragmentation {:} ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
+                print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 frag.position.pos_loc(stn.metadata.position)
                 stn.metadata.position.pos_loc(stn.metadata.position)
                 xyz_range = np.sqrt((frag.position.x - stn.metadata.position.x)**2 + \
@@ -2696,15 +2760,15 @@ class SolutionGUI(QMainWindow):
 
                 else:
                     pass
-                    print('No Fragmentation {:} ({:6.2f} km) Arrival'.format(i+1, frag.position.elev/1000))
+                    print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
 
                 if self.prefs.pert_en:
                     data, remove = self.obtainPerts(stn.times.fragmentation, i)
                     try:
-                        print('Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                        print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
                         print('Removed points {:}'.format(remove))
                     except ValueError:
-                        print('No Perturbation Arrivals')
+                        print(printMessage("fragmentation"), 'No Perturbation Arrivals')
                     for j in range(len(data)):
                         if self.show_perts.isChecked():
                             
@@ -2752,24 +2816,25 @@ class SolutionGUI(QMainWindow):
 
 
         # Limit the high frequency to be lower than the Nyquist frequency
-        max_freq = (1.0/self.current_waveform_delta)/2
+        # max_freq = (1.0/self.current_waveform_delta)/2
 
-        if bandpass_high > max_freq:
-            bandpass_high = max_freq - 0.1
+        # if bandpass_high > max_freq:
+        #     bandpass_high = max_freq - 0.1
 
-            self.high_bandpass_slider.setValue(bandpass_high*self.bandpass_scale)
+        #     self.high_bandpass_slider.setValue(bandpass_high*self.bandpass_scale)
         
 
-        # Init the butterworth bandpass filter
-        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_waveform_delta, order=6)
+        # # Init the butterworth bandpass filter
+        # butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
+        #     1.0/self.current_waveform_delta, order=6)
 
-        # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
+        # # Filter the data
+        # waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
 
 
         # Plot the updated waveform
-        self.drawWaveform(channel_changed=2, waveform_data=waveform_data, station_no=self.current_station)
+        self.drawWaveform(channel_changed=2, \
+                station_no=self.current_station, bandpass=[bandpass_low, bandpass_high])
 
 
     def filterConvolution(self, event=None):
@@ -2791,6 +2856,10 @@ class SolutionGUI(QMainWindow):
             return None
 
         stn = self.bam.stn_list[self.current_station]
+
+        # if not hasattr(stn, "annotation"):
+        #     stn.annotation = AnnotationList()
+        # print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
 

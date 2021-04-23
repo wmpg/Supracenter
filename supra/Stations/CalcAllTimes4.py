@@ -36,7 +36,8 @@ def checkNomBall(bam, prefs):
 def checkNomFrag(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
-        if not (prefs.frag_en and len(stn.times.fragmentation) != len(bam.setup.fragmentation_point)):
+
+        if not (prefs.frag_en and len(stn.times.fragmentation) == len(bam.setup.fragmentation_point)):
 
             return False
 
@@ -75,38 +76,38 @@ def checkSkip(bam, prefs):
     # Check if the user has requested times to be recalculated
     if prefs.recalc_times:
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - User override')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - User override')
         return False
 
     for stn in bam.stn_list:
         # Check if any times
         if not hasattr(stn, 'times'):
             if prefs.debug:
-                print('DEBUG: Not skipping CalcAllTimes - No previously calculated times')
+                print(printMessage("debug"), 'Not skipping CalcAllTimes - No previously calculated times')
             return False
 
     # Check Ballistic
     if not checkNomBall(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No nominal ballistic times')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No nominal ballistic times')
         return False
 
     # Check Fragmentations
     if not checkNomFrag(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No nominal fragmentation times')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No nominal fragmentation times')
         return False
 
     # Check Ballistic Perturb
     if not checkPertBall(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No perturbed ballistic arrivals')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No perturbed ballistic arrivals')
         return False
 
     # Check Fragmentation Perturb
     if not checkPertFrag(bam, prefs):
         if prefs.debug:
-            print('DEBUG: Not skipping CalcAllTimes - No perturbed fragmentation arrivals')
+            print(printMessage("debug"), 'Not skipping CalcAllTimes - No perturbed fragmentation arrivals')
         return False
 
 
@@ -129,14 +130,15 @@ def printStatus(bam, prefs):
     print("PERTURBATIONS FRAGMENTATION CALCULATIONS ", printTrue(checkPertFrag(bam, prefs)))
     print("PERTURBATIONS BALLISTIC CALCULATIONS " , printTrue(checkPertBall(bam, prefs)))
 
+    print("################################")
+    print("")
+
 
 
 
 def calcAllTimes(bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
-
-
 
     #######################################
     # Check if times need to be calculated
@@ -224,7 +226,7 @@ def calcAllTimes(bam, prefs):
             min_height = bam.setup.trajectory.pos_f.elev
 
             points = bam.setup.trajectory.trajInterp2(div=100, min_p=min_height, max_p=max_height)
- 
+
 
             u = np.array([bam.setup.trajectory.vector.x,
                           bam.setup.trajectory.vector.y,
@@ -270,8 +272,10 @@ def calcAllTimes(bam, prefs):
                 continue
 
             supra = points[best_indx]
+            ref_time = supra[3]
             supra = Position(supra[0], supra[1], supra[2])
             supra.pos_loc(ref_pos)
+
 
             lats = [supra.lat, stn.metadata.position.lat]
             lons = [supra.lon, stn.metadata.position.lon]
@@ -283,9 +287,9 @@ def calcAllTimes(bam, prefs):
                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
                 h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
 
-            speed = bam.setup.trajectory.v
-            distance = supra.pos_distance(bam.setup.trajectory.pos_f)
-            timing = distance/speed
+            # speed = bam.setup.trajectory.v
+            # distance = supra.pos_distance(bam.setup.trajectory.pos_f)
+            # timing = distance/speed
 
             results = []
             if perturbations is not None:
@@ -296,8 +300,10 @@ def calcAllTimes(bam, prefs):
                     e += timing
                     results.append(np.array([e, b, c, d])) 
 
-            a.append([f_time + timing, frag_azimuth, frag_takeoff, frag_err])
+
+            a.append([ref_time + f_time , frag_azimuth, frag_takeoff, frag_err])
             a.append(results)
+
             stn.times.ballistic.append(a)
 
     if prefs.debug:

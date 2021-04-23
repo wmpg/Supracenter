@@ -30,6 +30,46 @@ def printTrue(result):
         else:
             return "< FALSE >"
 
+def termchkr(t, color='white'):
+
+    if termclr:
+        return "[" + colored(t.upper(), color) + "] "
+    else:
+        return "[" + t.upper() + "] "
+
+def printMessage(t):
+    
+    if t.lower() == 'debug':
+        return termchkr(t, color='cyan')
+
+    elif t.lower() == 'status':
+        return termchkr(t, color='blue')
+
+    elif t.lower() == 'warning':
+        return termchkr(t, color='yellow')
+
+    elif t.lower() == 'error':
+        return termchkr(t, color='red')
+
+    elif t.lower() == 'fragmentation':
+        return termchkr(t, color='green')
+
+    elif t.lower() == 'ballistic':
+        return termchkr(t, color='blue')
+
+    else:
+        return termchkr(t, color='white')
+
+def printPercent(num, pas):
+
+    if pas > 4:       
+        return termchkr("{:.2f}%".format(num), color='green')
+    elif pas == 4:
+        return termchkr("{:.2f}%".format(num), color='yellow')
+    else:
+        return termchkr("{:.2f}%".format(num), color='red')
+
+
 def printWidth(char='#'):
 
     ts = os.get_terminal_size().columns
@@ -81,3 +121,14 @@ def checkExt(file, ext):
         return file + ext
     else:
         return file
+
+def stationFormat(network, code, available_channels, ground_distance):
+
+    a = (" # # # {:}-{:} # # # ").format(network, code)
+    print(a)
+    print("#"*len(a))
+    for chn in available_channels:
+        print(chn)
+
+    print("Ground Distance: {:7.3f} km".format(ground_distance/1000))
+    print("")

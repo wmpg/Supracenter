@@ -219,7 +219,7 @@ class FragmentationStaff(QWidget):
         self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
         self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
 
-        self.height_canvas.setLimits(xMin=B.elev, xMax=A.elev, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
+        # self.height_canvas.setLimits(xMin=B.elev, xMax=A.elev, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
 
         # Fonts
         font= QFont()

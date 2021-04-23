@@ -22,6 +22,9 @@ Many pieces come together for this analysis, and the program downloads data from
 This Program
 ------------
 
+The corresponding paper is here:
+https://www.sciencedirect.com/science/article/abs/pii/S1364682621000493>
+
 Stations
 --------
 

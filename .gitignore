@@ -2,3 +2,8 @@
 Utils/__pycache__/*
 supra/Misc/BAMprefs.bam
 supra/Misc/BAMStationprefs.bam
+setup.py
+readthedocs.yml
+.csv
+.svg
+requirements.txt
