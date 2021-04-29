@@ -14,7 +14,7 @@ pip install pyqt5==5.11.3
 pip install pyswarm
 ```
 
-(Optional) Termcolor is supported, but the program will still work without it:
+(Optional) Termcolor is supported for clearer terminal messages, but the program will still work without it:
 
 ```
 pip install termcolor

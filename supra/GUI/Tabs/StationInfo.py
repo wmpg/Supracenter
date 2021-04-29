@@ -19,7 +19,8 @@ def addStationWidgets(obj, stn_list):
     obj.stat_widget_lst = []
     for ii, stn in enumerate(stn_list):
 
-        stat_obj = StationEx()
+        infrasound = len(stn.stream.select(channel="*DF")) > 0
+        stat_obj = StationEx(infrasound=infrasound)
         stat_obj.network.setText('{:}'.format(stn.metadata.network))
         stat_obj.code.setText('{:}'.format(stn.metadata.code))
         stat_obj.position.lat.setText('{:}'.format(stn.metadata.position.lat))

@@ -2189,10 +2189,9 @@ class SolutionGUI(QMainWindow):
 
         if event.key() == QtCore.Qt.Key_S:
 
-            try:
-                self.showSpectrogram(event=event)
-            except:
-                pass
+
+            self.showSpectrogram(event=event)
+
 
         if event.key() == QtCore.Qt.Key_C:
             try:
@@ -2467,7 +2466,7 @@ class SolutionGUI(QMainWindow):
             # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
             self.a.setGeometry(QRect(200, 300, 1600, 800))
             self.a.show()
             
@@ -2499,12 +2498,13 @@ class SolutionGUI(QMainWindow):
 
     def onAnnoteClick(self, an):
         
+
         if not self.annote_picks.isChecked():
             stn = self.bam.stn_list[self.current_station]
 
             annote_list = stn.annotation.annotation_list
-
-            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an)
+            channel = self.make_picks_channel_choice.currentText()
+            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an, current_channel=channel)
             self.a.setGeometry(QRect(200, 300, 1600, 800))
             self.a.show()
 
@@ -2612,6 +2612,7 @@ class SolutionGUI(QMainWindow):
         resp = stn.response
         # A second stream containing channels with the response
         st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
+        self.current_waveform_raw = st.data
 
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
@@ -2636,7 +2637,7 @@ class SolutionGUI(QMainWindow):
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
 
-        if chn_selected != "BDF":
+        if chn_selected not in ["BDF", "HDF"]:
             self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
         else:
             self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
@@ -2858,7 +2859,7 @@ class SolutionGUI(QMainWindow):
 
         if not hasattr(stn, "annotation"):
             stn.annotation = AnnotationList()
-        print(stn.annotation)
+        # print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
 

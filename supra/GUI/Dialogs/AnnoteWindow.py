@@ -15,7 +15,7 @@ from supra.Utils.Formatting import *
 
 class AnnoteWindow(QWidget):
 
-    def __init__(self, time, stn, bam, mode="new", an=None):
+    def __init__(self, time, stn, bam, mode="new", an=None, current_channel=None):
 
         QWidget.__init__(self)
         
@@ -37,16 +37,29 @@ class AnnoteWindow(QWidget):
             start_time = self.an.time
             end_time = self.an.time + self.an.length
 
-            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : [2, 8], "backup" : False}
+            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
 
             cut_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime, clean=clean)
             station_waveform = pg.PlotDataItem(x=cut_time, y=cut_waveform, pen='w')
             self.annote_waveform_canvas.addItem(station_waveform)
 
+            start_time_noise = 0
+            end_time_noise = 0 + self.an.length
+
+            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
+
+            noise_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime, clean=clean)
+
             try:
-                freq, fas = genFFT(cut_waveform, cut_time)
-                station_fft = pg.PlotDataItem(x=freq, y=fas)
-                self.annote_fft_canvas.addItem(station_fft) 
+                sampling_rate = stn.stream.select(channel=current_channel)[0].stats.sampling_rate
+                freq, fas = genFFT(cut_waveform, sampling_rate)
+                station_fft = pg.PlotDataItem(x=freq, y=fas, pen="w")
+                freq_n, fas_n = genFFT(noise_waveform, sampling_rate)
+                station_noise_fft = pg.PlotDataItem(x=freq_n, y=fas_n, pen="r")
+                station_ratio_fft = pg.PlotDataItem(x=freq_n, y=fas/fas_n, pen="b")
+                self.annote_fft_canvas.addItem(station_fft)
+                self.annote_fft_canvas.addItem(station_noise_fft)
+                self.annote_fft_canvas.addItem(station_ratio_fft)
             except IndexError:
                 print(printMessage("error"), " Not enough time data for FFT")
 
