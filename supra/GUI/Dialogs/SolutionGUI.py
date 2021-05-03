@@ -2056,6 +2056,11 @@ class SolutionGUI(QMainWindow):
                     stream = i
 
             for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'HDF':
+                    stn.channel = 'HDF'
+                    stream = i
+
+            for i in range(len(mseed)):
                 if mseed[i].stats.channel == 'BHZ':
                     stn.channel = 'BHZ'
                     stream = i
@@ -2611,6 +2616,7 @@ class SolutionGUI(QMainWindow):
         # print(resp.get_channel_metadata(stn_id))
         resp = stn.response
         # A second stream containing channels with the response
+
         st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
         self.current_waveform_raw = st.data
 

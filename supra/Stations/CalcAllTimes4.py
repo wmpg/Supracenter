@@ -287,9 +287,9 @@ def calcAllTimes(bam, prefs):
                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
                 h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
 
-            # speed = bam.setup.trajectory.v
-            # distance = supra.pos_distance(bam.setup.trajectory.pos_f)
-            # timing = distance/speed
+            speed = bam.setup.trajectory.v
+            distance = supra.pos_distance(bam.setup.trajectory.pos_f)
+            timing = distance/speed
 
             results = []
             if perturbations is not None:
