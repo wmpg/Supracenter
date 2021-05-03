@@ -82,6 +82,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     trace.detrend()
 
     # Remove sensitivity and remove response do the same thing - response is better
+
     if resp is not None:
         trace.remove_response(inventory=resp, output="DISP")
         # trace.remove_sensitivity(resp) 

@@ -2617,7 +2617,14 @@ class SolutionGUI(QMainWindow):
         resp = stn.response
         # A second stream containing channels with the response
 
-        st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
+        try:
+            st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
+            response_added = True
+        except AttributeError:
+            # print(printMessage("warning"), " No response found")
+            st = mseed.select(channel=chn_selected)[0]
+            response_added = False
+
         self.current_waveform_raw = st.data
 
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
@@ -2642,11 +2649,13 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-
-        if chn_selected not in ["BDF", "HDF"]:
-            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+        if response_added:
+            if chn_selected not in ["BDF", "HDF"]:
+                self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+            else:
+                self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
         else:
-            self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+            self.make_picks_waveform_canvas.setLabel('left', "Response")
 
 
         # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')

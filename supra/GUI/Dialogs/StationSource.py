@@ -75,7 +75,10 @@ class StationWindow(QWidget):
 
         meta = Metadata(self.network.text(), self.code.text(), position, self.name.text())
 
-        response = obspy.read_inventory(self.mresp_browser_edits.text())
+        try:
+            response = obspy.read_inventory(self.mresp_browser_edits.text())
+        except FileNotFoundError:
+            response = None
 
         stn = Station(meta, st, response=response)
 

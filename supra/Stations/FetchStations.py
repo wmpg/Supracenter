@@ -85,7 +85,7 @@ def loadIntoStations(data_list):
         st = obspy.read(station[8])
 
         # Merge traces of the same ID
-        st.merge()
+        # st.merge()
 
         resp = obspy.read_inventory(station[10])
 
