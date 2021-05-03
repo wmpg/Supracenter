@@ -1,4 +1,4 @@
-# Supracenter
+# Bolide Acoustic Modelling (BAM)
 Computing fireball fragmentation locations and trajectory from seismic or infrasound data.
 
 ## Installation
@@ -14,6 +14,12 @@ pip install pyqt5==5.11.3
 pip install pyswarm
 ```
 
+(Optional) Termcolor is supported for clearer terminal messages, but the program will still work without it:
+
+```
+pip install termcolor
+```
+
 3) Unzip the code into a folder on your computer
 
 ## Running a test case
@@ -24,4 +30,4 @@ python -m supra.bam
 ```
 In the Anaconda prompt. Make sure you navigate to the folder above supra/ in your Anaconda prompt first.
 
-For further documentation, look for About->Documentation in the GUI or if the GUI is not running, look for supra/Fireballs/docs/index.html in the files
+For further documentation, look for About->Documentation in the GUI or if the GUI is not running,

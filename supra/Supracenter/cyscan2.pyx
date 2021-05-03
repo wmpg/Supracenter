@@ -212,6 +212,12 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
+        
+        if n_layers <= 1:
+            if debug:
+                print('CYSCAN ERROR: No layers')
+            return np.array([np.nan, np.nan, np.nan, np.nan])
+
         for i in range(n_layers - 1):
 
             s2 = s[i]**2

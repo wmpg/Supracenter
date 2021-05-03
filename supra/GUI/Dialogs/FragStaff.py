@@ -68,10 +68,12 @@ class FragmentationStaff(QWidget):
         for i in range(len(self.setup.fragmentation_point)):
 
             f_time = stn.times.fragmentation[i][0][0]
+
             X = self.setup.fragmentation_point[i].position.elev
             Y = f_time - nom_pick.time
             self.dots_x.append(X)
             self.dots_y.append(Y)
+
             base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 
 

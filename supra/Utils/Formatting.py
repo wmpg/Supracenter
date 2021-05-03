@@ -127,8 +127,8 @@ def stationFormat(network, code, available_channels, ground_distance):
     a = (" # # # {:}-{:} # # # ").format(network, code)
     print(a)
     print("#"*len(a))
-    for chn in available_channels:
-        print(chn)
+    # for chn in available_channels:
+    #     print(chn)
 
     print("Ground Distance: {:7.3f} km".format(ground_distance/1000))
     print("")

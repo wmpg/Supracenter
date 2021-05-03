@@ -2056,6 +2056,11 @@ class SolutionGUI(QMainWindow):
                     stream = i
 
             for i in range(len(mseed)):
+                if mseed[i].stats.channel == 'HDF':
+                    stn.channel = 'HDF'
+                    stream = i
+
+            for i in range(len(mseed)):
                 if mseed[i].stats.channel == 'BHZ':
                     stn.channel = 'BHZ'
                     stream = i
@@ -2189,10 +2194,9 @@ class SolutionGUI(QMainWindow):
 
         if event.key() == QtCore.Qt.Key_S:
 
-            try:
-                self.showSpectrogram(event=event)
-            except:
-                pass
+
+            self.showSpectrogram(event=event)
+
 
         if event.key() == QtCore.Qt.Key_C:
             try:
@@ -2467,10 +2471,11 @@ class SolutionGUI(QMainWindow):
         #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
-        #     self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None)
-        #     self.a.setGeometry(QRect(200, 300, 1600, 800))
-        #     self.a.show()
-            
+
+        self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
+        self.a.setGeometry(QRect(200, 300, 1600, 800))
+        self.a.show()
+
         #     self.drawWaveform()
         #     self.alt_pressed = False
             
@@ -2499,12 +2504,13 @@ class SolutionGUI(QMainWindow):
 
     def onAnnoteClick(self, an):
         
+
         if not self.annote_picks.isChecked():
             stn = self.bam.stn_list[self.current_station]
 
             annote_list = stn.annotation.annotation_list
-
-            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an)
+            channel = self.make_picks_channel_choice.currentText()
+            self.a = AnnoteWindow(an.time, stn, self.bam, mode="edit", an=an, current_channel=channel)
             self.a.setGeometry(QRect(200, 300, 1600, 800))
             self.a.show()
 
@@ -2611,7 +2617,16 @@ class SolutionGUI(QMainWindow):
         # print(resp.get_channel_metadata(stn_id))
         resp = stn.response
         # A second stream containing channels with the response
-        st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
+
+        try:
+            st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
+            response_added = True
+        except AttributeError:
+            # print(printMessage("warning"), " No response found")
+            st = mseed.select(channel=chn_selected)[0]
+            response_added = False
+
+        self.current_waveform_raw = st.data
 
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
@@ -2635,11 +2650,13 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-
-        if chn_selected != "BDF":
-            self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+        if response_added:
+            if chn_selected not in ["BDF", "HDF"]:
+                self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
+            else:
+                self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
         else:
-            self.make_picks_waveform_canvas.setLabel('left', "Overpressure", units='Pa')
+            self.make_picks_waveform_canvas.setLabel('left', "Response")
 
 
         # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
@@ -2857,8 +2874,13 @@ class SolutionGUI(QMainWindow):
 
         stn = self.bam.stn_list[self.current_station]
 
+<<<<<<< HEAD
         # if not hasattr(stn, "annotation"):
         #     stn.annotation = AnnotationList()
+=======
+        if not hasattr(stn, "annotation"):
+            stn.annotation = AnnotationList()
+>>>>>>> dev
         # print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()

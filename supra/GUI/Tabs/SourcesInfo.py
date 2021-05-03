@@ -31,7 +31,7 @@ def loadSource(obj):
         return None
 
     for src in obj.bam.source_list:
-        print(src.source)
+        # print(src.source)
         widget = SourceEx(src)
         obj.sources_table_layout.addWidget(widget)
 

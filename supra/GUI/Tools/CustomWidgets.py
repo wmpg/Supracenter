@@ -126,8 +126,10 @@ class SourceEx(QGroupBox):
 
 class StationEx(QGroupBox):
 
-    def __init__(self):
+    def __init__(self, infrasound=False):
         super(StationEx, self).__init__()
+
+        self.infrasound = infrasound
 
         # self.setTitle('')
         main_layout = QHBoxLayout()
@@ -170,13 +172,22 @@ class StationEx(QGroupBox):
 
     def setStyle(self, state):
         if state == 'enabled':
-            self.setStyleSheet("""
-                QGroupBox {
-                    border: 3px solid grey;
-                    border-radius: 10px;
-                    background-color: rgb(10, 10, 10);
-                    }
-                """)
+            if self.infrasound:
+                self.setStyleSheet("""
+                    QGroupBox {
+                        border: 3px solid red;
+                        border-radius: 10px;
+                        background-color: rgb(10, 10, 10);
+                        }
+                    """)
+            else:
+                self.setStyleSheet("""
+                    QGroupBox {
+                        border: 3px solid rgb(0, 100, 200);
+                        border-radius: 10px;
+                        background-color: rgb(10, 10, 10);
+                        }
+                    """)
             self.network.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
             self.code.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
             self.name.setStyleSheet("color: white; background-color: rgb(10, 10, 10)")
