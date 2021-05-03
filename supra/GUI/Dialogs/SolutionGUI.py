@@ -2874,13 +2874,10 @@ class SolutionGUI(QMainWindow):
 
         stn = self.bam.stn_list[self.current_station]
 
-<<<<<<< HEAD
+
         # if not hasattr(stn, "annotation"):
         #     stn.annotation = AnnotationList()
-=======
-        if not hasattr(stn, "annotation"):
-            stn.annotation = AnnotationList()
->>>>>>> dev
+
         # print(stn.annotation)
 
         self.make_picks_waveform_canvas.clear()
