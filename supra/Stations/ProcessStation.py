@@ -1,4 +1,4 @@
-
+import obspy
 import numpy as np
 
 from supra.Stations.Filters import butterworthBandpassFilter
@@ -77,32 +77,44 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         offset = 0
 
     # self.current_waveform_delta = delta
-    time_data = np.arange(0,  npts/sampling_rate, delta)
+    # time_data = np.arange(0,  npts/sampling_rate, delta)
 
-    trace.detrend()
+    
 
-    # Remove sensitivity and remove response do the same thing - response is better
+    partial_traces = trace.split()
 
-    if resp is not None:
-        trace.remove_response(inventory=resp, output="DISP")
-        # trace.remove_sensitivity(resp) 
+    total_ampl = []
+    total_time = []
 
-    ampl_data = trace.data
+    for tr in partial_traces:
+        tr.detrend()
 
-    ampl_data = ampl_data[:len(time_data)]
-    time_data = time_data[:len(ampl_data)] + offset
+        # Remove sensitivity and remove response do the same thing - response is better
 
-    raw_trace = ampl_data
-    # Init the butterworth bandpass filter
-    if bandpass is not None:
+        if resp is not None:
+            tr.remove_response(inventory=resp, output="DISP")
+            # trace.remove_sensitivity(resp) 
 
-        # ampl_data = bandpassFilter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=5)
-        ampl_data = butter_bandpass_filter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=6)
+        ampl_data = tr.data
+
+        time_data = tr.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_datetime))
+        ampl_data = ampl_data[:len(time_data)]
+        # time_data = time_data[:len(ampl_data)]
+
+        raw_trace = ampl_data
+        # Init the butterworth bandpass filter
+        if bandpass is not None:
+
+            # ampl_data = bandpassFilter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=5)
+            ampl_data = butter_bandpass_filter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=6)
+
+        total_ampl.append(ampl_data)
+        total_time.append(time_data)
 
     if backup:
-        return ampl_data, time_data, raw_trace
+        return total_ampl, total_time, raw_trace
 
-    return ampl_data, time_data      
+    return total_ampl, total_time      
 
 def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     """ Returns the trace between beginTime and endTime given as two times after reference"""
@@ -118,11 +130,10 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
         waveform_data, time_data = procTrace(trace, **clean)
     else:
         waveform_data = trace.data
-        time_data = np.arange(0, trace.stats.npts / trace.stats.sampling_rate, \
-                     delta)
+        time_data = trace.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_time))
 
         waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + offset
+        time_data = time_data[:len(waveform_data)]
 
     number_of_pts_per_s = trace.stats.sampling_rate
 

@@ -2617,6 +2617,24 @@ class SolutionGUI(QMainWindow):
         resp = stn.response
         # A second stream containing channels with the response
 
+        # If a channel is built up of multiple sections with gaps between
+
+        # Merge the files without gaps
+        mseed.merge()
+        gaps = mseed.get_gaps()
+
+        gap_times = []
+        for gap in gaps:
+            start = gap[4]
+            end = gap[5]
+
+            ref = obspy.core.utcdatetime.UTCDateTime(self.bam.setup.fireball_datetime)
+
+            start_ref = start - ref
+            end_ref = end - ref
+
+            gap_times.append([start_ref, end_ref])
+
         try:
             st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
             response_added = True
@@ -2642,8 +2660,15 @@ class SolutionGUI(QMainWindow):
         # self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
         # 2.370980392E10
 
-        self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
-        self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+        for ii in range(len(waveform_data)):
+            self.current_station_waveform = pg.PlotDataItem(x=time_data[ii], y=waveform_data[ii], pen='w')
+            self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+
+        for gap in gap_times:
+            gap_plot = pg.LinearRegionItem(values=gap, orientation='vertical', brush='r', pen='r', hoverBrush='r', hoverPen='r', movable=False)
+            # gap_plot = pg.PlotDataItem(x=gap, y=[0, 0], pen='r')
+            self.make_picks_waveform_canvas.addItem(gap_plot)
+
         # self.make_picks_waveform_canvas.plot(x=[t_arrival, t_arrival], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(255, 0, 0), width=2))
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
 
@@ -2717,8 +2742,9 @@ class SolutionGUI(QMainWindow):
 
             b_time = stn.times.ballistic[0][0][0]
 
-            if b_time == b_time:
-                self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2) , label='Ballistic')
+            if not np.isnan(b_time):
+                b_arrival = pg.InfiniteLine(pos=b_time, angle=90, pen=pg.mkPen(color=src.color, width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+                self.make_picks_waveform_canvas.addItem(b_arrival)
                 print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
             else:
                 print(printMessage("ballistic"), "No Nominal Arrival")
