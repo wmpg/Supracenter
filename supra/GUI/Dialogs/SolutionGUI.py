@@ -2172,6 +2172,15 @@ class SolutionGUI(QMainWindow):
 
         SolutionGUI.update(self)
 
+    def deleteStation(self):
+        pass
+        # stn = self.bam.stn_list[self.current_station]
+        # if self.prefs.debug:
+        #     print(printMessage("debug"), "Deleting Station {:}-{:}".format(stn.metadata.network, stn.metadata.code))
+
+        # self.bam.stn_list.pop(self.current_station)
+        # save(self)
+
     def keyPressEvent(self, event):
 
         if event.key() == QtCore.Qt.Key_Alt:
@@ -2210,6 +2219,9 @@ class SolutionGUI(QMainWindow):
                 self.invertGraph()
             except:
                 pass
+
+        if event.key() == QtCore.Qt.Key_X:
+            self.deleteStation()
 
         if event.key() == QtCore.Qt.Key_Up:
             self.group_no += 1
@@ -2601,16 +2613,7 @@ class SolutionGUI(QMainWindow):
                 print('mseed file could not be read:', mseed_file_path)
             return None
 
-        if channel_changed == 0:
-            # Populate channel list
-            self.make_picks_channel_choice.blockSignals(True)
-            self.make_picks_channel_choice.clear()
-            for i in range(len(mseed)):
-                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
-            self.make_picks_channel_choice.blockSignals(False)
-        
-        current_channel = self.make_picks_channel_choice.currentIndex()
-        chn_selected = self.make_picks_channel_choice.currentText()
+    
         # nominal way to get trace metadata        
         # stn_id = mseed[current_channel].get_id()
         # print(resp.get_channel_metadata(stn_id))
@@ -2622,6 +2625,17 @@ class SolutionGUI(QMainWindow):
         # Merge the files without gaps
         mseed.merge()
         gaps = mseed.get_gaps()
+
+        if channel_changed == 0:
+            # Populate channel list
+            self.make_picks_channel_choice.blockSignals(True)
+            self.make_picks_channel_choice.clear()
+            for i in range(len(mseed)):
+                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
+            self.make_picks_channel_choice.blockSignals(False)
+        
+        current_channel = self.make_picks_channel_choice.currentIndex()
+        chn_selected = self.make_picks_channel_choice.currentText()
 
         gap_times = []
         for gap in gaps:

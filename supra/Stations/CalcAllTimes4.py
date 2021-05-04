@@ -47,7 +47,7 @@ def checkPertBall(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
         try:
-            if not (prefs.pert_en and len(stn.times.ballistic[1]) != prefs.pert_num):
+            if (prefs.pert_en and (len(stn.times.ballistic[1]) != prefs.pert_num)):
 
                 return False
         except IndexError:
@@ -60,7 +60,7 @@ def checkPertFrag(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
         try:
-            if not (prefs.pert_en and len(stn.times.fragmentation[0][1]) != prefs.pert_num):
+            if (prefs.pert_en and len(stn.times.fragmentation[0][1]) != prefs.pert_num):
 
                 return False
         except IndexError:

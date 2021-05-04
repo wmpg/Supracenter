@@ -13,16 +13,26 @@ from scipy.signal import butter, sosfilt, sosfreqz
 from scipy import signal
 
 def butter_bandpass(lowcut, highcut, fs, order=6):
-        nyq = 0.5 * fs
-        low = lowcut / nyq
-        high = highcut / nyq
-        sos = butter(order, [low, high], analog=False, btype='band', output='sos')
-        return sos
+    """ Scipy suggested bandpass filter with fix found on stackoverflow for low frequencies
+
+    Arguments:
+    lowcut [float] - Lowcut frequency [Hz]
+    highcut [float] - Highcut frequency [Hz]
+    fs [float] - Sampling rate [s]
+    order [integer] - Order to run the bandpass (6 is good, 9 is too much, 
+                        2 is okay for very low frequencies where higher orders don't work)
+    """
+
+    nyq = 0.5 * fs
+    low = lowcut / nyq
+    high = highcut / nyq
+    sos = butter(order, [low, high], analog=False, btype='band', output='sos')
+    return sos
 
 def butter_bandpass_filter(data, lowcut, highcut, fs, order=5):
-        sos = butter_bandpass(lowcut, highcut, fs, order=order)
-        y = sosfilt(sos, data)
-        return y
+    sos = butter_bandpass(lowcut, highcut, fs, order=order)
+    y = sosfilt(sos, data)
+    return y
 
 
 def bandpassFilter(bandpass, delta, ampl_data):
@@ -36,17 +46,6 @@ def bandpassFilter(bandpass, delta, ampl_data):
 
     return ampl_data
 
-# def obspyBandpassFilter(bandpass_list, delta, ampl_data):
-#     low =  bandpass_list[0]
-#     high = bandpass_list[1]
-    
-#     ampl_data = bandpassFunc(ampl_data, low, high, 1/delta, corners=6, zerophase=False)
-#     # butter_b, butter_a = butterworthBandpassFilter(low, high, 1.0/delta, order=2)
-
-#     # # Filter the data
-#     # ampl_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(ampl_data))
-
-#     return ampl_data
 
 def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False):
     ''' procTrace filters a waveform given a response file and a reference time
@@ -58,9 +57,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     ref_datetime - datetime object to reference to
     resp - response data to remove from the trace
     bandpass - [low, high] bandpass filters to use for the data
-    
-
-    ref_datetime = self.bam.setup.fireball_datetime
+    backup [Boolean] - keep a raw trace
     '''
 
 
@@ -76,11 +73,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     else:
         offset = 0
 
-    # self.current_waveform_delta = delta
-    # time_data = np.arange(0,  npts/sampling_rate, delta)
-
-    
-
+    # Split traces into groups because some traces may be missing a few seconds of data - these are marked by red lines
     partial_traces = trace.split()
 
     total_ampl = []
@@ -89,7 +82,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     for tr in partial_traces:
         tr.detrend()
 
-        # Remove sensitivity and remove response do the same thing - response is better
+        # Remove sensitivity and remove response do the same thing - response is better (obspy)
 
         if resp is not None:
             tr.remove_response(inventory=resp, output="DISP")
@@ -114,7 +107,8 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     if backup:
         return total_ampl, total_time, raw_trace
 
-    return total_ampl, total_time      
+    return total_ampl, total_time   
+       
 
 def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     """ Returns the trace between beginTime and endTime given as two times after reference"""
