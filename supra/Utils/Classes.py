@@ -108,6 +108,24 @@ class Position:
             result = "Position is None Type"
         return result
 
+    def __sub__(self, other):
+
+        self.x -= other.x
+        self.y -= other.y
+        self.z -= other.z
+
+        return self
+
+    def __mul__(self, other):
+        
+        self.x *= other
+        self.y *= other
+        self.z *= other
+
+
+        return self
+
+
     def isNone(self):
 
         if self.lat == None or self.lon == None or self.elev == None:
@@ -178,6 +196,9 @@ class Position:
         print("m = {:}".format(m))
         print("b = {:}".format((b_1 + b_2)/2))
 
+    def mag(self):
+
+        return (self.x**2 + self.y**2 + self.z**2)**0.5
 
 
 

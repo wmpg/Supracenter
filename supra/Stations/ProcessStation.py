@@ -46,6 +46,34 @@ def bandpassFilter(bandpass, delta, ampl_data):
 
     return ampl_data
 
+def procStream(stn, ref_time=None):
+    
+    mseed = stn.stream.copy()
+    resp = stn.response
+
+    mseed.merge()
+    gaps = mseed.get_gaps()
+
+    gap_times = []
+    for gap in gaps:
+        start = gap[4]
+        end = gap[5]
+
+        ref = obspy.core.utcdatetime.UTCDateTime(ref_time)
+
+        start_ref = start - ref
+        end_ref = end - ref
+
+        gap_times.append([start_ref, end_ref])
+
+
+
+    return mseed, resp, gap_times
+
+def findChn(st, chn):
+    st = st.select(channel=chn)[0]
+
+    return st
 
 def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False):
     ''' procTrace filters a waveform given a response file and a reference time
@@ -108,7 +136,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         return total_ampl, total_time, raw_trace
 
     return total_ampl, total_time   
-       
+
 
 def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     """ Returns the trace between beginTime and endTime given as two times after reference"""
@@ -121,9 +149,11 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     offset = (start_datetime - ref_time).total_seconds()
 
     if clean is not None:
+
         waveform_data, time_data = procTrace(trace, **clean)
     else:
         waveform_data = trace.data
+
         time_data = trace.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_time))
 
         waveform_data = waveform_data[:len(time_data)]

@@ -1,4 +1,5 @@
 import numpy as np
+import csv
 
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -6,7 +7,12 @@ from PyQt5.QtCore import *
 import pyqtgraph as pg
 
 from supra.Utils.AngleConv import chauvenet
+from supra.Utils.Classes import Position
 from supra.GUI.Tools.Theme import theme
+from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
+from supra.GUI.Tools.GUITools import *
+from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
+from supra.Stations.ProcessStation import procTrace, procStream, findChn
 
 class FragmentationStaff(QWidget):
 
@@ -16,11 +22,12 @@ class FragmentationStaff(QWidget):
 
         self.buildGUI()
         # Take important values from main window class
-        stn, self.current_station, self.pick_list = pack
+        stn, self.current_station, self.pick_list, self.channel = pack
 
         nom_pick = self.pick_list[0]
 
-        layout = QVBoxLayout()
+        main_layout = QGridLayout()
+        
 
         # Pass setup value
         self.setup = setup
@@ -28,12 +35,13 @@ class FragmentationStaff(QWidget):
         ###########
         # Build GUI
         ###########
-        self.plot_view = pg.GraphicsLayoutWidget()
-        self.height_canvas = self.plot_view.addPlot()
-        self.plot_view.nextRow()
-        self.angle_canvas = self.plot_view.addPlot()
+        self.height_view = pg.GraphicsLayoutWidget()
+        self.height_canvas = self.height_view.addPlot()
+        self.angle_view = pg.GraphicsLayoutWidget()
+        self.angle_canvas = self.angle_view.addPlot()
 
-        self.plot_view.setBackground((0,0,0))
+        self.height_view.setBackground((0,0,0))
+        self.angle_view.setBackground((0,0,0))
         self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
         self.angle_canvas.getAxis('left').setPen((255, 255, 255))
         self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
@@ -41,11 +49,13 @@ class FragmentationStaff(QWidget):
 
         # Force x-axes to stay aligned
         self.angle_canvas.setXLink(self.height_canvas)   
-        layout.addWidget(self.plot_view)
-        self.plot_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        main_layout.addWidget(self.height_view, 1, 1, 1, 100)
+        main_layout.addWidget(self.angle_view, 2, 1, 1, 100)
+        self.angle_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        self.height_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
         export_button = QPushButton('Export')
-        layout.addWidget(export_button)
+        main_layout.addWidget(export_button, 3, 1, 1, 25)
         export_button.clicked.connect(self.export)
 
         X = []
@@ -60,6 +70,93 @@ class FragmentationStaff(QWidget):
 
         self.dots_x = []
         self.dots_y = []
+
+        #########################
+        # Station Plot
+        #########################
+
+        # self.seis_view = pg.GraphicsLayoutWidget()
+        # self.seis_canvas = self.seis_view.addPlot()
+        # main_layout.addWidget(self.seis_view, 1, 0, 1, 1)
+
+        
+        st, resp, gap_times = procStream(stn, ref_time=self.setup.fireball_datetime)
+        st = findChn(st, self.channel)
+        waveform_data, time_data = procTrace(st, ref_datetime=self.setup.fireball_datetime,\
+                resp=resp, bandpass=[2, 8])
+
+
+        max_val = 0
+        for ii in range(len(waveform_data)):
+            wave = waveform_data[ii]
+            for point in wave:
+                if abs(point) > max_val:
+                    max_val = abs(point)
+
+        scaling = 10000/max_val
+
+        for ii in range(len(waveform_data)):
+
+            wave = pg.PlotDataItem(x=waveform_data[ii]*scaling, y=time_data[ii] - nom_pick.time)
+            self.height_canvas.addItem(wave, update=True)
+        
+
+
+        #########################
+        # Light Curve Plot
+        #########################
+        if len(self.setup.light_curve_file) > 0 or not hasattr(self.setup, "light_curve_file"):
+            
+            lc_plot = MatplotlibPyQT()
+            main_layout.addWidget(lc_plot, 1, 101, 1, 10)
+            # self.light_curve_view = pg.GraphicsLayoutWidget()
+            # self.light_curve_canvas = self.light_curve_view.addPlot()
+
+
+            light_curve = readLightCurve(self.setup.light_curve_file)
+
+            light_curve_list = processLightCurve(light_curve)
+
+            for L in light_curve_list:
+                lc_plot.ax.scatter(L.M, L.t, label=L.station)
+                # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
+                # self.light_curve_canvas.addItem(light_curve_curve)
+
+            lc_plot.ax.set_xlabel("Absolute Magnitude")
+            lc_plot.ax.set_ylabel("Time after ? [s]")
+            lc_plot.ax.legend()
+            lc_plot.show()
+
+            # main_layout.addWidget(self.light_curve_view, 1, 101, 1, 10)
+
+            blank_spacer = QWidget()
+            main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
+
+
+        ########################
+        # Generate Hyperbola
+        ########################
+
+        D_0 = A
+
+        stn.metadata.position.pos_loc(B)
+
+        theta = self.setup.trajectory.zenith.rad
+        h_0 = A.z
+
+        h = np.arange(0, 100000)
+        v = self.setup.trajectory.v
+        k = stn.metadata.position - D_0
+        n = Position(0, 0, 0)
+        n.x, n.y, n.z = self.setup.trajectory.vector.x, self.setup.trajectory.vector.y, self.setup.trajectory.vector.z
+        n.pos_geo(B)
+        c = 330
+
+        T = (h - h_0)/(-v*np.cos(theta)) + (k - n*((h - h_0)/(-np.cos(theta)))).mag()/c - nom_pick.time
+        
+        estimate_plot = pg.PlotDataItem(x=h, y=T)
+        self.height_canvas.addItem(estimate_plot, update=True)
+
 
         #######################
         # Plot nominal points
@@ -136,6 +233,7 @@ class FragmentationStaff(QWidget):
                 self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 255, 0)))
             else:
                 self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
+
 
         self.dots = np.array([self.dots_x, self.dots_y])
 
@@ -234,7 +332,7 @@ class FragmentationStaff(QWidget):
         self.angle_canvas.getAxis("left").tickFont = font
         self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
         self.angle_canvas.getAxis('left').setPen((255, 255, 255))
-        self.setLayout(layout)
+        self.setLayout(main_layout)
 
     def buildGUI(self):
         self.setWindowTitle('Fragmentation Staff')
@@ -263,3 +361,12 @@ class FragmentationStaff(QWidget):
         data, remove = chauvenet(data_new)
 
         return data, remove
+
+    def linkSeis(self):
+
+        if self.linked_seis:
+            self.seis_canvas.setYLink(None)   
+        
+        else:
+            self.seis_canvas.setYLink(self.height_canvas)   
+            

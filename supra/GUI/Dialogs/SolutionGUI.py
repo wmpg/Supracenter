@@ -74,7 +74,7 @@ from supra.GUI.Tabs.SupracenterSearch import supSearch
 from supra.GUI.Tabs.TrajectorySearch import trajectorySearch
 
 from supra.Stations.Filters import *
-from supra.Stations.ProcessStation import procTrace 
+from supra.Stations.ProcessStation import procTrace, procStream, findChn
 from supra.Stations.CalcAllTimes4 import calcAllTimes
 from supra.Stations.CalcAllSigs import calcAllSigs
 from supra.Stations.StationObj import Polarization, AnnotationList
@@ -1060,7 +1060,7 @@ class SolutionGUI(QMainWindow):
         variables = []
 
         if self.prefs.atm_type == 'ecmwf':
-            variables = ['t', 'u', 'v']
+            variables = ['u', 'v', 't']
 
         if errorCodes(self.setup, 'sounding_file'):
             return None
@@ -1087,7 +1087,15 @@ class SolutionGUI(QMainWindow):
             errorMessage('Unable to find specified profile!', 2, detail='{:}'.format(e))
             return None
 
+        z = sounding[:, 0]
+        t = sounding[:, 1]
+        u = sounding[:, 2]
+        v = sounding[:, 3]
+        p = 10*101.325*np.exp(-0.00012*z)
 
+
+
+        atmos_vars = [z, u, v, t, p]
         filename = checkExt(filename[0], '.txt')
 
         header = 'Height'
@@ -1104,13 +1112,13 @@ class SolutionGUI(QMainWindow):
             
             f.write(header)
 
-            for line in sounding:
+            for line in range(len(sounding)):
                 info = ''
-                for element in line:
-                    if element == line[-1]:
-                        info = info + str(element) + '\n'
+                for v in range(5):
+                    if v == 4:
+                        info = info + str(atmos_vars[v][line]) + '\n'
                     else:
-                        info = info + str(element) + ','
+                        info = info + str(atmos_vars[v][line]) + ','
                 f.write(info)
 
 
@@ -1554,6 +1562,10 @@ class SolutionGUI(QMainWindow):
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
         self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius', validate='float')
         self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", tab1_content, 14, tool_tip='fireball_datetime')
+
+        self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
+        self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
+        self.light_curve_buton.clicked.connect(partial(save, self))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
@@ -2164,6 +2176,7 @@ class SolutionGUI(QMainWindow):
             self.make_picks_station_graph_canvas.plot((toa_line_time)*prefs.avg_sp_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
         except:
             self.make_picks_station_graph_canvas.plot((toa_line_time)*310, (toa_line_time), pen=(255, 0, 0))
+
         print('')
         
 
@@ -2345,8 +2358,8 @@ class SolutionGUI(QMainWindow):
                     if pick.stn == stn:
                         stat_picks.append(pick)
 
-                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks])
-                self.w.setGeometry(QRect(100, 100, 900, 900))
+                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks, channel])
+                self.w.setGeometry(QRect(100, 100, 1200, 900))
                 self.w.show()
 
             elif self.solve_height.isChecked():
@@ -2605,60 +2618,45 @@ class SolutionGUI(QMainWindow):
         # Get the miniSEED file path
         
         # Try reading the mseed file, if it doesn't work, skip to the next frame
-        try:
-            mseed = stn.stream.copy()
-
-        except TypeError:
-            if self.prefs.debug:
-                print('mseed file could not be read:', mseed_file_path)
-            return None
-
-    
-        # nominal way to get trace metadata        
-        # stn_id = mseed[current_channel].get_id()
-        # print(resp.get_channel_metadata(stn_id))
-        resp = stn.response
-        # A second stream containing channels with the response
-
-        # If a channel is built up of multiple sections with gaps between
-
-        # Merge the files without gaps
-        mseed.merge()
-        gaps = mseed.get_gaps()
 
         if channel_changed == 0:
             # Populate channel list
             self.make_picks_channel_choice.blockSignals(True)
             self.make_picks_channel_choice.clear()
-            for i in range(len(mseed)):
-                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
+            for i in range(len(stn.stream)):
+                self.make_picks_channel_choice.addItem(stn.stream[i].stats.channel)
             self.make_picks_channel_choice.blockSignals(False)
         
+
+
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
 
-        gap_times = []
-        for gap in gaps:
-            start = gap[4]
-            end = gap[5]
+        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime)
+            
+        # if channel_changed == 0:
+        #     # Populate channel list
+        #     self.make_picks_channel_choice.blockSignals(True)
+        #     self.make_picks_channel_choice.clear()
+        #     for i in range(len(st)):
+        #         self.make_picks_channel_choice.addItem(st.stats.channel)
+        #     self.make_picks_channel_choice.blockSignals(False)
+    
+        # nominal way to get trace metadata        
+        # stn_id = mseed[current_channel].get_id()
+        # print(resp.get_channel_metadata(stn_id))
+        
+        # A second stream containing channels with the response
 
-            ref = obspy.core.utcdatetime.UTCDateTime(self.bam.setup.fireball_datetime)
+        # If a channel is built up of multiple sections with gaps between
 
-            start_ref = start - ref
-            end_ref = end - ref
+        # Merge the files without gaps
+       
+        
+        
 
-            gap_times.append([start_ref, end_ref])
-
-        try:
-            st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
-            response_added = True
-        except AttributeError:
-            # print(printMessage("warning"), " No response found")
-            st = mseed.select(channel=chn_selected)[0]
-            response_added = False
-
+        st = findChn(st, chn_selected)
         self.current_waveform_raw = st.data
-
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
 
@@ -2688,7 +2686,7 @@ class SolutionGUI(QMainWindow):
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-        if response_added:
+        if resp is not None:
             if chn_selected not in ["BDF", "HDF"]:
                 self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
             else:
@@ -2697,7 +2695,6 @@ class SolutionGUI(QMainWindow):
             self.make_picks_waveform_canvas.setLabel('left', "Response")
 
 
-        # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
 
 
@@ -2728,10 +2725,15 @@ class SolutionGUI(QMainWindow):
 
         available_channels = []
 
-        for i in range(len(mseed)):
-            available_channels.append(mseed[i].stats.channel)
+        for i in range(len(st)):
+            available_channels.append(st.stats.channel)
 
         station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
+
+        expected_arrival_time = stn.ground_distance/330
+
+        apx_arrival = pg.InfiniteLine(pos=expected_arrival_time, angle=90, pen='m', movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+        self.make_picks_waveform_canvas.addItem(apx_arrival)
 
         # If shouing computer found signals
         if self.show_sigs.isChecked() and stn.signals is not None:
