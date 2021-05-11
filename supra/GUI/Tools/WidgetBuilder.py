@@ -110,6 +110,10 @@ def initMenuBar(obj, layout):
     traj_interp.triggered.connect(obj.trajInterpDialog)
     tools_menu.addAction(traj_interp)
 
+    geminus_tool = QAction("Geminus", obj)
+    geminus_tool.triggered.connect(obj.geminus)
+    tools_menu.addAction(geminus_tool)
+
 def initMainGUI(obj):
 
     obj._main = QWidget()

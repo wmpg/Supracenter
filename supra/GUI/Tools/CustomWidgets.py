@@ -12,6 +12,8 @@ from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+import matplotlib.pyplot as plt
+
 
 
 class SourceEx(QGroupBox):
@@ -347,7 +349,7 @@ class MatplotlibPyQT(QWidget):
     def __init__(self):
         super(MatplotlibPyQT, self).__init__() 
 
-
+        plt.style.use('dark_background')
         # a figure instance to plot on
         self.figure = Figure()
 

@@ -94,6 +94,8 @@ from supra.Files.SaveLoad import save, load, loadSourcesIntoBam
 from supra.Atmosphere.Parse import parseWeather
 from supra.Atmosphere.radiosonde import downloadRadio
 
+from supra.Geminus.geminusGUI import Geminus
+
 from supra.Supracenter.l137 import estPressure
 
 HEIGHT_SOLVER_DIV = 250
@@ -145,6 +147,12 @@ class SolutionGUI(QMainWindow):
 
         # Add widgets to the floating box
         self.addIniDockWidgets()
+
+    def geminus(self):
+        self.geminus_gui = Geminus(self.bam)
+        self.geminus_gui.setGeometry(QRect(100, 100, 1000, 800))
+        self.geminus_gui.show()
+
 
 
     def viewToolbar(self):

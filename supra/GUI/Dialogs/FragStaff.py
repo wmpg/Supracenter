@@ -1,5 +1,6 @@
 import numpy as np
 import csv
+import os
 
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -336,6 +337,11 @@ class FragmentationStaff(QWidget):
 
     def buildGUI(self):
         self.setWindowTitle('Fragmentation Staff')
+
+        app_icon = QIcon()
+        app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'BAM_no_wave.png'), QSize(16, 16))
+        self.setWindowIcon(app_icon)
+
         p = self.palette()
         p.setColor(self.backgroundRole(), Qt.black)
         self.setPalette(p)
