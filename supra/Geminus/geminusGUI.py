@@ -16,7 +16,7 @@ from supra.Geminus.overpressure import overpressureihmod_Ro
 
 class Geminus(QWidget):
 
-    def __init__(self, bam):
+    def __init__(self, bam, prefs):
 
         QWidget.__init__(self)
        
@@ -56,10 +56,10 @@ class Geminus(QWidget):
             stn_name_list.append("{:}-{:}".format(stn.metadata.network, stn.metadata.code))
 
 
-        _, self.source_height = createLabelEditObj('Source Height', input_panels, 1, width=1, h_shift=0, tool_tip='')
+        _, self.source_height = createLabelEditObj('Source Height Along Trajectory [m]', input_panels, 1, width=1, h_shift=0, tool_tip='')
         _, self.station_combo = createComboBoxObj('Station', input_panels, 2, items=stn_name_list, width=1, h_shift=0, tool_tip='')
         self.vary_period = createToggle('Vary Period', input_panels, 3, width=1, h_shift=1, tool_tip='')
-        _, self.blast_radius = createLabelEditObj('Blast Radius', input_panels, 4, width=1, h_shift=0, tool_tip='')
+        _, self.blast_radius = createLabelEditObj('Blast Radius [m]', input_panels, 4, width=1, h_shift=0, tool_tip='')
         self.overpressure_run = createButton("Run", input_panels, 5, 2, self.overpressure, args=[])
 
         self.overpressure_plot = MatplotlibPyQT()

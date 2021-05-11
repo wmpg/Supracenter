@@ -33,13 +33,13 @@ def result(result):
 
 def timeres(time):
     if time >= 0.01:
-        return " TIME: " + "{:.2f} s".format(time)
+        return " TIME: " + "{:.4f} s".format(time)
     elif time >= 1e-5:
-        return " TIME: " + "{:.2f} ms".format(time*1000)
+        return " TIME: " + "{:.4f} ms".format(time*1000)
     elif time >= 1e-8:
-        return " TIME: " + "{:.2f} µs".format(time*1e6)
+        return " TIME: " + "{:.4f} µs".format(time*1e6)
     elif time >= 1e-11:
-        return " TIME: " + "{:.2f} ns".format(time*1e9)
+        return " TIME: " + "{:.4f} ns".format(time*1e9)
     else:
         return " TIME: " + "~{:.0f} s".format(time)
 

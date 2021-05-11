@@ -222,6 +222,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Winds Enabled
             if wind:
                 # clear old variables
+
                 
                 p2 = p/(1 - p*u[i, :])
 
@@ -263,7 +264,6 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
-
 
         # Fast way to check for all nan
         if np.isnan(E).all():

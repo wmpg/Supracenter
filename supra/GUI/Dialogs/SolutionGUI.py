@@ -149,7 +149,7 @@ class SolutionGUI(QMainWindow):
         self.addIniDockWidgets()
 
     def geminus(self):
-        self.geminus_gui = Geminus(self.bam)
+        self.geminus_gui = Geminus(self.bam, self.prefs)
         self.geminus_gui.setGeometry(QRect(100, 100, 1000, 800))
         self.geminus_gui.show()
 
