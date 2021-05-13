@@ -110,6 +110,9 @@ class Position:
 
     def __sub__(self, other):
 
+        self.pos_loc(other)
+        other.pos_loc(other)
+
         self.x -= other.x
         self.y -= other.y
         self.z -= other.z

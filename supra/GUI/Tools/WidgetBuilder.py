@@ -114,6 +114,7 @@ def initMenuBar(obj, layout):
     geminus_tool.triggered.connect(obj.geminus)
     tools_menu.addAction(geminus_tool)
 
+
 def initMainGUI(obj):
 
     obj._main = QWidget()

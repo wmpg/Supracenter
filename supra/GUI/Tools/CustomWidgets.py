@@ -372,3 +372,6 @@ class MatplotlibPyQT(QWidget):
 
     def show(self):
         self.canvas.draw()
+
+    def clear(self):
+        self.ax.clear()

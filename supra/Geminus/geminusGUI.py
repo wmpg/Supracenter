@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 import os
 
@@ -12,7 +13,14 @@ from supra.GUI.Tools.GUITools import *
 
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 
-from supra.Geminus.overpressure import overpressureihmod_Ro
+from supra.Geminus.overpressure2 import overpressureihmod_Ro
+from supra.Files.SaveLoad import save
+from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
+from supra.Utils.Formatting import *
+def Efunction(Ro, h):
+    k = 1
+    p = 10*101.325*np.exp(-0.00012*h)
+    return Ro**2*p*k
 
 class Geminus(QWidget):
 
@@ -21,8 +29,14 @@ class Geminus(QWidget):
         QWidget.__init__(self)
        
         self.bam = bam
+        self.prefs = prefs
+
+        if not hasattr(bam, "infra_curve"):
+            self.bam.infra_curve = []
 
         self.buildGUI()
+
+        self.current_Ro, self.current_height = None, None
 
 
     def buildGUI(self):
@@ -55,32 +69,100 @@ class Geminus(QWidget):
         for stn in self.bam.stn_list:
             stn_name_list.append("{:}-{:}".format(stn.metadata.network, stn.metadata.code))
 
+        control_panel = QGridLayout()
+        input_panels.addLayout(control_panel, 6, 1, 3, 3)
 
         _, self.source_height = createLabelEditObj('Source Height Along Trajectory [m]', input_panels, 1, width=1, h_shift=0, tool_tip='')
         _, self.station_combo = createComboBoxObj('Station', input_panels, 2, items=stn_name_list, width=1, h_shift=0, tool_tip='')
-        self.vary_period = createToggle('Vary Period', input_panels, 3, width=1, h_shift=1, tool_tip='')
-        _, self.blast_radius = createLabelEditObj('Blast Radius [m]', input_panels, 4, width=1, h_shift=0, tool_tip='')
-        self.overpressure_run = createButton("Run", input_panels, 5, 2, self.overpressure, args=[])
+     
+        _, self.blast_radius = createLabelEditObj('Blast Radius [m]', input_panels, 3, width=1, h_shift=0, tool_tip='')
+        _, self.dom_period = createLabelEditObj('Dominant Period [s]', input_panels, 4, width=1, h_shift=0, tool_tip='')
+        _, self.over_pres = createLabelEditObj('Overpressure [Pa]', input_panels, 5, width=1, h_shift=0, tool_tip='')  
+        self.vary_period = createToggle('Vary Period', control_panel, 1, width=1, h_shift=1, tool_tip='')
+        self.add_winds = createToggle('Include Winds', control_panel, 2, width=1, h_shift=1, tool_tip='')
+        self.doppler = createToggle('Doppler Shift', control_panel, 3, width=1, h_shift=1, tool_tip='')         
+        self.overpressure_run = createButton("Run Blast Radius Simulation", control_panel, 4, 1, self.overpressure, args=["normal"])
+        self.overpressure_period_finder = createButton("Run Period Search", control_panel, 4, 2, self.overpressure, args=["period"])
+        self.overpressure_pres_finder = createButton("Run Overpressure Search", control_panel, 4, 3, self.overpressure, args=["pres"])
+        self.pro_sim = createButton("Period vs. Blast Radius", control_panel, 5, 1, self.overpressure, args=["pro"])
+        self.proE_sim = createButton("Period vs. Energy", control_panel, 5, 2, self.overpressure, args=["proE"])
+        self.infra_curve = createButton("Infrasound Curve", control_panel, 5, 3, self.infraCurve)
+        self.clear_infra = createButton("Clear Curve", control_panel, 6, 1, self.clearInfra)
+
+        self.add_winds.setChecked(True)
+        self.doppler.setChecked(False)
+        self.add_winds.setEnabled(False)
+        self.doppler.setEnabled(False)
 
         self.overpressure_plot = MatplotlibPyQT()
         graph_layout.addWidget(self.overpressure_plot)
 
-        self.weak_shock_period = createLabel("Period (Weak-Shock):              s", output_panels, 1)
-        self.weak_shock_freq = createLabel("Frequency (Weak-Shock):           Hz", output_panels, 2)
-        self.linear_period = createLabel("Period (Linear):                  s", output_panels, 3)
-        self.linear_freq = createLabel("Frequency (Linear):               Hz", output_panels, 4)
-        self.slant_range = createLabel("Slant Range:                      km", output_panels, 5)
-        self.arrival_inclination = createLabel("Arrival Inclination:              deg", output_panels, 6)
-        self.tansition_height = createLabel("Transition Height:                km", output_panels, 7)
-        self.weak_shock_pres = createLabel("Overpressure (Weak-Shock):        Pa", output_panels, 8)
-        self.linear_pres = createLabel("Overpressure (Linear):            Pa", output_panels, 9)
-
-
-
-
         theme(self)
 
-    def overpressure(self):
+    def clearInfra(self):
+        self.bam.infra_curve = []
+
+        print(printMessage("status"), "Cleared infrasound curve data!")
+
+    def infraCurve(self):
+        
+        if not self.current_Ro is None or not self.current_height is None:
+            self.bam.infra_curve.append([self.current_lin_Ro, self.current_ws_Ro, self.current_height])
+        
+        ax1 = plt.subplot(2, 1, 1)
+        E_lin = []
+        E_ws = []
+        for point in self.bam.infra_curve:
+
+            h = point[2]
+            E_lin.append(Efunction(point[0], h))
+            E_ws.append(Efunction(point[1], h))
+
+        ax1.scatter(h/1000, E_lin, label='Linear')
+        ax1.scatter(h/1000, E_ws, label="Weak Shock")
+
+        ax1.set_xlabel("Height [km]")
+        ax1.set_ylabel("Energy per Unit Length [J/m]")
+
+        ax2 = plt.subplot(2, 1, 2, sharex=ax1)
+
+
+        light_curve = readLightCurve(self.bam.setup.light_curve_file)
+
+        light_curve_list = processLightCurve(light_curve)
+
+        for L in light_curve_list:
+            ax2.scatter(L.h, L.M, label=L.station)
+            # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
+            # self.light_curve_canvas.addItem(light_curve_curve)
+
+        ax2.set_xlabel("Height [km]")
+        ax2.set_ylabel("Absolute Magnitude")
+        plt.gca().invert_yaxis()
+        plt.legend()
+
+        # ax3 = plt.subplot(3, 1, 3, sharex=ax2)
+        # v = self.bam.setup.trajectory.v
+        # ax3.scatter(np.array(h)/1000, np.array(E_lin)/v, label='Linear')
+        # ax3.scatter(np.array(h)/1000, np.array(E_ws)/v, label="Weak Shock")
+        # for L in light_curve_list:
+        #     ax3.scatter(L.h, 10**(-0.4*np.array(L.M)), label=L.station)
+
+        # ax3.set_xlabel("Height [km]")
+        # ax3.set_ylabel("?? Max Intensity ??")
+
+        # plt.legend()
+        plt.show()
+
+
+
+
+    def overpressure(self, mode):
+
+        if self.prefs.debug:
+            print(printMessage("debug"), " Running Geminus on mode '{:}'".format(mode))
+
+        self.overpressure_plot.clear()
 
         traj = self.bam.setup.trajectory
 
@@ -93,7 +175,10 @@ class Geminus(QWidget):
         stat_pos = stat.metadata.position
         stat = [stat_pos.lat, stat_pos.lon, stat_pos.elev/1000]
 
-        Ro = float(self.blast_radius.text())
+        try:
+            Ro = float(self.blast_radius.text())
+        except:
+            Ro = None
 
         v = traj.v/1000
 
@@ -118,39 +203,203 @@ class Geminus(QWidget):
         sounding_pres[:, 1] -= 273.15
 
         sounding_pres = np.flip(sounding_pres, axis=0)
+        self.sounding_pres = sounding_pres
 
-        tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                    overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+        if mode == "normal":
+            tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
 
-        self.overpressure_plot.ax.plot(tau[0:it], Z[0:it], 'r-', label="Weak Shock Period Change")
-        self.overpressure_plot.ax.plot(tau[it-1:], Z[it-1:], 'b-', label="Stable Period")
-        self.overpressure_plot.ax.plot(tauws[it-1:], Z[it-1:], 'm-', label="Weak Shock: No Transition")
+            self.overpressure_plot.ax.plot(tau[0:it], Z[0:it], 'r-', label="Weak Shock Period Change")
+            self.overpressure_plot.ax.plot(tau[it-1:], Z[it-1:], 'b-', label="Stable Period")
+            self.overpressure_plot.ax.plot(tauws[it-1:], Z[it-1:], 'm-', label="Weak Shock: No Transition")
 
-        self.overpressure_plot.ax.scatter([tau[it-1]], [Z[it-1]])
+            self.overpressure_plot.ax.scatter([tau[it-1]], [Z[it-1]])
+            
+            self.overpressure_plot.ax.set_xlabel("Signal Period [s]")
+            self.overpressure_plot.ax.set_ylabel("Geopotential Height [km]")
+            self.overpressure_plot.ax.legend()
+            self.overpressure_plot.show()
+
+
+            print('Geminus Output')
+            print('=========================================================')
+            print('Period (weak shock):     {:3.4f} s'.format(tauws[-1]))
+            print('  Frequency (weak shock):   {:3.3f} Hz'.format(1/tauws[-1]))
+            print('Period (linear):         {:3.4f} s'.format(tau[-1]))
+            print('  Frequency (linear):       {:3.3f} Hz'.format(1/tau[-1]))
+            print('Slant range:             {:5.2f} km'.format(sR))
+            print('Arrival (inclination):   {:3.4f} deg'.format(np.degrees(inc)%360))
+            print('Transition height:       {:3.3f} km'.format(talt))
+            print('Overpressure (weak shock):     {:3.4f} Pa'.format(dpws[-1]))
+            print('Overpressure (linear):         {:3.4f} Pa'.format(dp[-1]))
+
+        elif mode == "period":
+            Ro = 10.0
+            
+            target_period = float(self.dom_period.text())
+
+            period_ws = 0
+
+            tol = 1e-2
+
+            while abs(target_period - period_ws) > tol:
+
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                
+                period_ws = tauws[-1]
+
+                if period_ws < target_period:
+
+                    Ro += abs(target_period - period_ws)*2
+
+                else:
+
+                    Ro -= abs(target_period - period_ws)*2
+
+            weak_path = tau[:it] + tauws[it:]
+            Ro_ws = Ro
+            self.current_ws_Ro = Ro_ws
         
-        self.overpressure_plot.ax.set_xlabel("Signal Period [s]")
-        self.overpressure_plot.ax.set_ylabel("Geopotential Height [km]")
-        self.overpressure_plot.ax.legend()
-        self.overpressure_plot.show()
+            Ro = 10.0
+            period_lin = 0
 
-        self.weak_shock_period.setText("Period (Weak-Shock):{:14.4f} s".format(tauws[-1]))
-        self.weak_shock_freq.setText("Frequency (Weak-Shock):{:11.3f} Hz".format(1/tauws[-1]))
-        self.linear_period.setText("Period (Linear):{:18.4f} s".format(tau[-1]))
-        self.linear_freq.setText("Frequency (Linear):{:15.4f} Hz".format(1/tau[-1]))
-        self.slant_range.setText("Slant Range:{:22.2f} km".format(sR))
-        self.arrival_inclination.setText("Arrival Inclination:{:14.4f} deg".format(inc))
-        self.tansition_height.setText("Transition Height:{:17.3f} km".format(talt))
-        self.weak_shock_pres.setText("Overpressure (Weak-Shock):{:8.4f} Pa".format(dpws[-1]))
-        self.linear_pres.setText("Overpressure (Linear):{:12.4f} Pa".format(dp[-1]))
+            while abs(target_period - period_lin) > tol:
 
-        print('FINAL OUTPUT FOR THE WEAK SHOCK')
-        print('=========================================================')
-        print('Period (weak shock):     {:3.4f} s'.format(tauws[-1]))
-        print('  Frequency (weak shock):   {:3.3f} Hz'.format(1/tauws[-1]))
-        print('Period (linear):         {:3.4f} s'.format(tau[-1]))
-        print('  Frequency (linear):       {:3.3f} Hz'.format(1/tau[-1]))
-        print('Slant range:             {:5.2f} km'.format(sR))
-        print('Arrival (inclination):   {:3.4f} deg'.format(np.degrees(inc)%360))
-        print('Transition height:       {:3.3f} km'.format(talt))
-        print('Overpressure (weak shock):     {:3.4f} Pa'.format(dpws[-1]))
-        print('Overpressure (linear):         {:3.4f} Pa'.format(dp[-1]))
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                
+                period_lin = tau[-1]
+
+                if period_lin < target_period:
+
+                    Ro += abs(target_period - period_lin)*2
+
+                else:
+
+                    Ro -= abs(target_period - period_lin)*2
+
+            Ro_lin = Ro
+            
+            self.current_lin_Ro = Ro_lin
+            lin_path = tau
+
+            self.overpressure_plot.ax.plot(weak_path, Z, 'r-', label="Weak Shock")
+            self.overpressure_plot.ax.plot(lin_path, Z, 'b-', label="Linear")
+
+            self.overpressure_plot.ax.scatter([tau[it-1]], [Z[it-1]])
+            
+            self.overpressure_plot.ax.set_xlabel("Signal Period [s]")
+            self.overpressure_plot.ax.set_ylabel("Geopotential Height [km]")
+            self.overpressure_plot.ax.legend()
+            self.overpressure_plot.show()
+
+
+            print('Geminus Output')
+            print('=========================================================')
+            print("Blast Radius (Weak-Shock): {:.2f} m".format(Ro_ws))
+            print("Blast Radius (Linear): {:.2f} m".format(Ro_lin))
+
+        elif mode == "pres":
+            Ro = 10.0
+            
+            target_pres = float(self.over_pres.text())
+
+            pres_ws = 0
+
+            tol = 1e-2
+
+            while abs(target_pres - pres_ws) > tol:
+
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                
+                pres_ws = dpws[-1]
+
+                if pres_ws < target_pres:
+
+                    Ro += abs(target_pres - pres_ws)*2
+
+                else:
+
+                    Ro -= abs(target_pres - pres_ws)*2
+
+            weak_path = tau[:it] + tauws[it:]
+            Ro_ws = Ro
+            self.current_ws_Ro = Ro_ws
+        
+            Ro = 10.0
+            pres_lin = 0
+
+            while abs(target_pres - pres_lin) > tol:
+
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                
+                pres_lin = tau[-1]
+
+                if pres_lin < target_pres:
+
+                    Ro += abs(target_pres - pres_lin)*2
+
+                else:
+
+                    Ro -= abs(target_pres - pres_lin)*2
+
+            Ro_lin = Ro
+            self.current_lin_Ro = Ro_lin
+        
+            lin_path = tau
+
+            self.overpressure_plot.ax.plot(weak_path, Z, 'r-', label="Weak Shock")
+            self.overpressure_plot.ax.plot(lin_path, Z, 'b-', label="Linear")
+
+            self.overpressure_plot.ax.scatter([tau[it-1]], [Z[it-1]])
+            
+            self.overpressure_plot.ax.set_xlabel("Signal Period [s]")
+            self.overpressure_plot.ax.set_ylabel("Geopotential Height [km]")
+            self.overpressure_plot.ax.legend()
+            self.overpressure_plot.show()
+
+
+            print('Geminus Output')
+            print('=========================================================')
+            print("Blast Radius (Weak-Shock): {:.2f} m".format(Ro_ws))
+            print("Blast Radius (Linear): {:.2f} m".format(Ro_lin))
+
+        elif mode == "pro" or mode == "proE":
+
+            Ro = np.linspace(0.01, 30.00, 30)
+
+            tau_list = []
+            tau_ws_list = []
+
+            for R in Ro:
+
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, R, v, theta, dphi, sounding_pres, sw)
+
+                tau_list.append(tau[-1])
+                tau_ws_list.append(tauws[-1])
+
+
+
+            if mode == "pro":
+                self.overpressure_plot.ax.plot(Ro, np.array(tau_list), 'b-', label="Linear")
+                self.overpressure_plot.ax.plot(Ro, np.array(tau_ws_list), 'r-', label="Weak Shock")
+                
+                self.overpressure_plot.ax.set_xlabel("Blast Radius [m]")
+                self.overpressure_plot.ax.set_ylabel("Period [s]")
+
+            elif mode == "proE":
+                self.overpressure_plot.ax.plot(Efunction(Ro), np.array(tau_list), 'b-', label="Linear")
+                self.overpressure_plot.ax.plot(Efunction(Ro), np.array(tau_ws_list), 'r-', label="Weak Shock")
+                
+                self.overpressure_plot.ax.set_xlabel("Energy per Unit Length [J/m]")
+                self.overpressure_plot.ax.set_ylabel("Period [s]")
+
+            self.overpressure_plot.ax.legend()
+            self.overpressure_plot.show()
+
+
+        self.current_height = float(self.source_height.text())

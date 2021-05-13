@@ -214,7 +214,7 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
 def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='ballistic'):
     setup = bam.setup
     atmos = bam.atmos
-    steps = 360
+    steps = 90
     alpha = np.linspace(0, 360*((steps-1)/steps), steps)
     alpha = np.radians(alpha)
     beta = np.linspace(0, 90*((steps-1)/steps), steps)
@@ -245,9 +245,9 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
     results = []
 
     # temp hotfix
-    if mode == 'ballistic':
+    if mode == 'ballistic_old':
 
-        grid_space = 50
+        grid_space = 25
 
         p1 = Position(47.5, 12, 0)
         p2 = Position(49, 15, 0)
@@ -344,9 +344,9 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     
                     # np.array([t_arrival, azimuth, takeoff, E[k, l]])
 
-    elif mode == 'ballistic_old':
+    elif mode == 'ballistic':
         n_steps = len(v_list)*len(points)
-        WIND = False
+        WIND = True
         for pp, p in enumerate(points):
 
             for vv, v in enumerate(v_list):

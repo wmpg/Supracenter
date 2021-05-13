@@ -67,10 +67,9 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
     Kd = 3
     Ka = 5
 
-    wCs, Ceff, s, wtype = inputParameters(meteor, stn, atmos, Cs0)
-    rho = c.GAMMA*pres/np.array(wCs)**2
+    wCs, Ceff, s, wtype = windC(meteor, stn, atmos, Cs0)
+    rho = c.GAMMA*pres/wCs**2
 
-    # might need to throw a zInteg in here
 
     Csa = Cs0[0]
     Cswind = wCs[0]
@@ -89,22 +88,20 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
 
     theta = np.radians(theta)
     dphi = np.radians(dphi)
-    epsilon = np.arctan(1/((1-2*dphi/np.pi)/np.tan(theta)))
+    epsilon = np.arctan(np.tan(theta)/(1 - 2*dphi/np.pi))
 
     Range = (Position(meteor[0], meteor[1], meteor[2]) - Position(stn[0], stn[1], stn[2])).mag()/1000
 
     dH = meteor[2] - stn[2]
     sR = np.sqrt(Range**2 + dH**2)
-    if Range == 0:
-        inc = np.pi/2
-    else:
-        inc = np.arctan(dH/Range)
+
+    inc = np.arctan(dH/Range)
 
 
     Zs = meteor[2]
     xt = sR/Ro
     Z10 = Zs - 10*Ro*np.sin(inc)
-    N = 5000
+    N = 500
     dZ = (Z10 - stn[2])/N
 
 
@@ -203,7 +200,7 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
 
 
     if (sw[0] == 0):
-        tau[0:length(x)] = tau0
+        tau = [tau0]*len(x)
     tauws = tau.copy()
     tau[it-1:] = [tau[it-1]]*len(tau[it-1:])
 
@@ -269,6 +266,7 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
     return [tau, tauws, Z, sR, np.degrees(inc), talt, dpws, dp, it]
     # # Temporary float return
     # return [tau[-1], tauws[-1], dpws[-1], dp[-1], it]
+
     #======================================================================================================
 
 def meanC(Zs,Cs,Z,Cz):
@@ -399,52 +397,11 @@ def intfunc(X, Y):
 
     return A
 
-    #function [wCs,Ceff,s,wtype] = input_parameters (meteor, stn, atmos, Cs0)
-def inputParameters(meteor, stn, atmos, Cs0):
 
-    # disp('==================================================================');
-    # disp('          Switch selections:');
-    # disp('Inhomogeneous atmosphere = 1. Homogeneous atmosphere = 0.');
-    # disp('Meridional winds:     ON = 1, OFF = 0.');
-    # disp('Zonal winds:          ON = 1, OFF = 0.');
-    # disp('   ***       Wind file type       ***');
-    # disp('Wind comes in component form (E,N) = 0.');
-    # disp('Wind comes in the form of magnitude and azimuth = 1.');
-    # disp('===================================================================');
-
-    # %a = input('Please enter the switch in the following format: [1/0,1/0,1/0,0/1]   ');
-    a = [1, 1, 1, 0]
-
-    wtype = a[3]
-
-
-    return windC(meteor, stn, atmos, Cs0, a)
 
     
-# function [wCs,wx,wy,Ceff] = windC (source, stn, atmos, Cs, s)
-def windC(source, stn, atmos, Cs, s):
-    # %==========================================================================
-    # %
-    # % sample variables: ([40 80 50],[40,85,1],atmos,340,[0,0,0]);
-    # %
-    # % This function calculates the speed of sound after it encounters winds. 
-    # % Input variables:
-    # %   source:     [lat, long, elevation(km)]
-    # %   stn:        [lat, long, elevation(km)]
-    # %   atmos:      atmospheric profile
-    # %   Cs:         ambient speed of sound
-    # %   switch:     s = 0/1 switch [a,b,c], where       
-    # %                   a = inhomogeneous (1), homogeneous (0) atmosphere
-    # %                   b = meridional winds on (1) or off (0)
-    # %                   c = zonal winds on (1) or off (0)
-    # %
-    # % atmos = height, temperature, meridional, zonal, pressure
-    # % Last modified on: 03-February-2010
-    # % E. A. Silber   (c) 2010
-    # %==========================================================================
-    # %
-    # % determine the unit vector of the wave along the propagation path (great
-    # % circle)
+
+def windC(source, stn, atmos, Cs):
 
     sP = Position(*source)
     stP = Position(*stn)
@@ -452,33 +409,21 @@ def windC(source, stn, atmos, Cs, s):
     waveP = stP - sP
     x, y, z = waveP.x, waveP.y, waveP.z
 
-    h = atmos[:, 0]
-
-    k = len(h)   
-    wy = atmos[:, 2]
-    wx = atmos[:, 3]
+    h = np.array(atmos[:, 0]) 
+    wy = np.array(atmos[:, 2])
+    wx = np.array(atmos[:, 3])
    
 
-    wy0 = wy[0]
-    wx0 = wx[0]
-
-    Cs0 = Cs
-
-    # %
-    # %==========================================================================
-    # % EFFECTIVE SPEED OF SOUND IN THE COMPONENT FORM
-    # % Calculate the effective speed of sound components in the meridional and 
-    # % zonal direction. The effective speed of sound is the ambient speed of
-    # % sound with added wind component
-    # % Ceff = effective Cs in component form
-    # % wCs = effective speed of sound (magnitude)
     Ceff =  []
     wCs =   []
-    for i in range(k):
-        Cx, Cy, Cz = (Cs0[i] + wx[i])*x, (Cs0[i] + wy[i])*y, Cs0[i]*z
+    for i in range(len(h)):
+        Cx, Cy, Cz = (Cs[i] + wx[i])*x, (Cs[i] + wy[i])*y, Cs[i]*z
         Ceff.append([Cx, Cy, Cz])
-        wCs.append(np.sqrt(Cx**2 + Cy**2 + Cz**2))
+        wCs.append(np.sqrt(Cx*Cx + Cy*Cy + Cz*Cz))
     
+    wCs = np.array(wCs)
+    Ceff = np.array(wCs)
+
     return wCs, wx, wy, Ceff
 
 
@@ -509,7 +454,7 @@ def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
     # % match all other variables. 
     
 
-    wCs, wx, wy, Ceff = windC(source, stn, atmos, Cs, s)
+    wCs, wx, wy, Ceff = windC(source, stn, atmos, Cs)
 
     n = len(Z)
     h = alt
@@ -676,5 +621,9 @@ if __name__ == "__main__":
 [465.799300100000,    62.1792358000000,    13.6274798500000 ,   -1.48388871000000 ,  958.167254100000],
 [80,  60.7438690000000,    10.9109203900000,    -1.78912816400000,   1003.56934200000]])
 
+    import time
 
+    t1 = time.time()
     results = overpressureihmod_Ro(source,stat3,Ro,v,theta,dphi3,data3,sw)
+    t2 = time.time()
+    print("Overpressure (base): {:.4f} s".format(t2 - t1))

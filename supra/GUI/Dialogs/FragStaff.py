@@ -159,6 +159,8 @@ class FragmentationStaff(QWidget):
         self.height_canvas.addItem(estimate_plot, update=True)
 
 
+
+
         #######################
         # Plot nominal points
         #######################
@@ -300,6 +302,24 @@ class FragmentationStaff(QWidget):
         
         self.angle_canvas.addItem(pg.InfiniteLine(pos=(0, 90), angle=0, pen=QColor(255, 0, 0)))
 
+        ########################
+        # Fit Hyperbola
+        ########################
+
+        y_vals = np.array(self.dots_y)
+        x_vals = 1/np.array(self.dots_x)
+
+        # Hyperbola in the form y = kx (since we invert the x values)
+        from scipy import stats
+
+        res = stats.linregress(x_vals, y_vals)
+
+        xs = 1/x_vals
+        ys = res.intercept + res.slope*xs
+
+        fit_hyper = pg.PlotDataItem(x=xs, y=ys)
+        self.height_canvas.addItem(fit_hyper, update=True)
+        
         #####################
         # Build plot window
         #####################

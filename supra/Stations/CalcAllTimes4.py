@@ -161,9 +161,14 @@ def calcAllTimes(bam, prefs):
     else:
         no_of_frags = len(bam.setup.fragmentation_point)
 
+    total_steps = (prefs.frag_en*no_of_frags*(1 + prefs.pert_en*prefs.pert_num) + prefs.ballistic_en*(1 + prefs.pert_en*prefs.pert_num))*len(bam.stn_list)
+
+    step = 0
+    
+    
 
     for ii, stn in enumerate(bam.stn_list):
-        loadingBar('Calculating Station Times: ', ii+1, len(bam.stn_list))
+        
 
         if not hasattr(stn, 'times'):
             stn.times = Times()
@@ -179,6 +184,9 @@ def calcAllTimes(bam, prefs):
         if prefs.frag_en:
 
             for i, frag in enumerate(bam.setup.fragmentation_point):
+
+                step += 1
+                loadingBar('Calculating Station Times: ', step, total_steps)
 
                 offset = frag.time
 
@@ -204,6 +212,8 @@ def calcAllTimes(bam, prefs):
 
                 if perturbations is not None:
                     for pert in perturbations:
+                        step += 1
+                        loadingBar('Calculating Station Times: ', step, total_steps)
                         temp = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
                             wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
                             h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
@@ -219,6 +229,9 @@ def calcAllTimes(bam, prefs):
         ############
 
         if prefs.ballistic_en:
+
+            step += 1
+            loadingBar('Calculating Station Times: ', step, total_steps)
 
             a = []
             # define line bottom boundary
@@ -294,6 +307,8 @@ def calcAllTimes(bam, prefs):
             results = []
             if perturbations is not None:
                 for pert in perturbations:
+                    step += 1
+                    loadingBar('Calculating Station Times: ', step, total_steps)
                     e, b, c, d = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
                         wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
                         h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
@@ -305,6 +320,9 @@ def calcAllTimes(bam, prefs):
             a.append(results)
 
             stn.times.ballistic.append(a)
+
+    step += 1
+    loadingBar('Calculating Station Times: ', step, total_steps)
 
     if prefs.debug:
         printStatus(bam, prefs)

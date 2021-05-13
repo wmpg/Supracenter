@@ -612,7 +612,7 @@ class SolutionGUI(QMainWindow):
                 return None
             try:    
                 # points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
-                points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=50000)
+                points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=75000)
 
             except AttributeError as e:
                 errorMessage('Trajectory is not defined!', 2, detail='{:}'.format(e))
@@ -633,7 +633,7 @@ class SolutionGUI(QMainWindow):
         results = np.array(results)
 
         dx, dy = 0.01, 0.01
-        
+        print(results)
         X = results[:, 0]
         Y = results[:, 1]
         T = results[:, 3]
@@ -1574,6 +1574,10 @@ class SolutionGUI(QMainWindow):
         self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
         self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
         self.light_curve_buton.clicked.connect(partial(save, self))
+
+        self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
+        self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
+        self.contour_file_buton.clicked.connect(partial(save, self))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
