@@ -2,6 +2,8 @@ import os
 import sys
 import random
 
+import numpy as np
+
 try:
     from termcolor import colored
     termclr = True
@@ -132,3 +134,18 @@ def stationFormat(network, code, available_channels, ground_distance):
 
     print("Ground Distance: {:7.3f} km".format(ground_distance/1000))
     print("")
+
+def validate(v, name):
+
+
+
+    if isinstance(v, float):
+        if v is None:
+            raise TypeError("Invalid input argument: {:} (None)".format(name))
+            return None
+
+        if np.isnan(v):
+            raise TypeError("Invalid input argument: {:} (np.nan)".format(name))
+            return None
+
+    return v

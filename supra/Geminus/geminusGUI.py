@@ -89,12 +89,12 @@ class Geminus(QWidget):
         self.infra_curve = createButton("Infrasound Curve", control_panel, 5, 3, self.infraCurve)
         self.clear_infra = createButton("Clear Curve", control_panel, 6, 1, self.clearInfra)
 
+        self.vary_period.setChecked(True)
         self.add_winds.setChecked(True)
-        self.doppler.setChecked(False)
-        self.add_winds.setEnabled(False)
-        self.doppler.setEnabled(False)
+        self.doppler.setChecked(True)
 
         self.overpressure_plot = MatplotlibPyQT()
+        self.overpressure_plot.ax = self.overpressure_plot.figure.add_subplot(111)
         graph_layout.addWidget(self.overpressure_plot)
 
         theme(self)
@@ -109,9 +109,14 @@ class Geminus(QWidget):
         if not self.current_Ro is None or not self.current_height is None:
             self.bam.infra_curve.append([self.current_lin_Ro, self.current_ws_Ro, self.current_height])
         
+        if len(self.bam.infra_curve) == 0:
+            errorMessage("No points to plot!", 1, detail='Please use one of the searches to find Ro!')    
+            return None
+
         ax1 = plt.subplot(2, 1, 1)
         E_lin = []
         E_ws = []
+
         for point in self.bam.infra_curve:
 
             h = point[2]
@@ -159,6 +164,9 @@ class Geminus(QWidget):
 
     def overpressure(self, mode):
 
+        wind = self.add_winds.isChecked()
+        dopplershift = self.doppler.isChecked()
+
         if self.prefs.debug:
             print(printMessage("debug"), " Running Geminus on mode '{:}'".format(mode))
 
@@ -166,7 +174,15 @@ class Geminus(QWidget):
 
         traj = self.bam.setup.trajectory
 
-        source = traj.findGeo(float(self.source_height.text()))
+        try:
+            source = traj.findGeo(float(self.source_height.text()))
+        except ValueError as e:
+            if self.prefs.debug:
+                print(printMessage("Error"), " No source height given!")
+            errorMessage("Cannot read source height!", 2, detail='{:}'.format(e))
+
+            return None
+
 
         source_list = [source.lat, source.lon, source.elev/1000]
 
@@ -206,8 +222,12 @@ class Geminus(QWidget):
         self.sounding_pres = sounding_pres
 
         if mode == "normal":
-            tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+            try:
+                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                            overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
+            except TypeError as e:
+                errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
+                return None
 
             self.overpressure_plot.ax.plot(tau[0:it], Z[0:it], 'r-', label="Weak Shock Period Change")
             self.overpressure_plot.ax.plot(tau[it-1:], Z[it-1:], 'b-', label="Stable Period")
@@ -236,16 +256,25 @@ class Geminus(QWidget):
         elif mode == "period":
             Ro = 10.0
             
-            target_period = float(self.dom_period.text())
+            try:
+                target_period = float(self.dom_period.text())
+            except:
+                if self.prefs.debug:
+                    print(printMessage("Error"), " No source target period given!")
+                errorMessage("Cannot read target period!", 2)
+                return None
 
             period_ws = 0
 
             tol = 1e-2
 
             while abs(target_period - period_ws) > tol:
-
-                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                try:
+                    tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
+                except TypeError as e:
+                    errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
+                    return None
                 
                 period_ws = tauws[-1]
 
@@ -267,7 +296,7 @@ class Geminus(QWidget):
             while abs(target_period - period_lin) > tol:
 
                 tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
                 
                 period_lin = tau[-1]
 
@@ -303,6 +332,15 @@ class Geminus(QWidget):
         elif mode == "pres":
             Ro = 10.0
             
+
+            try:
+                target_pres = float(self.over_pres.text())
+            except:
+                if self.prefs.debug:
+                    print(printMessage("Error"), " No source target overpressure given!")
+                errorMessage("Cannot read target overpressure!", 2)
+                return None
+
             target_pres = float(self.over_pres.text())
 
             pres_ws = 0
@@ -312,7 +350,7 @@ class Geminus(QWidget):
             while abs(target_pres - pres_ws) > tol:
 
                 tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
+                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
                 
                 pres_ws = dpws[-1]
 
@@ -333,9 +371,13 @@ class Geminus(QWidget):
 
             while abs(target_pres - pres_lin) > tol:
 
-                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw)
-                
+                try:
+                    tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                            overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
+                except TypeError as e:
+                    errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
+                    return None
+                    
                 pres_lin = tau[-1]
 
                 if pres_lin < target_pres:
@@ -376,8 +418,12 @@ class Geminus(QWidget):
 
             for R in Ro:
 
-                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, R, v, theta, dphi, sounding_pres, sw)
+                try:
+                    tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
+                            overpressureihmod_Ro(source_list, stat, R, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
+                except TypeError as e:
+                    errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
+                    return None
 
                 tau_list.append(tau[-1])
                 tau_ws_list.append(tauws[-1])
@@ -392,8 +438,10 @@ class Geminus(QWidget):
                 self.overpressure_plot.ax.set_ylabel("Period [s]")
 
             elif mode == "proE":
-                self.overpressure_plot.ax.plot(Efunction(Ro), np.array(tau_list), 'b-', label="Linear")
-                self.overpressure_plot.ax.plot(Efunction(Ro), np.array(tau_ws_list), 'r-', label="Weak Shock")
+
+                self.overpressure_plot.ax.plot(Efunction(Ro, source.elev), np.array(tau_list), 'b-', label="Linear")
+                self.overpressure_plot.ax.plot(Efunction(Ro, source.elev), np.array(tau_ws_list), 'r-', label="Weak Shock")
+
                 
                 self.overpressure_plot.ax.set_xlabel("Energy per Unit Length [J/m]")
                 self.overpressure_plot.ax.set_ylabel("Period [s]")

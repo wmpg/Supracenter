@@ -149,6 +149,11 @@ class SolutionGUI(QMainWindow):
         self.addIniDockWidgets()
 
     def geminus(self):
+
+        if not hasattr(self.bam.setup, "trajectory"):
+            errorMessage('No trajectory found!', 2, detail="Please include a trajectory in the source tab before using Geminus!")
+            return None
+
         self.geminus_gui = Geminus(self.bam, self.prefs)
         self.geminus_gui.setGeometry(QRect(100, 100, 1000, 800))
         self.geminus_gui.show()

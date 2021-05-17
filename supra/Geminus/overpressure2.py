@@ -3,12 +3,13 @@ import matplotlib.pyplot as plt
 import scipy
 
 from supra.Utils.Classes import Constants, Position
+from supra.Utils.Formatting import *
 
 
 c = Constants()
 
 # function [dp,dpws,dpratio,tau,tauws,Z,td,talt,Ro] = overpressureihmod_Ro(meteor,stn,Ro,v,theta,dphi,atmos,sw);
-def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
+def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, dopplershift=True):
 
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -49,9 +50,28 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
     # %                                                                                           
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+    try:
+        meteor = validate(meteor, "Meteor Source Position") 
+        stn    = validate(stn, "Station Reciever Position")
+        Ro     = validate(Ro, "Blast Radius")
+        v      = validate(v, "Meteor Trajectory Velocity")
+        theta  = validate(theta, "Entry Angle of Meteoroid")
+        dphi   = validate(dphi, "Angular Deviation from the Meteoroid Trajectory")
+        atmos  = validate(atmos, "Atmospheric Data")
+        sw     = validate(sw, "Switch Data")
+    except TypeError as e:
+        print(printMessage("Error"), " Geminus variable input error! {:}".format(e))
+        raise TypeError(e)
+        
+
+
     alt =  atmos[:, 0]*0.001
-    Wm = atmos[:,2] #% meridional wind velocity 
-    Wz = atmos[:,3] #% zonal wind velocity
+    if wind:
+        Wm = atmos[:, 2] #% meridional wind velocity 
+        Wz = atmos[:, 3] #% zonal wind velocity
+    else:
+        Wm = np.zeros(len(alt))
+        Wz = np.zeros(len(alt))
     pres = atmos[:, 4]*100
     temp = atmos[:, 1]+273.15
 
@@ -81,6 +101,7 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
     temps = temp[0]
 
     M = v/(Csa/1000)
+
     Ro = Ro/1000
 
     tau0 = 2.81*Ro/(Csa/1000)
@@ -130,13 +151,15 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
     x = (Zs - Z)/(Ro*np.sin(inc))
 
     Csd = Cs0;
-    Dtau = doppler(wtype, meteor, stn, tau0, Csd, atmos, Z, s, alt)
+    Dtau = doppler(meteor, stn, tau0, Csd, atmos, Z, s, alt)
     Dtau = np.flipud(Dtau)
 
     tau = []
     for jj in range(len(Dtau)):
-        # tau.append(0.562*Dtau[jj]*x[jj]**(0.25))
-        tau.append(0.562*tau0*x[jj]**(0.25))
+        if dopplershift:
+            tau.append(0.562*Dtau[jj]*x[jj]**(0.25))
+        else:
+            tau.append(0.562*tau0*x[jj]**(0.25))
 
     # tau = 0.562*tau0*x**(1/4)
     if sw[0] == 0:
@@ -190,13 +213,15 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
 
     Csd = Cs0
 
-    Dtau = doppler(wtype, meteor, stn, tau0, Csd, atmos, Z, s, alt)
+    Dtau = doppler(meteor, stn, tau0, Csd, atmos, Z, s, alt)
     Dtau = np.flipud(Dtau)
 
     tau = []
     for jj in range(len(Dtau)):
-        # tau.append(0.562*Dtau[jj]*x[jj]**(0.25))
-        tau.append(0.562*tau0*x[jj]**(0.25))
+        if dopplershift:
+            tau.append(0.562*Dtau[jj]*x[jj]**(0.25))
+        else:
+            tau.append(0.562*tau0*x[jj]**(0.25))
 
 
     if (sw[0] == 0):
@@ -237,6 +262,7 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw):
 
     Ro = Ro*1000
 
+    # if True:
     if sw[1] == 1:
         
         plt.plot(tau[0:it], Z[0:it], 'r-', label="Weak Shock Period Change")
@@ -427,7 +453,7 @@ def windC(source, stn, atmos, Cs):
     return wCs, wx, wy, Ceff
 
 
-def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
+def doppler(source, stn, tau0, Cs, atmos, Z, s, alt):
     # %==========================================================================
     # % This function is used to calculate the Doppler shift
     # %
@@ -479,10 +505,9 @@ def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
   
     f = scipy.interpolate.interp1d(h, Cs)
     iCs = f(Z)
-
-    step = np.zeros((n, 1))
    
-    xw, yw, zw = [], [], []
+
+    wind_unit = []
 
     wind_speed = []
 
@@ -494,20 +519,20 @@ def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
     # %         disp('No change in frequency or period was applied.');
     # %         disp('==================================================');
             return tau0
-    
-        xw.append(iwx[ii]/step)
-        yw.append(iwy[ii]/step)
-        zw.append(iwz[ii]/step)
+        wind_unit.append([iwx[ii]/step, iwy[ii]/step, iwz[ii]/step])
         wind_speed.append([iwx[ii], iwy[ii], iwz[ii]])
 
-    wind_unit = [np.flipud(xw), np.flipud(yw), np.flipud(zw)]
+    wind_unit = np.flipud(wind_unit)
 
 
     sP = Position(*source)
     stP = Position(*stn)
 
     waveP = stP - sP
-    x, y, z = waveP.x, waveP.y, waveP.z
+    x, y, z = waveP.x, waveP.y, waveP.z*1000
+    mag = np.sqrt(x**2 + y**2 + z**2)
+
+    x, y, z = x/mag, y/mag, z/mag
 
     f0 = 1/tau0
     angf0 = 2*np.pi*f0
@@ -517,19 +542,25 @@ def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
     # % Perform Doppler shift calculations following Morse & Ingard (1968):
     # % OMEGA = angf - kw, where
 
-    angftemp = angf0*np.ones((n,1))
     angf = angf0
-    kn = [angf/iCs[0]]
-    k = [[kn[0]*np.array([x, y, z])]]
+    kn = []
+    kn.append(angf/iCs[0])
+    k = []
+    k.append(kn[0]*np.array([x, y, z]))
 
-    kw = [np.dot(np.array(k[0])[0, :], np.array(wind_speed)[0, :])]
-    OMEGA = [angf0 - kw[0]]
-    F = [OMEGA[0]/(2*np.pi)]
-    tau = [tau0]
+    kw = []
+    kw.append(np.dot(np.array(k)[0, :], np.array(wind_speed)[0, :]))
+    OMEGA = []
+    OMEGA.append(angf0 - kw[0])
+
+    F = []
+    F.append(OMEGA[0]/(2*np.pi))
+    tau = []
+    tau.append(tau0)
     dOMEGA = []
 
     for j in range(n):
-        kn.append(angftemp[j]/iCs[j])
+        kn.append(angf/iCs[j])
         a = kn[j]*np.array([x, y, z])
         k.append(a)
         kw.append(np.dot(a, np.array(wind_speed)[j, :]))
@@ -539,6 +570,7 @@ def doppler(wtype, source, stn, tau0, Cs, atmos, Z, s, alt):
         OMEGA.append(angf0 - (1/j)*(np.sum(dOMEGA[:i])))
         F.append(OMEGA[i]/(2*np.pi))             
         tau.append(1/F[i])
+
 
     return tau                         
 
@@ -624,6 +656,6 @@ if __name__ == "__main__":
     import time
 
     t1 = time.time()
-    results = overpressureihmod_Ro(source,stat3,Ro,v,theta,dphi3,data3,sw)
+    results = overpressureihmod_Ro(source,stat3,Ro,v,theta,dphi3,data3,sw, wind=False)
     t2 = time.time()
     print("Overpressure (base): {:.4f} s".format(t2 - t1))

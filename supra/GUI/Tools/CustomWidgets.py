@@ -350,6 +350,7 @@ class MatplotlibPyQT(QWidget):
         super(MatplotlibPyQT, self).__init__() 
 
         plt.style.use('dark_background')
+
         # a figure instance to plot on
         self.figure = Figure()
 
@@ -362,8 +363,10 @@ class MatplotlibPyQT(QWidget):
         self.toolbar = NavigationToolbar(self.canvas, self)
         self.toolbar.setStyleSheet("background-color:Gray;")
         # create an axis
-        self.ax = self.figure.add_subplot(111)
-      
+        # self.ax = self.figure.add_subplot(111)
+        plt.gca().spines["top"].set_visible(False)
+        plt.gca().spines["right"].set_visible(False)
+        plt.grid()
         # set the layout
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)

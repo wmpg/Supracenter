@@ -1,6 +1,7 @@
 import numpy as np
 import csv
 import os
+import matplotlib.pyplot as plt
 
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
@@ -36,24 +37,29 @@ class FragmentationStaff(QWidget):
         ###########
         # Build GUI
         ###########
-        self.height_view = pg.GraphicsLayoutWidget()
-        self.height_canvas = self.height_view.addPlot()
-        self.angle_view = pg.GraphicsLayoutWidget()
-        self.angle_canvas = self.angle_view.addPlot()
 
-        self.height_view.setBackground((0,0,0))
-        self.angle_view.setBackground((0,0,0))
-        self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        self.angle_canvas.getAxis('left').setPen((255, 255, 255))
-        self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        self.height_canvas.getAxis('left').setPen((255, 255, 255)) 
+        self.height_plot = MatplotlibPyQT()
+        self.height_plot.ax1 = self.height_plot.figure.add_subplot(211)
+        self.height_plot.ax2 = self.height_plot.figure.add_subplot(212, sharex=self.height_plot.ax1)
+        
+        # self.height_view = pg.GraphicsLayoutWidget()
+        # self.height_canvas = self.height_view.addPlot()
+        # self.angle_view = pg.GraphicsLayoutWidget()
+        # self.angle_canvas = self.angle_view.addPlot()
+
+        # self.height_view.setBackground((0,0,0))
+        # self.angle_view.setBackground((0,0,0))
+        # self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        # self.angle_canvas.getAxis('left').setPen((255, 255, 255))
+        # self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        # self.height_canvas.getAxis('left').setPen((255, 255, 255)) 
 
         # Force x-axes to stay aligned
-        self.angle_canvas.setXLink(self.height_canvas)   
-        main_layout.addWidget(self.height_view, 1, 1, 1, 100)
-        main_layout.addWidget(self.angle_view, 2, 1, 1, 100)
-        self.angle_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        self.height_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        # self.angle_canvas.setXLink(self.height_canvas)   
+        main_layout.addWidget(self.height_plot, 1, 1, 1, 100)
+        # main_layout.addWidget(self.angle_view, 2, 1, 1, 100)
+        # self.angle_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        # self.height_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
         export_button = QPushButton('Export')
         main_layout.addWidget(export_button, 3, 1, 1, 25)
@@ -80,27 +86,29 @@ class FragmentationStaff(QWidget):
         # self.seis_canvas = self.seis_view.addPlot()
         # main_layout.addWidget(self.seis_view, 1, 0, 1, 1)
 
-        
-        st, resp, gap_times = procStream(stn, ref_time=self.setup.fireball_datetime)
-        st = findChn(st, self.channel)
-        waveform_data, time_data = procTrace(st, ref_datetime=self.setup.fireball_datetime,\
-                resp=resp, bandpass=[2, 8])
+        try:
+            st, resp, gap_times = procStream(stn, ref_time=self.setup.fireball_datetime)
+            st = findChn(st, self.channel)
+            waveform_data, time_data = procTrace(st, ref_datetime=self.setup.fireball_datetime,\
+                    resp=resp, bandpass=[2, 8])
 
 
-        max_val = 0
-        for ii in range(len(waveform_data)):
-            wave = waveform_data[ii]
-            for point in wave:
-                if abs(point) > max_val:
-                    max_val = abs(point)
+            max_val = 0
+            for ii in range(len(waveform_data)):
+                wave = waveform_data[ii]
+                for point in wave:
+                    if abs(point) > max_val:
+                        max_val = abs(point)
 
-        scaling = 10000/max_val
+            scaling = 10/max_val
 
-        for ii in range(len(waveform_data)):
+            for ii in range(len(waveform_data)):
 
-            wave = pg.PlotDataItem(x=waveform_data[ii]*scaling, y=time_data[ii] - nom_pick.time)
-            self.height_canvas.addItem(wave, update=True)
-        
+                # wave = pg.PlotDataItem(x=waveform_data[ii]*scaling, y=time_data[ii] - nom_pick.time)
+                # self.height_canvas.addItem(wave, update=True)
+                self.height_plot.ax2.plot(waveform_data[ii]*scaling, time_data[ii] - nom_pick.time)
+        except ValueError:
+            print("Could not filter waveform!")
 
 
         #########################
@@ -108,8 +116,8 @@ class FragmentationStaff(QWidget):
         #########################
         if len(self.setup.light_curve_file) > 0 or not hasattr(self.setup, "light_curve_file"):
             
-            lc_plot = MatplotlibPyQT()
-            main_layout.addWidget(lc_plot, 1, 101, 1, 10)
+            # lc_plot = MatplotlibPyQT()
+            # main_layout.addWidget(lc_plot, 1, 1, 1, 100)
             # self.light_curve_view = pg.GraphicsLayoutWidget()
             # self.light_curve_canvas = self.light_curve_view.addPlot()
 
@@ -119,52 +127,55 @@ class FragmentationStaff(QWidget):
             light_curve_list = processLightCurve(light_curve)
 
             for L in light_curve_list:
-                lc_plot.ax.scatter(L.M, L.t, label=L.station)
+                self.height_plot.ax1.scatter(L.h, L.I, label=L.station)
                 # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
                 # self.light_curve_canvas.addItem(light_curve_curve)
 
-            lc_plot.ax.set_xlabel("Absolute Magnitude")
-            lc_plot.ax.set_ylabel("Time after ? [s]")
-            lc_plot.ax.legend()
-            lc_plot.show()
+            self.height_plot.ax1.legend()
+            plt.gca().invert_yaxis()
+
 
             # main_layout.addWidget(self.light_curve_view, 1, 101, 1, 10)
 
-            blank_spacer = QWidget()
-            main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
+            # blank_spacer = QWidget()
+            # main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
 
 
         ########################
         # Generate Hyperbola
         ########################
 
-        D_0 = A
+        # D_0 = A
 
-        stn.metadata.position.pos_loc(B)
+        # stn.metadata.position.pos_loc(B)
 
-        theta = self.setup.trajectory.zenith.rad
-        h_0 = A.z
+        # theta = self.setup.trajectory.zenith.rad
+        # h_0 = A.z
 
-        h = np.arange(0, 100000)
-        v = self.setup.trajectory.v
-        k = stn.metadata.position - D_0
-        n = Position(0, 0, 0)
-        n.x, n.y, n.z = self.setup.trajectory.vector.x, self.setup.trajectory.vector.y, self.setup.trajectory.vector.z
-        n.pos_geo(B)
-        c = 330
+        # h = np.arange(0, 100000)
+        # v = self.setup.trajectory.v
+        # k = stn.metadata.position - D_0
+        # n = Position(0, 0, 0)
+        # n.x, n.y, n.z = self.setup.trajectory.vector.x, self.setup.trajectory.vector.y, self.setup.trajectory.vector.z
+        # n.pos_geo(B)
+        # c = 350
 
-        T = (h - h_0)/(-v*np.cos(theta)) + (k - n*((h - h_0)/(-np.cos(theta)))).mag()/c - nom_pick.time
+        # T = (h - h_0)/(-v*np.cos(theta)) + (k - n*((h - h_0)/(-np.cos(theta)))).mag()/c - nom_pick.time
         
-        estimate_plot = pg.PlotDataItem(x=h, y=T)
-        self.height_canvas.addItem(estimate_plot, update=True)
+        # # estimate_plot = pg.PlotDataItem(x=h, y=T)
+        # # self.height_canvas.addItem(estimate_plot, update=True)
 
-
+        # self.height_plot.ax2.scatter(h/1000, T)
 
 
         #######################
         # Plot nominal points
         #######################
-        base_points = pg.ScatterPlotItem()
+        # base_points = pg.ScatterPlotItem()
+        angle_off = []
+        u = np.array([self.setup.trajectory.vector.x,
+                      self.setup.trajectory.vector.y,
+                      self.setup.trajectory.vector.z])
         for i in range(len(self.setup.fragmentation_point)):
 
             f_time = stn.times.fragmentation[i][0][0]
@@ -174,21 +185,36 @@ class FragmentationStaff(QWidget):
             self.dots_x.append(X)
             self.dots_y.append(Y)
 
-            base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
+
+            az = stn.times.fragmentation[i][0][1]
+            tf = stn.times.fragmentation[i][0][2]
+
+            az = np.radians(az)
+            tf = np.radians(180 - tf)
+            v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+            angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
 
+
+        colour_angle = abs(90 - np.array(angle_off))
+        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle)
+            # base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
+
+        
         ptb_colors = [(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
                       (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)]
         
-        
-        base_points.setZValue(1)
-        self.height_canvas.addItem(base_points, update=True)
+        cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
+        cbar.ax.set_xlabel("Difference from 90 deg [deg]")
+        # base_points.setZValue(1)
+        # self.height_canvas.addItem(base_points, update=True)
 
         #########################
         # Plot Precursor Points
         #########################
 
-        pre_points = pg.ScatterPlotItem()
+        # pre_points = pg.ScatterPlotItem()
         
         for i in range(len(self.setup.fragmentation_point)):
         
@@ -209,14 +235,15 @@ class FragmentationStaff(QWidget):
             # Total travel time
             Y = v_time + h_time - nom_pick.time
 
-            pre_points.addPoints(x=[X], y=[Y], pen=(210, 235, 52), brush=(210, 235, 52), symbol='o')
+            self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='y')
+            # pre_points.addPoints(x=[X], y=[Y], pen=(210, 235, 52), brush=(210, 235, 52), symbol='o')
 
-        self.height_canvas.addItem(pre_points, update=True)
+        # self.height_canvas.addItem(pre_points, update=True)
 
         #########################
         # Perturbation points
         #########################
-        prt_points = pg.ScatterPlotItem()
+        # prt_points = pg.ScatterPlotItem()
         for i in range(len(self.setup.fragmentation_point)):
             data, remove = self.obtainPerts(stn.times.fragmentation, i)
             Y = []
@@ -227,15 +254,18 @@ class FragmentationStaff(QWidget):
 
                 self.dots_x.append(X)
                 self.dots_y.append(Y)
-                prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
+                self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='m', alpha=0.3)
+                # prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
 
-            self.height_canvas.addItem(prt_points, update=True)
+            # self.height_canvas.addItem(prt_points, update=True)
 
         for pick in self.pick_list:
             if pick.group == 0:
-                self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 255, 0)))
+                self.height_plot.ax2.axhline(pick.time - nom_pick.time, c='g')
+                # self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 255, 0)))
             else:
-                self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
+                self.height_plot.ax2.axhline(pick.time - nom_pick.time, c='b')
+                # self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 0, 255)))
 
 
         self.dots = np.array([self.dots_x, self.dots_y])
@@ -268,9 +298,11 @@ class FragmentationStaff(QWidget):
         try:
             best_indx = np.nanargmin(abs(angle_off - 90))
             print("Optimal Ballistic Height {:.2f} km with angle of {:.2f} deg".format(X[best_indx]/1000, angle_off[best_indx]))
-            self.angle_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
-            self.height_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
-            self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
+            
+            self.height_plot.ax2.axvline(X[best_indx]/1000, c='b')
+            # self.angle_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
+            # self.height_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
+            # self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
 
             best_arr = []
             angle_arr = []
@@ -289,7 +321,8 @@ class FragmentationStaff(QWidget):
                 v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
 
                 angle_off_new = np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v)))))
-                self.angle_canvas.scatterPlot(x=[self.setup.fragmentation_point[i].position.elev], y=[angle_off_new], symbol='o')
+
+                # self.angle_canvas.scatterPlot(x=[self.setup.fragmentation_point[i].position.elev], y=[angle_off_new], symbol='o')
 
                 if abs(angle_off_new - 90) < abs(angle_off - 90) and not np.isnan(angle_off_new):
                     angle_off = angle_off_new
@@ -297,62 +330,89 @@ class FragmentationStaff(QWidget):
                     height = self.setup.fragmentation_point[i].position.elev
 
         if height is not None:
-            self.angle_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
-            self.height_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
+            # self.angle_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
+            self.height_plot.ax2.axvline(height/1000, c='b')
+            # self.height_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
         
-        self.angle_canvas.addItem(pg.InfiniteLine(pos=(0, 90), angle=0, pen=QColor(255, 0, 0)))
+        # self.angle_canvas.addItem(pg.InfiniteLine(pos=(0, 90), angle=0, pen=QColor(255, 0, 0)))
 
         ########################
         # Fit Hyperbola
         ########################
 
-        y_vals = np.array(self.dots_y)
-        x_vals = 1/np.array(self.dots_x)
+        try:
+            x_vals = []
+            y_vals = []
 
-        # Hyperbola in the form y = kx (since we invert the x values)
-        from scipy import stats
+            for pp, point in enumerate(self.dots_y):
+                if not np.isnan(point):
+                    y_vals.append(point)
+                    x_vals.append(self.dots_x[pp])
 
-        res = stats.linregress(x_vals, y_vals)
+            x_vals, y_vals = np.array(x_vals), np.array(y_vals)
 
-        xs = 1/x_vals
-        ys = res.intercept + res.slope*xs
+            def hypfunc(x, a, b, h, k):
+                return b*np.sqrt(1 + ((x - h)/a)**2) + k
+            # Hyperbola in the form y = kx (since we invert the x values)
+            from scipy.optimize import curve_fit
 
-        fit_hyper = pg.PlotDataItem(x=xs, y=ys)
-        self.height_canvas.addItem(fit_hyper, update=True)
+            popt, pcov = curve_fit(hypfunc, x_vals, y_vals)
+            h = np.linspace(0, 100000, 1000)
+
+            self.height_plot.ax2.plot(h/1000, hypfunc(h, *popt), c='m')
+        except TypeError:
+            print("Could not generate hyperbola fit!")
+        # fit_hyper = pg.PlotDataItem(x=h, y=hypfunc(h, *popt))
+        # self.height_canvas.addItem(fit_hyper, update=True, pen='m')
         
         #####################
         # Build plot window
         #####################
 
         # 25 deg tolerance window
-        phigh = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [65, 65], pen = 'g')           
-        plow = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [115, 115], pen = 'g')                  
-        pfill = pg.FillBetweenItem(phigh, plow, brush = (0, 0, 255, 100))
-        self.angle_canvas.addItem(phigh)
-        self.angle_canvas.addItem(plow)
-        self.angle_canvas.addItem(pfill)
+        # phigh = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [65, 65], pen = 'g')           
+        # plow = pg.PlotCurveItem([np.nanmin(X), np.nanmax(X)], [115, 115], pen = 'g')                  
+        # pfill = pg.FillBetweenItem(phigh, plow, brush = (0, 0, 255, 100))
+        # self.angle_canvas.addItem(phigh)
+        # self.angle_canvas.addItem(plow)
+        # self.angle_canvas.addItem(pfill)
 
         # Build axes
-        self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick', color=(0, 0, 0))
-        self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path', color=(0, 0, 0))
-        self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(nom_pick.time), units='s')
-        self.angle_canvas.setLabel('left', 'Angle Away from Trajectory of Initial Acoustic Wave Path', units='deg')
-        self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
-        self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
+        # self.height_canvas.setTitle('Fragmentation Height Prediction of Given Pick', color=(0, 0, 0))
+        # self.angle_canvas.setTitle('Angles of Initial Acoustic Wave Path', color=(0, 0, 0))
+        # self.height_canvas.setLabel('left', 'Difference in Time from {:.2f}'.format(nom_pick.time), units='s')
+        # self.angle_canvas.setLabel('left', 'Angle Away from Trajectory of Initial Acoustic Wave Path', units='deg')
+        # self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
+        # self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
+        tol = 5 #seconds
+        self.height_plot.ax1.set_xlim((-10, 100))
+        self.height_plot.ax2.set_xlim((-10, 100))
+        self.height_plot.ax2.set_ylim((np.min([0, np.nanmin(self.dots_y)]) - tol, tol + np.max([0, np.nanmax(self.dots_y)])))
+        # print(len(X), len(Y))
+        # self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='m')
+        self.height_plot.ax1.set_xlabel("Height [km]")
+        self.height_plot.ax1.set_ylabel("Intensity")
+        self.height_plot.ax2.set_xlabel("Height [km]")
+        self.height_plot.ax2.set_ylabel("Time after {:.2f} [s]".format(nom_pick.time))
 
+        # self.height_plot.ax1.show()
+        # self.height_plot.ax2.show()
+        self.height_plot.figure.tight_layout()
+        self.height_plot.figure.subplots_adjust(hspace=0)
+        self.height_plot.show()
         # self.height_canvas.setLimits(xMin=B.elev, xMax=A.elev, yMin=-40, yMax=100, minXRange=1000, maxXRange=33000, minYRange=2, maxYRange=140)
 
         # Fonts
-        font= QFont()
-        font.setPixelSize(20)
-        self.height_canvas.getAxis("bottom").tickFont = font
-        self.height_canvas.getAxis("left").tickFont = font
-        self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        self.height_canvas.getAxis('left').setPen((255, 255, 255))
-        self.angle_canvas.getAxis("bottom").tickFont = font
-        self.angle_canvas.getAxis("left").tickFont = font
-        self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        self.angle_canvas.getAxis('left').setPen((255, 255, 255))
+        # font= QFont()
+        # font.setPixelSize(20)
+        # self.height_canvas.getAxis("bottom").tickFont = font
+        # self.height_canvas.getAxis("left").tickFont = font
+        # self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        # self.height_canvas.getAxis('left').setPen((255, 255, 255))
+        # self.angle_canvas.getAxis("bottom").tickFont = font
+        # self.angle_canvas.getAxis("left").tickFont = font
+        # self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
+        # self.angle_canvas.getAxis('left').setPen((255, 255, 255))
         self.setLayout(main_layout)
 
     def buildGUI(self):

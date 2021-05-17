@@ -1,4 +1,6 @@
 
+import numpy as np
+
 class LightCurve:
 
     def __init__(self, station, t, h, M):
@@ -7,6 +9,7 @@ class LightCurve:
         self.t = t
         self.h = h
         self.M = M
+        self.I = 10**(-np.array(self.M)/2.5)
 
 def processLightCurve(light_curve):
 
