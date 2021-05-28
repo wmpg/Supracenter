@@ -114,6 +114,10 @@ def initMenuBar(obj, layout):
     geminus_tool.triggered.connect(obj.geminus)
     tools_menu.addAction(geminus_tool)
 
+    rtv_tool = QAction("Ray-Trace Visualization", obj)
+    rtv_tool.triggered.connect(obj.rtvWindow)
+    tools_menu.addAction(rtv_tool)
+
 
 def initMainGUI(obj):
 
@@ -558,6 +562,11 @@ def addMakePicksWidgets(obj):
     obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
     obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
     toggle_button_array.addWidget(obj.polmap_picks)
+
+    obj.traj_space = ToggleButton(False, 5)
+    obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
+    obj.traj_space.clicked.connect(obj.traj_space.clickedEvt)
+    toggle_button_array.addWidget(obj.traj_space)
 
     toggle_button_array.insertStretch(-1, 0)
 

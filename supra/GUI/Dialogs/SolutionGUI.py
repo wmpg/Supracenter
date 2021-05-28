@@ -60,6 +60,7 @@ from supra.GUI.Dialogs.AnnoteWindow import AnnoteWindow
 from supra.GUI.Dialogs.Preferences import PreferenceWindow
 from supra.GUI.Dialogs.Yields import Yield
 from supra.GUI.Dialogs.FragStaff import FragmentationStaff
+from supra.GUI.Dialogs.TrajSpace import TrajSpace
 from supra.GUI.Dialogs.AllWaveformView import AllWaveformViewer
 from supra.GUI.Dialogs.TrajInterp import TrajInterpWindow
 from supra.GUI.Dialogs.StationList import StationList
@@ -67,6 +68,7 @@ from supra.GUI.Dialogs.ParticleMot import ParticleMotion
 from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
 from supra.GUI.Dialogs.ReportDialog import ReportWindow
+from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
 
@@ -218,6 +220,12 @@ class SolutionGUI(QMainWindow):
         self.t = TrajInterpWindow(self.bam, self)
         self.t.setGeometry(QRect(500, 400, 500, 400))
         self.t.show()
+
+    def rtvWindow(self):
+
+        self.rtv = rtvWindowDialog(self.bam)
+        self.rtv.setGeometry(QRect(500, 400, 500, 400))
+        self.rtv.show()
 
     def csvLoad(self, table):
         """ Loads csv file into a table
@@ -2375,7 +2383,7 @@ class SolutionGUI(QMainWindow):
                     if pick.stn == stn:
                         stat_picks.append(pick)
 
-                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks, channel])
+                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks, channel], self.bam)
                 self.w.setGeometry(QRect(100, 100, 1200, 900))
                 self.w.show()
 
@@ -2503,6 +2511,14 @@ class SolutionGUI(QMainWindow):
             self.pm = Polmap(self.bam, points)
             self.pm.setGeometry(QRect(100, 100, 1200, 700))
             self.pm.show()
+
+        elif self.traj_space.isChecked():
+            
+
+            self.ts = TrajSpace(self.bam)
+            self.ts.setGeometry(QRect(100, 100, 1200, 700))
+            self.ts.show() 
+            self.traj_space.setState(False)
 
         ### Annotations
         elif self.annote_picks.isChecked():
@@ -2745,7 +2761,6 @@ class SolutionGUI(QMainWindow):
         for i in range(len(st)):
             available_channels.append(st.stats.channel)
 
-        station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
 
         expected_arrival_time = stn.ground_distance/330
 
@@ -2778,17 +2793,17 @@ class SolutionGUI(QMainWindow):
             if not np.isnan(b_time):
                 b_arrival = pg.InfiniteLine(pos=b_time, angle=90, pen=pg.mkPen(color=src.color, width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
                 self.make_picks_waveform_canvas.addItem(b_arrival)
-                print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
-            else:
-                print(printMessage("ballistic"), "No Nominal Arrival")
+            #     print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
+            # else:
+            #     print(printMessage("ballistic"), "No Nominal Arrival")
 
             if self.prefs.pert_en:
                 data, remove = chauvenet(stn.times.ballistic[0][1][0])
-                try:
-                    print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                    print('Removed points {:}'.format(remove))
-                except ValueError:
-                    print(printMessage("ballistic"), 'No Perturbation Arrivals')
+                # try:
+                #     print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                #     print('Removed points {:}'.format(remove))
+                # except ValueError:
+                #     print(printMessage("ballistic"), 'No Perturbation Arrivals')
 
                 for i in range(len(data)):
                     if self.show_perts.isChecked():
@@ -2810,14 +2825,14 @@ class SolutionGUI(QMainWindow):
                 v_time = (frag.position.elev - stn.metadata.position.elev)/310
                 h_time = frag.position.ground_distance(stn.metadata.position)/1000
                 p_time = h_time + v_time
-                print('++++++++++++++++')
-                print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
+                # print('++++++++++++++++')
+                # print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 frag.position.pos_loc(stn.metadata.position)
                 stn.metadata.position.pos_loc(stn.metadata.position)
                 xyz_range = np.sqrt((frag.position.x - stn.metadata.position.x)**2 + \
                                     (frag.position.y - stn.metadata.position.y)**2 + \
                                     (frag.position.z - stn.metadata.position.z)**2)
-                print('Range {:7.3f} km'.format(xyz_range/1000))
+                # print('Range {:7.3f} km'.format(xyz_range/1000))
                 if not np.isnan(f_time):
                     # Plot Fragmentation Prediction
                     #pen=pg.mkPen(color=src.color, width=2)
@@ -2830,19 +2845,19 @@ class SolutionGUI(QMainWindow):
 
                     stn.stn_distance(frag.position)
                     #print("Range: {:7.3f} km".format(stn.distance/1000))                   
-                    print('Arrival: {:.3f} s'.format(f_time))
+                    # print('Arrival: {:.3f} s'.format(f_time))
 
-                else:
-                    pass
-                    print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
+                # else:
+                #     pass
+                #     print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
 
                 if self.prefs.pert_en:
                     data, remove = self.obtainPerts(stn.times.fragmentation, i)
-                    try:
-                        print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                        print('Removed points {:}'.format(remove))
-                    except ValueError:
-                        print(printMessage("fragmentation"), 'No Perturbation Arrivals')
+                    # try:
+                    #     print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                    #     print('Removed points {:}'.format(remove))
+                    # except ValueError:
+                    #     print(printMessage("fragmentation"), 'No Perturbation Arrivals')
                     for j in range(len(data)):
                         if self.show_perts.isChecked():
                             
@@ -2854,6 +2869,7 @@ class SolutionGUI(QMainWindow):
                             except IndexError:
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
+        stationFormat(stn, self.bam.setup, ref_pos)
 
         self.addAnnotes()
     def obtainPerts(self, data, frag):

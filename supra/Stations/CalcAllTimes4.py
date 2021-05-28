@@ -46,8 +46,9 @@ def checkNomFrag(bam, prefs):
 def checkPertBall(bam, prefs):
     for stn in bam.stn_list:
         # Check Ballistic
+
         try:
-            if (prefs.pert_en and (len(stn.times.ballistic[1]) != prefs.pert_num)):
+            if (prefs.pert_en and (len(stn.times.ballistic[0][1]) != prefs.pert_num)):
 
                 return False
         except IndexError:
@@ -161,7 +162,7 @@ def calcAllTimes(bam, prefs):
     else:
         no_of_frags = len(bam.setup.fragmentation_point)
 
-    total_steps = (prefs.frag_en*no_of_frags*(1 + prefs.pert_en*prefs.pert_num) + prefs.ballistic_en*(1 + prefs.pert_en*prefs.pert_num))*len(bam.stn_list)
+    total_steps = 1 + (prefs.frag_en*no_of_frags*(1 + prefs.pert_en*prefs.pert_num) + prefs.ballistic_en*(1 + prefs.pert_en*prefs.pert_num))*len(bam.stn_list)
 
     step = 0
     
@@ -277,10 +278,12 @@ def calcAllTimes(bam, prefs):
 
             except ValueError:
                 best_indx = None
-                a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+                a.append([np.nan, np.nan, np.nan, np.nan])
+                results = []
                 if perturbations is not None:
                     for pert in perturbations:
-                        a.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+                        results.append(np.array([np.nan, np.nan, np.nan, np.nan]))
+                a.append(results)
                 stn.times.ballistic.append(a)
                 continue
 

@@ -14,9 +14,11 @@ from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 
 from supra.Geminus.overpressure2 import overpressureihmod_Ro
+from supra.Geminus.geminusSearch import periodSearch, presSearch
 from supra.Files.SaveLoad import save
 from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
 from supra.Utils.Formatting import *
+
 def Efunction(Ro, h):
     k = 1
     p = 10*101.325*np.exp(-0.00012*h)
@@ -106,7 +108,13 @@ class Geminus(QWidget):
 
     def infraCurve(self):
         
-        if not self.current_Ro is None or not self.current_height is None:
+        if not hasattr(self, "current_lin_Ro"):
+            if self.prefs.debug:
+                print(printMessage("warning"), " Run a search for overpressure or period first before plotting a point!")
+            errorMessage("No points to plot!", 1, detail='Please use one of the searches to find Ro for both weak-shock and linear!')
+            return None   
+
+        if not self.current_lin_Ro is None and self.current_ws_Ro and not self.current_height is None:
             self.bam.infra_curve.append([self.current_lin_Ro, self.current_ws_Ro, self.current_height])
         
         if len(self.bam.infra_curve) == 0:
@@ -221,6 +229,8 @@ class Geminus(QWidget):
         sounding_pres = np.flip(sounding_pres, axis=0)
         self.sounding_pres = sounding_pres
 
+        gem_inputs = [source_list, stat, v, theta, dphi, sounding_pres, sw, wind, dopplershift]
+
         if mode == "normal":
             try:
                 tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
@@ -254,64 +264,10 @@ class Geminus(QWidget):
             print('Overpressure (linear):         {:3.4f} Pa'.format(dp[-1]))
 
         elif mode == "period":
-            Ro = 10.0
-            
-            try:
-                target_period = float(self.dom_period.text())
-            except:
-                if self.prefs.debug:
-                    print(printMessage("Error"), " No source target period given!")
-                errorMessage("Cannot read target period!", 2)
-                return None
 
-            period_ws = 0
+            p = float(self.dom_period.text())
 
-            tol = 1e-2
-
-            while abs(target_period - period_ws) > tol:
-                try:
-                    tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
-                except TypeError as e:
-                    errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
-                    return None
-                
-                period_ws = tauws[-1]
-
-                if period_ws < target_period:
-
-                    Ro += abs(target_period - period_ws)*2
-
-                else:
-
-                    Ro -= abs(target_period - period_ws)*2
-
-            weak_path = tau[:it] + tauws[it:]
-            Ro_ws = Ro
-            self.current_ws_Ro = Ro_ws
-        
-            Ro = 10.0
-            period_lin = 0
-
-            while abs(target_period - period_lin) > tol:
-
-                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
-                
-                period_lin = tau[-1]
-
-                if period_lin < target_period:
-
-                    Ro += abs(target_period - period_lin)*2
-
-                else:
-
-                    Ro -= abs(target_period - period_lin)*2
-
-            Ro_lin = Ro
-            
-            self.current_lin_Ro = Ro_lin
-            lin_path = tau
+            Ro_ws, Ro_lin, weak_path, lin_path, tau, Z, it = periodSearch(p, gem_inputs, paths=True)
 
             self.overpressure_plot.ax.plot(weak_path, Z, 'r-', label="Weak Shock")
             self.overpressure_plot.ax.plot(lin_path, Z, 'b-', label="Linear")
@@ -330,68 +286,10 @@ class Geminus(QWidget):
             print("Blast Radius (Linear): {:.2f} m".format(Ro_lin))
 
         elif mode == "pres":
-            Ro = 10.0
             
+            p = float(self.over_pres.text())
 
-            try:
-                target_pres = float(self.over_pres.text())
-            except:
-                if self.prefs.debug:
-                    print(printMessage("Error"), " No source target overpressure given!")
-                errorMessage("Cannot read target overpressure!", 2)
-                return None
-
-            target_pres = float(self.over_pres.text())
-
-            pres_ws = 0
-
-            tol = 1e-2
-
-            while abs(target_pres - pres_ws) > tol:
-
-                tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                        overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
-                
-                pres_ws = dpws[-1]
-
-                if pres_ws < target_pres:
-
-                    Ro += abs(target_pres - pres_ws)*2
-
-                else:
-
-                    Ro -= abs(target_pres - pres_ws)*2
-
-            weak_path = tau[:it] + tauws[it:]
-            Ro_ws = Ro
-            self.current_ws_Ro = Ro_ws
-        
-            Ro = 10.0
-            pres_lin = 0
-
-            while abs(target_pres - pres_lin) > tol:
-
-                try:
-                    tau, tauws, Z, sR, inc, talt, dpws, dp, it = \
-                            overpressureihmod_Ro(source_list, stat, Ro, v, theta, dphi, sounding_pres, sw, wind=wind, dopplershift=dopplershift)
-                except TypeError as e:
-                    errorMessage("Error in running Geminus!", 2, detail='{:}'.format(e))
-                    return None
-                    
-                pres_lin = tau[-1]
-
-                if pres_lin < target_pres:
-
-                    Ro += abs(target_pres - pres_lin)*2
-
-                else:
-
-                    Ro -= abs(target_pres - pres_lin)*2
-
-            Ro_lin = Ro
-            self.current_lin_Ro = Ro_lin
-        
-            lin_path = tau
+            Ro_ws, Ro_lin, weak_path, lin_path, tau, Z, it = presSearch(p, gem_inputs, paths=True)
 
             self.overpressure_plot.ax.plot(weak_path, Z, 'r-', label="Weak Shock")
             self.overpressure_plot.ax.plot(lin_path, Z, 'b-', label="Linear")

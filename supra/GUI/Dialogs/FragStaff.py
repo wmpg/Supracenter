@@ -14,11 +14,13 @@ from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 from supra.GUI.Tools.GUITools import *
 from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
-from supra.Stations.ProcessStation import procTrace, procStream, findChn
+from supra.Stations.ProcessStation import procTrace, procStream, findChn, findDominantPeriodPSD
 
+from supra.Geminus.overpressure2 import overpressureihmod_Ro
+from supra.Geminus.geminusSearch import periodSearch, presSearch
 class FragmentationStaff(QWidget):
 
-    def __init__(self, setup, pack):
+    def __init__(self, setup, pack, bam):
 
         QWidget.__init__(self)
 
@@ -33,7 +35,7 @@ class FragmentationStaff(QWidget):
 
         # Pass setup value
         self.setup = setup
-
+        self.bam = bam
         ###########
         # Build GUI
         ###########
@@ -132,7 +134,7 @@ class FragmentationStaff(QWidget):
                 # self.light_curve_canvas.addItem(light_curve_curve)
 
             self.height_plot.ax1.legend()
-            plt.gca().invert_yaxis()
+            # plt.gca().invert_yaxis()
 
 
             # main_layout.addWidget(self.light_curve_view, 1, 101, 1, 10)
@@ -198,7 +200,7 @@ class FragmentationStaff(QWidget):
 
 
         colour_angle = abs(90 - np.array(angle_off))
-        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle)
+        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
             # base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 
         
@@ -353,15 +355,141 @@ class FragmentationStaff(QWidget):
 
             def hypfunc(x, a, b, h, k):
                 return b*np.sqrt(1 + ((x - h)/a)**2) + k
+            def invhypfunc(x, a, b, h, k):
+                return a*np.sqrt(((x - k)/b)**2 - 1) + h
+
             # Hyperbola in the form y = kx (since we invert the x values)
             from scipy.optimize import curve_fit
 
             popt, pcov = curve_fit(hypfunc, x_vals, y_vals)
+         
             h = np.linspace(0, 100000, 1000)
 
             self.height_plot.ax2.plot(h/1000, hypfunc(h, *popt), c='m')
         except TypeError:
             print("Could not generate hyperbola fit!")
+        except RuntimeError:
+            print("Optimal hyperbola not found!")
+        except ValueError:
+            print("No Arrivals!")
+
+        ########################
+        # Overpressure vs Time
+        ########################
+        try:
+            st, resp, gap_times = procStream(stn, ref_time=self.setup.fireball_datetime)
+            st = findChn(st, self.channel)
+            waveform_data, time_data = procTrace(st, ref_datetime=self.setup.fireball_datetime,\
+                    resp=resp, bandpass=[2, 8])
+
+
+
+        except ValueError:
+            print("Could not filter waveform!")
+
+        # waveform_peaks = []
+        # time_peaks = []
+        # N = 10
+
+        # for wave, time_pack in zip(waveform_data, time_data):
+        #     for ii in range(0, len(wave), N):
+        #         peak = np.nanmax(np.abs(wave[ii:ii+N]))
+
+        #         time_peak = np.mean(time_pack[ii:ii+N] - nom_pick.time)
+
+        #         waveform_peaks.append(peak)
+        #         time_peaks.append(time_peak)
+
+        # ##################
+        # # Relate Time to Height
+        # ##################
+
+        # height_peaks = invhypfunc(time_peaks, *popt)
+
+        # ##################
+        # # Get Bounds for Heights
+        # ##################
+        # min_height = 17000
+        # max_height = 40000
+        # h_indicies = np.where(np.logical_and(height_peaks>=min_height, height_peaks<=max_height))
+
+        # new_heights = []
+        # new_press = []
+        # for hh in h_indicies[0]:
+
+        #     new_heights.append(height_peaks[hh])
+        #     new_press.append(waveform_peaks[hh])
+
+        # plt.subplot(3, 1, 1)
+    
+        # plt.plot(new_heights, new_press)
+        # plt.xlabel("Height [m]")
+        # plt.ylabel("Overpressure [Pa]")
+
+
+        # spacer = 5*60
+        # shifter = 10
+        # periods = []
+        # period_times = []
+
+        # for wave, time_pack in zip(waveform_data, time_data):
+        #     for ii in range(len(wave)//shifter):
+
+        #         temp_waveform = wave[shifter*ii:shifter*ii+spacer]
+        #         temp_time = time_pack[shifter*ii:shifter*ii+spacer]
+
+        #         period = findDominantPeriodPSD(temp_waveform, st.stats.sampling_rate)
+
+        #         periods.append(period)
+        #         period_times.append(time_pack[shifter*ii])
+
+        # plt.subplot(3, 1, 2)
+        # height_periods = invhypfunc(period_times, *popt)
+        # h_indicies = np.where(np.logical_and(height_periods>=min_height, height_periods<=max_height))
+
+        # new_heights = []
+        # new_period = []
+        # for hh in h_indicies[0]:
+
+        #     new_heights.append(height_periods[hh])
+        #     new_period.append(periods[hh])
+
+
+        # plt.plot(new_heights, new_period)
+        # plt.xlabel("Height [m]")
+        # plt.ylabel("Dominant Period [s]")        
+
+
+        # plt.subplot(3, 1, 3)
+        # ws_list = []
+        # lin_list = []
+        # h_list = []
+        # N_times=1
+        # ws_list_p = []
+        # lin_list_p = []
+        # h_list_p = []
+        # for ii in range(len(new_heights)//N_times):
+        #     ws, lin = self.periodSearch(new_heights[ii*N_times], stn, new_period[ii*N_times])
+        #     print("Phase 1: {:}/{:}".format(ii+1, len(new_heights)//N_times))
+        #     ws_list_p.append(ws)
+        #     lin_list_p.append(lin)
+        #     h_list_p.append(new_heights[ii*N_times])
+        # plt.scatter(h_list_p, ws_list_p, label='Period Weak-Shock', alpha=0.4)
+        # plt.scatter(h_list_p,lin_list_p, label='Period Linear', alpha=0.4)
+        # # for ii in range(len(new_heights)//N_times):
+        # #     ws, lin = self.presSearch(new_heights[ii*N_times], stn, new_press[ii*N_times])
+        # #     print("Phase 2: {:}/{:}".format(ii+1, len(new_heights)//N_times))
+        # #     ws_list.append(ws)
+        # #     lin_list.append(lin)
+        # #     h_list.append(new_heights[ii*N_times])
+        # # plt.scatter(h_list, ws_list, label='Pressure Weak-Shock', alpha=0.4)
+        # # plt.scatter(h_list,lin_list, label='Pressure Linear', alpha=0.4)
+
+        # plt.xlabel("Height [m]")
+        # plt.ylabel("Relaxation Radius [m]")
+        # plt.legend()
+        # plt.show()   
+
         # fit_hyper = pg.PlotDataItem(x=h, y=hypfunc(h, *popt))
         # self.height_canvas.addItem(fit_hyper, update=True, pen='m')
         
@@ -456,3 +584,93 @@ class FragmentationStaff(QWidget):
         else:
             self.seis_canvas.setYLink(self.height_canvas)   
             
+    def presSearch(self, h, stn, op):
+
+
+        traj = self.setup.trajectory
+
+
+        source = traj.findGeo(h)
+
+        self.sounding_pres = None
+        source_list = [source.lat, source.lon, source.elev/1000]
+
+
+        stat = stn
+        stat_pos = stat.metadata.position
+        stat = [stat_pos.lat, stat_pos.lon, stat_pos.elev/1000]
+
+        v = traj.v/1000
+
+        theta = 90 - traj.zenith.deg
+
+        dphi = np.degrees(np.arctan2(stat_pos.lon - source.lon, stat_pos.lat - source.lat)) - traj.azimuth.deg
+
+        # Switch 3 doesn't do anything in this version of overpressure.py
+        sw = [1, 0, 1]
+        
+        lat =   [source.lat, stat_pos.lat]
+        lon =   [source.lon, stat_pos.lon]
+        elev =  [source.elev, stat_pos.elev]
+
+        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+
+        pres = 10*101.325*np.exp(-0.00012*sounding[:, 0])
+        
+        sounding_pres = np.zeros((sounding.shape[0], sounding.shape[1]+1))
+        sounding_pres[:, :-1] = sounding
+        sounding_pres[:, -1] = pres
+        sounding_pres[:, 1] -= 273.15
+
+        sounding_pres = np.flip(sounding_pres, axis=0)
+
+        gem_inputs = [source_list, stat, v, theta, dphi, sounding_pres, sw, True, True]
+        Ro_ws, Ro_lin = presSearch(op, gem_inputs, paths=False)
+
+        return Ro_ws, Ro_lin
+
+            
+    def periodSearch(self, h, stn, op):
+
+
+        traj = self.setup.trajectory
+
+
+        source = traj.findGeo(h)
+
+        self.sounding_pres = None
+        source_list = [source.lat, source.lon, source.elev/1000]
+
+
+        stat = stn
+        stat_pos = stat.metadata.position
+        stat = [stat_pos.lat, stat_pos.lon, stat_pos.elev/1000]
+
+        v = traj.v/1000
+
+        theta = 90 - traj.zenith.deg
+
+        dphi = np.degrees(np.arctan2(stat_pos.lon - source.lon, stat_pos.lat - source.lat)) - traj.azimuth.deg
+
+        # Switch 3 doesn't do anything in this version of overpressure.py
+        sw = [1, 0, 1]
+        
+        lat =   [source.lat, stat_pos.lat]
+        lon =   [source.lon, stat_pos.lon]
+        elev =  [source.elev, stat_pos.elev]
+
+        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+
+        pres = 10*101.325*np.exp(-0.00012*sounding[:, 0])
+        
+        sounding_pres = np.zeros((sounding.shape[0], sounding.shape[1]+1))
+        sounding_pres[:, :-1] = sounding
+        sounding_pres[:, -1] = pres
+        sounding_pres[:, 1] -= 273.15
+
+        sounding_pres = np.flip(sounding_pres, axis=0)
+
+        gem_inputs = [source_list, stat, v, theta, dphi, sounding_pres, sw, True, True]
+        Ro_ws, Ro_lin = periodSearch(op, gem_inputs, paths=False)
+
+        return Ro_ws, Ro_lin

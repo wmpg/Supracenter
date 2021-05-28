@@ -9,7 +9,7 @@ from supra.Utils.Formatting import *
 c = Constants()
 
 # function [dp,dpws,dpratio,tau,tauws,Z,td,talt,Ro] = overpressureihmod_Ro(meteor,stn,Ro,v,theta,dphi,atmos,sw);
-def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, dopplershift=True):
+def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, dopplershift=False):
 
 
     # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -122,11 +122,15 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, 
     Zs = meteor[2]
     xt = sR/Ro
     Z10 = Zs - 10*Ro*np.sin(inc)
+
+    if Z10 > alt[0]:
+        Z10 = alt[0]
     N = 500
     dZ = (Z10 - stn[2])/N
 
-
     Z = np.linspace(Z10, stn[2], N)
+
+
 
     f = scipy.interpolate.interp1d(alt, pres)
     Pz = f(Z)
@@ -501,7 +505,7 @@ def doppler(source, stn, tau0, Cs, atmos, Z, s, alt):
  
     wz_speed = 0.01;
 
-    iwz = np.array([wz_speed]*5000)
+    iwz = np.array([wz_speed]*500)
   
     f = scipy.interpolate.interp1d(h, Cs)
     iCs = f(Z)

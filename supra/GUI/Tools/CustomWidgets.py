@@ -364,9 +364,7 @@ class MatplotlibPyQT(QWidget):
         self.toolbar.setStyleSheet("background-color:Gray;")
         # create an axis
         # self.ax = self.figure.add_subplot(111)
-        plt.gca().spines["top"].set_visible(False)
-        plt.gca().spines["right"].set_visible(False)
-        plt.grid()
+
         # set the layout
         layout = QVBoxLayout()
         layout.addWidget(self.toolbar)
@@ -376,5 +374,5 @@ class MatplotlibPyQT(QWidget):
     def show(self):
         self.canvas.draw()
 
-    def clear(self):
-        self.ax.clear()
+    # def clear(self):
+    #     self.ax.clear()
