@@ -72,6 +72,10 @@ class TrajSpace(QWidget):
 
         for trace, resp, popt, infra in zip(trace_list, resp_list, popt_list, infra_list):
 
+            if popt is None:
+                continue
+
+            stn_name = "{:}-{:}".format(infra.metadata.network, infra.metadata.code)
 
 
             a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=None, backup=False)
@@ -116,7 +120,7 @@ class TrajSpace(QWidget):
             #second best fas
             FASes[best_fas] = 0
             bad_fas = np.argmax(FASes)
-            self.pvh_graph.ax2.plot(freq, logs[best_fas])
+            self.pvh_graph.ax2.plot(freq, logs[best_fas], label=stn_name)
 
             if self.auto_gain.isChecked():
                 j = np.where(logs[best_fas] >= logs[bad_fas])
@@ -140,9 +144,9 @@ class TrajSpace(QWidget):
                 else:
                     h = h[branch_1]
                     vals = a[0][branch_1]
-                self.pvh_graph.ax3.plot(h, vals, label="Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(filtered_freq[0], filtered_freq[-1], s2n))
+                self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
             else:
-                self.pvh_graph.ax3.plot(t[0], a[0], label="Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(filtered_freq[0], filtered_freq[-1], s2n))
+                self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
 
 
             # sig = a[0][j]
@@ -154,7 +158,10 @@ class TrajSpace(QWidget):
             
             shortest_period = 1/trace.stats.sampling_rate
             longest_period = t[0][shifter] - t[0][0]
-
+            ax5h = []
+            ax5p = []
+            ax6h = []
+            ax6p = []
             for i in range((L - spacer)//shifter + 1):
 
                 max_p = np.nanmax(a[0][i*shifter:int(i*shifter + spacer)])
@@ -166,11 +173,15 @@ class TrajSpace(QWidget):
                     h = invhypfunc(t[0][int(i*shifter + spacer//2)], *popt)
 
                     if h in heights[branch_1] and not self.branchselector.isChecked():
-                        self.pvh_graph.ax5.scatter(h, (max_p - min_p)/2)
+                        ax5h.append(h)
+                        ax5p.append((max_p - min_p)/2)
+                        
                     elif h in heights[branch_2] and self.branchselector.isChecked():
-                        self.pvh_graph.ax5.scatter(h, (max_p - min_p)/2)
+                        ax5h.append(h)
+                        ax5p.append((max_p - min_p)/2)
                 else:
-                    self.pvh_graph.ax5.scatter(t[0][int(i*shifter + spacer//2)], (max_p - min_p)/2)
+                    ax5h.append(t[0][int(i*shifter + spacer//2)])
+                    ax5p.append((max_p - min_p)/2)
 
                 p, freq, FAS = findDominantPeriodPSD(a[0][i*shifter:int(i*shifter + spacer)], trace.stats.sampling_rate, normalize=False)
                 
@@ -186,26 +197,37 @@ class TrajSpace(QWidget):
                         self.geminus_p.append((max_p - min_p)/2)
                         self.geminus_stat.append(infra)
                         self.geminus_t.append(p)
-                        self.pvh_graph.ax6.scatter(h, p)
+                        ax6h.append(h)
+                        ax6p.append(p)
+                        
                     elif h in heights[branch_2] and self.branchselector.isChecked():
                         self.geminus_heights.append(height_of_sol)
                         self.geminus_p.append((max_p - min_p)/2)
                         self.geminus_stat.append(infra)
                         self.geminus_t.append(p) 
-                        self.pvh_graph.ax6.scatter(h, p)
+                        ax6h.append(h)
+                        ax6p.append(p)
                 else:
-                    self.pvh_graph.ax6.scatter(t[0][int(i*shifter + spacer//2)], p)
+                    ax6h.append(t[0][int(i*shifter + spacer//2)])
+                    ax6p.append(p)
 
                 self.pvh_graph.ax6.axhline(y=shortest_period, linestyle='-')
 
-
+            self.pvh_graph.ax5.scatter(ax5h, ax5p, label=stn_name)
+            self.pvh_graph.ax6.scatter(ax6h, ax6p, label=stn_name)
 
             t_in_range = t[0][branch_1]
-            t_min_range_1 = t_in_range[0]
-            t_max_range_1 = t_in_range[-1]
+            try:
+                t_min_range_1 = t_in_range[0]
+                t_max_range_1 = t_in_range[-1]
+            except IndexError:
+                t_min_range_1, t_max_range_1 = np.nan, np.nan
             t_in_range = t[0][branch_2]
-            t_min_range_2 = t_in_range[0]
-            t_max_range_2 = t_in_range[-1]
+            try:
+                t_min_range_2 = t_in_range[0]
+                t_max_range_2 = t_in_range[-1]
+            except IndexError:
+                t_min_range_2, t_max_range_2 = np.nan, np.nan
 
         # plt.axhline(y=longest_period, color='k', linestyle='-')
         # spacer = 5*60//2
@@ -279,6 +301,8 @@ class TrajSpace(QWidget):
         self.pvh_graph.ax2.set_ylabel("Gain")
         self.pvh_graph.ax2.set_xscale('log')
         self.pvh_graph.ax2.set_yscale('log')
+        self.pvh_graph.ax2.axvline(x=filtered_freq[0], linestyle='-')
+        self.pvh_graph.ax2.axvline(x=filtered_freq[-1], linestyle='-')
 
         if self.h_space_tog.isChecked():
             self.pvh_graph.ax3.set_xlabel("Height [m]")
@@ -293,7 +317,7 @@ class TrajSpace(QWidget):
                 self.pvh_graph.ax3.axvline(x=t_min_range_1, linestyle='-')
                 self.pvh_graph.ax3.axvline(x=t_max_range_1, linestyle='-')
         self.pvh_graph.ax3.set_ylabel("Overpressure [Pa]")
-        self.pvh_graph.ax3.legend()
+        
 
         # self.pvh_graph.ax4.set_xlabel("Frequency [Hz]")
         # self.pvh_graph.ax4.set_ylabel("Gain")
@@ -326,7 +350,10 @@ class TrajSpace(QWidget):
                 self.pvh_graph.ax6.axvline(x=t_min_range_1, linestyle='-')
                 self.pvh_graph.ax6.axvline(x=t_max_range_1, linestyle='-')
         self.pvh_graph.ax6.set_ylabel("Dominant Period [s]")
-
+        self.pvh_graph.ax2.legend()
+        self.pvh_graph.ax3.legend()
+        self.pvh_graph.ax5.legend()
+        self.pvh_graph.ax6.legend()
         self.pvh_graph.show()
 
     def buildGUI(self):
@@ -369,9 +396,9 @@ class TrajSpace(QWidget):
         self.branchselector.setChecked(True)
 
         self.ro_graph = MatplotlibPyQT()
-        self.ro_graph.ax1 = self.ro_graph.figure.add_subplot(111)
-        layout.addWidget(self.ro_graph, 11, 2, 1, 2)
-        export_ro = createButton("Export Relaxation Radii Curve", layout, 12, 3, self.exportro, args=[])
+        self.ro_graph.ax = self.ro_graph.figure.add_subplot(111)
+        layout.addWidget(self.ro_graph, 11, 2, 90, 2)
+        export_ro = createButton("Export Relaxation Radii Curve", layout, 101, 3, self.exportro, args=[])
 
     def exportraw(self):
             
@@ -380,7 +407,7 @@ class TrajSpace(QWidget):
         with open(file_name, 'w+') as f:
             f.write('Station, Height [m], Overpressure [Pa], Dominant Period [s] \n')
             for i in range(len(self.geminus_heights)):
-                f.write('{:}, {:}, {:}, {:} \n'.format(self.geminus_stat[i], self.geminus_heights[i], self.geminus_p[i], self.geminus_t[i]))
+                f.write('{:}, {:}, {:}, {:} \n'.format(self.geminus_stat[i].metadata.code, self.geminus_heights[i], self.geminus_p[i], self.geminus_t[i]))
 
         errorMessage('Raw Data Saved!', 0, info='Saved to File {:}'.format(file_name))
     
@@ -392,7 +419,7 @@ class TrajSpace(QWidget):
             f.write('Station, Height [m], Overpressure [Pa], Dominant Period [s], Ro (Weak-Shock, Overpressure) [m], Ro (Linear, Overpressure) [m], Ro (Weak-Shock, Dominant Period) [m], Ro (Linear, Dominant Period) [m]\n')
             for i in range(len(self.geminus_heights)):
                 f.write('{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:} \n'.format(\
-                    self.geminus_stat[i], self.geminus_heights[i], self.geminus_p[i], self.geminus_t[i], \
+                    self.geminus_stat[i].metadata.code, self.geminus_heights[i], self.geminus_p[i], self.geminus_t[i], \
                     self.ro_data[i, 1], self.ro_data[i, 2], self.ro_data[i, 3], self.ro_data[i, 4]))
 
         errorMessage('Data saved to CSV!', 0, info='Saved to File {:}'.format(file_name))    
@@ -443,7 +470,7 @@ class TrajSpace(QWidget):
             Ro_ws_t, Ro_lin_t = periodSearch(self.geminus_t[hh], gem_inputs, paths=False)
 
             data.append([h, Ro_ws_p, Ro_lin_p, Ro_ws_t, Ro_lin_t])
-            print("Complete Step {:} of {:}".format(hh, max_steps))
+            print("Complete Step {:} of {:}".format(hh + 1, max_steps))
         for row in data:
             self.ro_graph.ax.scatter(row[0], row[1], c='m', label="Weak-Shock Period")
             self.ro_graph.ax.scatter(row[0], row[2], c='c', label="Linear Period")
@@ -451,7 +478,8 @@ class TrajSpace(QWidget):
             self.ro_graph.ax.scatter(row[0], row[4], c='g', label="Linear Overpressure")
 
         self.ro_data = np.array(data)
-
+        self.ro_graph.ax.set_xlabel("Height [m]")
+        self.ro_graph.ax.set_ylabel("Relaxation Radius [m]")
         self.ro_graph.ax.legend()
         self.ro_graph.show()
     def getInfraStats(self):    
@@ -461,8 +489,8 @@ class TrajSpace(QWidget):
         for stn in self.bam.stn_list:
             if len(stn.stream.select(channel="*DF")) > 0:
                 infra_list.append(stn)
-            elif len(stn.stream.select(channel="*HZ")) > 0:
-                infra_list.append(stn)
+            # elif len(stn.stream.select(channel="*HZ")) > 0:
+            #     infra_list.append(stn)
         return infra_list
         
     def genHyperbola(self, infra_list):
@@ -519,8 +547,8 @@ class TrajSpace(QWidget):
             st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime)
             resp_list.append(resp)
             temp_st = findChn(st, "*DF")
-            if len(temp_st) == 0:
-                temp_st = findChn(st, "*HZ")
+            # if len(temp_st) == 0:
+            #     temp_st = findChn(st, "*HZ")
             trace_list.append(temp_st)
         return trace_list, resp_list
             # waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\

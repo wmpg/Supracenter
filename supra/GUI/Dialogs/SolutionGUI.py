@@ -223,7 +223,7 @@ class SolutionGUI(QMainWindow):
 
     def rtvWindow(self):
 
-        self.rtv = rtvWindowDialog(self.bam)
+        self.rtv = rtvWindowDialog(self.bam, self.prefs)
         self.rtv.setGeometry(QRect(500, 400, 500, 400))
         self.rtv.show()
 

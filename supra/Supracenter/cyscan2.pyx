@@ -209,7 +209,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     while not found:
         if trace:
             trace_list = []
-            trace_list.append([S[0], S[1], S[2]])
+            trace_list.append([supra_pos[0], supra_pos[1], supra_pos[2]])
         count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
@@ -255,11 +255,14 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 X += p*(delz)/(np.sqrt(s2 - p**2))
                 last_z = i + 1
             
-            if trace:
-                trace_list.append([x[k, l], y[k, l], z[n_layers - 1 - last_z]])
+
             # Calculate true destination positions (transform back)
             horizontal_error = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2))
             vertical_error = z[n_layers - last_z - 1] - detec_pos[2]
+
+            if trace:
+                k, l = np.where(horizontal_error == np.nanmin(horizontal_error))
+                trace_list.append([(a*X - b*Y)[k, l], (b*X + a*Y)[k, l], z[n_layers - 1 - last_z]])
 
             # If the ray is close enough to the station, stop calculating
             # done in order to reduce NaNs -> Theoretically it should go further if it can,
