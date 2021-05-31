@@ -68,7 +68,10 @@ class Prefs:
         self.debug = obj.debug.isChecked()
         self.ballistic_en = obj.ballistic_en.isChecked()
         self.frag_en = obj.frag_en.isChecked()
-        self.recalc_sigs = obj.recalc_sigs.isChecked()
+        try:
+            self.recalc_sigs = obj.recalc_sigs.isChecked()
+        except AttributeError:
+            self.recalc_sigs = None
         self.recalc_times = obj.recalc_times.isChecked()
         self.wind_en = obj.wind_en.isChecked()
         self.pert_en = obj.pert_en.isChecked()

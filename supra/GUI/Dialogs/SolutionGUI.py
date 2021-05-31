@@ -1588,9 +1588,9 @@ class SolutionGUI(QMainWindow):
         self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
         self.light_curve_buton.clicked.connect(partial(save, self))
 
-        self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
-        self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
-        self.contour_file_buton.clicked.connect(partial(save, self))
+        # self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
+        # self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
+        # self.contour_file_buton.clicked.connect(partial(save, self))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
@@ -2535,9 +2535,9 @@ class SolutionGUI(QMainWindow):
 
 
 
-        self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
-        self.a.setGeometry(QRect(200, 300, 1600, 800))
-        self.a.show()
+            # self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
+            # self.a.setGeometry(QRect(200, 300, 1600, 800))
+            # self.a.show()
 
         #     self.drawWaveform()
         #     self.alt_pressed = False

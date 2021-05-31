@@ -36,7 +36,10 @@ def saveSetup(obj):
     # setup.arrival_times_file = obj.arrival_times_edits.text()
     setup.station_picks_file = obj.station_picks_edits.text()
     setup.light_curve_file = obj.light_curve_edits.text()
-    setup.contour_file = obj.contour_file_edits.text()
+    try:
+        setup.contour_file = obj.contour_file_edits.text()
+    except AttributeError:
+        setup.contour_file = ""
     # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
