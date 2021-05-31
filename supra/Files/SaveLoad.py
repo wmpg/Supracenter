@@ -35,6 +35,8 @@ def saveSetup(obj):
 
     # setup.arrival_times_file = obj.arrival_times_edits.text()
     setup.station_picks_file = obj.station_picks_edits.text()
+    setup.light_curve_file = obj.light_curve_edits.text()
+    setup.contour_file = obj.contour_file_edits.text()
     # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
@@ -131,6 +133,15 @@ def loadDisplay(setup, obj):
 
     # obj.arrival_times_edits.setText(setup.arrival_times_file)
     obj.station_picks_edits.setText(setup.station_picks_file)
+    try:
+        obj.light_curve_edits.setText(setup.light_curve_file)
+    except:
+        pass
+
+    try:
+        obj.contour_file_edits.setText(setup.contour_file)
+    except:
+        pass
     # obj.points_name_edits.setText(setup.replot_points_file)
 
     obj.lat_centre_edits.setText(str(setup.lat_centre))

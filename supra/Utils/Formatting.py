@@ -2,6 +2,8 @@ import os
 import sys
 import random
 
+import numpy as np
+
 try:
     from termcolor import colored
     termclr = True
@@ -30,12 +32,19 @@ def printTrue(result):
         else:
             return "< FALSE >"
 
-def termchkr(t, color='white'):
+def termchkr(t, color='white', rm_brace=False):
 
-    if termclr:
-        return "[" + colored(t.upper(), color) + "] "
+    if rm_brace:
+        if termclr:
+            return colored(t, color)
+        else:
+            return t
     else:
-        return "[" + t.upper() + "] "
+        if termclr:
+            return "[" + colored(t.upper(), color) + "] "
+        else:
+            return "[" + t.upper() + "] "
+
 
 def printMessage(t):
     
@@ -122,13 +131,68 @@ def checkExt(file, ext):
     else:
         return file
 
-def stationFormat(network, code, available_channels, ground_distance):
+def stationFormat(stn, setup, ref_pos, more=True):
 
-    a = (" # # # {:}-{:} # # # ").format(network, code)
-    print(a)
-    print("#"*len(a))
-    # for chn in available_channels:
-    #     print(chn)
+    lines = "#"*20
+    cyan_tag = termchkr("#", color="cyan", rm_brace=True)
+    try:
+        b_time = stn.times.ballistic[0][0][0]
+    except IndexError:
+        b_time = None
 
-    print("Ground Distance: {:7.3f} km".format(ground_distance/1000))
-    print("")
+
+    try:
+        b_prts = stn.times.ballistic[0][1][0]
+    except IndexError:
+        b_prts = None
+
+
+    print(termchkr(lines, color="cyan", rm_brace=True), termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Station: {:2}-{:5}".format(cyan_tag, stn.metadata.network, stn.metadata.code))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} {:}".format(cyan_tag, stn.metadata.name))
+    print("{:} Latitude  {:.4f} °N".format(cyan_tag, stn.metadata.position.lat))
+    print("{:} Longitude {:.4f} °E".format(cyan_tag, stn.metadata.position.lon))
+    print("{:} Elevation {:.2f}  m".format(cyan_tag, stn.metadata.position.elev))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Filtering".format(cyan_tag))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Response Attached:        {:}".format(cyan_tag, printTrue(stn.hasResponse())))
+    print("{:} Seismic Available:        {:}".format(cyan_tag, printTrue(stn.hasSeismic())))
+    print("{:} Infrasound Available:     {:}".format(cyan_tag, printTrue(stn.hasInfrasound())))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Sources".format(cyan_tag))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Ground Distance From Reference: {:.2f} km".format(cyan_tag, stn.metadata.position.ground_distance(ref_pos)/1000))
+    # if b_prts is not None:
+    #     print("{:} Ballistic Arrival {:.2f} ({:+.2f} / {:+.2f}) s".format(cyan_tag, b_time, np.nanmax(b_prts) - b_time), np.nanmax(b_prts) - b_time)
+    # else:
+    if b_time is None:
+        print("{:} No Ballistic Arrival".format(cyan_tag))
+    else:
+        print("{:} Ballistic Arrival {:.2f} s".format(cyan_tag, b_time))
+    
+
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    print("{:} Annotations".format(cyan_tag))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+    if len(stn.annotation.annotation_list) == 0:
+        print("{:} No Annotations".format(cyan_tag))
+    for an in stn.annotation.annotation_list:
+        print("{:} {:} at {:.2f} s, from source: {:}".format(cyan_tag, an.title, an.time, an.source))
+    print(termchkr(lines, color="cyan", rm_brace=True))
+
+def validate(v, name):
+
+
+
+    if isinstance(v, float):
+        if v is None:
+            raise TypeError("Invalid input argument: {:} (None)".format(name))
+            return None
+
+        if np.isnan(v):
+            raise TypeError("Invalid input argument: {:} (np.nan)".format(name))
+            return None
+
+    return v

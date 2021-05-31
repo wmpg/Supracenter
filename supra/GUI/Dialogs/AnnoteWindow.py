@@ -37,7 +37,7 @@ class AnnoteWindow(QWidget):
             start_time = self.an.time
             end_time = self.an.time + self.an.length
 
-            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
+            clean = {"ref_datetime" : self.bam.setup.fireball_datetime, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
 
             cut_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime, clean=clean)
             station_waveform = pg.PlotDataItem(x=cut_time, y=cut_waveform, pen='w')
@@ -46,9 +46,14 @@ class AnnoteWindow(QWidget):
             start_time_noise = 0
             end_time_noise = 0 + self.an.length
 
-            clean = {"ref_datetime" : None, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
+            clean = {"ref_datetime" : self.bam.setup.fireball_datetime, "resp" : self.stn.response, "bandpass" : None, "backup" : False}
 
             noise_waveform, cut_time = subTrace(trace, start_time, end_time, self.bam.setup.fireball_datetime, clean=clean)
+
+            cut_waveform =  [item for sublist in cut_waveform for item in sublist]
+            cut_time =      [item for sublist in cut_time for item in sublist]
+            noise_waveform =[item for sublist in noise_waveform for item in sublist]
+
 
             try:
                 sampling_rate = stn.stream.select(channel=current_channel)[0].stats.sampling_rate

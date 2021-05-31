@@ -110,6 +110,33 @@ class Station:
 
         return A + B + C + D
 
+    def hasResponse(self):
+
+        if not hasattr(self, "response"):
+            return False
+
+        if self.response is None:
+            return False
+
+        return True
+
+    def hasSeismic(self):
+
+        st = self.stream
+        a = st.select(component="Z")
+        if len(a) > 0:
+            return True
+        else:
+            return False
+
+    def hasInfrasound(self):
+        st = self.stream
+        a = st.select(component="F")
+        if len(a) > 0:
+            return True
+        else:
+            return False
+
     def stn_distance(self, ref_pos):
         self.distance = self.metadata.position.pos_distance(ref_pos)
         return self.distance

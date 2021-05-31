@@ -8,6 +8,14 @@ from PyQt5.QtCore import *
 
 import pyqtgraph as pg
 
+from matplotlib.backends.backend_qt4agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qt4agg import NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+
+import matplotlib.pyplot as plt
+
+
+
 class SourceEx(QGroupBox):
 
     def __init__(self, S):
@@ -335,3 +343,36 @@ class ToggleButton(QAbstractButton):
         self.status = not self.status
         self.update()
 
+
+class MatplotlibPyQT(QWidget):
+
+    def __init__(self):
+        super(MatplotlibPyQT, self).__init__() 
+
+        plt.style.use('dark_background')
+
+        # a figure instance to plot on
+        self.figure = Figure()
+
+        # this is the Canvas Widget that displays the `figure`
+        # it takes the `figure` instance as a parameter to __init__
+        self.canvas = FigureCanvas(self.figure)
+
+        # this is the Navigation widget
+        # it takes the Canvas widget and a parent
+        self.toolbar = NavigationToolbar(self.canvas, self)
+        self.toolbar.setStyleSheet("background-color:Gray;")
+        # create an axis
+        # self.ax = self.figure.add_subplot(111)
+
+        # set the layout
+        layout = QVBoxLayout()
+        layout.addWidget(self.toolbar)
+        layout.addWidget(self.canvas)
+        self.setLayout(layout)
+
+    def show(self):
+        self.canvas.draw()
+
+    # def clear(self):
+    #     self.ax.clear()

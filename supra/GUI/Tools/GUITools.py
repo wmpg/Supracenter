@@ -73,6 +73,13 @@ def createTab(parent, name):
 
     return tab, tab_layout
 
+def createLabel(label_name, parent, row):
+    
+    label_obj = QLabel(label_name)
+    parent.addWidget(label_obj, row, 1)
+
+    return label_obj
+
 def createLabelEditObj(label_name, parent, row, width=1, h_shift=0, tool_tip='', validate='', default_txt=''):
     """ Creates a label and line edit object beside each other
 
@@ -129,7 +136,8 @@ def createComboBoxObj(label_name, parent, row, items=[], width=1, h_shift=0, too
     parent.addWidget(label_obj, row, 1 + h_shift)
     parent.addWidget(combo_obj, row, 2 + h_shift, 1, width)
 
-    for item in items: combo_obj.addItem(item)
+    for item in items: 
+        combo_obj.addItem(item)
 
     if tool_tip != '':
         label_obj.setToolTip(toolTime(tool_tip))

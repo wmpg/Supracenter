@@ -10,7 +10,7 @@ from scipy.interpolate import CubicSpline
 from supra.Utils.AngleConv import roundToNearest
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyzInteg import zInteg
-
+from supra.GUI.Tools.GUITools import *
 consts = Constants()
 
 class AtmosType:
@@ -113,8 +113,15 @@ class ECMWF(AtmosType):
         lat = roundToNearest(lat, div)
         lon = roundToNearest(lon, div)%360
 
-        lon_index = int(np.where(longitude==lon)[0])
-        lat_index = int(np.where(latitude==lat)[0])
+        try:
+            lon_index = int(np.where(longitude==lon)[0])
+            lat_index = int(np.where(latitude==lat)[0])
+        except TypeError as e:
+            # For when we can't find the right longitude and latitude in the data (Thanks Jouse for finding this!)
+            errorMessage('Unable to find exact lat/lon in given weather profile, using closest values!', 1, detail='{:}'.format(e))
+            lon_index = int(np.argmin(np.abs(longitude-lon)))
+            lat_index = int(np.argmin(np.abs(latitude-lat)))
+
         time_index = int(hour - 1)
         idx_rng = int(np.ceil(rng/div))
 
@@ -231,7 +238,6 @@ class ECMWF(AtmosType):
             
 
             frac = int(np.around((ii+1)/num_pts*num_lvl) + 1)
-
 
             t.append(self.temperature[last_frac:frac, lat_index, lon_index])
             u.append(self.x_wind[last_frac:frac, lat_index, lon_index])

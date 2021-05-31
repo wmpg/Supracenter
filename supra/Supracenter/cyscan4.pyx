@@ -102,7 +102,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
 @cython.cdivision(True)
 @cython.nonecheck(False)
 cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] supra_pos, np.ndarray[FLOAT_TYPE_t, ndim=1] detec_pos, 
-    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=330, float v_tol=1000, debug=False, trace=False):
+    np.ndarray[FLOAT_TYPE_t, ndim=2] z_profile, wind=True, int n_theta=90, int n_phi=90, float h_tol=330, float v_tol=1000, debug=False):
 
     # Original Author: Wayne Edwards
 
@@ -200,16 +200,11 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     last_error = 1e20
     np.seterr(divide='ignore', invalid='ignore')
 
-
-
 #############
 # Scan Loop #
 #############
 
     while not found:
-        if trace:
-            trace_list = []
-            trace_list.append([supra_pos[0], supra_pos[1], supra_pos[2]])
         count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
@@ -217,8 +212,6 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         if n_layers <= 1:
             if debug:
                 print('CYSCAN ERROR: No layers')
-            if trace:
-                return np.array([np.nan, np.nan, np.nan, np.nan, trace_list])
             return np.array([np.nan, np.nan, np.nan, np.nan])
 
         for i in range(n_layers - 1):
@@ -229,6 +222,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Winds Enabled
             if wind:
                 # clear old variables
+
                 
                 p2 = p/(1 - p*u[i, :])
 
@@ -255,14 +249,9 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 X += p*(delz)/(np.sqrt(s2 - p**2))
                 last_z = i + 1
             
-
             # Calculate true destination positions (transform back)
             horizontal_error = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2))
             vertical_error = z[n_layers - last_z - 1] - detec_pos[2]
-
-            if trace:
-                k, l = np.where(horizontal_error == np.nanmin(horizontal_error))
-                trace_list.append([(a*X - b*Y)[k, l], (b*X + a*Y)[k, l], z[n_layers - 1 - last_z]])
 
             # If the ray is close enough to the station, stop calculating
             # done in order to reduce NaNs -> Theoretically it should go further if it can,
@@ -276,7 +265,6 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
         E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
 
-
         # Fast way to check for all nan
         if np.isnan(E).all():
             # RETURN 1 of 3:
@@ -284,8 +272,6 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Caused by ray reflecting upwards
             if debug:
                 print('CYSCAN ERROR: All NaNs - Rays reflect upwards')
-            if trace:
-                return np.array([np.nan, np.nan, np.nan, np.nan, trace_list])
             return np.array([np.nan, np.nan, np.nan, np.nan])
 
         # Ignore all nan slices - not interested in these points
@@ -302,8 +288,6 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Caused by getting stuck in a loop, cannot find solution
             if debug:
                 print('CYSCAN ERROR: Cannot find solution - Angle precision less than tolerance')
-            if trace:
-                return np.array([np.nan, np.nan, np.nan, np.nan, trace_list])
             return np.array([np.nan, np.nan, np.nan, np.nan])
 
         if horizontal_error[k, l] < h_tol and vertical_error < v_tol:
@@ -396,6 +380,4 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     # Return 3 of 3:
     # Success
-    if trace:
-        return np.array([t_arrival, azimuth, takeoff, E[k, l], trace_list])
     return np.array([t_arrival, azimuth, takeoff, E[k, l]])

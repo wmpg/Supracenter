@@ -60,6 +60,7 @@ from supra.GUI.Dialogs.AnnoteWindow import AnnoteWindow
 from supra.GUI.Dialogs.Preferences import PreferenceWindow
 from supra.GUI.Dialogs.Yields import Yield
 from supra.GUI.Dialogs.FragStaff import FragmentationStaff
+from supra.GUI.Dialogs.TrajSpace import TrajSpace
 from supra.GUI.Dialogs.AllWaveformView import AllWaveformViewer
 from supra.GUI.Dialogs.TrajInterp import TrajInterpWindow
 from supra.GUI.Dialogs.StationList import StationList
@@ -67,6 +68,7 @@ from supra.GUI.Dialogs.ParticleMot import ParticleMotion
 from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
 from supra.GUI.Dialogs.ReportDialog import ReportWindow
+from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
 
@@ -74,7 +76,7 @@ from supra.GUI.Tabs.SupracenterSearch import supSearch
 from supra.GUI.Tabs.TrajectorySearch import trajectorySearch
 
 from supra.Stations.Filters import *
-from supra.Stations.ProcessStation import procTrace 
+from supra.Stations.ProcessStation import procTrace, procStream, findChn
 from supra.Stations.CalcAllTimes4 import calcAllTimes
 from supra.Stations.CalcAllSigs import calcAllSigs
 from supra.Stations.StationObj import Polarization, AnnotationList
@@ -93,6 +95,8 @@ from supra.Files.SaveLoad import save, load, loadSourcesIntoBam
 
 from supra.Atmosphere.Parse import parseWeather
 from supra.Atmosphere.radiosonde import downloadRadio
+
+from supra.Geminus.geminusGUI import Geminus
 
 from supra.Supracenter.l137 import estPressure
 
@@ -145,6 +149,17 @@ class SolutionGUI(QMainWindow):
 
         # Add widgets to the floating box
         self.addIniDockWidgets()
+
+    def geminus(self):
+
+        if not hasattr(self.bam.setup, "trajectory"):
+            errorMessage('No trajectory found!', 2, detail="Please include a trajectory in the source tab before using Geminus!")
+            return None
+
+        self.geminus_gui = Geminus(self.bam, self.prefs)
+        self.geminus_gui.setGeometry(QRect(100, 100, 1000, 800))
+        self.geminus_gui.show()
+
 
 
     def viewToolbar(self):
@@ -205,6 +220,12 @@ class SolutionGUI(QMainWindow):
         self.t = TrajInterpWindow(self.bam, self)
         self.t.setGeometry(QRect(500, 400, 500, 400))
         self.t.show()
+
+    def rtvWindow(self):
+
+        self.rtv = rtvWindowDialog(self.bam, self.prefs)
+        self.rtv.setGeometry(QRect(500, 400, 500, 400))
+        self.rtv.show()
 
     def csvLoad(self, table):
         """ Loads csv file into a table
@@ -604,7 +625,7 @@ class SolutionGUI(QMainWindow):
                 return None
             try:    
                 # points = self.bam.setup.trajectory.findPoints(gridspace=100, min_p=9000, max_p=50000)
-                points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=50000)
+                points = self.bam.setup.trajectory.trajInterp2(div=50, min_p=17000, max_p=75000)
 
             except AttributeError as e:
                 errorMessage('Trajectory is not defined!', 2, detail='{:}'.format(e))
@@ -625,7 +646,7 @@ class SolutionGUI(QMainWindow):
         results = np.array(results)
 
         dx, dy = 0.01, 0.01
-        
+        print(results)
         X = results[:, 0]
         Y = results[:, 1]
         T = results[:, 3]
@@ -1060,7 +1081,7 @@ class SolutionGUI(QMainWindow):
         variables = []
 
         if self.prefs.atm_type == 'ecmwf':
-            variables = ['t', 'u', 'v']
+            variables = ['u', 'v', 't']
 
         if errorCodes(self.setup, 'sounding_file'):
             return None
@@ -1087,7 +1108,15 @@ class SolutionGUI(QMainWindow):
             errorMessage('Unable to find specified profile!', 2, detail='{:}'.format(e))
             return None
 
+        z = sounding[:, 0]
+        t = sounding[:, 1]
+        u = sounding[:, 2]
+        v = sounding[:, 3]
+        p = 10*101.325*np.exp(-0.00012*z)
 
+
+
+        atmos_vars = [z, u, v, t, p]
         filename = checkExt(filename[0], '.txt')
 
         header = 'Height'
@@ -1104,13 +1133,13 @@ class SolutionGUI(QMainWindow):
             
             f.write(header)
 
-            for line in sounding:
+            for line in range(len(sounding)):
                 info = ''
-                for element in line:
-                    if element == line[-1]:
-                        info = info + str(element) + '\n'
+                for v in range(5):
+                    if v == 4:
+                        info = info + str(atmos_vars[v][line]) + '\n'
                     else:
-                        info = info + str(element) + ','
+                        info = info + str(atmos_vars[v][line]) + ','
                 f.write(info)
 
 
@@ -1554,6 +1583,14 @@ class SolutionGUI(QMainWindow):
         self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
         self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius', validate='float')
         self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", tab1_content, 14, tool_tip='fireball_datetime')
+
+        self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
+        self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
+        self.light_curve_buton.clicked.connect(partial(save, self))
+
+        self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
+        self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
+        self.contour_file_buton.clicked.connect(partial(save, self))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
@@ -2164,6 +2201,7 @@ class SolutionGUI(QMainWindow):
             self.make_picks_station_graph_canvas.plot((toa_line_time)*prefs.avg_sp_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
         except:
             self.make_picks_station_graph_canvas.plot((toa_line_time)*310, (toa_line_time), pen=(255, 0, 0))
+
         print('')
         
 
@@ -2171,6 +2209,15 @@ class SolutionGUI(QMainWindow):
         self.make_picks_station_graph_canvas.setLabel('left', "Time", units='s')
 
         SolutionGUI.update(self)
+
+    def deleteStation(self):
+        pass
+        # stn = self.bam.stn_list[self.current_station]
+        # if self.prefs.debug:
+        #     print(printMessage("debug"), "Deleting Station {:}-{:}".format(stn.metadata.network, stn.metadata.code))
+
+        # self.bam.stn_list.pop(self.current_station)
+        # save(self)
 
     def keyPressEvent(self, event):
 
@@ -2210,6 +2257,9 @@ class SolutionGUI(QMainWindow):
                 self.invertGraph()
             except:
                 pass
+
+        if event.key() == QtCore.Qt.Key_X:
+            self.deleteStation()
 
         if event.key() == QtCore.Qt.Key_Up:
             self.group_no += 1
@@ -2333,8 +2383,8 @@ class SolutionGUI(QMainWindow):
                     if pick.stn == stn:
                         stat_picks.append(pick)
 
-                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks])
-                self.w.setGeometry(QRect(100, 100, 900, 900))
+                self.w = FragmentationStaff(self.bam.setup, [stn, self.current_station, stat_picks, channel], self.bam)
+                self.w.setGeometry(QRect(100, 100, 1200, 900))
                 self.w.show()
 
             # elif self.solve_height.isChecked():
@@ -2447,6 +2497,7 @@ class SolutionGUI(QMainWindow):
 
         #             D = propegateBackwards(ref_pos, stn, self.bam)
 
+
         #             for line in D:
         #                 if not np.isnan(line[0]): 
         #                     P = Position(0, 0, 0)
@@ -2456,6 +2507,18 @@ class SolutionGUI(QMainWindow):
         #                     P.pos_geo(ref_pos)
         #                     S = Supracenter(P, line[3])
         #                     points.append([S, stn.color])
+
+        # elif self.traj_space.isChecked():
+            
+
+        #     self.ts = TrajSpace(self.bam)
+        #     self.ts.setGeometry(QRect(100, 100, 1200, 700))
+        #     self.ts.show() 
+        #     self.traj_space.setState(False)
+
+        # ### Annotations
+        # elif self.annote_picks.isChecked():
+
 
         #     # Pass grid to polmap
         #     self.pm = Polmap(self.bam, points)
@@ -2594,40 +2657,45 @@ class SolutionGUI(QMainWindow):
         # Get the miniSEED file path
         
         # Try reading the mseed file, if it doesn't work, skip to the next frame
-        try:
-            mseed = stn.stream.copy()
-
-        except TypeError:
-            if self.prefs.debug:
-                print('mseed file could not be read:', mseed_file_path)
-            return None
 
         if channel_changed == 0:
             # Populate channel list
             self.make_picks_channel_choice.blockSignals(True)
             self.make_picks_channel_choice.clear()
-            for i in range(len(mseed)):
-                self.make_picks_channel_choice.addItem(mseed[i].stats.channel)
+            for i in range(len(stn.stream)):
+                self.make_picks_channel_choice.addItem(stn.stream[i].stats.channel)
             self.make_picks_channel_choice.blockSignals(False)
         
+
+
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
+
+        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime)
+            
+        # if channel_changed == 0:
+        #     # Populate channel list
+        #     self.make_picks_channel_choice.blockSignals(True)
+        #     self.make_picks_channel_choice.clear()
+        #     for i in range(len(st)):
+        #         self.make_picks_channel_choice.addItem(st.stats.channel)
+        #     self.make_picks_channel_choice.blockSignals(False)
+    
         # nominal way to get trace metadata        
         # stn_id = mseed[current_channel].get_id()
         # print(resp.get_channel_metadata(stn_id))
-        resp = stn.response
+        
         # A second stream containing channels with the response
 
-        try:
-            st = mseed.select(inventory=resp.select(channel=chn_selected))[0]
-            response_added = True
-        except AttributeError:
-            # print(printMessage("warning"), " No response found")
-            st = mseed.select(channel=chn_selected)[0]
-            response_added = False
+        # If a channel is built up of multiple sections with gaps between
 
+        # Merge the files without gaps
+       
+        
+        
+
+        st = findChn(st, chn_selected)
         self.current_waveform_raw = st.data
-
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
 
@@ -2643,14 +2711,21 @@ class SolutionGUI(QMainWindow):
         # self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
         # 2.370980392E10
 
-        self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
-        self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+        for ii in range(len(waveform_data)):
+            self.current_station_waveform = pg.PlotDataItem(x=time_data[ii], y=waveform_data[ii], pen='w')
+            self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+
+        for gap in gap_times:
+            gap_plot = pg.LinearRegionItem(values=gap, orientation='vertical', brush='r', pen='r', hoverBrush='r', hoverPen='r', movable=False)
+            # gap_plot = pg.PlotDataItem(x=gap, y=[0, 0], pen='r')
+            self.make_picks_waveform_canvas.addItem(gap_plot)
+
         # self.make_picks_waveform_canvas.plot(x=[t_arrival, t_arrival], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=(255, 0, 0), width=2))
         self.make_picks_waveform_canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
 
         self.make_picks_waveform_canvas.setLabel('bottom', "Time after {:} s".format(self.bam.setup.fireball_datetime))
 
-        if response_added:
+        if resp is not None:
             if chn_selected not in ["BDF", "HDF"]:
                 self.make_picks_waveform_canvas.setLabel('left', "Ground Motion", units='m')
             else:
@@ -2659,7 +2734,6 @@ class SolutionGUI(QMainWindow):
             self.make_picks_waveform_canvas.setLabel('left', "Response")
 
 
-        # self.make_picks_waveform_canvas.setLabel('left', pg.LabelItem("Overpressure", size='20pt'), units='Pa')
         self.make_picks_waveform_canvas.plot(x=[-10000, 10000], y=[0, 0], pen=pg.mkPen(color=(100, 100, 100)))
 
 
@@ -2690,10 +2764,14 @@ class SolutionGUI(QMainWindow):
 
         available_channels = []
 
-        for i in range(len(mseed)):
-            available_channels.append(mseed[i].stats.channel)
+        for i in range(len(st)):
+            available_channels.append(st.stats.channel)
 
-        station_details = stationFormat(stn.metadata.network, stn.metadata.code, available_channels, stn.ground_distance)
+
+        expected_arrival_time = stn.ground_distance/330
+
+        apx_arrival = pg.InfiniteLine(pos=expected_arrival_time, angle=90, pen='m', movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+        self.make_picks_waveform_canvas.addItem(apx_arrival)
 
         # If shouing computer found signals
         if False: # Will be added in a future update
@@ -2719,19 +2797,20 @@ class SolutionGUI(QMainWindow):
 
             b_time = stn.times.ballistic[0][0][0]
 
-            if b_time == b_time:
-                self.make_picks_waveform_canvas.plot(x=[b_time, b_time], y=[np.min(waveform_data), np.max(waveform_data)], pen=pg.mkPen(color=src.color, width=2) , label='Ballistic')
-                print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
-            else:
-                print(printMessage("ballistic"), "No Nominal Arrival")
+            if not np.isnan(b_time):
+                b_arrival = pg.InfiniteLine(pos=b_time, angle=90, pen=pg.mkPen(color=src.color, width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+                self.make_picks_waveform_canvas.addItem(b_arrival)
+            #     print(printMessage("ballistic"), "Nominal Arrival: {:.3f} s".format(b_time))
+            # else:
+            #     print(printMessage("ballistic"), "No Nominal Arrival")
 
             if self.prefs.pert_en:
                 data, remove = chauvenet(stn.times.ballistic[0][1][0])
-                try:
-                    print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                    print('Removed points {:}'.format(remove))
-                except ValueError:
-                    print(printMessage("ballistic"), 'No Perturbation Arrivals')
+                # try:
+                #     print(printMessage("ballistic"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                #     print('Removed points {:}'.format(remove))
+                # except ValueError:
+                #     print(printMessage("ballistic"), 'No Perturbation Arrivals')
 
                 for i in range(len(data)):
                     if self.show_perts.isChecked():
@@ -2753,14 +2832,14 @@ class SolutionGUI(QMainWindow):
                 v_time = (frag.position.elev - stn.metadata.position.elev)/310
                 h_time = frag.position.ground_distance(stn.metadata.position)/1000
                 p_time = h_time + v_time
-                print('++++++++++++++++')
-                print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
+                # print('++++++++++++++++')
+                # print(printMessage("fragmentation"), '({:}) ({:6.2f} km)'.format(i+1, frag.position.elev/1000))
                 frag.position.pos_loc(stn.metadata.position)
                 stn.metadata.position.pos_loc(stn.metadata.position)
                 xyz_range = np.sqrt((frag.position.x - stn.metadata.position.x)**2 + \
                                     (frag.position.y - stn.metadata.position.y)**2 + \
                                     (frag.position.z - stn.metadata.position.z)**2)
-                print('Range {:7.3f} km'.format(xyz_range/1000))
+                # print('Range {:7.3f} km'.format(xyz_range/1000))
                 if not np.isnan(f_time):
                     # Plot Fragmentation Prediction
                     #pen=pg.mkPen(color=src.color, width=2)
@@ -2773,19 +2852,19 @@ class SolutionGUI(QMainWindow):
 
                     stn.stn_distance(frag.position)
                     #print("Range: {:7.3f} km".format(stn.distance/1000))                   
-                    print('Arrival: {:.3f} s'.format(f_time))
+                    # print('Arrival: {:.3f} s'.format(f_time))
 
-                else:
-                    pass
-                    print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
+                # else:
+                #     pass
+                #     print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
 
                 if self.prefs.pert_en:
                     data, remove = self.obtainPerts(stn.times.fragmentation, i)
-                    try:
-                        print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
-                        print('Removed points {:}'.format(remove))
-                    except ValueError:
-                        print(printMessage("fragmentation"), 'No Perturbation Arrivals')
+                    # try:
+                    #     print(printMessage("fragmentation"), 'Perturbation Arrival Range: {:.3f} - {:.3f}s'.format(np.nanmin(data), np.nanmax(data)))
+                    #     print('Removed points {:}'.format(remove))
+                    # except ValueError:
+                    #     print(printMessage("fragmentation"), 'No Perturbation Arrivals')
                     for j in range(len(data)):
                         if self.show_perts.isChecked():
                             
@@ -2797,6 +2876,7 @@ class SolutionGUI(QMainWindow):
                             except IndexError:
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
+        stationFormat(stn, self.bam.setup, ref_pos)
 
         # self.addAnnotes()
     def obtainPerts(self, data, frag):
