@@ -11,6 +11,8 @@ from supra.Utils.AngleConv import roundToNearest
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyzInteg import zInteg
 from supra.GUI.Tools.GUITools import *
+from supra.Atmosphere.NRLMSISE import getAtmDensity
+from wmpl.Utils.TrajConversions import date2JD
 consts = Constants()
 
 class AtmosType:
@@ -178,8 +180,52 @@ class ECMWF(AtmosType):
         return np.array(t_all), np.array(u_all), np.array(v_all), z
 
 
-    def generateProfile(self, t, u, v, z, h, spline=100):
-        level, speed, mags, dirs = self.spline(*self.convert(t, u, v, z), interp=spline)
+    def generateProfile(self, t, u, v, z, h, lats, lons, spline=100, ref_time=None):
+
+        level, speed, mags, dirs = self.convert(t, u, v, z)
+
+        # # Temp Hack to get NRL data
+        # speed = []
+
+        # lat = lats[0]
+        # lon = lons[0]
+
+        # jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
+
+
+        # for hh in level:
+
+        #     t = getAtmDensity(lat, lon, hh, jd)
+
+        #     speed.append(np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)) 
+
+        # speed = np.array(speed)
+        # #######################
+
+
+        # If the region extends above available data
+        dh = 2500 #meters
+        if h[0] > level[0]:
+
+            missing_heights = np.arange(level[0] + dh, h[0] + dh, dh)
+
+            lat = lats[0]
+            lon = lons[0]
+
+            jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
+
+
+            for hh in missing_heights:
+
+                t = getAtmDensity(lat, lon, hh, jd)
+
+                speed = np.insert(speed, 0, np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)) 
+                mags = np.insert(mags, 0, 0)
+                dirs = np.insert(dirs, 0, 0)
+                level = np.insert(level, 0, hh)
+
+
+        level, speed, mags, dirs = self.spline(level, speed, mags, dirs, interp=spline)
 
         sounding = []
         for i in range(len(level)):
@@ -190,7 +236,7 @@ class ECMWF(AtmosType):
         
         return sounding
 
-    def getProfile(self, lat, lon, heights, prefs, spline=100):
+    def getProfile(self, lat, lon, heights, prefs, spline=100, ref_time=None):
         ''' Interpolates between starting and ending locations, converts, and splines 
             resulting curve into a smooth profile
             lat = [start lat, end lat]
@@ -215,6 +261,9 @@ class ECMWF(AtmosType):
         num_lvl = len(self.temperature)
 
         last_frac = 0
+
+        range_lats = lat
+        range_lons = lon
 
         for ii, pt in enumerate(pts):            
 
@@ -288,7 +337,7 @@ class ECMWF(AtmosType):
         v_spr = np.array([item for sublist in v_spr for item in sublist])
         z_spr = np.array([item for sublist in z_spr for item in sublist])
 
-        sounding = self.generateProfile(t, u, v, z, heights, spline=spline)
+        sounding = self.generateProfile(t, u, v, z, heights, range_lats, range_lons, spline=spline, ref_time=ref_time)
 
         perturbations = []
 
@@ -296,7 +345,7 @@ class ECMWF(AtmosType):
             
             for i in range(perturb):
 
-                per_sounding = self.generateProfile(*self.perturb(t, u, v, z, t_spr, u_spr, v_spr), heights, spline=spline)
+                per_sounding = self.generateProfile(*self.perturb(t, u, v, z, t_spr, u_spr, v_spr), heights, range_lats, range_lons, spline=spline, ref_time=ref_time)
 
                 perturbations.append(np.array(per_sounding))
 

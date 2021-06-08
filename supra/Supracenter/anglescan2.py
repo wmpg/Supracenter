@@ -1,35 +1,31 @@
 import numpy as np
 
-import pyximport
-pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
-def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False):
-    # switched positions (Jun 2019)
+def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot=False):
+    # Originally by Wayne Edwards (Supracenter)
 
-    # This function should be called for every station
-    # Original Author: Wayne Edwards
-    # Theta is vertical
-    # phi is horizontal
-
-    """ Finds an optimal ray from the source of the Supracenter to the detector, by making a guess, 
-        and checking for the angle of minimum error. This is repeated with better guesses by taking angles around the best angle of the previous step.
-
+    """ Ray-traces from a point given initial launch angles
+    
     Arguments:  
-        supra_pos: [array] 3-D local coordinates of the source of the sound. Given as: [x, y, Elevation]
-        detec_pos: [array] 3-D local coordinates of the detector. Given as: [x, y, Elevation]
-        zProfile: [array] The given atmospheric profile between the source and the detector. Given as: [Height, Temperature, Wind Speed, Wind Direction] for different values of height
-        wind: [int] 0 - disable winds, 1 - enable winds. Temperature is still used.
-        n_theta, n_phi: [int] angle grid spacing of the takeoff, azimuth angles
-        tol: [float] Tolerance on the error of the takeoff angle
-        precision: [double] minimum resolution of angles
+        S: [list] [x, y, z] of initial launch point (Supracenter or Wave-Release point)
+        phi: [float] initial azimuthal angle of launch [deg] with 0 deg being North and 90 deg being East
+        theta: [float] initial takeoff angle of launch [deg] with 90 deg being horizontal and 180 deg being vertically down
+        z_profile: [list] weather profile (n_layers * 4)
+                [[heights (increasing order) [m], speed of sound [m/s], wind speed [m/s], wind direction [rad] (same angle definition as phi)],
+                    ... ]
+    Keyword Arguments:
+        wind: [Boolean] if False sets all wind speeds to 0
+        debug: [Boolean] if True outputs print messages of program status
+        trace: [Boolean] if True returns (x, y, z, t) coordinates of the ray trace
+        plot: [Boolean] if True plots the ray trace 
+
 
     Returns:    
-        t_arrival: [float] Direct arrival time between source and detector
-        Azimuth: [float] The initial azimuthal angle for the source to the detector in degrees
-        Takeoff: [float] The initial takeoff angle from the source to the detector in degrees
-
-    See diagram on pg 34 of SUPRACENTER for more information
+        D: [list] (x, y, z, t) final position and travel time of the raytrace
+        T: [list] returned if trace is set to True, (x, y, z, t) of all points along the ray-trace
     """
 
     # Azimuths and Wind directions are measured as angles from north, and increasing clockwise to the East
@@ -43,7 +39,7 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False):
     # Switch to turn off winds
     if not wind:
         z_profile[:, 2] = 0
-        z_profile[:, 1] = 330
+        # z_profile[:, 1] = 330
 
     # The number of layers in the integration region
     n_layers = len(z_profile)
@@ -128,6 +124,17 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False):
         
         if trace:
             T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival])
+    
+    if trace and plot:
+        tr = np.array(T)
+
+        fig = plt.figure()
+        ax = Axes3D(fig)
+        ax.scatter(tr[:, 0], tr[:, 1], tr[:, 2], c='b')
+        ax.plot(tr[:, 0], tr[:, 1], tr[:, 2], c='k')
+        ax.scatter(S[0], S[1], S[2], c='r', marker="*")
+        ax.scatter(S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], c='g', marker="^")
+        plt.show()
         # if v_tol is not None and h_tol is not None:
         #     dh = z[last_z] - target[2]
         #     dx = np.sqrt((S[0] + (a*X - b*Y) - target[0])**2 + (S[1] + (b*X + a*Y) - target[1])**2)
@@ -138,6 +145,8 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False):
     # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 
 
     D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival]
+
+
 
     ##########################
     if trace:
@@ -157,5 +166,5 @@ if __name__ == '__main__':
     z_profile = np.array([[    0, 330, 0, 0],
                           [500, 330, 0, 0],
                           [1000, 330, 0, 0]])
-    D = anglescan(S, phi, theta, z_profile, trace=True)
+    D = anglescan(S, phi, theta, z_profile, trace=True, plot=True)
     print(D)

@@ -18,6 +18,7 @@ from supra.Stations.ProcessStation import procTrace, procStream, findChn, findDo
 
 from supra.Geminus.overpressure2 import overpressureihmod_Ro
 from supra.Geminus.geminusSearch import periodSearch, presSearch
+
 class FragmentationStaff(QWidget):
 
     def __init__(self, setup, pack, bam):
@@ -199,16 +200,14 @@ class FragmentationStaff(QWidget):
 
 
 
-        colour_angle = abs(90 - np.array(angle_off))
-        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
+
             # base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 
         
         ptb_colors = [(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
                       (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)]
         
-        cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
-        cbar.ax.set_xlabel("Difference from 90 deg [deg]")
+
         # base_points.setZValue(1)
         # self.height_canvas.addItem(base_points, update=True)
 
@@ -248,18 +247,27 @@ class FragmentationStaff(QWidget):
         # prt_points = pg.ScatterPlotItem()
         for i in range(len(self.setup.fragmentation_point)):
             data, remove = self.obtainPerts(stn.times.fragmentation, i)
+            azdata, remove = self.obtainPerts(stn.times.fragmentation, i, pt=1)
+            tfdata, remove = self.obtainPerts(stn.times.fragmentation, i, pt=2)
             Y = []
             X = self.setup.fragmentation_point[i].position.elev
-            for pt in data:
+            for pt, az, tf in zip(data, azdata, tfdata):
                 
                 Y = (pt - nom_pick.time)
 
                 self.dots_x.append(X)
                 self.dots_y.append(Y)
-                self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='m', alpha=0.3)
-                # prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
 
-            # self.height_canvas.addItem(prt_points, update=True)
+                az = np.radians(az)
+                tf = np.radians(180 - tf)
+                v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+                angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+
+        colour_angle = abs(90 - np.array(angle_off))
+        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
+        cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
+        cbar.ax.set_xlabel("Difference from 90 deg [deg]")
 
         for pick in self.pick_list:
             if pick.group == 0:

@@ -143,7 +143,7 @@ class Atmos:
         else:
             print('Unrecognized weather type')
 
-    def getSounding(self, lat=0, lon=0, heights=[100000, 0], spline=100):
+    def getSounding(self, lat=0, lon=0, heights=[100000, 0], ref_time=None, spline=100):
         ''' lat = [start lat, end lat], etc
         '''
         prefs = Prefs()
@@ -152,7 +152,7 @@ class Atmos:
         
         if prefs.atm_type == 'ecmwf':
             if hasattr(self, 'ecmwf'):
-                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
+                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline, ref_time=ref_time)
             else:
                 raise Exception("ECMWF is not loaded into the BAM file, trying to export default weather")
                 self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],

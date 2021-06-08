@@ -86,7 +86,7 @@ from wmpl.Utils.Earth import greatCircleDistance
 
 from supra.Utils.AngleConv import loc2Geo, chauvenet, angle2NDE
 from supra.Utils.Formatting import *
-from supra.Utils.Classes import Position, Constants, Pick, RectangleItem, Color, Plane, Annote
+from supra.Utils.Classes import Position, Constants, Pick, RectangleItem, Color, Plane, Annote, Constants
 from supra.Utils.TryObj import *
 from supra.Utils.pso import pso
 
@@ -99,6 +99,8 @@ from supra.Atmosphere.radiosonde import downloadRadio
 from supra.Geminus.geminusGUI import Geminus
 
 from supra.Supracenter.l137 import estPressure
+from supra.Atmosphere.NRLMSISE import getAtmDensity
+from wmpl.Utils.TrajConversions import date2JD
 
 HEIGHT_SOLVER_DIV = 250
 THEO = False
@@ -111,7 +113,7 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.3010*255, 0.7450*255, 0.9330*255),                
        (0.6350*255, 0.0780*255, 0.1840*255)]
 
-
+consts = Constants()
 # Main Window
 class SolutionGUI(QMainWindow):
 
@@ -226,6 +228,11 @@ class SolutionGUI(QMainWindow):
         self.rtv = rtvWindowDialog(self.bam, self.prefs)
         self.rtv.setGeometry(QRect(500, 400, 500, 400))
         self.rtv.show()
+
+    def trajSpace(self):
+        self.ts = TrajSpace(self.bam)
+        self.ts.setGeometry(QRect(100, 100, 1200, 700))
+        self.ts.show() 
 
     def csvLoad(self, table):
         """ Loads csv file into a table
@@ -847,13 +854,33 @@ class SolutionGUI(QMainWindow):
 
     def fatmPlot(self, sounding, perturbations):
         
+        NTS = []
+
         self.fatm_canvas.clear()
         self.fatm_canvas.setLabel('left', "Height", units='m', size='24pt')
         if self.fatm_variable_combo.currentText() == 'Sound Speed':
             X = sounding[:, 1]
+            dh = sounding[:, 0]
+
+            lat = tryFloat(self.fatm_end_lat.text())
+            lon = tryFloat(self.fatm_end_lon.text())
+            ref_time = self.bam.setup.fireball_datetime
+            jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
+
+
+
+            for hh in dh:
+
+                t = getAtmDensity(lat, lon, hh, jd)
+                c = np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)
+
+                NTS.append(c)
+
+
             self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Magnitude':
             X = sounding[:, 2]
+
             self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = np.degrees(sounding[:, 3])
@@ -873,8 +900,13 @@ class SolutionGUI(QMainWindow):
             return None
         Y = sounding[:, 0]
 
+        NTS = np.array(NTS)
+
         
         self.fatm_canvas.plot(x=X, y=Y, pen='w')
+
+        if len(NTS) == len(Y):
+            self.fatm_canvas.plot(x=NTS, y=Y, pen='m')
         SolutionGUI.update(self)
         perts_range = []
         if len(perturbations) != 0:
@@ -942,7 +974,7 @@ class SolutionGUI(QMainWindow):
             lat=self.bam.setup.lat_centre, lon=self.bam.setup.lon_centre, \
             rng=self.bam.setup.deg_radius, time=self.fatm_datetime_edits.dateTime())
 
-        save(self)
+        save(self, True)
 
     def fatmLoadAtm(self):
 
@@ -956,7 +988,7 @@ class SolutionGUI(QMainWindow):
             return None
 
         try:
-            atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+            atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, ref_time=self.bam.setup.fireball_datetime)
         except Exception as e:
             errorMessage("Unable to load sounding data from BAM", 1, detail="{:}".format(e))
             return None
@@ -1565,7 +1597,7 @@ class SolutionGUI(QMainWindow):
         self.save_button = QPushButton('Save')
         dock_layout.addWidget(self.save_button)
         # self.save_button.clicked.connect(partial(saveGUI, self, True))
-        self.save_button.clicked.connect(partial(save, self))
+        self.save_button.clicked.connect(partial(save, self, True))
 
         tab1 = QWidget()
         tab1_content = QGridLayout()
@@ -1576,7 +1608,7 @@ class SolutionGUI(QMainWindow):
      
         self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 15, width=1, h_shift=0, tool_tip='station_picks_file')
         self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
-        self.station_picks_buton.clicked.connect(partial(save, self))
+        self.station_picks_buton.clicked.connect(partial(save, self, True))
         
 
         self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre', validate='float')
@@ -1586,11 +1618,11 @@ class SolutionGUI(QMainWindow):
 
         self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
         self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
-        self.light_curve_buton.clicked.connect(partial(save, self))
+        self.light_curve_buton.clicked.connect(partial(save, self, True))
 
         self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
         self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
-        self.contour_file_buton.clicked.connect(partial(save, self))
+        self.contour_file_buton.clicked.connect(partial(save, self, True))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
@@ -1985,7 +2017,7 @@ class SolutionGUI(QMainWindow):
 
         self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
         self.bam.stn_list = calcAllSigs(self.bam, self.prefs)
-        save(self)
+        save(self, True)
         SolutionGUI.update(self)
 
         self.updatePlot()
@@ -2211,6 +2243,9 @@ class SolutionGUI(QMainWindow):
         SolutionGUI.update(self)
 
     def deleteStation(self):
+
+        # This didn't work before so it's just pass
+
         pass
         # stn = self.bam.stn_list[self.current_station]
         # if self.prefs.debug:
@@ -2387,54 +2422,54 @@ class SolutionGUI(QMainWindow):
                 self.w.setGeometry(QRect(100, 100, 1200, 900))
                 self.w.show()
 
-            elif self.solve_height.isChecked():
-                ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
-                P = self.setup.trajectory.trajInterp(div=HEIGHT_SOLVER_DIV)
-                stn = self.stn_list[self.current_station]
-                stn.position.pos_loc(ref_pos)
-                dataset = parseWeather(self.setup)
-                C = []
-                max_steps = len(P)*self.setup.perturb_times + 1
-                count = 0
-                loadingBar("Trying Heights", 0, max_steps)
-                A = self.setup.trajectory.pos_i
-                B = self.setup.trajectory.pos_f
+            # elif self.solve_height.isChecked():
+            #     ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
+            #     P = self.setup.trajectory.trajInterp(div=HEIGHT_SOLVER_DIV)
+            #     stn = self.stn_list[self.current_station]
+            #     stn.position.pos_loc(ref_pos)
+            #     dataset = parseWeather(self.setup)
+            #     C = []
+            #     max_steps = len(P)*self.setup.perturb_times + 1
+            #     count = 0
+            #     loadingBar("Trying Heights", 0, max_steps)
+            #     A = self.setup.trajectory.pos_i
+            #     B = self.setup.trajectory.pos_f
 
-                A.pos_loc(B)
-                B.pos_loc(B)
+            #     A.pos_loc(B)
+            #     B.pos_loc(B)
 
-                # Get prediction of time of the meteor, so the timing of each fragmentation can be known
-                length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
-                time_of_meteor = length_of_meteor/self.setup.trajectory.v
-                for ii, point in enumerate(P):
-                    point.pos_loc(ref_pos)
-                    for ptb_n in range(self.setup.perturb_times):
+            #     # Get prediction of time of the meteor, so the timing of each fragmentation can be known
+            #     length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
+            #     time_of_meteor = length_of_meteor/self.setup.trajectory.v
+            #     for ii, point in enumerate(P):
+            #         point.pos_loc(ref_pos)
+            #         for ptb_n in range(self.setup.perturb_times):
                         
-                        self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
-                        zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                                [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
+            #             self.sounding = self.perturbGenerate(ptb_n, dataset, self.perturbSetup())
+            #             zProfile, _ = getWeather(np.array([point.lat, point.lon, point.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+            #                     [ref_pos.lat, ref_pos.lon, ref_pos.elev], self.sounding, convert=False)
                         
-                        #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
+            #             #zProfile = zInterp(stn.position.z, point.z, zProfile, div=37)
 
-                        f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
-                            n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            #             f_time, _, _, _ = cyscan(np.array([point.x, point.y, point.z]), np.array([stn.position.x, stn.position.y, stn.position.z]), zProfile, wind=True, \
+            #                 n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
-                        correction = time_of_meteor - A.z/self.setup.trajectory.pos_i.elev*(time_of_meteor)
-                        C.append(f_time + correction)
-                        count += 1
-                        loadingBar("Trying Heights", count, max_steps)
-                C = np.array(C)
+            #             correction = time_of_meteor - A.z/self.setup.trajectory.pos_i.elev*(time_of_meteor)
+            #             C.append(f_time + correction)
+            #             count += 1
+            #             loadingBar("Trying Heights", count, max_steps)
+            #     C = np.array(C)
 
-                idx = np.nanargmin(np.abs(C - pick.time))
-                print("Error in time: {:.2f} s".format(np.abs(C - pick.time)[idx]))
-                height_idx = idx//self.setup.perturb_times
-                pert_idx = idx%self.setup.perturb_times
+            #     idx = np.nanargmin(np.abs(C - pick.time))
+            #     print("Error in time: {:.2f} s".format(np.abs(C - pick.time)[idx]))
+            #     height_idx = idx//self.setup.perturb_times
+            #     pert_idx = idx%self.setup.perturb_times
 
-                self.position.append(P[height_idx])
+            #     self.position.append(P[height_idx])
 
-                self.x = AllWaveformViewer(self.setup, self.stn_list, self.position, pert_idx)
-                self.x.setGeometry(QRect(100, 100, 900, 900))
-                self.x.show()
+            #     self.x = AllWaveformViewer(self.setup, self.stn_list, self.position, pert_idx)
+            #     self.x.setGeometry(QRect(100, 100, 900, 900))
+            #     self.x.show()
 
         elif self.tog_rm_picks.isChecked():
 
@@ -2472,7 +2507,7 @@ class SolutionGUI(QMainWindow):
                 errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
                          2, detail="")
 
-            save(self)
+            save(self, True)
 
         elif self.bandpass_picks.isChecked():
 
@@ -2512,13 +2547,10 @@ class SolutionGUI(QMainWindow):
             self.pm.setGeometry(QRect(100, 100, 1200, 700))
             self.pm.show()
 
-        elif self.traj_space.isChecked():
+
             
 
-            self.ts = TrajSpace(self.bam)
-            self.ts.setGeometry(QRect(100, 100, 1200, 700))
-            self.ts.show() 
-            self.traj_space.setState(False)
+
 
         ### Annotations
         elif self.annote_picks.isChecked():

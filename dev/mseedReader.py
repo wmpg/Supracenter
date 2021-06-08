@@ -41,6 +41,7 @@ class MseedReader(QMainWindow):
         self.print_stream_button = createButton("Print Stream", layout, 3, 1, self.printStream)
         self.print_resp_button = createButton("Print Response", layout, 3, 2, self.printResp)
 
+
     def printResp(self):
 
         station_resp_name = self.mresp_browser_edits.text()

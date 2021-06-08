@@ -28,12 +28,12 @@ from functools import partial
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Supracenter.anglescan import anglescan
+from supra.Supracenter.anglescan2 import anglescan
 from supra.Utils.AngleConv import loc2Geo, angle2NDE, geo2Loc, angleBetweenVect
 from supra.Utils.Classes import Position, Constants, Trajectory, Angle
 from supra.Utils.pso import pso
 from supra.Utils.Formatting import *
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 from wmpl.Formats.CSSseismic import loadCSSseismicData
 from wmpl.Utils.TrajConversions import date2JD, jd2Date, raDec2ECI, geo2Cartesian, cartesian2Geo, raDec2AltAz, eci2RaDec, latLonAlt2ECEF, ecef2ENU, enu2ECEF, ecef2LatLonAlt
 from wmpl.Utils.Math import vectMag, vectNorm, rotateVector, meanAngle
@@ -245,12 +245,12 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
     results = []
 
     # temp hotfix
-    if mode == 'ballistic_old':
+    if mode == 'ballistic':
 
         grid_space = 25
 
-        p1 = Position(47.5, 12, 0)
-        p2 = Position(49, 15, 0)
+        p1 = Position(43.8, 13.1, 0)
+        p2 = Position(47.8, 17.1, 0)
 
         p1.pos_loc(ref_loc)
         p2.pos_loc(ref_loc)        
@@ -288,9 +288,9 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     lons = [P.lon, R.lon]
                     elev = [P.elev, R.elev]
 
-                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, ref_time=setup.fireball_datetime, spline=100)
 
-                    res = cyscan(np.array(S), np.array(D), z_profile, wind=True, n_theta=90, n_phi=90, h_tol=330, v_tol=3000, debug=False)
+                    res = cyscan(np.array(S), np.array(D), z_profile, wind=True, h_tol=330, v_tol=3000, debug=False)
 
                     alpha = np.radians(res[1])
                     beta = np.radians(180 - res[2])
@@ -344,7 +344,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     
                     # np.array([t_arrival, azimuth, takeoff, E[k, l]])
 
-    elif mode == 'ballistic':
+    elif mode == 'ballistic_new':
         n_steps = len(v_list)*len(points)
         WIND = True
         for pp, p in enumerate(points):
@@ -378,7 +378,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                 # z_profile, _ = supra.Supracenter.cyweatherInterp.getWeather(p, s, setup.weather_type, \
                 #      ref_loc, copy.copy(sounding), convert=True)
                 if WIND:
-                    z_profile, _ = atmos.getSounding(lats, lons, elev, spline=200)
+                    z_profile, _ = atmos.getSounding(lats, lons, elev, ref_time=setup.fireball_datetime, spline=200)
 
                     res = anglescan(pt, np.degrees(v[0]), np.degrees(v[1]) + 90, z_profile, wind=True, debug=False)
 
@@ -432,7 +432,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                 lons = [P.lon, S.lon]
                 elev = [P.elev, S.elev]
 
-                z_profile, _ = atmos.getSounding(lats, lons, elev, spline=100)
+                z_profile, _ = atmos.getSounding(lats, lons, elev, ref_time=setup.fireball_datetime, spline=100)
                 res = anglescan(p, np.degrees(alpha[i]), np.degrees(beta[j]), z_profile, wind=True, debug=False)
                 
                 # if np.sqrt(res[0]**2 + res[1]**2) <= 200000:

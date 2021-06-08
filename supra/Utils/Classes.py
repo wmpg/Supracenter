@@ -233,7 +233,7 @@ class Vector3D:
 
 class Annote:
 
-    def __init__(self, title, time, length, group, source, height, notes, color):
+    def __init__(self, title, time, length, group, source, height, notes, color, bandpass):
 
         self.title = title
         self.time = time
@@ -243,6 +243,7 @@ class Annote:
         self.height = height
         self.notes = notes
         self.color = color
+        self.bandpass = bandpass
 
 
     def __str__(self):
@@ -461,14 +462,14 @@ class Trajectory:
         A = self.pos_i.xyz
         B = self.pos_f.xyz
 
-        P = [None]*(div + 1)
-        for i in range(div + 1):
+        P = [None]*(div)
+        for i in range(div):
 
             P[i] = Position(0, 0, 0)
 
-            P[i].x = self.pos_i.x + i*(B[0] - A[0])/div
-            P[i].y = self.pos_i.y + i*(B[1] - A[1])/div
-            P[i].z = self.pos_i.z + i*(B[2] - A[2])/div
+            P[i].x = self.pos_i.x + i*(B[0] - A[0])/(div-1)
+            P[i].y = self.pos_i.y + i*(B[1] - A[1])/(div-1)
+            P[i].z = self.pos_i.z + i*(B[2] - A[2])/(div-1)
 
             if not xyz:
                 P[i].pos_geo(ref_loc)

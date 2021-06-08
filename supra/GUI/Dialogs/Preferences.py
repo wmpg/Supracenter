@@ -109,7 +109,7 @@ class PreferenceWindow(QWidget):
         self.recalc_times.setChecked(prefs.recalc_times)
         try:
             self.recalc_sigs.setChecked(prefs.recalc_sigs)  
-        except AttributeError:
+        except (AttributeError, TypeError):
             self.recalc_sigs.setChecked(False) 
 
         self.frag_en.setChecked(prefs.frag_en)       

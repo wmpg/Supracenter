@@ -68,6 +68,8 @@ def procStream(stn, ref_time=None):
         mseed.merge()
     except ZeroDivisionError:
         pass
+    except Exception:
+        pass
 
     gaps = mseed.get_gaps()
 
@@ -246,8 +248,8 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     pt_0 = int(num_of_pts_in_offset + num_of_pts_to_roi)
     pt_1 = int(pt_0 + num_of_pts_in_roi)
 
-    cut_waveform = waveform_data[pt_0:pt_1]
-    cut_time = time_data[pt_0:pt_1]
+    cut_waveform = waveform_data[0][pt_0:pt_1]
+    cut_time = time_data[0][pt_0:pt_1]
 
     return cut_waveform, cut_time
 
@@ -255,10 +257,9 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
 
 def genFFT(waveform, sampling_rate):
 
-
     freqs, psd = signal.welch(waveform)
 
-    func = interp1d(freqs, psd, kind="cubic")
+    func = interp1d(freqs, psd)#, kind="cubic")
     f_new = np.logspace(np.log10(freqs[1]), np.log10(freqs[-2]))
 
     psd = func(f_new)

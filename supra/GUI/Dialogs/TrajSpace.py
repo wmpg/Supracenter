@@ -72,11 +72,12 @@ class TrajSpace(QWidget):
 
         for trace, resp, popt, infra in zip(trace_list, resp_list, popt_list, infra_list):
 
+
+
             if popt is None:
                 continue
 
             stn_name = "{:}-{:}".format(infra.metadata.network, infra.metadata.code)
-
 
             a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=None, backup=False)
 
@@ -99,10 +100,11 @@ class TrajSpace(QWidget):
             logs = []
             L = len(a[0])
             spacer = int(L/(l*(1-N) + N))
-            shifter = int(spacer*(1-l)) 
-
+            shifter = int(spacer*(1-l))
+            print("{:} Window Length = {:.2f} s".format(stn_name, spacer/trace.stats.sampling_rate))
+            print("{:} Window Shift = {:.2f} s".format(stn_name, shifter/trace.stats.sampling_rate))
             for i in range((L - spacer)//shifter + 1):
-                a_temp, t_temp = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=[2, 8], backup=False)
+                a_temp, t_temp = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=None, backup=False)
                 # if self.h_space_tog.isChecked():
                 #     self.pvh_graph.ax1.plot(invhypfunc(t_temp[0][i*shifter:int(i*shifter + spacer)], *popt), a_temp[0][i*shifter:int(i*shifter + spacer)], alpha=0.5)
                 # else:
@@ -113,7 +115,7 @@ class TrajSpace(QWidget):
                     FAS_N = FAS
 
                 
-                FASes.append(np.sum(FAS/FAS_N))
+                FASes.append(np.sum(FAS))
                 logs.append(FAS/FAS_N)
 
             best_fas = np.argmax(FASes)
@@ -131,8 +133,17 @@ class TrajSpace(QWidget):
 
             filtered_freq = freq[j]
 
-            print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(filtered_freq[0], filtered_freq[-1]))
-            a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=[filtered_freq[0], filtered_freq[-1]], backup=False)
+            # print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(filtered_freq[0], filtered_freq[-1]))
+
+            if self.stat_bandpass.isChecked():
+                bnps = infra.bandpass
+            else:
+                bnps = [filtered_freq[0], filtered_freq[-1]]
+
+            if bnps is not None:
+                print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(bnps[0], bnps[-1]))
+
+            a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=bnps, backup=False)
             s2n = np.max(a[0])/np.median(np.abs(a[0]))
             filtered_wave = a[0]
 
@@ -144,9 +155,11 @@ class TrajSpace(QWidget):
                 else:
                     h = h[branch_1]
                     vals = a[0][branch_1]
-                self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+                self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}".format(stn_name))
+                # self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
             else:
-                self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+                # self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+                self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}".format(stn_name))
 
 
             # sig = a[0][j]
@@ -284,8 +297,12 @@ class TrajSpace(QWidget):
         #     self.pvh_graph.ax1.plot(h_list[pp], np.abs(p_list[pp]), label="{:}".format(infra_list[pp].metadata.code), alpha=0.5)
         # #     self.pvh_graph.ax2.plot(period_h_list[pp], period_list[pp], label="{:}".format(infra_list[pp].metadata.code), alpha=0.5)
         
-        t_min = t[0][0]
-        t_max = t[0][-1]
+        try:
+            t_min = float(self.min_time_edits.text())
+            t_max = float(self.max_time_edits.text())
+        except:
+            t_min = t[0][0]
+            t_max = t[0][-1]
 
 
         # if self.h_space_tog.isChecked():
@@ -351,9 +368,9 @@ class TrajSpace(QWidget):
                 self.pvh_graph.ax6.axvline(x=t_max_range_1, linestyle='-')
         self.pvh_graph.ax6.set_ylabel("Dominant Period [s]")
         self.pvh_graph.ax2.legend()
-        self.pvh_graph.ax3.legend()
-        self.pvh_graph.ax5.legend()
-        self.pvh_graph.ax6.legend()
+        # self.pvh_graph.ax3.legend()
+        # self.pvh_graph.ax5.legend()
+        # self.pvh_graph.ax6.legend()
         self.pvh_graph.show()
 
     def buildGUI(self):
@@ -394,11 +411,15 @@ class TrajSpace(QWidget):
         _, self.max_height_edits = createLabelEditObj("Maximum Height [km]", layout, 9, width=1, h_shift=1, tool_tip='', validate='float', default_txt='40')
         self.branchselector = createToggle("Use Branch 2", layout, 10, width=1, h_shift=2, tool_tip='')
         self.branchselector.setChecked(True)
+        _, self.min_time_edits = createLabelEditObj("Minimum Time [s]", layout, 11, width=1, h_shift=1, tool_tip='', validate='float', default_txt='300')
+        _, self.max_time_edits = createLabelEditObj("Maximum Time [s]", layout, 12, width=1, h_shift=1, tool_tip='', validate='float', default_txt='600')
+        self.stat_bandpass = createToggle("Use Station Bandpass", layout, 13, width=1, h_shift=2, tool_tip='')
+
 
         self.ro_graph = MatplotlibPyQT()
         self.ro_graph.ax = self.ro_graph.figure.add_subplot(111)
-        layout.addWidget(self.ro_graph, 11, 2, 90, 2)
-        export_ro = createButton("Export Relaxation Radii Curve", layout, 101, 3, self.exportro, args=[])
+        layout.addWidget(self.ro_graph, 14, 2, 90, 2)
+        export_ro = createButton("Export Relaxation Radii Curve", layout, 104, 3, self.exportro, args=[])
 
     def exportraw(self):
             

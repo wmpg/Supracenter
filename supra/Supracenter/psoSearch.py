@@ -382,7 +382,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         sup = single_point.position.xyz
         errors=0
 
-    print(kotc)
+
     # Get results for current Supracenter
     time3D, az, tf, r, motc, sotc, trace = outputWeather(n_stations, x_opt, stns, setup, \
                                                 ref_pos, atmos, output_name, s_name, kotc, w, prefs)

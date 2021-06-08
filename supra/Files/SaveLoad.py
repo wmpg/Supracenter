@@ -249,38 +249,40 @@ def loadAtmos(bam, obj):
         bam.atmos = Atmos(avg_sp_sound=avg_sp_sound)
 
 
-def save(obj):
+def save(obj, file_check):
     
-    if len(obj.fireball_name_edits.text()) == 0:
-        errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
-        return None
 
-    #save setup
-    obj.bam.setup = saveSetup(obj)
+    if file_check:
+        if len(obj.fireball_name_edits.text()) == 0:
+            errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
+            return None
 
-    if obj.bam.file_name is None:
-        obj.bam.file_name = saveFile('bam', note="BAM file")
+            #save setup
+            obj.bam.setup = saveSetup(obj)
 
-    with open(obj.bam.file_name, 'wb') as f:
-        pickle.dump(obj.bam, f)
+        if obj.bam.file_name is None:
+            obj.bam.file_name = saveFile('bam', note="BAM file")
 
-    file_size = byteify(os.stat(obj.bam.file_name).st_size)
+        with open(obj.bam.file_name, 'wb') as f:
+            pickle.dump(obj.bam, f)
 
-    # detail = 'CONTENTS: \n'
+        file_size = byteify(os.stat(obj.bam.file_name).st_size)
 
-    # if hasattr(obj.bam, "setup"):
-    #     detail += 'SETUP - TRUE\n'
 
-    # if hasattr(obj.bam, "stn_list"):
-    #     detail += 'STATION LIST - TRUE\n'
+        print('STATUS: Setup Saved')
+        loadDisplay(obj.bam.setup, obj)
+        errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
+                    title="Saved")
 
-    # if hasattr(obj.bam, "atmos"):
-    #     detail += 'ATMOSPHERE - TRUE\n'
+    else:
+        with open(obj.file_name, 'wb') as f:
+            pickle.dump(obj, f)
 
-    print('STATUS: Setup Saved')
-    loadDisplay(obj.bam.setup, obj)
-    errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
-                title="Saved")
+        file_size = byteify(os.stat(obj.file_name).st_size)
+
+        print('STATUS: Setup Saved')
+        errorMessage('Event has been saved into file "{:}" ({:})'.format(obj.file_name, file_size), 0, \
+                    title="Saved")
 
 
 def load(obj):
