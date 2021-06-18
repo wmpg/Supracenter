@@ -40,7 +40,7 @@ class MseedReader(QMainWindow):
 
         self.print_stream_button = createButton("Print Stream", layout, 3, 1, self.printStream)
         self.print_resp_button = createButton("Print Response", layout, 3, 2, self.printResp)
-
+        self.plot_button = createButton("Plot", layout, 3, 3, self.plot)
 
     def printResp(self):
 
@@ -58,7 +58,13 @@ class MseedReader(QMainWindow):
 
         print(st)
 
+    def plot(self):
 
+        station_file_name = self.mseed_browser_edits.text()
+
+        st = obspy.read(station_file_name)
+
+        st.plot()
 
 
 if __name__ == "__main__":

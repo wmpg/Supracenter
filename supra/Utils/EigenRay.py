@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 from supra.Supracenter.anglescan import anglescan
 from supra.Supracenter.cyzInteg import zInteg
 

@@ -349,3 +349,6 @@ class Geminus(QWidget):
 
 
         self.current_height = float(self.source_height.text())
+if __name__ == '__main__':
+
+    pass

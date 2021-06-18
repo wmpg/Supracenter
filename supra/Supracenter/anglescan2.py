@@ -37,6 +37,7 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
     phi = np.radians(phi)
     theta = np.radians(theta)
     # Switch to turn off winds
+
     if not wind:
         z_profile[:, 2] = 0
         # z_profile[:, 1] = 330
@@ -117,11 +118,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
 
             # Equation (3)
             X += p*(delz)/(np.sqrt(s2 - p**2))
+
         last_z = i - 1
-
-
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
-        
+
         if trace:
             T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival])
     

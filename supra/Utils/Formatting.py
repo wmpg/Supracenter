@@ -135,15 +135,16 @@ def stationFormat(stn, setup, ref_pos, more=True):
 
     lines = "#"*20
     cyan_tag = termchkr("#", color="cyan", rm_brace=True)
+    
     try:
         b_time = stn.times.ballistic[0][0][0]
-    except IndexError:
+    except:
         b_time = None
 
 
     try:
         b_prts = stn.times.ballistic[0][1][0]
-    except IndexError:
+    except:
         b_prts = None
 
 

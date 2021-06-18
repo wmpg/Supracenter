@@ -120,3 +120,7 @@ def presSearch(p, gem_inputs, paths=False):
         return Ro_ws, Ro_lin, weak_path, lin_path, tau, Z, it
 
     return Ro_ws, Ro_lin
+
+if __name__ == '__main__':
+
+    pass

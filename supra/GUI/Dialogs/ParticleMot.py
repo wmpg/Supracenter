@@ -883,3 +883,6 @@ class ParticleMotion(QWidget):
             self.waveform_fft_canvas.addItem(fas_diff_data)
 
             # self.rescalePlot()
+if __name__ == '__main__':
+
+    pass

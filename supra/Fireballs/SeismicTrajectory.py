@@ -245,7 +245,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
     results = []
 
     # temp hotfix
-    if mode == 'ballistic':
+    if mode == 'ballistic_old':
 
         grid_space = 25
 
@@ -344,7 +344,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
                     
                     # np.array([t_arrival, azimuth, takeoff, E[k, l]])
 
-    elif mode == 'ballistic_new':
+    elif mode == 'ballistic':
         n_steps = len(v_list)*len(points)
         WIND = True
         for pp, p in enumerate(points):
@@ -1336,3 +1336,6 @@ if __name__ == "__main__":
     else:
         print('Invalid mode! Use search, replot, or manual.')
         exit()
+if __name__ == '__main__':
+
+    pass

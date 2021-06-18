@@ -80,3 +80,7 @@ if __name__ == '__main__':
                 stn_list.append(stn)
 
     readAllTimes(file_name, dists_name=dists_name, typ=typ, stn_list=stn_list)
+
+if __name__ == '__main__':
+
+    pass

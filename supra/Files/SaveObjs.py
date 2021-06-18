@@ -76,13 +76,13 @@ class Prefs:
         self.pert_type = obj.pert_type.currentText()
         self.pert_num = tryInt(obj.pert_num.text())
         self.pso_debug = obj.pso_debug.isChecked()
-        self.pso_theta      = tryInt(obj.pso_theta.text())
-        self.pso_phi        = tryInt(obj.pso_phi.text())
+        # self.pso_theta      = tryInt(obj.pso_theta.text())
+        # self.pso_phi        = tryInt(obj.pso_phi.text())
         self.pso_min_ang    = tryFloat(obj.pso_min_ang.text())
         self.pso_min_dist   = tryFloat(obj.pso_min_dist.text())
         self.pso_max_iter   = tryInt(obj.pso_max_iter.text())
         self.pso_swarm_size = tryInt(obj.pso_swarm_size.text())
-        self.pso_run_times  = tryInt(obj.pso_run_times.text())
+        # self.pso_run_times  = tryInt(obj.pso_run_times.text())
         self.pso_min_error  = tryFloat(obj.pso_min_error.text())
         self.pso_min_step   = tryFloat(obj.pso_min_step.text())
         self.pso_phi_p      = tryFloat(obj.pso_phi_p.text())
@@ -177,3 +177,6 @@ class Atmos:
             return self.default_weather, None
 
 
+if __name__ == '__main__':
+
+    pass

@@ -37,6 +37,7 @@ def saveSetup(obj):
     setup.station_picks_file = obj.station_picks_edits.text()
     setup.light_curve_file = obj.light_curve_edits.text()
     setup.contour_file = obj.contour_file_edits.text()
+    
     # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
@@ -133,15 +134,13 @@ def loadDisplay(setup, obj):
 
     # obj.arrival_times_edits.setText(setup.arrival_times_file)
     obj.station_picks_edits.setText(setup.station_picks_file)
-    try:
-        obj.light_curve_edits.setText(setup.light_curve_file)
-    except:
-        pass
 
-    try:
+    if hasattr(setup, "light_curve_file"):
+        obj.light_curve_edits.setText(setup.light_curve_file)
+    
+    if hasattr(setup, "contour_file"):
         obj.contour_file_edits.setText(setup.contour_file)
-    except:
-        pass
+ 
     # obj.points_name_edits.setText(setup.replot_points_file)
 
     obj.lat_centre_edits.setText(str(setup.lat_centre))
@@ -253,12 +252,13 @@ def save(obj, file_check):
     
 
     if file_check:
+
         if len(obj.fireball_name_edits.text()) == 0:
             errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
             return None
 
             #save setup
-            obj.bam.setup = saveSetup(obj)
+        obj.bam.setup = saveSetup(obj)
 
         if obj.bam.file_name is None:
             obj.bam.file_name = saveFile('bam', note="BAM file")
@@ -307,4 +307,7 @@ def load(obj):
     # print(bam.stats)
     obj.bam = bam
     print(printMessage("status"), "{:} has been loaded".format(bam.file_name))
-    
+
+if __name__ == '__main__':
+
+    pass

@@ -516,15 +516,22 @@ def addMakePicksWidgets(obj):
     make_picks_master.addLayout(obj.make_picks_top_graphs)
     make_picks_master.addLayout(obj.make_picks_bottom_graphs)
 
-    obj.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
-    obj.make_picks_station_graph_canvas = obj.make_picks_station_graph_view.addPlot()
-    obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
-    obj.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
-    obj.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
-    obj.make_picks_map_graph_canvas = obj.make_picks_map_graph_view.addPlot()
+    obj.make_picks_station_graph_view = MatplotlibPyQT()
+    obj.make_picks_station_graph_view.ax = obj.make_picks_station_graph_view.figure.add_subplot(111)
+    obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
+    # obj.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
+    # obj.make_picks_station_graph_canvas = obj.make_picks_station_graph_view.addPlot()
+    # obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
+    # obj.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+    
+
+    obj.make_picks_map_graph_view = MatplotlibPyQT()
+    obj.make_picks_map_graph_view.ax = obj.make_picks_map_graph_view.figure.add_subplot(111)
+    # obj.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
+    # obj.make_picks_map_graph_canvas = obj.make_picks_map_graph_view.addPlot()
     obj.make_picks_top_graphs.addWidget(obj.make_picks_map_graph_view)
-    obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+    # obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
@@ -565,6 +572,11 @@ def addMakePicksWidgets(obj):
     obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
     obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
     toggle_button_array.addWidget(obj.polmap_picks)
+
+    obj.save_picks = ToggleButton(False, 8)
+    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.save_picks)
 
     # obj.traj_space = ToggleButton(False, 5)
     # obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
@@ -610,6 +622,9 @@ def addMakePicksWidgets(obj):
 
     obj.low_bandpass_edits.setText('2')
     obj.high_bandpass_edits.setText('8')
+
+    obj.make_picks_ref_pos_choice = QComboBox()
+    filter_group_layout.addWidget(obj.make_picks_ref_pos_choice, 3, 0, 1, 4)
 
     obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
     obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)

@@ -52,3 +52,6 @@ def downloadRadio(lat, lon, download_loc, debug=False, year=None):
 
 	urllib.request.urlretrieve(url, download_loc)
 
+if __name__ == '__main__':
+
+    pass

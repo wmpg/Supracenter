@@ -108,6 +108,16 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     resp - response data to remove from the trace
     bandpass - [low, high] bandpass filters to use for the data
     backup [Boolean] - keep a raw trace
+
+    Waveforms are returned as lists of segments to deal with gaps.
+    Example:
+    if a waveform is given as:
+        ////////{gap}/////////
+    the waveform will be returned as:
+        [[////////], [/////////]]
+
+    if there are no gaps, it will be returned as:
+        [[////////////////]]
     '''
 
 
@@ -162,7 +172,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
 
     return total_ampl, total_time
 
-def findDominantPeriod(wave, time):
+def findDominantPeriod(wave, time, return_all=False):
 
     """ Estimate the dominant period using the zero-crossing method
         This should be redone with PSDs in the future, once the infrasound curve method actually works
@@ -178,6 +188,8 @@ def findDominantPeriod(wave, time):
             zero_cross.append((time[ii+1] + time[ii])/2)
 
     if len(zero_cross) == 0:
+        if return_all:
+            return []
         return np.nan
 
     if len(zero_cross) < num_of_cross:
@@ -192,7 +204,8 @@ def findDominantPeriod(wave, time):
     for i in range(num_of_cross - 2):
         estimates.append(zero_cross[i+2] - zero_cross[i])
 
-
+    if return_all:
+        return estimates
     return np.mean(estimates)
 
 def findDominantPeriodPSD(wave, sf, normalize=False):

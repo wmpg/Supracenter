@@ -220,8 +220,8 @@ class ECMWF(AtmosType):
                 t = getAtmDensity(lat, lon, hh, jd)
 
                 speed = np.insert(speed, 0, np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)) 
-                mags = np.insert(mags, 0, 0)
-                dirs = np.insert(dirs, 0, 0)
+                mags = np.insert(mags, 0, mags[0])
+                dirs = np.insert(dirs, 0, dirs[0])
                 level = np.insert(level, 0, hh)
 
 
@@ -356,3 +356,7 @@ class ECMWF(AtmosType):
 class Radio:
     def __init__(self):
         pass
+
+if __name__ == '__main__':
+
+    pass

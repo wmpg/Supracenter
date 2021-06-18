@@ -4,12 +4,12 @@
 # Luke McFadden - General coding
 # Denis Vida - Ballistic code, WMPL
 # Wayne Edwards - Supracenter code
-# Elizabeth Silber - Updated Supracenter code
+# Elizabeth Silber - Updated Supracenter code, Geminus
 # Gunter Stober - Advice on atmospheric profiles
 # Stack Overflow - Frequent care and support
 # Western Meteor Python Group
 #################################################
-# t_0 = impact time - fireball datetime
+
 
 import os
 import time
@@ -19,6 +19,7 @@ import webbrowser
 
 import zipfile
 import pickle
+from mpl_toolkits.basemap import Basemap
 
 from netCDF4 import Dataset
 from PyQt5.QtWidgets import *
@@ -49,13 +50,10 @@ from supra.Fireballs.SeismicTrajectory import timeOfArrival, trajSearch, estimat
 from supra.Supracenter.slowscan2 import cyscan as slowscan
 from supra.Supracenter.psoSearch import psoSearch
 from supra.Supracenter.fetchCopernicus import copernicusAPI
-from supra.Supracenter.cyscan2 import cyscan
-from supra.Supracenter.cyscanVectors import cyscan as cyscanV
+from supra.Supracenter.cyscan5 import cyscan
+# from supra.Supracenter.cyscanVectors import cyscan as cyscanV
 from supra.Supracenter.propegateBackwards import propegateBackwards
 
-from supra.GUI.Tools.GUITools import *
-from supra.GUI.Tools.Theme import theme
-from supra.GUI.Tools.WidgetBuilder import *
 from supra.GUI.Dialogs.AnnoteWindow import AnnoteWindow
 from supra.GUI.Dialogs.Preferences import PreferenceWindow
 from supra.GUI.Dialogs.Yields import Yield
@@ -69,6 +67,10 @@ from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
 from supra.GUI.Dialogs.ReportDialog import ReportWindow
 from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
+
+from supra.GUI.Tools.GUITools import *
+from supra.GUI.Tools.Theme import theme
+from supra.GUI.Tools.WidgetBuilder import *
 from supra.GUI.Tools.htmlLoader import htmlBuilder
 from supra.GUI.Tools.Errors import errorCodes
 
@@ -101,7 +103,7 @@ from supra.Geminus.geminusGUI import Geminus
 from supra.Supracenter.l137 import estPressure
 from supra.Atmosphere.NRLMSISE import getAtmDensity
 from wmpl.Utils.TrajConversions import date2JD
-
+from wmpl.Utils.OSTools import mkdirP
 HEIGHT_SOLVER_DIV = 250
 THEO = False
 
@@ -226,7 +228,7 @@ class SolutionGUI(QMainWindow):
     def rtvWindow(self):
 
         self.rtv = rtvWindowDialog(self.bam, self.prefs)
-        self.rtv.setGeometry(QRect(500, 400, 500, 400))
+        self.rtv.setGeometry(QRect(100, 100, 1200, 700))
         self.rtv.show()
 
     def trajSpace(self):
@@ -708,8 +710,8 @@ class SolutionGUI(QMainWindow):
         # print('Contour Finished!')
 
     def clearContour(self):
-
-        self.make_picks_map_graph_canvas.removeItem(self.contour_data_squares)
+        pass
+        # self.make_picks_map_graph_canvas.removeItem(self.contour_data_squares)
 
     def saveContour(self):
         filename = QFileDialog.getSaveFileName(self, 'Save File')
@@ -818,26 +820,29 @@ class SolutionGUI(QMainWindow):
         ################################
         # Get eigen-path from ray-tracer
         ################################
-        pts = cyscanV(supra_pos.xyz, detec_pos.xyz, sounding, \
-                    wind=self.prefs.wind_en, n_theta=self.prefs.pso_theta, n_phi=self.prefs.pso_phi,
-                    h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist)
+
+        r, pts = cyscan(supra_pos.xyz, detec_pos.xyz, sounding, trace=True, plot=False, particle_output=False, debug=False, wind=self.prefs.wind_en, h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist)
+
 
         # The path taken in an isotropic atmosphere - straight line
         u = supra_pos.xyz - detec_pos.xyz
         nom_range = np.sqrt(u[0]**2 + u[1]**2 + u[2]**2)
 
         ray_range = 0
-        for ii in range(len(pts[0]) - 1):
-            k = np.array([pts[0][ii + 1] - pts[0][ii],\
-                          pts[1][ii + 1] - pts[1][ii],\
-                          pts[2][ii + 1] - pts[2][ii]])
+
+        pts = np.array(pts)
+
+        for ii in range(len(pts) - 1):
+            k = np.array([pts[ii + 1, 0] - pts[ii, 0],\
+                          pts[ii + 1, 1] - pts[ii, 1],\
+                          pts[ii + 1, 2] - pts[ii, 2]])
             ray_range += np.sqrt(k[0]**2 + k[1]**2 + k[2]**2)
 
 
         for ii in range(len(pts[0]) - 1):
-            k = np.array([pts[0][ii + 1] - pts[0][ii],\
-                          pts[1][ii + 1] - pts[1][ii],\
-                          pts[2][ii + 1] - pts[2][ii]])
+            k = np.array([pts[ii + 1, 0] - pts[ii, 0],\
+                          pts[ii + 1, 1] - pts[ii, 1],\
+                          pts[ii + 1, 2] - pts[ii, 2]])
             k /= np.sqrt(k[0]**2 + k[1]**2 + k[2]**2)
 
         c = sounding[:, 1]
@@ -1909,36 +1914,69 @@ class SolutionGUI(QMainWindow):
         # Init the plot framework
         self.initPlot()
 
-        if not hasattr(self, 'make_picks_gmap_view'):
-            self.make_picks_gmap_view = QWebView()
-            self.make_picks_top_graphs.addWidget(self.make_picks_gmap_view)
-            self.make_picks_gmap_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+        BASEMAP_SCALE = 2
 
-        # Extract coordinates of the reference station
-        gmap_filename = htmlBuilder(self.bam.setup, self.prefs, self.bam.stn_list)
+        ### Create Basemap
+        # resolution c, l, i, h, f
+        self.m = Basemap(projection='merc', \
+            llcrnrlat=np.ceil(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius),\
+            urcrnrlat=np.floor(self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
+            llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
+            urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
+            lat_ts=1, \
+            resolution='c', ax=self.make_picks_map_graph_view.ax)
 
-        if self.prefs.debug:
-            print(printMessage("status"), "HTML map generated: {:}".format(gmap_filename))
+        self.m.fillcontinents(color='grey', lake_color='aqua')
+        self.m.drawcountries(color='black')
+        self.m.drawlsmask(ocean_color='aqua')
+
+        self.m.drawparallels(np.arange(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
+            self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
+        self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
+            self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", rotation="vertical", fmt="%.1f")
+
+        if hasattr(self.bam.setup, "contour_file"):
+            if self.bam.setup.contour_file is not None:
+
+                try:
+                    A = np.load(self.bam.setup.contour_file)
+
+                    lat, lon, Z = A[0], A[1], A[2]
+
+                    x, y = self.m(lat, lon)
+                    # print(x, y, Z)
+                    self.make_picks_map_graph_view.ax.tricontour(x, y, Z, levels=14, linewidths=0.5, colors='w', zorder=2)
+                    self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, levels=14, cmap="viridis_r", zorder=2, alpha=0.3)
+                    # a = self.make_picks_map_graph_view.ax.colorbar(cntr)
+                    # a.set_label("Time of Arrival [s]")
+                except FileNotFoundError:
+                    print("Contour File not found!")
+            else:
+                print("No Contour found!")
+
+        # if not hasattr(self, 'make_picks_gmap_view'):
+        #     self.make_picks_gmap_view = QWebView()
+        #     self.make_picks_top_graphs.addWidget(self.make_picks_gmap_view)
+        #     self.make_picks_gmap_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+        # # Extract coordinates of the reference station
+        # gmap_filename = htmlBuilder(self.bam.setup, self.prefs, self.bam.stn_list)
+
+        # if self.prefs.debug:
+        #     print(printMessage("status"), "HTML map generated: {:}".format(gmap_filename))
         
-        self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
+        # self.make_picks_gmap_view.load(QUrl().fromLocalFile(gmap_filename))
 
-        self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
-        self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
+        # self.make_picks_map_graph_canvas.setLabel('bottom', "Longitude", units='deg E')
+        # self.make_picks_map_graph_canvas.setLabel('left', "Latitude", units='deg N')
 
-        for ii, stn in enumerate(self.bam.stn_list):
+        self.drawStats(0)
 
+        # self.make_picks_map_graph_canvas.setXRange(self.bam.setup.lon_centre - self.bam.setup.deg_radius, \
+        #                                            self.bam.setup.lon_centre + self.bam.setup.deg_radius)
 
-            self.station_marker[ii].setPoints(x=[stn.metadata.position.lon], y=[stn.metadata.position.lat], pen=(255, 255, 255), brush=(255, 255, 255), symbol='t')
-            self.make_picks_map_graph_canvas.addItem(self.station_marker[ii], update=True)
-            txt = pg.TextItem("{:}".format(stn.metadata.code))
-            txt.setPos(stn.metadata.position.lon, stn.metadata.position.lat)
-            self.make_picks_map_graph_canvas.addItem(txt)
-
-        self.make_picks_map_graph_canvas.setXRange(self.bam.setup.lon_centre - self.bam.setup.deg_radius, \
-                                                   self.bam.setup.lon_centre + self.bam.setup.deg_radius)
-
-        self.make_picks_map_graph_canvas.setYRange(self.bam.setup.lat_centre - self.bam.setup.deg_radius, \
-                                                   self.bam.setup.lat_centre + self.bam.setup.deg_radius)
+        # self.make_picks_map_graph_canvas.setYRange(self.bam.setup.lat_centre - self.bam.setup.deg_radius, \
+        #                                            self.bam.setup.lat_centre + self.bam.setup.deg_radius)
 
         ###
         # Plot reasonably close CTBTO stations (no waveforms)
@@ -1955,14 +1993,17 @@ class SolutionGUI(QMainWindow):
 
                 approx_dis = np.sqrt((stat_lat - self.bam.setup.lat_centre)**2 + (stat_lon - self.bam.setup.lon_centre)**2)
 
-                #if approx_dis <= 2*self.bam.setup.deg_radius:
+                if approx_dis <= 2*self.bam.setup.deg_radius:
 
-                marker = pg.ScatterPlotItem()
-                marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
-                txt = pg.TextItem("{:}".format(stat_name))
-                txt.setPos(stat_lon, stat_lat)
-                self.make_picks_map_graph_canvas.addItem(marker, update=True)
-                self.make_picks_map_graph_canvas.addItem(txt)
+                    # marker = pg.ScatterPlotItem()
+                    # marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
+                    # txt = "{:}".format(stat_name)
+                    # txt.setPos(stat_lon, stat_lat)
+                    # self.make_picks_map_graph_canvas.addItem(marker, update=True)
+                    # self.make_picks_map_graph_canvas.addItem(txt)
+                    x, y = m(stat_lon, stat_lat)
+                    self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='d', color='m', zorder=3) 
+                    self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
 
         if self.prefs.frag_en:
@@ -1973,50 +2014,60 @@ class SolutionGUI(QMainWindow):
 
             # Fragmentation plot
             for i, line in enumerate(self.bam.setup.fragmentation_point):
-                self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
-                    pen=(0 + i*255/len(self.bam.setup.fragmentation_point), 255 - i*255/len(self.bam.setup.fragmentation_point), 0), symbol='+')
+                x, y = self.m(float(line.position.lon), float(line.position.lat))
+                self.make_picks_map_graph_view.ax.scatter(x, y, marker='+', color='g', zorder=3) 
+                # self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
+                #     pen=(0 + i*255/len(self.bam.setup.fragmentation_point), 255 - i*255/len(self.bam.setup.fragmentation_point), 0), symbol='+')
 
         # Plot source location
-        self.make_picks_map_graph_canvas.scatterPlot(x=[self.bam.setup.lon_centre], y=[self.bam.setup.lat_centre], symbol='+', pen=(255, 255, 0))
+        x, y = self.m(self.bam.setup.lon_centre, self.bam.setup.lat_centre)
+        self.make_picks_map_graph_view.ax.scatter(x, y, marker='+', color='y', zorder=3) 
+
+        # self.make_picks_map_graph_canvas.scatterPlot(x=[self.bam.setup.lon_centre], y=[self.bam.setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
         # Manual trajectory search
         if self.prefs.ballistic_en:
 
-            try:
+            # try:
+            if hasattr(self.bam.setup, "trajectory"):
 
                 if self.bam.setup.trajectory is None:
-                    raise TypeError
-
-                if self.bam.setup.trajectory.pos_i.isNone():
-                    raise TypeError
-
-                points = self.bam.setup.trajectory.trajInterp2(div=100, \
-                            min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
-
-                b_lats = []
-                b_lons = []
-
-                for pt in points:
-                    b_lats.append(pt[0])
-                    b_lons.append(pt[1])
-
-                # Plot the trajectory with the bottom point known
-                self.make_picks_map_graph_canvas.plot(b_lons,\
-                                                      b_lats,\
-                                                        pen=(0, 0, 255))
+                    errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform')
 
 
-                # Plot intersection with the ground
-                self.make_picks_map_graph_canvas.scatterPlot(x=[self.bam.setup.trajectory.pos_f.lon], \
-                                                             y=[self.bam.setup.trajectory.pos_f.lat], \
-                                                                symbol='+', pen=(0, 0, 255))
-            except (TypeError, AttributeError) as e:
-                errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform', detail='{:}'.format(e))
-                self.prefs.ballistic_en = False
+                elif self.bam.setup.trajectory.pos_i.isNone():
+                    errorMessage('Trajectory final position is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform')
+
+                else:
+                    points = self.bam.setup.trajectory.trajInterp2(div=100, \
+                                min_p=self.bam.setup.trajectory.pos_f.elev, max_p=self.bam.setup.trajectory.pos_i.elev)
+
+                    b_lats = []
+                    b_lons = []
+
+                    for pt in points:
+                        b_lats.append(pt[0])
+                        b_lons.append(pt[1])
+
+                    # Plot the trajectory with the bottom point known
+                    x, y = self.m(b_lons, b_lats)
+                    self.make_picks_map_graph_view.ax.plot(x, y, color='b', zorder=3)
+                    # self.make_picks_map_graph_canvas.plot(b_lons,\
+                    #                                       b_lats,\
+                    #                                         pen=(0, 0, 255))
 
 
-        self.bam.stn_list = calcAllTimes(self.bam, self.prefs)
-        self.bam.stn_list = calcAllSigs(self.bam, self.prefs)
+                    # Plot intersection with the ground
+                    x, y = self.m(self.bam.setup.trajectory.pos_f.lon, self.bam.setup.trajectory.pos_f.lat)
+                    self.make_picks_map_graph_view.ax.scatter(x, y, color='b', marker='+')
+                # except (TypeError, AttributeError) as e:
+                #     errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform', detail='{:}'.format(e))
+                #     self.prefs.ballistic_en = False
+
+        self.make_picks_map_graph_view.show() 
+
+        self.bam.stn_list = calcAllTimes(self, self.bam, self.prefs)
+        # self.bam.stn_list = calcAllSigs(self.bam, self.prefs)
         save(self, True)
         SolutionGUI.update(self)
 
@@ -2039,6 +2090,9 @@ class SolutionGUI(QMainWindow):
         self.current_station = self.make_picks_station_choice.currentIndex()
         self.updatePlot()
 
+
+    def refPosChanged(self):
+        self.drawStats(self.current_station)
 
     def initPlot(self):
         """ Initializes the plot framework. """
@@ -2077,6 +2131,16 @@ class SolutionGUI(QMainWindow):
             self.station_marker[ii] = pg.ScatterPlotItem()
             self.station_waveform[ii] = pg.PlotCurveItem()
 
+        self.make_picks_ref_pos_choice.addItem("Lat/Lon Center")
+
+        if hasattr(self.bam, "source_list"):
+
+            for src in self.bam.source_list:
+                self.make_picks_ref_pos_choice.addItem("{:}: {:}".format(src.source_type, src.title))
+
+        self.make_picks_ref_pos_choice.activated.connect(self.refPosChanged)
+
+
         self.make_picks_station_choice.activated.connect(self.navStats)
 
         plt.style.use('dark_background')
@@ -2104,9 +2168,10 @@ class SolutionGUI(QMainWindow):
         self.ballistic_idx = []
         self.fragmentation_idx = []
 
-
         # Go though all stations and waveforms
         bad_stats = []
+
+
 
         for idx, stn in enumerate(self.bam.stn_list):
 
@@ -2114,132 +2179,8 @@ class SolutionGUI(QMainWindow):
             sys.stdout.flush()
             time.sleep(0.001)
 
-
-            mseed = stn.stream                
-            
-            stream = 0
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'BDF':
-                    stn.channel = 'BDF'
-                    stream = i
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'HDF':
-                    stn.channel = 'HDF'
-                    stream = i
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'BHZ':
-                    stn.channel = 'BHZ'
-                    stream = i
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'HHZ':
-                    stn.channel = 'HHZ'
-                    stream = i
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'EHZ':
-                    stn.channel = 'EHZ'
-                    stream = i
-
-            for i in range(len(mseed)):
-                if mseed[i].stats.channel == 'SHZ':
-                    stn.channel = 'SHZ'
-                    stream = i
-
-
-            delta = mseed[stream].stats.delta
-            waveform_data = mseed[stream].data
-
-
-            # Extract time
-            start_datetime = mseed[stream].stats.starttime.datetime
-            end_datetime = mseed[stream].stats.endtime.datetime
-
-            stn.offset = (start_datetime - self.bam.setup.fireball_datetime - datetime.timedelta(minutes=5)).total_seconds()
-
-            # Skip stations with no data
-            if len(waveform_data) == 0:
-                continue
-
-            waveform_data = convolutionDifferenceFilter(waveform_data)
-
-            # Calculate the distance from the source point to this station (kilometers)
-            station_dist = greatCircleDistance(np.radians(self.bam.setup.lat_centre), np.radians(self.bam.setup.lon_centre), stn.metadata.position.lat_r, stn.metadata.position.lon_r)
-
-            # Construct time array, 0 is at start_datetime
-            time_data = np.arange(0, (end_datetime - start_datetime).total_seconds(), delta)
-
-            # Cut the waveform data length to match the time data
-            waveform_data = waveform_data[:len(time_data)]
-            time_data = time_data[:len(waveform_data)] + stn.offset
-            
-            # Detrend the waveform and normalize to fixed width
-            waveform_data = waveform_data - np.mean(waveform_data)
-
-            #waveform_data = waveform_data/np.percentile(waveform_data, 99)*2
-            waveform_data = waveform_data/np.max(waveform_data)*10
-
-            # Add the distance to the waveform
-            waveform_data += station_dist
-
-
-            # Cut the waveforms around the time of arrival, if the window for cutting was given.
-            if self.waveform_window is not None:
-
-                try:
-                    # Time of arrival
-                    toa = station_dist/(prefs.avg_sp_sound/1000) + self.bam.setup.t0
-                except:
-                    toa = station_dist/(310/1000)
-
-                # Cut the waveform around the time of arrival
-                crop_indices = (time_data >= toa - self.waveform_window/2 - 300) & (time_data <= toa + self.waveform_window/2 - 300)
-                time_data = time_data[crop_indices] + 300 #HARD CODED we start 5 min before!
-                waveform_data = waveform_data[crop_indices]
-                
-
-                # Skip plotting if array empty
-                if len(time_data) == 0:
-                    continue
-
-            # Replace all NaNs with 0s
-            waveform_data = np.nan_to_num(waveform_data, 0)
-            
-            max_time = np.max([max_time, np.max(time_data)])
-            min_time = np.min([min_time, np.min(time_data)])
-
-            # Keep track of minimum and maximum waveform values (used for plotting)
-            max_wave_value = np.max([max_wave_value, np.max(waveform_data)])
-            min_wave_value = np.min([min_wave_value, np.min(waveform_data)])
-            #if data_list[idx][1].strip() not in setup.rm_stat: 
-                
-            # Plot the waveform on the the time vs. distance graph
-            self.station_waveform[idx].setData(waveform_data*1000, time_data, pen=(255, 255, 255))
-            self.make_picks_station_graph_canvas.addItem(self.station_waveform[idx])
-
-            # if stn.metadata.code in self.bam.setup.high_f:
-            #     self.fragmentation_idx.append(idx)
-            # if stn.metadata.code in self.bam.setup.high_b:
-            #     self.ballistic_idx.append(idx)
-
-
-        toa_line_time = np.linspace(0, max_time, 10)
-
-        # Plot the constant sound speed line (assumption is that the release happened at t = 0)
-        try:
-            self.make_picks_station_graph_canvas.plot((toa_line_time)*prefs.avg_sp_sound, (toa_line_time + setup.t0), pen=(255, 0, 0))
-        except:
-            self.make_picks_station_graph_canvas.plot((toa_line_time)*310, (toa_line_time), pen=(255, 0, 0))
-
         print('')
         
-
-        self.make_picks_station_graph_canvas.setLabel('bottom', "Distance", units='m')
-        self.make_picks_station_graph_canvas.setLabel('left', "Time", units='s')
-
         SolutionGUI.update(self)
 
     def deleteStation(self):
@@ -2547,9 +2488,43 @@ class SolutionGUI(QMainWindow):
             self.pm.setGeometry(QRect(100, 100, 1200, 700))
             self.pm.show()
 
+        elif self.save_picks.isChecked():
 
-            
+            # Turn this off once its been clicked 
+            self.save_picks.setState(False)
 
+            # folder of event and station
+            dir_path = os.path.join(self.prefs.workdir, self.bam.setup.fireball_name, \
+                    "{:}-{:}.{:}".format(stn.metadata.network, stn.metadata.code, channel))
+
+            # Make directory if needed
+            mkdirP(dir_path)
+
+            # save plot
+            file_name = os.path.join(dir_path, "Amplitude-time_series.png")
+            exporter = pg.exporters.ImageExporter(self.make_picks_waveform_view.scene())
+            exporter.export(file_name)
+
+            self.make_picks_map_graph_view.figure.savefig(os.path.join(dir_path, "Contour_map.png"))
+
+            lines = "#"*20 + "\n"
+
+            with open(os.path.join(dir_path, "Station_Metadata.txt"), 'w+') as f:
+
+                f.write(lines)
+                f.write("Station {:}\n".format(stn.metadata.network, stn.metadata.code))
+                f.write("{:}\n".format(stn.metadata.name))
+                f.write(lines)
+                f.write("Latitude  {:.4f} °N\n".format(stn.metadata.position.lat))
+                f.write("Longitude {:.4f} °E\n".format(stn.metadata.position.lon))
+                f.write("Elevation {:.2f}  m\n".format(stn.metadata.position.elev))
+                f.write(lines)
+                f.write("Response Attached:        {:}\n".format(printTrue(stn.hasResponse())))
+                f.write("Seismic Available:        {:}\n".format(printTrue(stn.hasSeismic())))
+                f.write("Infrasound Available:     {:}\n".format(printTrue(stn.hasInfrasound())))
+                f.write(lines)
+
+            errorMessage("Station Waveform Saved!", 0, title="Saved!", detail="Waveform saved in project folder {:}".format(dir_path))
 
 
         ### Annotations
@@ -2664,6 +2639,101 @@ class SolutionGUI(QMainWindow):
             plt.show()
         else:
             print(printMessage("debug"), "Turning off PSD")
+
+    def drawStats(self, current_stat):
+
+        self.make_picks_station_graph_view.ax.clear()
+        toa_line_time = np.linspace(0, 1000, 3)
+        # Plot the constant sound speed line (assumption is that the release happened at t = 0)
+    
+        self.make_picks_station_graph_view.ax.plot((toa_line_time)*310/1000, toa_line_time, c='m', linestyle='--')
+        self.make_picks_station_graph_view.ax.plot((toa_line_time)*350/1000, toa_line_time, c='m', linestyle='--')
+        self.make_picks_station_graph_view.ax.plot((toa_line_time)*270/1000, toa_line_time, c='m', linestyle='--')
+
+        self.make_picks_station_graph_view.ax.set_xlabel("Distance from Reference [km]")
+        self.make_picks_station_graph_view.ax.set_ylabel("Time from Reference [s]")
+
+        group_list = []
+        groups = set()
+
+        src_title = self.make_picks_ref_pos_choice.currentText()
+
+        if src_title == "Lat/Lon Center":
+            ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
+        else:
+            for src in self.bam.source_list:
+
+                # Forgive me python :!
+                if "{:}: {:}".format(src.source_type, src.title) == src_title:
+                    if src.source_type == "Ballistic":
+                        ref_pos = src.source.pos_f
+                    elif src.source_type == "Fragmentation":
+                        ref_pos = src.source.position
+
+                # The times here will be off by a few seconds since the timing is not taken here
+
+        print("Reference Position: {:}".format(ref_pos))
+
+
+        for ii, stn in enumerate(self.bam.stn_list):
+
+            txt = "{:}".format(stn.metadata.code)
+
+            x, y = self.m(stn.metadata.position.lon, stn.metadata.position.lat)
+
+
+            # Calculate the distance from the source point to this station (kilometers)
+            station_dist = ref_pos.pos_distance(stn.metadata.position)/1000
+
+            toa = station_dist/(310/1000)
+
+
+            if ii == current_stat:
+                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='red', zorder=3)
+                self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='r', marker="^")
+                self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='r')
+            else:
+                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
+                self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='w', marker="^")
+                self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='w')
+            self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+
+
+            if not hasattr(stn, 'annotation'):
+                stn.annotation = AnnotationList()
+
+            annotes_list = stn.annotation.annotation_list
+
+            for an in annotes_list:
+                groups.add(an.group)
+                group_list.append([an.group, an.time, an.length, stn])
+
+
+        if len(groups) > 0:
+            groups = list(groups)
+
+            for gr in groups:
+
+                gr_data_x = []
+                gr_data_y = []
+
+                for an in group_list:
+                    if gr == an[0]:
+
+                        gr_dis = ref_pos.pos_distance(an[3].metadata.position)/1000
+                        gr_time = an[1]
+
+                        gr_data_x.append(gr_dis)
+                        gr_data_y.append(gr_time)
+
+
+
+                self.make_picks_station_graph_view.ax.scatter(gr_data_x, gr_data_y, s=32, label="{:}".format(gr))
+
+            self.make_picks_station_graph_view.ax.legend()
+            
+        self.make_picks_map_graph_view.show()
+        self.make_picks_station_graph_view.show()
 
     def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0, bandpass=None):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 
@@ -2988,32 +3058,34 @@ class SolutionGUI(QMainWindow):
         # Mark the position of the current station on the map
         self.make_picks_station_choice.setCurrentIndex(self.current_station)
 
-        for stn_mk in (i for i in self.station_marker if i is not None):
-            if stn_mk == self.station_marker[self.current_station]:
-                stn_mk.setPen((255, 0, 0))
-                stn_mk.setBrush((255, 0, 0))
-                stn_mk.setZValue(1)
-            elif stn_mk in [self.station_marker[i] for i in self.ballistic_idx]:
-                stn_mk.setPen((0, 0, 255))
-                stn_mk.setBrush((0, 0, 255))
-                stn_mk.setZValue(0)
-            elif stn_mk in [self.station_marker[i] for i in self.fragmentation_idx]:
-                stn_mk.setPen((0, 255, 0))
-                stn_mk.setBrush((0, 255, 0))
-                stn_mk.setZValue(0)
-            else:
-                stn_mk.setPen((255, 255, 255))
-                stn_mk.setBrush((255, 255, 255))
-                stn_mk.setZValue(0)
+        self.drawStats(self.current_station)
+
+        # for stn_mk in (i for i in self.station_marker if i is not None):
+        #     if stn_mk == self.station_marker[self.current_station]:
+        #         stn_mk.setPen((255, 0, 0))
+        #         stn_mk.setBrush((255, 0, 0))
+        #         stn_mk.setZValue(1)
+        #     elif stn_mk in [self.station_marker[i] for i in self.ballistic_idx]:
+        #         stn_mk.setPen((0, 0, 255))
+        #         stn_mk.setBrush((0, 0, 255))
+        #         stn_mk.setZValue(0)
+        #     elif stn_mk in [self.station_marker[i] for i in self.fragmentation_idx]:
+        #         stn_mk.setPen((0, 255, 0))
+        #         stn_mk.setBrush((0, 255, 0))
+        #         stn_mk.setZValue(0)
+        #     else:
+        #         stn_mk.setPen((255, 255, 255))
+        #         stn_mk.setBrush((255, 255, 255))
+        #         stn_mk.setZValue(0)
 
 
-        for stn_mk in (i for i in self.station_waveform if i is not None):
-            if stn_mk != self.station_waveform[self.current_station]:
-                stn_mk.setPen((255, 255, 255))
-                stn_mk.setZValue(0)
-            else:
-                stn_mk.setPen((255, 0, 0))
-                stn_mk.setZValue(1)
+        # for stn_mk in (i for i in self.station_waveform if i is not None):
+        #     if stn_mk != self.station_waveform[self.current_station]:
+        #         stn_mk.setPen((255, 255, 255))
+        #         stn_mk.setZValue(0)
+        #     else:
+        #         stn_mk.setPen((255, 0, 0))
+        #         stn_mk.setZValue(1)
 
         # Plot the waveform from the current station
         if draw_waveform:
@@ -3234,21 +3306,22 @@ class SolutionGUI(QMainWindow):
 
 if __name__ == '__main__':
 
-    app = QApplication(sys.argv)
+    pass
+    # app = QApplication(sys.argv)
 
-    splash_pix = QPixmap(os.path.join('supra', 'Fireballs','docs', '_images', 'wmpl.png'))
-    splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
-    splash.setMask(splash_pix.mask())
-    splash.show()
+    # splash_pix = QPixmap(os.path.join('supra', 'Fireballs','docs', '_images', 'wmpl.png'))
+    # splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+    # splash.setMask(splash_pix.mask())
+    # splash.show()
 
-    app.processEvents()
+    # app.processEvents()
 
-    gui = SolutionGUI()
+    # gui = SolutionGUI()
 
-    gui.showFullScreen()
-    gui.showMaximized()
-    gui.show()
+    # gui.showFullScreen()
+    # gui.showMaximized()
+    # gui.show()
 
-    splash.finish(gui)
+    # splash.finish(gui)
 
-    sys.exit(app.exec_())
+    # sys.exit(app.exec_())

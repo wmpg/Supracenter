@@ -72,6 +72,7 @@ def urlList():
 
 def filterStations(data_list):
 
+    # wow, real great filter luke
     return data_list
 
 def loadIntoStations(data_list):

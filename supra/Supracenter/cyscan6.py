@@ -6,12 +6,9 @@ from supra.Supracenter.anglescan import anglescan
 from mpl_toolkits.mplot3d import Axes3D
 
 from supra.Utils.pso import pso
-import multiprocessing
-
-
 
 def angleErr(x, *cyscan_inputs):
-    S, z_profile, D, wind, debug, h_tol, v_tol = cyscan_inputs
+    S, z_profile, D, wind, debug = cyscan_inputs
     r = anglescan(S, x[0], x[1], z_profile, trace=False, debug=debug, wind=wind)
 
     err = np.sqrt((D[0] - r[0])**2 + (D[1] - r[1])**2 + (D[2] - r[2])**2)
@@ -20,35 +17,35 @@ def angleErr(x, *cyscan_inputs):
 
 SWARM_SIZE = 100
 MAXITER = 100
-PHIP = 0.5
-PHIG = 0.5
-OMEGA = 0.5
-MINFUNC = 1e-8
+PHIP = 0.3
+PHIG = 0.3
+OMEGA = 0.7
+MINFUNC = 1e-3
 MINSTEP = 1e-8
 
 
-def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debug=False, wind=False, h_tol=330, v_tol=3000, \
-        print_times=False):
+def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debug=False, wind=False, h_tol=330, v_tol=3000):
     
     # phi, theta
     search_min = [0, 90]
     search_max = [360, 180]
 
-    cyscan_inputs = [S, z_profile, D, wind, debug, h_tol, v_tol]
+    cyscan_inputs = [S, z_profile, D, wind, debug]
 
-    if particle_output or print_times:
+    if particle_output:
         f_opt, x_opt, f_particle, x_particle = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=multiprocessing.cpu_count(), particle_output=True, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=1, particle_output=True, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)
 
     else:
         f_opt, x_opt = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=multiprocessing.cpu_count(), particle_output=False, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=1, particle_output=False, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)
+
 
 
     if trace:
@@ -98,25 +95,6 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
         x, y, z, T = r[0]
     else:
         x, y, z, T = r
-
-    if print_times:
-        alltimes = []
-        for particle in range(len(f_particle)):
-            r = anglescan(S, f_particle[particle][0], f_particle[particle][1], z_profile, trace=False)
-            x, y, z, T = r
-            h_err = np.sqrt((D[0] - x)**2 + (D[1] - y)**2)
-            v_err = np.sqrt(D[2] - z)
-            if h_err <= h_tol and v_err <= v_tol:
-                alltimes.append(T)
-
-        if len(alltimes) == 0:
-            print("No times within error!")
-        else:
-            print("Times:")
-            print("Minimum Time: {:.4f} s".format(np.nanmin(alltimes)))
-            print("Maximum Time: {:.4f} s".format(np.nanmax(alltimes)))
-            print("Time of Minimum Error: {:.4f} s".format(T))
-
 
     h_err = np.sqrt((x - D[0])**2 + (y - D[1])**2)
     v_err = np.abs(z - D[2])

@@ -4,6 +4,10 @@ import copy
 from functools import partial
 import multiprocessing
 
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+
 from supra.Utils.Classes import Position
 from supra.Fireballs.SeismicTrajectory import timeOfArrival
 from supra.Atmosphere.Parse import parseWeather
@@ -137,7 +141,7 @@ def printStatus(bam, prefs):
 
 
 
-def calcAllTimes(bam, prefs):
+def calcAllTimes(obj, bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
 
@@ -150,6 +154,13 @@ def calcAllTimes(bam, prefs):
             printStatus(bam, prefs)
         return bam.stn_list
 
+
+    qm = QMessageBox()
+    ret = qm.question(obj, '', "No arrival times detected, calculate?", qm.Yes | qm.No)
+
+
+    if ret == qm.No:
+        return bam.stn_list
 
     ####################
     # Times Calculation
@@ -196,7 +207,8 @@ def calcAllTimes(bam, prefs):
                 supra = frag.position
                 
                 # convert to local coordinates based off of the ref_pos
-                supra.pos_loc(ref_pos)
+                stn.metadata.position.pos_loc(supra)
+                supra.pos_loc(supra)
 
                 lats = [supra.lat, stn.metadata.position.lat]
                 lons = [supra.lon, stn.metadata.position.lon]
@@ -228,13 +240,14 @@ def calcAllTimes(bam, prefs):
         # Ballistic
         ############
 
-        if prefs.ballistic_en:
+        if prefs.ballistic_en and bam.setup.trajectory is not None:
 
             step += 1
             loadingBar('Calculating Station Times: ', step, total_steps)
 
             a = []
             # define line bottom boundary
+
             max_height = bam.setup.trajectory.pos_i.elev
             min_height = bam.setup.trajectory.pos_f.elev
 

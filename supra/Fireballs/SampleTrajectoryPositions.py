@@ -359,4 +359,6 @@ if __name__ == "__main__":
 
     # _plotSphereAndArrow(centre, radius, origin, direction, intersection)
 
-    
+if __name__ == '__main__':
+
+    pass

@@ -14,8 +14,11 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.TryObj import *
 
 from supra.Stations.Filters import *
-from supra.Stations.ProcessStation import procTrace, procStream, findChn, findDominantPeriodPSD, genFFT
+from supra.Stations.ProcessStation import *
 from supra.Files.SaveLoad import save
+from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
+
+
 class BandpassWindow(QWidget):
 
     def __init__(self, bam, stn, channel, t_arrival=0):
@@ -112,6 +115,11 @@ class BandpassWindow(QWidget):
         self.bandpass_canvas.addItem(self.noise_selector)
         self.bandpass_canvas.addItem(self.signal_selector)
 
+        self.bandpass_graph = MatplotlibPyQT()
+        self.bandpass_graph.ax1 = self.bandpass_graph.figure.add_subplot(211)
+        self.bandpass_graph.ax2 = self.bandpass_graph.figure.add_subplot(212)
+        layout.addWidget(self.bandpass_graph, 1, 4, 1, 2)
+
     def bandpassSave(self):
         bandpass = [float(self.low_bandpass_edits.text()), float(self.high_bandpass_edits.text())]
         self.stn.bandpass = bandpass
@@ -137,6 +145,9 @@ class BandpassWindow(QWidget):
 
     def bandpass(self):
 
+        self.bandpass_graph.ax1.clear()
+        self.bandpass_graph.ax2.clear()
+
         st = self.stn.stream.select(channel="{:}".format(self.channel))[0]
 
         noise_roi = self.noise_selector.getRegion()
@@ -152,6 +163,10 @@ class BandpassWindow(QWidget):
         S = waveform_data[0][signal_a:signal_b]
         N = waveform_data[0][noise_a:noise_b]
 
+
+        # Need to detrend or bandpass first
+        zero_cross_p = findDominantPeriod(S, t[0][signal_a:signal_b], return_all=True)
+
         # Make sure the windows are the same length
         if len(N) >= len(S):
             N = N[:len(S)]
@@ -161,10 +176,22 @@ class BandpassWindow(QWidget):
 
         S_N_FAS = FAS_S/FAS_N
 
-        plt.loglog(freq, FAS_S, label="Signal")
-        plt.loglog(freq, FAS_N, label="Noise")
-        plt.loglog(freq, S_N_FAS, label="Signal/Noise")
-        plt.axhline(y=1)
+        self.bandpass_graph.ax2.loglog(freq, FAS_S, label="Signal")
+        self.bandpass_graph.ax2.loglog(freq, FAS_N, label="Noise")
+        self.bandpass_graph.ax1.loglog(freq, S_N_FAS, label="Signal/Noise")
+        self.bandpass_graph.ax1.axhline(y=1)
 
-        plt.legend()
-        plt.show()
+        if len(zero_cross_p) == 0:
+            print("No Zero-Crossings!")
+
+        for p in zero_cross_p:
+            self.bandpass_graph.ax1.axvline(x=p, label="Zero-Crossing Dominant Period")
+            self.bandpass_graph.ax2.axvline(x=p, label="Zero-Crossing Dominant Period")
+
+        self.bandpass_graph.ax1.legend()
+        self.bandpass_graph.ax2.legend()
+        self.bandpass_graph.show()
+
+if __name__ == '__main__':
+
+    pass

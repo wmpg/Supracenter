@@ -62,20 +62,20 @@ class AnnoteWindow(QWidget):
             # cut_time =      [item for sublist in cut_time for item in sublist]
             # noise_waveform =[item for sublist in noise_waveform for item in sublist]
 
-            # try:
-            sampling_rate = stn.stream.select(channel=current_channel)[0].stats.sampling_rate
-            freq, fas = genFFT(raw_waveform, sampling_rate)
-            station_fft = pg.PlotDataItem(x=freq, y=fas, pen="w")
-            freq_n, fas_n = genFFT(noise_waveform, sampling_rate)
-            station_noise_fft = pg.PlotDataItem(x=freq_n, y=fas_n, pen="r")
-            station_ratio_fft = pg.PlotDataItem(x=freq_n, y=fas/fas_n, pen="b")
+            try:
+                sampling_rate = stn.stream.select(channel=current_channel)[0].stats.sampling_rate
+                freq, fas = genFFT(raw_waveform, sampling_rate)
+                station_fft = pg.PlotDataItem(x=freq, y=fas, pen="w")
+                freq_n, fas_n = genFFT(noise_waveform, sampling_rate)
+                station_noise_fft = pg.PlotDataItem(x=freq_n, y=fas_n, pen="r")
+                station_ratio_fft = pg.PlotDataItem(x=freq_n, y=fas/fas_n, pen="b")
 
-            self.annote_fft_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=0, pen=QColor(255, 255, 255)))
-            self.annote_fft_canvas.addItem(station_fft)
-            self.annote_fft_canvas.addItem(station_noise_fft)
-            self.annote_fft_canvas.addItem(station_ratio_fft)
-            # except IndexError:
-            #     print(printMessage("error"), " Not enough time data for FFT")
+                self.annote_fft_canvas.addItem(pg.InfiniteLine(pos=(0, 0), angle=0, pen=QColor(255, 255, 255)))
+                self.annote_fft_canvas.addItem(station_fft)
+                self.annote_fft_canvas.addItem(station_noise_fft)
+                self.annote_fft_canvas.addItem(station_ratio_fft)
+            except (IndexError, ValueError):
+                print(printMessage("error"), " Not enough time data for FFT")
 
 
 
@@ -232,3 +232,7 @@ class AnnoteWindow(QWidget):
         del_button = QPushButton('Delete')
         layout.addWidget(del_button, 12, 1, 1, 1)
         del_button.clicked.connect(self.delAnnote)
+
+if __name__ == '__main__':
+
+    pass

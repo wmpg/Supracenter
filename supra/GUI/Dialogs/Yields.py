@@ -16,7 +16,7 @@ from supra.Utils.TryObj import *
 from supra.Utils.EigenRay import eigenConsistancy
 from supra.Supracenter.cyscanIntegration import cyscan as intscan
 from supra.Supracenter.anglescan import anglescan
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.l137 import estPressure
 

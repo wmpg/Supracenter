@@ -532,13 +532,17 @@ class Trajectory:
         self.pos_i.pos_loc(self.pos_f)
         self.pos_f.pos_loc(self.pos_f)
 
+        A = self.pos_i.xyz
+        B = self.pos_f.xyz
+
         C = Position(0, 0, 0)
         
         C.z = height
-        s = (C.z - self.pos_i.z) / self.vector.z
 
-        C.x = s*self.vector.x + self.pos_i.x
-        C.y = s*self.vector.y + self.pos_i.y
+        s = (C.z - A[2])/(B[2] - A[2]) 
+
+        C.x = A[0] + s*(B[0] - A[0])
+        C.y = A[1] + s*(B[1] - A[1])
 
         C.pos_geo(self.pos_f)
 
