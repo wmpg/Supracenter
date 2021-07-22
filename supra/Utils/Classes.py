@@ -459,8 +459,8 @@ class Trajectory:
                 P.append([A[0], A[1], A[2], self.findTime(A[2])])
                 P.append([B[0], B[1], B[2], self.findTime(B[2])])   
             else:
-                P.append([A.lat, A.lon, A.elev, self.findTime(A.elev)])
-                P.append([B.lat, B.lon, B.elev, self.findTime(B.elev)])
+                P.append([self.pos_i.lat, self.pos_i.lon, self.pos_i.elev, self.findTime(self.pos_i.elev)])
+                P.append([self.pos_f.lat, self.pos_f.lon, self.pos_f.elev, self.findTime(self.pos_f.elev)])
 
         # Points Array
         P = [None]*(div)
@@ -604,6 +604,16 @@ class Trajectory:
         return height
 
     def findTime(self, height):
+        """ Returns the time that it takes for the meteor to get from its inital position
+        to a given height. Assumes that the bolide travels at a constant speed
+
+        Arguments:
+        height [float] - the height to find the time at [meters]
+
+        Returns:
+        time [float] - the time at that point [seconds]
+        """
+
 
         # Fraction of meteor (from pos_i - pos_f) that has been completed
         frac = (self.pos_i.elev - height) / (self.pos_i.elev - self.pos_f.elev)
