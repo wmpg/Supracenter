@@ -13,6 +13,7 @@ from supra.Supracenter.cyzInteg import zInteg
 from supra.GUI.Tools.GUITools import *
 from supra.Atmosphere.NRLMSISE import getAtmDensity
 from wmpl.Utils.TrajConversions import date2JD
+from supra.Atmosphere.HWM93 import getHWM
 consts = Constants()
 
 class AtmosType:
@@ -93,6 +94,64 @@ class AtmosType:
         new_y = f(new_x)
 
         return new_y, new_x
+
+class DefaultW(AtmosType):
+    def __init__(self):
+
+        pass
+
+    def genProfile(self, lat, lon, heights, prefs, spline, ref_time):
+
+        dh = 1000 #meters
+
+        missing_heights = np.arange(heights[0], heights[1], -dh)
+        missing_lats = np.linspace(lat[0], lat[1], len(missing_heights))
+        missing_lons = np.linspace(lon[0], lon[1], len(missing_heights))
+
+        if len(missing_heights) == 0:
+            if heights[0] > heights[1]:
+                missing_heights = np.array(heights)
+                missing_lats = np.array(lat)
+                missing_lons = np.array(lon)
+            else:
+                missing_heights = np.array([heights[1], heights[0]])
+                missing_lats = np.array([lat[1], lat[0]])
+                missing_lons = np.array([lon[1], lon[0]])  
+
+        jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
+
+        level = []
+        speed = []
+        mags = []
+        dirs = []
+
+
+        for hh, la, lo in zip(missing_heights, missing_lats, missing_lons):
+
+            t = getAtmDensity(la, lo, hh, jd)
+            speed.append(np.sqrt(consts.GAMMA*consts.R/consts.M_0*t))
+            u, v = getHWM(ref_time, la, lo, hh/1000)
+            mags.append(np.sqrt(u**2 + v**2))
+            dirs.append(np.arctan2(u, v))
+            level.append(hh)
+
+        try:
+            level, speed, mags, dirs = self.spline(level, speed, mags, dirs, interp=spline)
+
+            sounding = []
+            for i in range(len(level)):
+                sounding.append([level[i], speed[i], mags[i], dirs[i]])
+        except ValueError:
+
+            sounding =         np.array([[    0.0, 310, 0.0, 0.0],
+                                         [    0.0, 310, 0.0, 0.0],
+                                         [99999.0, 310, 0.0, 0.0]])
+
+
+        
+        sounding = zInteg(heights[0], heights[1], np.array(sounding))
+
+        return sounding
 
 class ECMWF(AtmosType):
     def __init__(self, lat, lon, rng, time, file_name):
@@ -204,7 +263,7 @@ class ECMWF(AtmosType):
 
 
         # If the region extends above available data
-        dh = 2500 #meters
+        dh = 1000 #meters
         if h[0] > level[0]:
 
             missing_heights = np.arange(level[0] + dh, h[0] + dh, dh)
@@ -218,10 +277,13 @@ class ECMWF(AtmosType):
             for hh in missing_heights:
 
                 t = getAtmDensity(lat, lon, hh, jd)
+                u, v = getHWM(ref_time, lat, lon, hh/1000)
+                mag = np.sqrt(u**2 + v**2)
+                d = np.arctan2(u, v)
 
                 speed = np.insert(speed, 0, np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)) 
-                mags = np.insert(mags, 0, mags[0])
-                dirs = np.insert(dirs, 0, dirs[0])
+                mags = np.insert(mags, 0, mag)
+                dirs = np.insert(dirs, 0, d)
                 level = np.insert(level, 0, hh)
 
 

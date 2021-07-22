@@ -58,37 +58,43 @@ def bandpassFilter(bandpass, delta, ampl_data):
 
     return ampl_data
 
-def procStream(stn, ref_time=None):
+def procStream(stn, ref_time=None, merge=False):
 
     mseed = stn.stream.copy()
     resp = stn.response
-
-    # Not sure why this error happens, float modulo Obspy error??
-    try:
-        mseed.merge()
-    except ZeroDivisionError:
-        pass
-    except Exception:
-        pass
-
-    gaps = mseed.get_gaps()
-
-    gap_times = []
-    for gap in gaps:
-        start = gap[4]
-        end = gap[5]
-
-        ref = obspy.core.utcdatetime.UTCDateTime(ref_time)
-
-        start_ref = start - ref
-        end_ref = end - ref
-
-        gap_times.append([start_ref, end_ref])
+    merge = True
+    if merge:
+        # Not sure why this error happens, float modulo Obspy error??
+        try:
+            mseed.merge()
+        except ZeroDivisionError:
+            pass
+        except Exception:
+            pass
 
 
-    return mseed, resp, gap_times
+        gaps = mseed.get_gaps()
+
+
+        gap_times = []
+        for gap in gaps:
+            start = gap[4]
+            end = gap[5]
+
+            ref = obspy.core.utcdatetime.UTCDateTime(ref_time)
+
+            start_ref = start - ref
+            end_ref = end - ref
+
+            gap_times.append([start_ref, end_ref])
+
+
+        return mseed, resp, gap_times
+    else:
+        return mseed, resp, []
 
 def findChn(st, chn):
+
     try:
         st = st.select(channel=chn)[0]
     except IndexError:
@@ -128,6 +134,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     npts            = trace.stats.npts
     sampling_rate   = trace.stats.sampling_rate
 
+
     if ref_datetime is not None:
         offset = (start_datetime - ref_datetime).total_seconds()
     else:
@@ -153,9 +160,10 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         try:
             time_data = tr.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_datetime))
         except TypeError:
-            time_data = np.arange(0,  npts/sampling_rate, delta)
+            pass
+        # time_data = np.arange(0,  npts/sampling_rate, delta) + offset
         ampl_data = ampl_data[:len(time_data)]
-        # time_data = time_data[:len(ampl_data)]
+        time_data = time_data[:len(ampl_data)]
 
         raw_trace = ampl_data
         # Init the butterworth bandpass filter

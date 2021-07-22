@@ -122,6 +122,11 @@ def initMenuBar(obj, layout):
     infratrajspace.triggered.connect(obj.trajSpace)
     tools_menu.addAction(infratrajspace)
 
+    glm_viewer = QAction("GLM Viewer", obj)
+    glm_viewer.triggered.connect(obj.glmviewer)
+    tools_menu.addAction(glm_viewer)
+
+
 def initMainGUI(obj):
 
     obj._main = QWidget()
@@ -578,6 +583,11 @@ def addMakePicksWidgets(obj):
     obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
     toggle_button_array.addWidget(obj.save_picks)
 
+    obj.rotatepol = ToggleButton(False, 5)
+    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    toggle_button_array.addWidget(obj.rotatepol)
+
     # obj.traj_space = ToggleButton(False, 5)
     # obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
     # obj.traj_space.clicked.connect(obj.traj_space.clickedEvt)
@@ -610,6 +620,10 @@ def addMakePicksWidgets(obj):
     launch = QPushButton('Load Station Data')
     station_group_layout.addWidget(launch, 3, 0, 1, 2)
     launch.clicked.connect(obj.makePicks)
+
+    savtr = QPushButton('Save Current Trace')
+    station_group_layout.addWidget(savtr, 4, 0, 1, 2)
+    savtr.clicked.connect(obj.saveTrace)
 
     make_picks_filter_group = QGroupBox("Waveform Filtering")
     make_picks_control_panel.addWidget(make_picks_filter_group)
@@ -903,8 +917,12 @@ def addFetchATMWidgets(obj):
     # obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
 
     obj.fatm_print = QPushButton("Print")
-    fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 1)
     obj.fatm_print.clicked.connect(obj.fatmPrint)
+
+    obj.fatm_print = QPushButton("Print for InfraGA")
+    fetch_content.addWidget(obj.fatm_print, 16, 2, 1, 1)
+    obj.fatm_print.clicked.connect(partial(obj.fatmPrint, True))
 
     obj.fatm_start_label = QLabel("Start lat/lon/elev")
     obj.fatm_start_lat = QLineEdit()

@@ -480,12 +480,11 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
         lons = [traj_point.lon, stat_point.lon]
         heights = [traj_point.elev, stat_point.elev]
 
-        sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
+        sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)    
 
         if prefs.wind_en:
             A = cyscan(S, D, sounding, \
-                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                 wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
         else:
 
             dx, dy, dz = D[0] - S[0], D[1] - S[1], D[2] - S[2]
@@ -504,30 +503,30 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     
     T_pert = []
 
-    if perturbations is not None:
+    # if perturbations is not None:
 
-        for p in range(len(perturbations)):
+    #     for p in range(len(perturbations)):
 
-            cyscan_res = []
-            for i in range(a):
+    #         cyscan_res = []
+    #         for i in range(a):
 
-                S = np.array(points[i])
-                traj_point = angle2Geo(points[i][0:3], ref_loc)
-                stat_point = angle2Geo(stat_coord, ref_loc)
+    #             S = np.array(points[i])
+    #             traj_point = angle2Geo(points[i][0:3], ref_loc)
+    #             stat_point = angle2Geo(stat_coord, ref_loc)
 
-                lats = [traj_point.lat, stat_point.lat]
-                lons = [traj_point.lon, stat_point.lon]
-                heights = [traj_point.elev, stat_point.elev]
+    #             lats = [traj_point.lat, stat_point.lat]
+    #             lons = [traj_point.lon, stat_point.lon]
+    #             heights = [traj_point.elev, stat_point.elev]
 
-                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
+    #             sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)    
 
-                A_p = cyscan(S, D, perturbations[p], \
-                 wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+    #             A_p = cyscan(S, D, perturbations[p], \
+    #              wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
+    #                 h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
 
-                cyscan_res.append(A_p)
+    #             cyscan_res.append(A_p)
 
-            T_pert.append(getTimes(np.array(cyscan_res), u, a))
+    #         T_pert.append(getTimes(np.array(cyscan_res), u, a))
 
     return T_nom, T_pert
 
@@ -655,7 +654,7 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
 
     #points = temp_traj.findPoints(gridspace=1000, min_p=pos_f.elev, max_p=100000)
 
-    points = temp_traj.trajInterp2(div=2500, min_p=17000, max_p=100000, xyz=True, ref_loc=ref_pos)
+    points = temp_traj.trajInterp2(div=100, min_p=17000, max_p=100000, xyz=True, ref_loc=ref_pos)
 
     if prefs.debug:
         dif = points[1] - points[0]
@@ -674,7 +673,7 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
 
 
     for stn in station_list:
-        
+
         t_theo, t_pert = timeOfArrival(np.array([stn[3], stn[4], stn[5]]), temp_traj, bam, prefs, points, ref_loc=ref_pos)
 
         t_obs = stn[6]

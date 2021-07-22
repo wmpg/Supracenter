@@ -109,9 +109,7 @@ class Atmos:
     def __init__(self, avg_sp_sound=310):
 
         self.avg_sp_sound = avg_sp_sound
-        self.default_weather = np.array([[    0.0, self.avg_sp_sound, 0.0, 0.0],
-                                         [    0.0, self.avg_sp_sound, 0.0, 0.0],
-                                         [99999.0, self.avg_sp_sound, 0.0, 0.0]])
+        self.default_weather = DefaultW()
 
     def __str__(self):
         
@@ -153,28 +151,15 @@ class Atmos:
         if prefs.atm_type == 'ecmwf':
             if hasattr(self, 'ecmwf'):
                 return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline, ref_time=ref_time)
-            else:
-                raise Exception("ECMWF is not loaded into the BAM file, trying to export default weather")
-                self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                                 [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                                 [heights[0], self.avg_sp_sound, 0.0, 0.0]])
-                return self.default_weather, None
-        elif prefs.atm_type == 'radio':
-            self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                 [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                 [heights[0], self.avg_sp_sound, 0.0, 0.0]])
-            return self.default_weather, None
-        elif prefs.atm_type == 'none':
 
-            self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                             [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                             [heights[0], self.avg_sp_sound, 0.0, 0.0]])
 
-            return self.default_weather, None
+        ### Not using weather
 
-        else:
-            print('Unrecognized weather type')
-            return self.default_weather, None
+        self.default_weather = DefaultW()
+
+        default_weather = self.default_weather.genProfile(lat, lon, heights, prefs, spline, ref_time)    
+
+        return default_weather, None
 
 
 if __name__ == '__main__':

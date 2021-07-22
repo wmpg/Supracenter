@@ -187,7 +187,7 @@ def calcAllTimes(obj, bam, prefs):
 
         stn.times.ballistic = []
         stn.times.fragmentation = []
-        stn.metadata.position.pos_loc(ref_pos)
+
 
         ################
         # Fragmentation
@@ -214,7 +214,7 @@ def calcAllTimes(obj, bam, prefs):
                 lons = [supra.lon, stn.metadata.position.lon]
                 heights = [supra.elev, stn.metadata.position.elev]
 
-                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)
+                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime, spline=1000)
 
                 # Travel time of the fragmentation wave
                 f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), sounding, \
@@ -251,7 +251,7 @@ def calcAllTimes(obj, bam, prefs):
             max_height = bam.setup.trajectory.pos_i.elev
             min_height = bam.setup.trajectory.pos_f.elev
 
-            points = bam.setup.trajectory.trajInterp2(div=100, min_p=min_height, max_p=max_height)
+            points = bam.setup.trajectory.trajInterp2(div=1, min_p=min_height, max_p=max_height)
 
 
             u = np.array([bam.setup.trajectory.vector.x,
@@ -269,7 +269,7 @@ def calcAllTimes(obj, bam, prefs):
                 lons = [S.lon, stn.metadata.position.lon]
                 heights = [S.elev, stn.metadata.position.elev]
 
-                S.pos_loc(ref_pos)
+                S.pos_loc(S)
 
                 sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)
 
@@ -302,7 +302,7 @@ def calcAllTimes(obj, bam, prefs):
             supra = points[best_indx]
             ref_time = supra[3]
             supra = Position(supra[0], supra[1], supra[2])
-            supra.pos_loc(ref_pos)
+            supra.pos_loc(supra)
 
 
             lats = [supra.lat, stn.metadata.position.lat]

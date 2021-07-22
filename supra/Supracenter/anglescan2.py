@@ -76,10 +76,11 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
     ### Scan Loop ###
     a, b = np.cos(phi), np.sin(phi)
     last_z = 0 
+    #for i in range(n_layers - 1):
     for i in range(n_layers - 1, 0, -1):
 
         s2 = s[i]**2
-        delz = z[i] - z[i - 1]
+        delz = z[i] - z[i-1]
 
         # Winds Enabled
         if wind:
@@ -104,10 +105,12 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
                     return np.array([np.nan, np.nan, np.nan, np.nan])
 
             # Equation (10)
-            X += (p2 + s2*U)*A
+            dx = (p2 + s2*U)*A
+            X += dx
 
             # Equation (11)
-            Y += s2*V*A
+            dy = s2*V*A
+            Y += dy
 
             # Calculate true destination positions (transform back)
             #0.0016s
@@ -117,10 +120,21 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
         else:
 
             # Equation (3)
-            X += p*(delz)/(np.sqrt(s2 - p**2))
+            dx = p*(delz)/(np.sqrt(s2 - p**2))
+            X += dx
+            Y = 0
+            dy = 0
 
         last_z = i - 1
-        t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
+        dt = s2/np.sqrt(s2 - p**2/(1 - p*u[i-1])**2)*delz
+
+
+        # If possible, use the ray timing, else just use the distance with the sound speed at that layer
+        if not np.isnan(dt):
+            t_arrival += dt
+        else:
+            t_arrival += np.sqrt((a*dx - b*dy)**2 + (b*dx + a*dy)**2 + delz**2)*s[i]
+
 
         if trace:
             T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival])
@@ -147,7 +161,7 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
     D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival]
 
 
-
+    
     ##########################
     if trace:
         return np.array(D), np.array(T)

@@ -67,6 +67,8 @@ from supra.GUI.Dialogs.Polmap import Polmap
 from supra.GUI.Dialogs.BandpassGUI import BandpassWindow
 from supra.GUI.Dialogs.ReportDialog import ReportWindow
 from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
+from supra.GUI.Dialogs.GLMReader import glmWindowDialog
+from supra.GUI.Dialogs.RotatePol import RotatePolWindow
 
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.Theme import theme
@@ -102,6 +104,7 @@ from supra.Geminus.geminusGUI import Geminus
 
 from supra.Supracenter.l137 import estPressure
 from supra.Atmosphere.NRLMSISE import getAtmDensity
+from supra.Atmosphere.HWM93 import getHWM
 from wmpl.Utils.TrajConversions import date2JD
 from wmpl.Utils.OSTools import mkdirP
 HEIGHT_SOLVER_DIV = 250
@@ -236,6 +239,11 @@ class SolutionGUI(QMainWindow):
         self.ts.setGeometry(QRect(100, 100, 1200, 700))
         self.ts.show() 
 
+    def glmviewer(self):
+        self.glm = glmWindowDialog(self.bam)
+        self.glm.setGeometry(QRect(100, 100, 1200, 700))
+        self.glm.show()
+
     def csvLoad(self, table):
         """ Loads csv file into a table
         """
@@ -296,6 +304,7 @@ class SolutionGUI(QMainWindow):
 
         supSearch(self.bam, self.prefs, manual=manual, results_print=False, obj=self)
 
+ 
     def trajSearchSetup(self):
 
         x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
@@ -861,15 +870,17 @@ class SolutionGUI(QMainWindow):
         
         NTS = []
 
+        dh = sounding[:, 0]
+
+        lat = tryFloat(self.fatm_end_lat.text())
+        lon = tryFloat(self.fatm_end_lon.text())
+        ref_time = self.bam.setup.fireball_datetime
+
         self.fatm_canvas.clear()
         self.fatm_canvas.setLabel('left', "Height", units='m', size='24pt')
         if self.fatm_variable_combo.currentText() == 'Sound Speed':
             X = sounding[:, 1]
-            dh = sounding[:, 0]
 
-            lat = tryFloat(self.fatm_end_lat.text())
-            lon = tryFloat(self.fatm_end_lon.text())
-            ref_time = self.bam.setup.fireball_datetime
             jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
 
 
@@ -886,9 +897,26 @@ class SolutionGUI(QMainWindow):
         elif self.fatm_variable_combo.currentText() == 'Wind Magnitude':
             X = sounding[:, 2]
 
+
+            for hh in dh:
+
+                u, v = getHWM(ref_time, lat, lon, hh/1000)
+                c = np.sqrt(u**2 + v**2)
+
+                NTS.append(c)
+
+
             self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = np.degrees(sounding[:, 3])
+
+            for hh in dh:
+
+                u, v = getHWM(ref_time, lat, lon, hh/1000)
+                c = np.degrees(np.arctan2(u, v))
+
+                NTS.append(c)
+
             self.fatm_canvas.setLabel('bottom', "Wind Direction", units='deg from N', size='24pt')
         elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
             X, nom_range, nom_ray_range = self.effectiveSoundSpeed(sounding)
@@ -897,10 +925,24 @@ class SolutionGUI(QMainWindow):
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
             X = mags*np.cos(np.radians(dirs))
+
+            for hh in dh:
+
+                u, v = getHWM(ref_time, lat, lon, hh/1000)
+
+                NTS.append(u)
+
         elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
             X = mags*np.sin(np.radians(dirs))
+
+            for hh in dh:
+
+                u, v = getHWM(ref_time, lat, lon, hh/1000)
+
+                NTS.append(v)
+
         else:
             return None
         Y = sounding[:, 0]
@@ -1043,11 +1085,13 @@ class SolutionGUI(QMainWindow):
 
                 clat = self.bam.setup.lat_centre
                 clon = self.bam.setup.lon_centre
-                deg_rad = self.bam.setup.deg_radius
+                deg_rad = 5*self.bam.setup.deg_radius
 
+
+                area = [clat + deg_rad, clon - deg_rad, clat - deg_rad, clon + deg_rad]
 
                 try:
-                    copernicusAPI(variables, year, month, day, time_of, loc, ensemble=perts)
+                    copernicusAPI(variables, year, month, day, time_of, loc, ensemble=perts, area=area)
                 except Exception as e:
                     errorMessage("Error downloading weather data from CDS", 1, detail='{:}'.format(e))
                 except:
@@ -1068,7 +1112,7 @@ class SolutionGUI(QMainWindow):
                     return None
             
                 try:
-                    atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+                    atmos = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, ref_time=self.bam.setup.fireball_datetime)
                 except Exception as e:
                     errorMessage("Unable to load sounding data from BAM", 1, detail="{:}".format(e))
                     return None
@@ -1104,7 +1148,7 @@ class SolutionGUI(QMainWindow):
                 self.fatm_variable_combo.addItem('Wind Direction')
                 self.fatmPlot()
 
-    def fatmPrint(self):
+    def fatmPrint(self, infraga=False):
         
         filename = QFileDialog.getSaveFileName(self, 'Save File', '', 'Text File (*.txt)')
 
@@ -1140,7 +1184,7 @@ class SolutionGUI(QMainWindow):
             return None
 
         try:
-            sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+            sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, ref_time=self.bam.setup.fireball_datetime)
         except Exception as e:
             errorMessage('Unable to find specified profile!', 2, detail='{:}'.format(e))
             return None
@@ -1151,9 +1195,40 @@ class SolutionGUI(QMainWindow):
         v = sounding[:, 3]
         p = 10*101.325*np.exp(-0.00012*z)
 
+        ### Taken from ecmwf_extractor.py
+        den0 = 0.001225
+        coeffs_A = np.array([-3.9082017e-2, -1.1526465e-3, 3.2891937e-5, -2.0494958e-7,
+                                -4.7087295e-2, 1.2506387e-3, -1.5194498e-5, 6.581877e-8])
+        coeffs_B = np.array([-4.9244637e-3,  -1.2984142e-6, -1.5701595e-6, 1.5535974e-8,
+                                -2.7221769e-2, 4.247473e-4, -3.9583181e-6, 1.7295795e-8])
+
+        def density(z):
+            """
+                Computes the atmospheric density according to 
+                    the US standard atmosphere model using a 
+                    polynomial fit
+
+                Parameters
+                ----------
+                z : float
+                    Altitude above sea level [km]
+
+                Returns:
+                density : float
+                    Density of the atmosphere at altitude z [g/cm^3] 
+            """
+
+            poly_A, poly_B = 0.0, 1.0
+            for n in range(4):
+                poly_A += coeffs_A[n] * z**(n + 1)
+                poly_B += coeffs_B[n] * z**(n + 1)
+
+            return den0 * 10.0**(poly_A / poly_B)
+        rho = density(z/1000)
 
 
-        atmos_vars = [z, u, v, t, p]
+
+        atmos_vars = [z, u, v, t, p, rho]
         filename = checkExt(filename[0], '.txt')
 
         header = 'Height'
@@ -1165,19 +1240,35 @@ class SolutionGUI(QMainWindow):
             else:
                 header = header + ', ' + element
 
+        if infraga:
+            # infraga takes z[km], T[K], u, v, rho[g/cm^3], P[mbar]
+            with open(str(filename), 'w') as f:
+                
+                # f.write(header)
 
-        with open(str(filename), 'w') as f:
-            
-            f.write(header)
+                for line in range(len(sounding)):
+                    info = ''
+                    for v in [0, 3, 1, 2, 5, 4]:
+                        if v == 4:
+                            info = info + str(atmos_vars[v][line]) + '\n'
+                        elif v == 0:
+                            info = info + str(atmos_vars[v][line]/1000) + '\t'
+                        else:
+                            info = info + str(atmos_vars[v][line]) + '\t'
+                    f.write(info)
+        else:
+            with open(str(filename), 'w') as f:
+                
+                f.write(header)
 
-            for line in range(len(sounding)):
-                info = ''
-                for v in range(5):
-                    if v == 4:
-                        info = info + str(atmos_vars[v][line]) + '\n'
-                    else:
-                        info = info + str(atmos_vars[v][line]) + ','
-                f.write(info)
+                for line in range(len(sounding)):
+                    info = ''
+                    for v in range(6):
+                        if v == 5:
+                            info = info + str(atmos_vars[v][line]) + '\n'
+                        else:
+                            info = info + str(atmos_vars[v][line]) + ','
+                    f.write(info)
 
 
         errorMessage('Printed out sounding data', 0, title="Print Done")
@@ -1247,6 +1338,25 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Output to CSV!', 0, title='Exported!', detail='Filename: {:}'.format(file_name))
 
+    def saveTrace(self):
+
+
+        station_no = self.current_station
+
+        # Extract current station
+        stn = self.bam.stn_list[station_no]
+
+
+        current_channel = self.make_picks_channel_choice.currentIndex()
+        chn_selected = self.make_picks_channel_choice.currentText()
+
+        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime, merge=False)
+        
+        st = findChn(st, chn_selected)
+
+        file_name = saveFile("mseed", note="")
+
+        st.write(file_name, format="MSEED") 
 
     def refHighStats(self):
         for ii, stn in enumerate(self.stn_list):
@@ -1997,11 +2107,11 @@ class SolutionGUI(QMainWindow):
 
                     # marker = pg.ScatterPlotItem()
                     # marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
-                    # txt = "{:}".format(stat_name)
+                    txt = "{:}".format(stat_name)
                     # txt.setPos(stat_lon, stat_lat)
                     # self.make_picks_map_graph_canvas.addItem(marker, update=True)
                     # self.make_picks_map_graph_canvas.addItem(txt)
-                    x, y = m(stat_lon, stat_lat)
+                    x, y = self.m(stat_lon, stat_lat)
                     self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='d', color='m', zorder=3) 
                     self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
@@ -2509,6 +2619,8 @@ class SolutionGUI(QMainWindow):
 
             lines = "#"*20 + "\n"
 
+            tr = stn.stream.select(channel=channel)
+
             with open(os.path.join(dir_path, "Station_Metadata.txt"), 'w+') as f:
 
                 f.write(lines)
@@ -2523,9 +2635,29 @@ class SolutionGUI(QMainWindow):
                 f.write("Seismic Available:        {:}\n".format(printTrue(stn.hasSeismic())))
                 f.write("Infrasound Available:     {:}\n".format(printTrue(stn.hasInfrasound())))
                 f.write(lines)
+                f.write("Channel Trace Stats:")
+                f.write("\t Channel:       {:}".format(channel))
+                f.write("\t Sampling Rate: {:} Hz".format(tr.sampling_rate))
+                f.write("\t Delta:         {:} s".format(tr.delta))
+                f.write("\t Calibration Factor {:}".format(tr.calib))
+                f.write("\t Npts               {:}".format(tr.npts))
+                f.write("\t Start time         {:}".format(tr.starttime))
+                f.write("\t End time           {:}".format(tr.endtime))
 
             errorMessage("Station Waveform Saved!", 0, title="Saved!", detail="Waveform saved in project folder {:}".format(dir_path))
 
+        elif self.rotatepol.isChecked():
+
+             
+            rng = self.make_picks_waveform_canvas.getAxis('bottom').range
+            start_time = self.bam.setup.fireball_datetime
+
+            lside = start_time + datetime.timedelta(seconds=rng[0])
+            rside = start_time + datetime.timedelta(seconds=rng[1])
+
+            self.rpol = RotatePolWindow(self.bam.stn_list[self.current_station], channel, lside, rside, start_time)
+            self.rpol.setGeometry(QRect(200, 300, 1600, 800))
+            self.rpol.show()
 
         ### Annotations
         elif self.annote_picks.isChecked():
@@ -2767,8 +2899,10 @@ class SolutionGUI(QMainWindow):
         current_channel = self.make_picks_channel_choice.currentIndex()
         chn_selected = self.make_picks_channel_choice.currentText()
 
-        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime)
+
+        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime, merge=False)
             
+
         # if channel_changed == 0:
         #     # Populate channel list
         #     self.make_picks_channel_choice.blockSignals(True)
@@ -2791,6 +2925,7 @@ class SolutionGUI(QMainWindow):
         
 
         st = findChn(st, chn_selected)
+
         self.current_waveform_raw = st.data
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
@@ -2953,6 +3088,18 @@ class SolutionGUI(QMainWindow):
                 #     pass
                 #     print(printMessage("fragmentation"), '({:}) ({:6.2f} km) No Arrival'.format(i+1, frag.position.elev/1000))
 
+                # print("### BREAKDOWN OF TIMES for a 40 km Event ###")
+                # print("Reference Time: {:}".format(self.bam.setup.fireball_datetime))
+                
+
+                # pt = traj.trajInterp2(div=100,\
+                #                     min_p=39000,\
+                #                     max_p=41000)[0]
+                
+                # print("Time along Trajectory: {:} s".format(pt[3]))
+
+
+
                 if self.prefs.pert_en:
                     data, remove = self.obtainPerts(stn.times.fragmentation, i)
                     # try:
@@ -2971,7 +3118,8 @@ class SolutionGUI(QMainWindow):
                             except IndexError:
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
-        stationFormat(stn, self.bam.setup, ref_pos)
+
+        stationFormat(stn, self.bam.setup, ref_pos, chn_selected)
 
         self.addAnnotes()
     def obtainPerts(self, data, frag):

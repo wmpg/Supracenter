@@ -36,16 +36,16 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
 
     cyscan_inputs = [S, z_profile, D, wind, debug, h_tol, v_tol]
 
-    if particle_output or print_times:
+    if particle_output:
         f_opt, x_opt, f_particle, x_particle = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=multiprocessing.cpu_count(), particle_output=True, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=multiprocessing.cpu_count()-1, particle_output=True, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)
 
     else:
         f_opt, x_opt = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=multiprocessing.cpu_count(), particle_output=False, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=1, particle_output=False, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)
@@ -54,6 +54,7 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
     if trace:
         r = anglescan(S, f_opt[0], f_opt[1], z_profile, trace=True)
         tr = np.array(r[1])
+
         if plot:
             
             fig = plt.figure()
@@ -73,6 +74,7 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
             plt.show()
     else:
         r = anglescan(S, f_opt[0], f_opt[1], z_profile, trace=False)
+
 
     if debug:
         print("Final Solution: {:.2f} {:.2f}".format(f_opt[0], f_opt[1]))
@@ -99,23 +101,23 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
     else:
         x, y, z, T = r
 
-    if print_times:
-        alltimes = []
-        for particle in range(len(f_particle)):
-            r = anglescan(S, f_particle[particle][0], f_particle[particle][1], z_profile, trace=False)
-            x, y, z, T = r
-            h_err = np.sqrt((D[0] - x)**2 + (D[1] - y)**2)
-            v_err = np.sqrt(D[2] - z)
-            if h_err <= h_tol and v_err <= v_tol:
-                alltimes.append(T)
+    # if print_times:
+    #     alltimes = []
+    #     for particle in range(len(f_particle)):
+    #         r = anglescan(S, f_particle[particle][0], f_particle[particle][1], z_profile, trace=False)
+    #         x_t, y_t, z, T = r
+    #         h_err = np.sqrt((D[0] - x)**2 + (D[1] - y)**2)
+    #         v_err = np.sqrt(D[2] - z)
+    #         if h_err <= h_tol and v_err <= v_tol:
+    #             alltimes.append(T)
 
-        if len(alltimes) == 0:
-            print("No times within error!")
-        else:
-            print("Times:")
-            print("Minimum Time: {:.4f} s".format(np.nanmin(alltimes)))
-            print("Maximum Time: {:.4f} s".format(np.nanmax(alltimes)))
-            print("Time of Minimum Error: {:.4f} s".format(T))
+    #     if len(alltimes) == 0:
+    #         print("No times within error!")
+    #     else:
+    #         print("Times:")
+    #         print("Minimum Time: {:.4f} s".format(np.nanmin(alltimes)))
+    #         print("Maximum Time: {:.4f} s".format(np.nanmax(alltimes)))
+    #         print("Time of Minimum Error: {:.4f} s".format(T))
 
 
     h_err = np.sqrt((x - D[0])**2 + (y - D[1])**2)
@@ -130,7 +132,7 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
 
     else:
         R = [np.nan, np.nan, np.nan, x_opt]
-        tr = [[np.nan, np.nan, np.nan]]
+        tr = [[np.nan, np.nan, np.nan, np.nan]]
 
     if trace:
         if particle_output:
@@ -143,16 +145,18 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
 
 
 if __name__ == '__main__':
-    S = np.array([0, 0, 1000])
 
-    #takeoff
-    theta = 135
+    pass  
+    # S = np.array([0, 0, 1000])
 
-    #azimuth
-    phi = 0
+    # #takeoff
+    # theta = 135
 
-    z_profile = np.array([[    0, 330, 0, 0],
-                          [500, 330, 0, 0],
-                          [1000, 330, 0, 0]])
-    D = ([1000, 10000, 0])
-    r = cyscan(S, D, z_profile, trace=True)
+    # #azimuth
+    # phi = 0
+
+    # z_profile = np.array([[    0, 330, 0, 0],
+    #                       [500, 330, 0, 0],
+    #                       [1000, 330, 0, 0]])
+    # D = ([1000, 10000, 0])
+    # r = cyscan(S, D, z_profile, trace=True)

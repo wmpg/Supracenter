@@ -261,6 +261,7 @@ class ParticleMotion(QWidget):
         self.plot_type.addItem('Azimuth Window')
         self.plot_type.addItem('Jurkevic Azimuth')
         self.plot_type.addItem('Azimuth Colourmap')
+        # self.plot_type.addItem('Abercrombie 1995')
         self.plot_type.currentIndexChanged.connect(self.selectorPlot)
 
         right_pane.addWidget(self.waveform_fft_view, 0, 0)
@@ -823,6 +824,17 @@ class ParticleMotion(QWidget):
                 self.particle_motion_canvas.setLimits(xMin=0, xMax=t_list[-1]+bandpass_low, yMin=bandpass_low, yMax=bandpass_high)
                 self.hist.setHistogramRange(0, 180)
                 # self.particle_motion_canvas.setLookupTable(self.hist)
+
+            # elif self.plot_type.currentText() == 'Abercrombie 1995':
+            #     STEP_DEG = 1 #deg
+
+            #     ba_list = np.arange(0, 360, STEP_DEG)
+
+            #     raw_stream = self.condensed_stream[i].copy()
+
+            #     for ba in ba_list:
+            #         raw_stream.rotate('NE->RT', back_azimuth=ba)
+
 
             else:
                 az_window = pol_res['azimuth']

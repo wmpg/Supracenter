@@ -172,8 +172,10 @@ class AnnoteWindow(QWidget):
         _, self.high_bandpass_edits = createLabelEditObj("Highpass", layout, 4, width=1, h_shift=0, tool_tip='', validate='float', default_txt='8')
 
         self.group_edits.addItem("[Unknown]")
-        for s in self.bam.source_list:
-            self.group_edits.addItem(s.title)
+
+        if hasattr(self.bam, "source_list"):
+            for s in self.bam.source_list:
+                self.group_edits.addItem(s.title)
 
         time_label = QLabel("Time: ")
         layout.addWidget(time_label, 5, 1, 1, 1)

@@ -131,7 +131,7 @@ def checkExt(file, ext):
     else:
         return file
 
-def stationFormat(stn, setup, ref_pos, more=True):
+def stationFormat(stn, setup, ref_pos, current_chn, more=True):
 
     lines = "#"*20
     cyan_tag = termchkr("#", color="cyan", rm_brace=True)
@@ -150,6 +150,7 @@ def stationFormat(stn, setup, ref_pos, more=True):
 
     print(termchkr(lines, color="cyan", rm_brace=True), termchkr(lines, color="cyan", rm_brace=True))
     print("{:} Station: {:2}-{:5}".format(cyan_tag, stn.metadata.network, stn.metadata.code))
+    print("{:} Selected Channel: {:}".format(cyan_tag, current_chn))
     print(termchkr(lines, color="cyan", rm_brace=True))
     print("{:} {:}".format(cyan_tag, stn.metadata.name))
     print("{:} Latitude  {:.4f} °N".format(cyan_tag, stn.metadata.position.lat))
