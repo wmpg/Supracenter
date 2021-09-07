@@ -153,6 +153,7 @@ class DefaultW(AtmosType):
 
         return sounding
 
+
 class ECMWF(AtmosType):
     def __init__(self, lat, lon, rng, time, file_name):
         
@@ -418,6 +419,7 @@ class ECMWF(AtmosType):
 class Radio:
     def __init__(self):
         pass
+
 
 if __name__ == '__main__':
 

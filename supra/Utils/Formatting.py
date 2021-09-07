@@ -17,7 +17,7 @@ def splashMessage():
     print('#            Luke McFadden,             #')
     print('#              Denis Vida,              #') 
     print('#              Peter Brown              #')
-    print('#              2018 - 2020              #')
+    print('#              2018 - 2021              #')
     print('#########################################')
 
 def printTrue(result):

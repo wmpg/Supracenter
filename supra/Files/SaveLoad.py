@@ -24,6 +24,9 @@ def openPkl(filename):
         return None
     except PermissionError as e:
         errorMessage('Unable to read file', 2, info='File "{:}" is unable to be read. A folder may have been selected.'.format(filename), detail='{:}'.format(e))
+    except AttributeError as e:
+        errorMessage('Pickle Loading Failed!', 2, detail='{:}'.format(e))
+
 
 def saveSetup(obj):
 
