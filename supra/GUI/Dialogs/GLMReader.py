@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pickle
+import datetime
 
 import matplotlib.pyplot as plt
 from scipy.interpolate import interp1d
@@ -16,7 +17,7 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.Classes import *
 
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
-
+from supra.Utils.Formatting import *
 
 class glmWindowDialog(QWidget):
 
@@ -78,9 +79,12 @@ class glmWindowDialog(QWidget):
         
         # self.save_ray = createButton("Export Ray", layout, 12, 3, self.exportRay)
 
-        self.load_glm_label, self.load_glm_edits, self.load_glm_buton = createFileSearchObj('Load Ray Trace: ', layout, 13, width=1, h_shift=1)
+        self.load_glm_label, self.load_glm_edits, self.load_glm_buton = createFileSearchObj('Load GLM: ', layout, 13, width=1, h_shift=1)
         self.load_glm_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.load_glm_edits))
         self.load_glm_buton.clicked.connect(self.procGLM)
+
+        self.for_met_sim = createButton("Save For MetSim", layout, 13, 2, self.saveMetSim)
+
 
         # self.draw_stat = createButton("Draw Station", layout, 14, 3, self.drawStat)
         # self.draw_src  = createButton("Draw Source", layout, 15, 3, self.drawSrc)
@@ -108,13 +112,83 @@ class glmWindowDialog(QWidget):
 
         self.glm_graph.ax.legend()
 
-    def procGLM(self):
+    def saveMetSim(self):
+        """ Save GLM station as a fake observer camera at the end of the trajectory given 
+        at the center of the Earth
+        """
+        
+        file_name = saveFile("csv", note="")
 
+        time, lon, lat, energy, E, T, lc_list, h_list = self.readGLM()
+
+        station_location = latLonAlt2ECEF(np.radians(lat[0]), np.radians(lon[0]), h_list[0]) 
+
+
+        with open(file_name, 'w+') as f:
+            for ii in range(len(time))[1:]:
+                point = latLonAlt2ECEF(np.radians(lat[ii]), np.radians(lon[ii]), h_list[ii])
+
+                dx = point[0] - station_location[0]
+                dy = point[1] - station_location[1]
+                dz = point[2] - station_location[2]
+                dh = np.sqrt(dx**2 + dy**2)
+
+                az = np.arctan2(dx, dy)
+                ze = np.arctan2(dz, dh)
+
+                f.write("{:}, {:}, {:}\n".format(T[ii], np.degrees(az), np.degrees(ze)))
+
+        print(printMessage("status"), "Output Complete!")
+        print(printMessage("info"), "Output as Time [s], Azimuth (North +East), Zenith - use MeasType = 2 in MetSim")
+        print(printMessage("info"), "Station Coordinates: {:.4f}N {:.4f}E {:.4f} m".format(lat[0], lon[0], h_list[0]))
+        print(printMessage("info"), "Reference Time: {:}".format(self.bam.setup.fireball_datetime))
+
+
+
+    def energyConverter(self, energy):
+        # See Jenniskens et al 2018
+
+
+        # Source to GLM satellite distance
+        R = 35780000 #m
+        #R = 42170000
+
+        # 4 pi r^2 : r - radius of the effective apperature
+        r = 0.0095
+
+        geo_f = 4*np.pi*R**2/r
+
+        blackbody_f = 1.018e3
+
+        E = np.array(energy)*geo_f*blackbody_f
+
+        return E
+
+    def timeConverter(self, time):
+
+        # time is seconds since 1970, online docs are wrong! 
+        timestamp = datetime.datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        time_list = []
+        for t in time:
+            time_list.append((timestamp + datetime.timedelta(seconds=t/1e3) - self.bam.setup.fireball_datetime).total_seconds())
+
+        return time_list
+
+    def readGLM(self):
+        """ Returns time, lon, lat, energy given in GLM file
+        and converted energy (E), time from reference point (T) and
+        magnitude given by Borovicka definition I = 1500*10^(M/-2.5)
+        h_list, approximate height
+        """
+
+
+        traj = self.bam.setup.trajectory
         time = []
         lon = []
         lat = []
         energy = []
-        print("Loaded: {:}".format(self.load_glm_edits.text()))
+        print(printMessage("status"), "Loaded: {:}".format(self.load_glm_edits.text()))
         with open(self.load_glm_edits.text(), 'r+') as f:
             for line in f:
                 a = line.strip().split(',')
@@ -127,6 +201,38 @@ class glmWindowDialog(QWidget):
                     energy.append(float(a[3]))
                 except:
                     continue
+
+        E = self.energyConverter(energy)
+        T = self.timeConverter(time)
+
+        h_list = []
+
+        for t in T:
+            hhh = traj.approxHeight(t)
+
+            h_list.append(hhh)
+
+        lc_list = []
+        for ii in range(len(E) - 1):
+
+            mag = -2.5*np.log(E[ii]/1500)
+
+            lc_list.append(mag)
+
+
+
+        return time, lon, lat, energy, E, T, lc_list, h_list
+
+    def procGLM(self):
+
+        time, lon, lat, energy, E, T, lc_list = self.readGLM()
+
+        file_name = saveFile("csv", note="")
+
+        with open(file_name, 'w+') as f:
+            f.write("# Station: GLM\n")
+            for ll in range(len(lc_list)):
+                f.write("{:}, {:}, {:}\n".format(T, h_list/1000, lc_list))
 
         self.glm_graph.ax.scatter(lon, lat, label="GLM")
         self.glm_graph.ax.legend()

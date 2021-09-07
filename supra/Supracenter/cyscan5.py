@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-from supra.Supracenter.anglescan import anglescan
+from supra.Supracenter.anglescan2 import anglescan
 from mpl_toolkits.mplot3d import Axes3D
 
 from supra.Utils.pso import pso
@@ -13,6 +13,7 @@ import multiprocessing
 def angleErr(x, *cyscan_inputs):
     S, z_profile, D, wind, debug, h_tol, v_tol = cyscan_inputs
     r = anglescan(S, x[0], x[1], z_profile, trace=False, debug=debug, wind=wind)
+
 
     err = np.sqrt((D[0] - r[0])**2 + (D[1] - r[1])**2 + (D[2] - r[2])**2)
 
@@ -30,6 +31,7 @@ MINSTEP = 1e-8
 def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debug=False, wind=False, h_tol=330, v_tol=3000, \
         print_times=False):
     
+
     # phi, theta
     search_min = [0, 90]
     search_max = [360, 180]

@@ -154,8 +154,15 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         if resp is not None:
             tr.remove_response(inventory=resp, output="DISP")
             # trace.remove_sensitivity(resp) 
+    
 
         ampl_data = tr.data
+
+        ### DELETE THIS
+        ###############################
+        if resp is None:
+            ampl_data /= 176568.0
+        ###############################
 
         try:
             time_data = tr.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_datetime))
@@ -276,14 +283,25 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
 
 
 
-def genFFT(waveform, sampling_rate):
+def genFFT(waveform, sampling_rate, interp=False):
 
     freqs, psd = signal.welch(waveform)
 
-    func = interp1d(freqs, psd)#, kind="cubic")
+    func = interp1d(freqs, psd)# kind="cubic")
     f_new = np.logspace(np.log10(freqs[1]), np.log10(freqs[-2]))
 
     psd = func(f_new)
+
+    if interp:
+        
+        from scipy.interpolate import CubicSpline
+        f = CubicSpline(f_new, psd)
+
+        new_x = np.logspace(np.log10(f_new[0]), f_new[-1], 100)
+        new_y = f(new_x)
+
+        f_new = new_x
+        psd = new_y
 
     return f_new*sampling_rate, psd
 
@@ -298,6 +316,17 @@ def genSHM(freq, sampling_rate, time, phase=0):
     ampl_data = np.sin(2*np.pi*freq*time_data) + phase
 
     return np.array(ampl_data), np.array(time_data)
+
+def reHilbert(xs):
+    """ all arrays given in xs
+    """
+
+    from obspy.signal.util import stack
+
+    stacked = stack(xs)
+
+    # Envelope is the abs of complex
+    return stacked
 
 if __name__ == "__main__":
 

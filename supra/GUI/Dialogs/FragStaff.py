@@ -129,7 +129,10 @@ class FragmentationStaff(QWidget):
                 # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
                 # self.light_curve_canvas.addItem(light_curve_curve)
 
+            
+
             self.height_plot.ax1.legend()
+
             # plt.gca().invert_yaxis()
 
 
@@ -181,6 +184,7 @@ class FragmentationStaff(QWidget):
 
             X = self.setup.fragmentation_point[i].position.elev
             Y = f_time - nom_pick.time
+            
             self.dots_x.append(X)
             self.dots_y.append(Y)
 
@@ -202,7 +206,7 @@ class FragmentationStaff(QWidget):
             angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
 
-
+            print("Points", X, Y, np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
             # base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 

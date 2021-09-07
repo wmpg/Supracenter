@@ -2034,7 +2034,7 @@ class SolutionGUI(QMainWindow):
             llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
             urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='c', ax=self.make_picks_map_graph_view.ax)
+            resolution='i', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
@@ -2901,7 +2901,7 @@ class SolutionGUI(QMainWindow):
 
 
         st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime, merge=False)
-            
+
 
         # if channel_changed == 0:
         #     # Populate channel list
@@ -2922,8 +2922,7 @@ class SolutionGUI(QMainWindow):
         # Merge the files without gaps
        
         
-        
-
+    
         st = findChn(st, chn_selected)
 
         self.current_waveform_raw = st.data

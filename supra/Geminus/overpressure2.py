@@ -65,7 +65,7 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, 
         
 
 
-    alt =  atmos[:, 0]*0.001
+    alt =  atmos[:, 0]/1000
     if wind:
         Wm = atmos[:, 2] #% meridional wind velocity 
         Wz = atmos[:, 3] #% zonal wind velocity
@@ -129,7 +129,6 @@ def overpressureihmod_Ro(meteor, stn, Ro, v, theta, dphi, atmos, sw, wind=True, 
     dZ = (Z10 - stn[2])/N
 
     Z = np.linspace(Z10, stn[2], N)
-
 
 
     f = scipy.interpolate.interp1d(alt, pres)

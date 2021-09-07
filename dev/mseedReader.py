@@ -56,7 +56,10 @@ class MseedReader(QMainWindow):
 
         st = obspy.read(station_file_name)
 
-        print(st)
+        tr = st.select(channel="BDF")
+        tr.plot()
+
+        print(st.__str__(extended=True))
 
     def plot(self):
 

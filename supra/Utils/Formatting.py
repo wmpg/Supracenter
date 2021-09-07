@@ -66,6 +66,10 @@ def printMessage(t):
     elif t.lower() == 'ballistic':
         return termchkr(t, color='blue')
 
+    elif t.lower() == 'info':
+        return termchkr(t, color='magenta')
+
+
     else:
         return termchkr(t, color='white')
 

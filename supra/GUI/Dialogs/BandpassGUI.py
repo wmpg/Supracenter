@@ -81,7 +81,8 @@ class BandpassWindow(QWidget):
         self.orig_trace.detrend()
 
         resp = stn.response
-        self.orig_trace = self.orig_trace.remove_response(inventory=resp, output="DISP")
+        if resp is not None:
+            self.orig_trace = self.orig_trace.remove_response(inventory=resp, output="DISP")
         # st.remove_sensitivity(resp) 
 
         waveform_data = self.orig_trace.data
@@ -171,8 +172,8 @@ class BandpassWindow(QWidget):
         if len(N) >= len(S):
             N = N[:len(S)]
 
-        freq, FAS_S = genFFT(S, self.orig_trace.stats.sampling_rate)
-        freq, FAS_N = genFFT(N, self.orig_trace.stats.sampling_rate)
+        freq, FAS_S = genFFT(S, self.orig_trace.stats.sampling_rate, interp=False)
+        freq, FAS_N = genFFT(N, self.orig_trace.stats.sampling_rate, interp=False)
 
         S_N_FAS = FAS_S/FAS_N
 
@@ -181,12 +182,25 @@ class BandpassWindow(QWidget):
         self.bandpass_graph.ax1.loglog(freq, S_N_FAS, label="Signal/Noise")
         self.bandpass_graph.ax1.axhline(y=1)
 
+        self.bandpass_graph.ax1.set_xlabel("Frequency [Hz]")
+        self.bandpass_graph.ax2.set_xlabel("Frequency [Hz]")
+
+
         if len(zero_cross_p) == 0:
             print("No Zero-Crossings!")
+        else:
+            print("Zero-Crossing Periods:")
 
-        for p in zero_cross_p:
-            self.bandpass_graph.ax1.axvline(x=p, label="Zero-Crossing Dominant Period")
-            self.bandpass_graph.ax2.axvline(x=p, label="Zero-Crossing Dominant Period")
+        for pp, p in enumerate(zero_cross_p):
+            if pp == 0:
+                self.bandpass_graph.ax1.axvline(x=p, label="Zero-Crossing Dominant Period")
+                self.bandpass_graph.ax2.axvline(x=p, label="Zero-Crossing Dominant Period")
+            else:
+                self.bandpass_graph.ax1.axvline(x=p)
+                self.bandpass_graph.ax2.axvline(x=p)
+            print("{:.2f} s".format(p))
+
+
 
         self.bandpass_graph.ax1.legend()
         self.bandpass_graph.ax2.legend()

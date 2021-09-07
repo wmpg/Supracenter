@@ -3,6 +3,7 @@ import os
 import copy
 from functools import partial
 import multiprocessing
+import time
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
@@ -144,7 +145,7 @@ def printStatus(bam, prefs):
 def calcAllTimes(obj, bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
-
+    time_step = -999
     #######################################
     # Check if times need to be calculated
     #######################################
@@ -180,7 +181,6 @@ def calcAllTimes(obj, bam, prefs):
     
 
     for ii, stn in enumerate(bam.stn_list):
-        
 
         if not hasattr(stn, 'times'):
             stn.times = Times()
@@ -197,8 +197,20 @@ def calcAllTimes(obj, bam, prefs):
 
             for i, frag in enumerate(bam.setup.fragmentation_point):
 
+                if i == 0 and ii == 0:
+                    t1 = time.time()
+                elif i == 1 and ii == 0:
+                    time_step = time.time() - t1
+
                 step += 1
-                loadingBar('Calculating Station Times: ', step, total_steps)
+                time_hour = time_step*(total_steps-step)//3600
+                time_minute = time_step*(total_steps-step)%3600//60
+                time_second = time_minute*(total_steps-step)%60
+
+                time_string = "{:02d}:{:02d}:{:02d}".format(int(time_hour), int(time_minute), int(time_second))
+
+
+                loadingBar('Calculating Station Times - ETA {:}: '.format(time_string), step, total_steps)
 
                 offset = frag.time
 

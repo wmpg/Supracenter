@@ -42,14 +42,16 @@ def determineBackAz(p1, p2, w_spd, w_dir):
     # vector of distance ray is pushed by wind
     w_len = w*dt
 
-    D = [x_1 - w_len[0], y_1 - w_len[1]]
+    # no vertical winds
+    D = [x_1 - w_len[0], y_1 - w_len[1], z_1 - 0]
 
-    vec = [x_2 - D[0], y_2 - D[1]]
+    vec = [x_2 - D[0], y_2 - D[1], z_2 - D[2]]
 
     # flip around for back azimuth
     ba = (np.degrees(np.arctan2(vec[0], vec[1])) + 180)%360
+    tf = (np.degrees(np.arctan2(np.abs(vec[2]), np.abs(np.sqrt(vec[0]**2 + vec[1]**2)))))%360
 
-    return ba
+    return ba, tf
 
 
 class rtvWindowDialog(QWidget):
@@ -124,6 +126,7 @@ class rtvWindowDialog(QWidget):
 
         _, self.draw_beam = createLabelEditObj('Beam Azimuth', layout, 17, width=1, h_shift=1, tool_tip='', validate='float')
         self.draw_beam_button = createButton("Draw", layout, 17, 4, self.drawBeam)
+        _, self.draw_exp_time = createLabelEditObj('Expected Arrival Time [s]', layout, 18, width=1, h_shift=1, tool_tip='', validate='float')
         self.trace_rev_button = createButton("Trace Reverse", layout, 18, 4, self.traceRev)    
 
         self.hvt_graph.ax.set_xlabel("Time after Source [s]")
@@ -140,6 +143,11 @@ class rtvWindowDialog(QWidget):
         self.pol_graph.ax1 = self.pol_graph.figure.add_subplot(211)
         self.pol_graph.ax2 = self.pol_graph.figure.add_subplot(212)
         layout.addWidget(self.pol_graph, 1, 5, 25, 1)
+
+        self.load_baz_label, self.load_baz_edits, self.load_baz_buton = createFileSearchObj('Load Backazimuth: ', layout, 22, width=1, h_shift=1)
+        self.load_baz_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.load_baz_edits))
+        self.load_baz_buton.clicked.connect(self.loadAngleCSV)
+
 
     def traceRev(self):
         ### Set up parameters of source
@@ -365,7 +373,7 @@ class rtvWindowDialog(QWidget):
         new_pos = [stat_pos.lon + a, stat_pos.lat + a*y]
 
         self.rtv_graph.ax.plot([start_point[0], new_pos[0]], [start_point[1], new_pos[1]], [0, 0])
-        self.pol_graph.axhline(y=float(self.draw_beam.text()), linestyle='-')
+        self.pol_graph.ax1.axhline(y=float(self.draw_beam.text()), linestyle='-')
 
 
     def drawStat(self):
@@ -549,14 +557,17 @@ class rtvWindowDialog(QWidget):
 
         try:
 
-            N_LAYERS = 20
+            N_LAYERS = 1
 
             for i in range(N_LAYERS):
                 try:
-                    ba = determineBackAz(tr[-(i+2), :], tr[-1, :], sounding[0, 2], np.degrees(sounding[0, 3]))
-                    self.plot_ba_data.append([source.elev/1000, ba, r[0]])
+                    ba, tf = determineBackAz(tr[-(i+2), :], tr[-1, :], sounding[0, 2], np.degrees(sounding[0, 3]))
+
+                    if hasattr(self, "plot_ba_data"):
+                        self.plot_ba_data.append([source.elev/1000, ba, tf])
                 except IndexError:
                     pass
+
 
         except TypeError:
             pass
@@ -672,6 +683,34 @@ class rtvWindowDialog(QWidget):
             # print("Takeoff: {:.2f} - {:.2f} deg from up ({:.2f} deg)".format(np.nanmin(tk_array), np.nanmax(tk_array), np.nanmax(tk_array) - np.nanmin(tk_array)))
             # print("Error in Solution {:.2f} - {:.2f} m ({:.2f} m)".format(np.nanmin(err_array), np.nanmax(err_array), np.nanmax(err_array) - np.nanmin(err_array)))
 
+    def loadAngleCSV(self):
+        
+        times = []
+        height = []
+        trace = []
+        incl = []
+        baz = []
+
+        with open(self.load_baz_edits.text(), 'r+') as f:
+            for line in f:
+                a = line.strip().split(',')
+                
+                times.append(float(a[0]))
+                height.append(float(a[1]))
+                trace.append(float(a[2]))
+                incl.append(float(a[3]))
+                baz.append(float(a[4]))
+
+        self.pol_graph.ax1.scatter(np.array(height)/1000, np.array(baz))
+        self.pol_graph.ax1.set_xlabel("Height [km]")
+        self.pol_graph.ax1.set_ylabel("Backazimuth [deg]")
+
+        self.pol_graph.ax2.scatter(np.array(height)/1000, np.array(incl))
+        self.pol_graph.ax2.set_xlabel("Height [km]")
+        self.pol_graph.ax2.set_ylabel("Inclination [deg]")
+
+
+
     def runRayTrace(self):
 
 
@@ -780,14 +819,26 @@ class rtvWindowDialog(QWidget):
 
             self.plot_ba_data = np.array(self.plot_ba_data)
 
-            self.pol_graph.ax2
+
+
             self.pol_graph.ax1.scatter(self.plot_ba_data[:, 0], self.plot_ba_data[:, 1])
             self.pol_graph.ax1.set_xlabel("Height [km]")
             self.pol_graph.ax1.set_ylabel("Backazimuth [deg]")
 
             self.pol_graph.ax2.scatter(self.plot_ba_data[:, 0], self.plot_ba_data[:, 2])
             self.pol_graph.ax2.set_xlabel("Height [km]")
-            self.pol_graph.ax2.set_ylabel("Travel Time [s]")
+            self.pol_graph.ax2.set_ylabel("Inclination [deg]")
+            
+
+            print("Back Azimuths and Zeniths:")
+            for i in range(len(self.plot_ba_data)):
+                print("{:.4f} km, {:.2f} deg, {:.2f} deg".format(self.plot_ba_data[i, 0], \
+                                                                self.plot_ba_data[i, 1], \
+                                                                self.plot_ba_data[i, 2]))
+            # self.pol_graph.ax2.axhline(y=float(self.draw_exp_time.text()), linestyle='-')
+            
+            # self.pol_graph.ax1.axvline(x=float(self.source_height.text()), linestyle='-')
+            # self.pol_graph.ax2.axvline(x=float(self.source_height.text()), linestyle='-')
 
 if __name__ == '__main__':
 

@@ -314,7 +314,7 @@ class Geminus(QWidget):
 
         elif mode == "pro" or mode == "proE":
 
-            Ro = np.linspace(0.01, 30.00, 30)
+            Ro = np.linspace(0.01, 100.00, 100)
 
             tau_list = []
             tau_ws_list = []

@@ -14,13 +14,23 @@ from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.GUITools import createLabelEditObj
 from supra.Utils.TryObj import *
 from supra.Utils.EigenRay import eigenConsistancy
-from supra.Supracenter.cyscanIntegration import cyscan as intscan
-from supra.Supracenter.anglescan import anglescan
+#from supra.Supracenter.cyscanIntegration import cyscan as intscan
+from supra.Supracenter.anglescanYieldInt import anglescan as intscan
+from supra.Supracenter.anglescan2 import anglescan
 from supra.Supracenter.cyscan5 import cyscan
 from supra.Utils.Classes import Position
-from supra.Supracenter.l137 import estPressure
 
 from supra.Atmosphere.Parse import parseWeather
+
+from supra.Supracenter.refractiveFactor import refractiveFactor
+
+N_LAYERS = 150
+
+def getPressure(z):
+    p = 10*101.325*np.exp(-0.00012*z)*100
+    # in Pa
+    return p
+
 
 def nuc_func(Z):
     # KG85
@@ -34,7 +44,7 @@ def integration_full(k, v, b, I, P_a):
 
 def phi(f_d, d, W, W_0):
     #scaled distance
-    return f_d*d/(W/W_0)**(1/3)
+    return f_d*d/(W/(W_0/1e6))**(1/3)
 
 def gunc_error(W, *args):
     p_ratio, J_m, W_0, P, P_0, c, c_m, f_d, R, P_a, k, b, I, cf = args
@@ -43,7 +53,7 @@ def gunc_error(W, *args):
 def total_func(W, J_m, W_0, P, P_0, c, c_m, f_d, R, P_a, k, b, I, cf):
     W = 10**W
     v = 1/2/J_m*(W_0*P/W/P_0)**(1/3)*(c/c_m)
-    return chem_func(phi(f_d, R, W, W_0))*P_a*(integration_full(k, v, b, I, P_0))*cf
+    return chem_func(phi(f_d, R, W, W_0))*P_a*(I)*cf
 
 
 class Yield(QWidget):
@@ -99,58 +109,61 @@ class Yield(QWidget):
         self.p_a_label, self.p_a_edits = createLabelEditObj('Ambient Pressure', pane1, 7)
         self.c_label, self.c_edits = createLabelEditObj('Speed of Sound', pane1, 8)
         self.fd_label, self.fd_edits = createLabelEditObj('Transmission Factor', pane1, 9)
+        _, self.freq_edits = createLabelEditObj("Dominant Period", pane1, 10)
 
-        self.height_min_edits = QLineEdit('')
-        pane1.addWidget(self.height_min_edits, 1, 3, 1, 1)
-        self.range_min_edits = QLineEdit('')
-        pane1.addWidget(self.range_min_edits, 2, 3, 1, 1)
-        self.pressure_min_edits = QLineEdit('')
-        pane1.addWidget(self.pressure_min_edits, 3, 3, 1, 1)
-        self.overpressure_min_edits = QLineEdit('')
-        pane1.addWidget(self.overpressure_min_edits, 4, 3, 1, 1)
-        self.afi_min_edits = QLineEdit('')
-        pane1.addWidget(self.afi_min_edits, 5, 3, 1, 1)
-        self.geo_min_edits = QLineEdit('')
-        pane1.addWidget(self.geo_min_edits, 6, 3, 1, 1)
-        self.p_a_min_edits = QLineEdit('')
-        pane1.addWidget(self.p_a_min_edits, 7, 3, 1, 1)
-        self.c_min_edits = QLineEdit('')
-        pane1.addWidget(self.c_min_edits, 8, 3, 1, 1)
-        self.fd_min_edits = QLineEdit('')
-        pane1.addWidget(self.fd_min_edits, 9, 3, 1, 1)
+        # self.height_min_edits = QLineEdit('')
+        # pane1.addWidget(self.height_min_edits, 1, 3, 1, 1)
+        # self.range_min_edits = QLineEdit('')
+        # pane1.addWidget(self.range_min_edits, 2, 3, 1, 1)
+        # self.pressure_min_edits = QLineEdit('')
+        # pane1.addWidget(self.pressure_min_edits, 3, 3, 1, 1)
+        # self.overpressure_min_edits = QLineEdit('')
+        # pane1.addWidget(self.overpressure_min_edits, 4, 3, 1, 1)
+        # self.afi_min_edits = QLineEdit('')
+        # pane1.addWidget(self.afi_min_edits, 5, 3, 1, 1)
+        # self.geo_min_edits = QLineEdit('')
+        # pane1.addWidget(self.geo_min_edits, 6, 3, 1, 1)
+        # self.p_a_min_edits = QLineEdit('')
+        # pane1.addWidget(self.p_a_min_edits, 7, 3, 1, 1)
+        # self.c_min_edits = QLineEdit('')
+        # pane1.addWidget(self.c_min_edits, 8, 3, 1, 1)
+        # self.fd_min_edits = QLineEdit('')
+        # pane1.addWidget(self.fd_min_edits, 9, 3, 1, 1)
 
-        self.height_max_edits = QLineEdit('')
-        pane1.addWidget(self.height_max_edits, 1, 4, 1, 1)
-        self.range_max_edits = QLineEdit('')
-        pane1.addWidget(self.range_max_edits, 2, 4, 1, 1)
-        self.pressure_max_edits = QLineEdit('')
-        pane1.addWidget(self.pressure_max_edits, 3, 4, 1, 1)
-        self.overpressure_max_edits = QLineEdit('')
-        pane1.addWidget(self.overpressure_max_edits, 4, 4, 1, 1)
-        self.afi_max_edits = QLineEdit('')
-        pane1.addWidget(self.afi_max_edits, 5, 4, 1, 1)
-        self.geo_max_edits = QLineEdit('')
-        pane1.addWidget(self.geo_max_edits, 6, 4, 1, 1)
-        self.p_a_max_edits = QLineEdit('')
-        pane1.addWidget(self.p_a_max_edits, 7, 4, 1, 1)
-        self.c_max_edits = QLineEdit('')
-        pane1.addWidget(self.c_max_edits, 8, 4, 1, 1)
-        self.fd_max_edits = QLineEdit('')
-        pane1.addWidget(self.fd_max_edits, 9, 4, 1, 1)
-
+        # self.height_max_edits = QLineEdit('')
+        # pane1.addWidget(self.height_max_edits, 1, 4, 1, 1)
+        # self.range_max_edits = QLineEdit('')
+        # pane1.addWidget(self.range_max_edits, 2, 4, 1, 1)
+        # self.pressure_max_edits = QLineEdit('')
+        # pane1.addWidget(self.pressure_max_edits, 3, 4, 1, 1)
+        # self.overpressure_max_edits = QLineEdit('')
+        # pane1.addWidget(self.overpressure_max_edits, 4, 4, 1, 1)
+        # self.afi_max_edits = QLineEdit('')
+        # pane1.addWidget(self.afi_max_edits, 5, 4, 1, 1)
+        # self.geo_max_edits = QLineEdit('')
+        # pane1.addWidget(self.geo_max_edits, 6, 4, 1, 1)
+        # self.p_a_max_edits = QLineEdit('')
+        # pane1.addWidget(self.p_a_max_edits, 7, 4, 1, 1)
+        # self.c_max_edits = QLineEdit('')
+        # pane1.addWidget(self.c_max_edits, 8, 4, 1, 1)
+        # self.fd_max_edits = QLineEdit('')
+        # pane1.addWidget(self.fd_max_edits, 9, 4, 1, 1)
+        self.fyield_button = QPushButton('Calculate Yield (Frequency)')
+        pane1.addWidget(self.fyield_button, 13, 1, 1, 4)
+        self.fyield_button.clicked.connect(self.freqYield)
 
         self.yield_button = QPushButton('Calculate Yield')
-        pane1.addWidget(self.yield_button, 11, 1, 1, 4)
+        pane1.addWidget(self.yield_button, 12, 1, 1, 4)
         self.yield_button.clicked.connect(self.yieldCalc)
 
         self.integrate_button = QPushButton('Integrate')
-        pane1.addWidget(self.integrate_button, 10, 1, 1, 4)
+        pane1.addWidget(self.integrate_button, 11, 1, 1, 4)
         self.integrate_button.clicked.connect(self.intCalc)
 
         # Constants - Reed 1972
         self.W_0 = 4.2e12 # Standard reference explosion yield
         self.P_0 = 101325 # Standard pressure
-        self.k = 2e-4     
+        self.k = 2e-4 
         self.b = 1.19e-4  # Scale height coeff
         self.J_m = 0.375  # Avg positive period of reference explosion
         self.c_m = 347    # Sound speed of reference explosion
@@ -160,16 +173,30 @@ class Yield(QWidget):
         pane2.addWidget(self.blastline_view)
         self.blastline_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
+    def freqYield(self):
+        self.R = tryFloat(self.range_edits.text())
+        self.P_a = tryFloat(self.p_a_edits.text())
+        self.cf = tryFloat(self.geo_edits.text())
+        self.I = tryFloat(self.afi_edits.text())
+        self.P = tryFloat(self.pressure_edits.text())
+        self.c = tryFloat(self.c_edits.text())
+        self.f_d = tryFloat(self.fd_edits.text())
+        self.T_d = tryFloat(self.freq_edits.text())
+
+        #W_0 = 4.184e12 (IBM Problem)
+        W = self.W_0*self.P_a/self.P_0*(self.c*self.T_d/2/self.c_m/self.J_m)**3
+        print("Freq: {:.2f} -> {:.2E} J".format(1/self.T_d, W))
 
     def integration_full(self, k, v, b, I, P_a):
-        return np.exp(-k*v**2/b/P_a*I)
+        return np.exp(-I*(k*v**2/b)*N_LAYERS)
+        # return np.exp(-k*v**2/b/P_a*I)
 
     def phi(self, f_d, d, W, W_0):
         #scaled distance
-        return f_d*d/(W/W_0)**(1/3)
+        return f_d*d/(W/(W_0/1e6))**(1/3)
   
     def inverse_gunc(self, p_ans):
-        a, b = pso(gunc_error, [8], [12], args=([p_ans, self.J_m, self.W_0, self.P, self.P_0, self.c, self.c_m, self.f_d, self.R, self.P_a, self.k, self.b, self.I, self.cf]), processes=1, swarmsize=1000, maxiter=1000)
+        a, b = pso(gunc_error, [1], [15], args=([p_ans, self.J_m, self.W_0, self.P, self.P_0, self.c, self.c_m, self.f_d, self.R, self.P_a, self.k, self.b, self.I, self.cf]), processes=1, swarmsize=1000, maxiter=1000)
 
         return 10**a[0]
 
@@ -192,9 +219,9 @@ class Yield(QWidget):
         # make the spline lower to save time here
 
 
-        sounding, perturbations = self.bam.atmos.getSounding(lats, lons, elevs, spline=50)
+        sounding, perturbations = self.bam.atmos.getSounding(lats, lons, elevs, spline=N_LAYERS, ref_time=self.setup.fireball_datetime)
 
-        print(sounding)
+
 
         trans = []
         ints = []
@@ -221,12 +248,19 @@ class Yield(QWidget):
 
             S = np.array([point.x, point.y, point.z])
             D = np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z])
-                
-            f, g, T, P = intscan(S, D, zProfile, wind=True, n_theta=2000, n_phi=2000,\
-                    h_tol=330, v_tol=330)
-                    # h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist)
 
-            rf = self.refractiveFactor(S, D, zProfile, D_ANGLE=D_ANGLE)
+            _, az_n, tf_n, _ = cyscan(S, D, zProfile, wind=True,\
+                h_tol=30, v_tol=30)
+
+            self.T_d = tryFloat(self.freq_edits.text())
+
+            v = 1/self.T_d
+            P_amb = getPressure(stn.metadata.position.elev)
+
+            f, g, T, P = intscan(S, az_n, tf_n, zProfile, v, P_amb, wind=True)
+
+
+            rf = refractiveFactor(point, stn.metadata.position, zProfile, D_ANGLE=D_ANGLE)
             trans.append(f)
             ints.append(g)
             ts.append(T)
@@ -247,7 +281,7 @@ class Yield(QWidget):
             f_val = np.nanmean(trans)
             g_val = np.nanmean(ints)
             t_val = np.nanmean(ts)
-            p_val = np.nanmean(ps)
+            p_val = getPressure(height)
             r_val = np.nanmean(rfs)
 
 
@@ -273,11 +307,13 @@ class Yield(QWidget):
             # plt.show()
             # print('RF - Not checking if consistant')
 
+
+
             self.fd_edits.setText('{:.4f}'.format(f_val))
             self.afi_edits.setText('{:.4f}'.format(g_val))
             self.c_edits.setText('{:.4f}'.format(t_val))
             self.pressure_edits.setText('{:.4f}'.format(p_val))
-            self.p_a_edits.setText('{:.4f}'.format(estPressure(stn.metadata.position.elev)))
+            self.p_a_edits.setText('{:.4f}'.format(getPressure(stn.metadata.position.elev)))
 
             try:
                 frag_pos = self.setup.trajectory.findGeo(height)
@@ -336,7 +372,7 @@ class Yield(QWidget):
 
 
     def yieldCalc(self):
-        w = np.linspace(np.log10(1e8), np.log10(1e12))
+        w = np.linspace(np.log10(1e1), np.log10(1e15))
         W = 10**w
 
         if tryFloat(self.height_edits.text()) != None:
@@ -348,9 +384,12 @@ class Yield(QWidget):
             self.c = tryFloat(self.c_edits.text())
             self.f_d = tryFloat(self.fd_edits.text())
 
-            v = 1/2/self.J_m*(self.W_0*self.P/W/self.P_0)**(1/3)*(self.c/self.c_m)
-            p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*(self.integration_full(self.k, v, self.b, self.I, self.P_0))*self.cf
 
+            p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*\
+                        self.I*self.cf
+
+            # p_ratio = chem_func(self.phi(self.f_d, self.R, W, self.W_0))*self.P_a*\
+            #         self.I*self.cf
             self.yieldPlot(p_ratio, W)
 
         # if tryFloat(self.height_min_edits.text()) != None:
@@ -426,59 +465,5 @@ class Yield(QWidget):
         self.blastline_canvas.setTitle('Fragmentation Yield Curves for a Given Overpressure')
 
 
-    def addAngleComp(self, ang1, ang2, deg=False):
-        ''' Adds perpendicular angles together to a combined angle
-        '''
-
-        if np.isnan(ang1) or np.isnan(ang2):
-            return np.nan
-
-        if deg:
-            return np.degrees(np.arccos(np.cos(np.radians(ang1))*np.cos(np.radians(ang2))))
-        else:
-            return np.arccos(np.cos(ang1)*np.cos(ang2))
-
-    def refractiveFactor(self, S, D, zProfile, D_ANGLE=1.5):
-
-        dx, dy, dz = D - S
-        tf_ideal_n = np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))
-        az_ideal_n = np.degrees(np.arctan2(dx, dy))
-
-        # make sure this angle is high or the rays won't reach the station (like 2000)
-        angle = 2000
-        _, az_n, tf_n, _ = cyscan(S, D, zProfile, wind=True, n_theta=angle, n_phi=angle,\
-                h_tol=330, v_tol=330)
-                    # h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist)
-
-        # if not eigenConsistancy(S, D, az_n, tf_n, zProfile, n_angle=self.prefs.pso_theta, h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist):
-        #     return np.nan
-
-        d_angle_ideal = [np.nan]
-
-        RANGE = 2
-        for i in range(RANGE):
-            d_az = np.degrees(np.arctan(np.cos(i*2*np.pi/RANGE)*np.tan(np.radians(D_ANGLE))))
-            d_tf = np.degrees(np.arctan(np.sin(i*2*np.pi/RANGE)*np.tan(np.radians(D_ANGLE))))
-
-            D_n = anglescan(S, az_n + d_az, tf_n + d_tf, zProfile, wind=True)
-                            # h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist, target=D)
-
-            dx, dy, dz = D_n[0:3] - S
-
-            # if eigenConsistancy(S, D_n[:3], az_n + d_az, tf_n + d_tf, zProfile, h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist):
-        
-            tf = np.abs((np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))) - tf_ideal_n)
-            az = np.abs((np.degrees(np.arctan2(dx, dy))) - az_ideal_n)
-
-            d_angle_ideal.append(self.addAngleComp(tf, az, deg=True))
 
 
-
-        if np.isnan(d_angle_ideal).all():
-            return np.nan
-
-        d_angle_ideal = np.nanmean(d_angle_ideal)
-
-        rf = np.sqrt(D_ANGLE/d_angle_ideal)
-        
-        return rf
