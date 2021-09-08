@@ -563,10 +563,25 @@ class Trajectory:
 
         return Position(np.degrees(geo[0]), np.degrees(geo[1]), geo[2])
 
+    def verticalVel(self):
+        """ Returns the z component of the velocity
+        """
+
+        v_h = self.v*np.cos(self.zenith.rad)
+
+        return v_h
+
+
     def approxHeight(self, time):
+        """ Returns the height of the meteoroid at a time in relation to the same 
+        reference time assuming no deceleration
+        """
 
-        height = self.pos_i.elev - (time - self.t)*self.v*np.cos(self.zenith.rad)
+        dt = time - self.t
+        v_h = self.verticalVel()
 
+
+        height = self.pos_i.elev - dt*v_h
         return height
 
     def findTime(self, height):
@@ -582,7 +597,7 @@ class Trajectory:
 
 
         # Vertical component of velocity
-        v_h = self.v*np.cos(self.zenith.rad)
+        v_h = self.verticalVel()
 
         dh = self.pos_i.elev - height
 

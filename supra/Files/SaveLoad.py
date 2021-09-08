@@ -272,7 +272,7 @@ def save(obj, file_check):
         file_size = byteify(os.stat(obj.bam.file_name).st_size)
 
 
-        print('STATUS: Setup Saved')
+        print(printMessage('status'), 'Setup Saved')
         loadDisplay(obj.bam.setup, obj)
         errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
                     title="Saved")

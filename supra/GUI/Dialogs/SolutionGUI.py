@@ -1071,13 +1071,13 @@ class SolutionGUI(QMainWindow):
 
                 try:
                     if ret == qm.Yes:
-                        print("Downloading Perturbation Ensemble")
+                        print(printMessage("status"), "Downloading Perturbation Ensemble")
                         perts = True
                     else:
-                        print("Downloading Reanalysis")
+                        print(printMessage("status"), "Downloading Reanalysis")
                         perts = False
                 except AttributeError:
-                    print("Attribute Error")
+                    print(printMessage("error"), "Attribute Error")
                     # If the "x" is clicked
                     return None
 
@@ -1095,7 +1095,7 @@ class SolutionGUI(QMainWindow):
                 except Exception as e:
                     errorMessage("Error downloading weather data from CDS", 1, detail='{:}'.format(e))
                 except:
-                    print("Other Exception")
+                    print(printMessage("status"), "Other Exception")
 
                 errorMessage("Weather profile downloaded to {:}".format(loc), 0)
 
@@ -1340,9 +1340,13 @@ class SolutionGUI(QMainWindow):
 
     def saveTrace(self):
 
+        try:
+            station_no = self.current_station
 
-        station_no = self.current_station
-
+        # No current station    
+        except AttributeError:
+            print(printMessage("warning"), "No current station selected, no trace can be saved!")
+            return None
         # Extract current station
         stn = self.bam.stn_list[station_no]
 
@@ -2056,13 +2060,16 @@ class SolutionGUI(QMainWindow):
                     x, y = self.m(lat, lon)
                     # print(x, y, Z)
                     self.make_picks_map_graph_view.ax.tricontour(x, y, Z, levels=14, linewidths=0.5, colors='w', zorder=2)
-                    self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, levels=14, cmap="viridis_r", zorder=2, alpha=0.3)
+                    try:
+                        self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, levels=14, cmap="viridis_r", zorder=2, alpha=0.3)
+                    except TypeError as e:
+                        print(printMessage("error"), "Contour error in creating tricontourf! {:}".format(e))
                     # a = self.make_picks_map_graph_view.ax.colorbar(cntr)
                     # a.set_label("Time of Arrival [s]")
                 except FileNotFoundError:
-                    print("Contour File not found!")
+                    print(printMessage("warning"), "Contour File not found!")
             else:
-                print("No Contour found!")
+                print(printMessage("warning"), "No Contour found!")
 
         # if not hasattr(self, 'make_picks_gmap_view'):
         #     self.make_picks_gmap_view = QWebView()
@@ -2389,7 +2396,7 @@ class SolutionGUI(QMainWindow):
         #     if self.current_station >= len(self.bam.stn_list):
         #         self.current_station = 0
 
-        self.updatePlot()
+        self.updatePlot(stn_changed=True)
 
 
     def decrementStation(self, event=None):
@@ -2407,7 +2414,7 @@ class SolutionGUI(QMainWindow):
         #     if self.current_station < 0:
         #         self.current_station = len(self.bam.stn_list) - 1
 
-        self.updatePlot()
+        self.updatePlot(stn_changed=True)
 
 
     def checkExists(self):
@@ -2461,7 +2468,7 @@ class SolutionGUI(QMainWindow):
 
             pick = Pick(mousePoint.x(), stn, self.current_station, stn, self.group_no)
             self.pick_list.append(pick)
-            print("New pick object made: {:} {:} {:}".format(mousePoint.x(), stn.metadata.code, self.current_station))
+            print(printMessage('info'), "New pick object made: {:}-{:} {:.4f} s".format(stn.metadata.network, stn.metadata.code, mousePoint.x()))
 
             if self.show_height.isChecked():
                 stat_picks = []
@@ -2867,7 +2874,7 @@ class SolutionGUI(QMainWindow):
         self.make_picks_map_graph_view.show()
         self.make_picks_station_graph_view.show()
 
-    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0, bandpass=None):
+    def drawWaveform(self, channel_changed=0, waveform_data=None, station_no=0, bandpass=None, stn_changed=False):
         """ Draws the current waveform from the current station in the waveform window. Custom waveform 
             can be given an drawn, which is used when bandpass filtering is performed. 
 
@@ -3118,7 +3125,8 @@ class SolutionGUI(QMainWindow):
                                 errorMessage("Error in Arrival Times Index", 2, detail="Check that the arrival times file being used aligns with stations and perturbation times being used. A common problem here is that more perturbation times were selected than are available in the given Arrival Times Fireball. Try setting perturbation_times = 0 as a first test. If that doesn't work, try not using the Arrival Times file selected in the toolbar.")
                                 return None
 
-        stationFormat(stn, self.bam.setup, ref_pos, chn_selected)
+        if stn_changed:
+            stationFormat(stn, self.bam.setup, ref_pos, chn_selected)
 
         self.addAnnotes()
     def obtainPerts(self, data, frag):
@@ -3184,7 +3192,7 @@ class SolutionGUI(QMainWindow):
         self.drawWaveform(channel_changed=2, waveform_data=waveform_data, station_no=self.current_station)
 
 
-    def updatePlot(self, draw_waveform=True):
+    def updatePlot(self, draw_waveform=True, stn_changed=False):
         """ Update the plot after changes. """
 
         if errorCodes(self, 'current_station', debug=self.prefs.debug):
@@ -3236,7 +3244,7 @@ class SolutionGUI(QMainWindow):
 
         # Plot the waveform from the current station
         if draw_waveform:
-            self.drawWaveform(station_no=self.current_station)
+            self.drawWaveform(station_no=self.current_station, stn_changed=stn_changed)
 
         # self.showTitle()
 
