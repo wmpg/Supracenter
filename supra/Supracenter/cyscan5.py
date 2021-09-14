@@ -29,7 +29,7 @@ MINSTEP = 1e-8
 
 
 def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debug=False, wind=False, h_tol=330, v_tol=3000, \
-        print_times=False):
+        print_times=False, processes=multiprocessing.cpu_count()-1):
     
 
     # phi, theta
@@ -40,14 +40,14 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
 
     if particle_output:
         f_opt, x_opt, f_particle, x_particle = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=multiprocessing.cpu_count()-1, particle_output=True, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=processes, particle_output=True, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)
 
     else:
         f_opt, x_opt = pso(angleErr, search_min, search_max, \
-            args=cyscan_inputs, processes=1, particle_output=False, swarmsize=SWARM_SIZE,\
+            args=cyscan_inputs, processes=processes, particle_output=False, swarmsize=SWARM_SIZE,\
                  maxiter=MAXITER, phip=PHIP, phig=PHIG, \
                  debug=False, omega=OMEGA, minfunc=MINFUNC, \
                  minstep=MINSTEP)

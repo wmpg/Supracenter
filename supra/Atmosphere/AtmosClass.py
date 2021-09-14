@@ -299,15 +299,18 @@ class ECMWF(AtmosType):
         
         return sounding
 
-    def getProfile(self, lat, lon, heights, prefs, spline=100, ref_time=None):
+    def getProfile(self, lat, lon, heights, prefs, spline=100, ref_time=None, perturbations=None):
         ''' Interpolates between starting and ending locations, converts, and splines 
             resulting curve into a smooth profile
             lat = [start lat, end lat]
         '''
 
         spread = True
-
-        perturb = prefs.pert_num
+        print(perturbations)
+        if perturbations is None:
+            perturb = prefs.pert_num
+        else:
+            perturb = perturbations
 
         pts = self.interp(lat, lon, div=0.25)
         

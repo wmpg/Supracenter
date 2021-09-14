@@ -141,7 +141,7 @@ class Atmos:
         else:
             print('Unrecognized weather type')
 
-    def getSounding(self, lat=0, lon=0, heights=[100000, 0], ref_time=None, spline=100):
+    def getSounding(self, lat=0, lon=0, heights=[100000, 0], ref_time=None, spline=100, perturbations=None):
         ''' lat = [start lat, end lat], etc
         '''
         prefs = Prefs()
@@ -150,7 +150,7 @@ class Atmos:
         
         if prefs.atm_type == 'ecmwf':
             if hasattr(self, 'ecmwf'):
-                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline, ref_time=ref_time)
+                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline, ref_time=ref_time, perturbations=perturbations)
 
 
         ### Not using weather

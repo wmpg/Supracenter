@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pickle
+import multiprocessing
 
 from datetime import datetime, timedelta
 import matplotlib.pyplot as plt
@@ -24,6 +25,33 @@ from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
 from supra.Supracenter.anglescanrev import anglescanrev
 
 from wmpl.Utils.TrajConversions import jd2Date
+from supra.Utils.pso import pso
+
+def heightErr(height, *cyscan_inputs):
+    t, traj, stat_pos, sounding = cyscan_inputs
+
+    trial_source = traj.findGeo(height)
+
+    stat_pos.pos_loc(trial_source)
+    trial_source.pos_loc(trial_source)
+
+    trial_source.z = trial_source.elev
+    stat_pos.z = stat_pos.elev
+
+
+    ### Ray Trace
+    r = cyscan(np.array([trial_source.x, trial_source.y, trial_source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
+                    sounding, trace=False, plot=False, particle_output=False, debug=False, \
+                    wind=True, h_tol=300, v_tol=3000, print_times=False, processes=1)
+
+
+    T = r[0]
+    try:
+        t_err = (T - t)**2
+    except:
+        t_err = 999
+    print("Height {:.2f} km | Err {:.2f}".format(height[0]/1000, np.sqrt(t_err)))
+    return t_err
 
 def determineBackAz(p1, p2, w_spd, w_dir):
     
@@ -138,6 +166,7 @@ class rtvWindowDialog(QWidget):
 
         self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("GLM Initial Datetime", layout, 20, h_shift=1)
         self.glm2lc = createButton("GLM to Light Curve", layout, 21, 4, self.glm2LC)
+          
 
         self.pol_graph = MatplotlibPyQT()
         self.pol_graph.ax1 = self.pol_graph.figure.add_subplot(211)
@@ -147,7 +176,7 @@ class rtvWindowDialog(QWidget):
         self.load_baz_label, self.load_baz_edits, self.load_baz_buton = createFileSearchObj('Load Backazimuth: ', layout, 22, width=1, h_shift=1)
         self.load_baz_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.load_baz_edits))
         self.load_baz_buton.clicked.connect(self.loadAngleCSV)
-
+        self.height_unc_button = createButton("Height Uncertainty", layout, 23, 4, self.heightUnc)  
 
     def traceRev(self):
         ### Set up parameters of source
@@ -209,7 +238,104 @@ class rtvWindowDialog(QWidget):
             self.rtv_graph.ax.plot(tr[:, 1], tr[:, 0], tr[:, 2], c="g")
             print("Ray Trace at ze={:.2f} deg: {:.4f}N {:.4f}E {:.3f}km".format(ze_list[ii], tr[-1, 1], tr[-1, 0], tr[-1, 2]/1000))
 
+    def getSource(self):
+        traj = self.bam.setup.trajectory
+        source = traj.findGeo(float(self.source_height.text()))
+        return source
 
+    def getStat(self):
+        stat_idx = self.station_combo.currentIndex()
+        stat = self.bam.stn_list[stat_idx]
+        stat_pos = stat.metadata.position
+        return stat_pos
+
+    def getATM(self, source, stat_pos, perturbations=None):
+
+        lat =   [source.lat, stat_pos.lat]
+        lon =   [source.lon, stat_pos.lon]
+        elev =  [source.elev, stat_pos.elev]
+
+        sounding, perturbations = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, spline=100, \
+            ref_time=self.bam.setup.fireball_datetime, perturbations=perturbations)
+
+        return sounding, perturbations
+
+    def heightUnc(self):
+        # use given height
+        # find nominal height within large tolerance around given height (prevent double solutions)
+        # run perturbations within this large tolerance, return heights
+        # return bar graph of solutions
+
+       
+        source = self.getSource()
+        stat_pos = self.getStat()
+
+        sounding, perturbations = self.getATM(source, stat_pos, perturbations=25)
+
+        stat_pos.pos_loc(source)
+        source.pos_loc(source)
+
+        source.z = source.elev
+        stat_pos.z = stat_pos.elev
+
+        given_height = source.elev
+        given_time = float(self.draw_exp_time.text())
+        
+        h_tol = float(self.horizontal_tol.text())
+        v_tol = float(self.vertical_tol.text())
+
+
+        def findHeightFromTime(sounding, t, approx_height):
+            traj = self.bam.setup.trajectory
+
+            found = False
+
+            prev_err = 999
+
+            TIME_TOL = 1e-3
+            
+            BOUNDS = 4000
+
+            indxs = 100
+
+            stat_pos = self.getStat()
+
+            SWARM_SIZE = 100
+            MAXITER = 25
+            PHIP = 0.5
+            PHIG = 0.5
+            OMEGA = 0.5
+            MINFUNC = 1e-3
+            MINSTEP = 1e-2
+
+            search_min = [approx_height - BOUNDS]
+            search_max = [approx_height + BOUNDS]
+
+            f_opt, x_opt = pso(heightErr, search_min, search_max, \
+                                args=[t, traj, stat_pos, sounding], processes=multiprocessing.cpu_count()-1, particle_output=False, swarmsize=SWARM_SIZE,\
+                             maxiter=MAXITER, phip=PHIP, phig=PHIG, \
+                             debug=False, omega=OMEGA, minfunc=MINFUNC, minstep=MINSTEP)
+
+            best_height = f_opt[0]
+
+
+            print("Best Height = {:.5f} km".format(best_height/1000))
+
+            return best_height
+
+        print("Nominal")
+        nominal_height = findHeightFromTime(sounding, given_time, given_height)
+        pert_height = []
+
+        for pp, pert in enumerate(perturbations):
+            print("Perturbation {:}".format(pp + 1))
+            temp_h = findHeightFromTime(pert, given_time, given_height)
+
+            pert_height.append(temp_h)
+
+        print("FINAL RESULTS")
+        print("Nominal Height {:} km".format(nominal_height/1000))
+        print("Pert Heights {:} km".format(np.array(pert_height)/1000))
 
     def glm2LC(self):
         t, h, M = self.procGLM(plot=False)
