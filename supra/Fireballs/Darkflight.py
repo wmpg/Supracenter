@@ -214,6 +214,12 @@ def readDarkflight(output, mass, header=30, partial=False):
                 line[i] = float(entry.strip())
             line.append(mass)
 
+            # Skip if the first coordinate is NaN
+            if np.isnan(line[0]):
+                continue
+
+            print(line)
+
             # Add the contents of the line to the data list
             data = np.vstack((data, np.array(line)))
 
