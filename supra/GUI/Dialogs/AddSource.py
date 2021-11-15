@@ -180,3 +180,6 @@ class SourceWindow(QWidget):
         self.bam.source_list.append(S)
 
         self.close()
+if __name__ == '__main__':
+
+    pass

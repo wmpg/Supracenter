@@ -49,3 +49,6 @@ print(test_1_res - test_3_res)
 
 print("Speed Difference")
 print("{:.2f}%".format((time_res-time_res2)/time_res*100))
+if __name__ == '__main__':
+
+    pass

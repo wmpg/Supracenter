@@ -24,6 +24,9 @@ def openPkl(filename):
         return None
     except PermissionError as e:
         errorMessage('Unable to read file', 2, info='File "{:}" is unable to be read. A folder may have been selected.'.format(filename), detail='{:}'.format(e))
+    except AttributeError as e:
+        errorMessage('Pickle Loading Failed!', 2, detail='{:}'.format(e))
+
 
 def saveSetup(obj):
 
@@ -36,10 +39,10 @@ def saveSetup(obj):
     # setup.arrival_times_file = obj.arrival_times_edits.text()
     setup.station_picks_file = obj.station_picks_edits.text()
     setup.light_curve_file = obj.light_curve_edits.text()
-    try:
-        setup.contour_file = obj.contour_file_edits.text()
-    except AttributeError:
-        setup.contour_file = ""
+
+    setup.contour_file = obj.contour_file_edits.text()
+    
+
     # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
@@ -136,15 +139,13 @@ def loadDisplay(setup, obj):
 
     # obj.arrival_times_edits.setText(setup.arrival_times_file)
     obj.station_picks_edits.setText(setup.station_picks_file)
-    try:
-        obj.light_curve_edits.setText(setup.light_curve_file)
-    except:
-        pass
 
-    try:
+    if hasattr(setup, "light_curve_file"):
+        obj.light_curve_edits.setText(setup.light_curve_file)
+    
+    if hasattr(setup, "contour_file"):
         obj.contour_file_edits.setText(setup.contour_file)
-    except:
-        pass
+ 
     # obj.points_name_edits.setText(setup.replot_points_file)
 
     obj.lat_centre_edits.setText(str(setup.lat_centre))
@@ -252,38 +253,41 @@ def loadAtmos(bam, obj):
         bam.atmos = Atmos(avg_sp_sound=avg_sp_sound)
 
 
-def save(obj):
+def save(obj, file_check):
     
-    if len(obj.fireball_name_edits.text()) == 0:
-        errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
-        return None
 
-    #save setup
-    obj.bam.setup = saveSetup(obj)
+    if file_check:
 
-    if obj.bam.file_name is None:
-        obj.bam.file_name = saveFile('bam', note="BAM file")
+        if len(obj.fireball_name_edits.text()) == 0:
+            errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
+            return None
 
-    with open(obj.bam.file_name, 'wb') as f:
-        pickle.dump(obj.bam, f)
+            #save setup
+        obj.bam.setup = saveSetup(obj)
 
-    file_size = byteify(os.stat(obj.bam.file_name).st_size)
+        if obj.bam.file_name is None:
+            obj.bam.file_name = saveFile('bam', note="BAM file")
 
-    # detail = 'CONTENTS: \n'
+        with open(obj.bam.file_name, 'wb') as f:
+            pickle.dump(obj.bam, f)
 
-    # if hasattr(obj.bam, "setup"):
-    #     detail += 'SETUP - TRUE\n'
+        file_size = byteify(os.stat(obj.bam.file_name).st_size)
 
-    # if hasattr(obj.bam, "stn_list"):
-    #     detail += 'STATION LIST - TRUE\n'
 
-    # if hasattr(obj.bam, "atmos"):
-    #     detail += 'ATMOSPHERE - TRUE\n'
+        print(printMessage('status'), 'Setup Saved')
+        loadDisplay(obj.bam.setup, obj)
+        errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
+                    title="Saved")
 
-    print('STATUS: Setup Saved')
-    loadDisplay(obj.bam.setup, obj)
-    errorMessage('"{:}" has been saved into file "{:}" ({:})'.format(obj.fireball_name_edits.text(), obj.bam.file_name, file_size), 0, \
-                title="Saved")
+    else:
+        with open(obj.file_name, 'wb') as f:
+            pickle.dump(obj, f)
+
+        file_size = byteify(os.stat(obj.file_name).st_size)
+
+        print('STATUS: Setup Saved')
+        errorMessage('Event has been saved into file "{:}" ({:})'.format(obj.file_name, file_size), 0, \
+                    title="Saved")
 
 
 def load(obj):
@@ -308,4 +312,7 @@ def load(obj):
     # print(bam.stats)
     obj.bam = bam
     print(printMessage("status"), "{:} has been loaded".format(bam.file_name))
-    
+
+if __name__ == '__main__':
+
+    pass

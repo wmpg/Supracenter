@@ -20,6 +20,22 @@ pip install pyswarm
 pip install termcolor
 ```
 
+(Optional) If you need a higher altitude wind model. Temperatures are done through wmpl NRLMSISE.
+```
+pip install hwm93
+```
+This will require a fortran compiler to run, I use this:
+```
+conda install -c conda-forge fortran-compiler
+```
+(Optional) If you want to use the signal finder, you'll need this:
+```
+pip install more-itertools
+```
+
+
+```
+
 3) Unzip the code into a folder on your computer
 
 ## Running a test case

@@ -1,65 +1,61 @@
-import numpy as np
 import csv
 import os
+
+import numpy as np
 import matplotlib.pyplot as plt
 
+import pyqtgraph as pg
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
-import pyqtgraph as pg
+
 
 from supra.Utils.AngleConv import chauvenet
 from supra.Utils.Classes import Position
+
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 from supra.GUI.Tools.GUITools import *
+
 from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
+
 from supra.Stations.ProcessStation import procTrace, procStream, findChn, findDominantPeriodPSD
 
 from supra.Geminus.overpressure2 import overpressureihmod_Ro
 from supra.Geminus.geminusSearch import periodSearch, presSearch
+
 class FragmentationStaff(QWidget):
+
+    """ A visualization of arrival times vs. heights. Makes it easier to see what height along
+    the trajectory (fragmentation or ballistic) the arrival is from.
+    """
+
 
     def __init__(self, setup, pack, bam):
 
         QWidget.__init__(self)
 
         self.buildGUI()
+
         # Take important values from main window class
         stn, self.current_station, self.pick_list, self.channel = pack
 
+        # The first pick created is the one all times are based around (reference time)
         nom_pick = self.pick_list[0]
 
         main_layout = QGridLayout()
         
-
         # Pass setup value
         self.setup = setup
         self.bam = bam
+
         ###########
         # Build GUI
         ###########
 
         self.height_plot = MatplotlibPyQT()
 
-        # self.height_view = pg.GraphicsLayoutWidget()
-        # self.height_canvas = self.height_view.addPlot()
-        # self.angle_view = pg.GraphicsLayoutWidget()
-        # self.angle_canvas = self.angle_view.addPlot()
-
-        # self.height_view.setBackground((0,0,0))
-        # self.angle_view.setBackground((0,0,0))
-        # self.angle_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        # self.angle_canvas.getAxis('left').setPen((255, 255, 255))
-        # self.height_canvas.getAxis('bottom').setPen((255, 255, 255)) 
-        # self.height_canvas.getAxis('left').setPen((255, 255, 255)) 
-
-        # Force x-axes to stay aligned
-        # self.angle_canvas.setXLink(self.height_canvas)   
         main_layout.addWidget(self.height_plot, 1, 1, 1, 100)
-        # main_layout.addWidget(self.angle_view, 2, 1, 1, 100)
-        # self.angle_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
-        # self.height_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
         export_button = QPushButton('Export')
         main_layout.addWidget(export_button, 3, 1, 1, 25)
@@ -69,12 +65,14 @@ class FragmentationStaff(QWidget):
         Y = []
         Y_M = []
 
+        # Create a local coordinate system with the bottom of the trajectory as the reference
         A = self.setup.trajectory.pos_i
         B = self.setup.trajectory.pos_f
 
         A.pos_loc(B)
         B.pos_loc(B)
 
+        # All points are placed here
         self.dots_x = []
         self.dots_y = []
 
@@ -119,17 +117,19 @@ class FragmentationStaff(QWidget):
         # Station Plot
         #########################
 
-        # self.seis_view = pg.GraphicsLayoutWidget()
-        # self.seis_canvas = self.seis_view.addPlot()
-        # main_layout.addWidget(self.seis_view, 1, 0, 1, 1)
 
         try:
+
+            # Bandpass the waveform from 2 - 8 Hz (not optimal, but does a good job 
+            # in showing arrivals clearly for most cases)
             st, resp, gap_times = procStream(stn, ref_time=self.setup.fireball_datetime)
             st = findChn(st, self.channel)
             waveform_data, time_data = procTrace(st, ref_datetime=self.setup.fireball_datetime,\
                     resp=resp, bandpass=[2, 8])
 
+            # Scale the data so that the maximum is brought out to SCALE_LEN
 
+            SCALE_LEN = 10 # km
             max_val = 0
             for ii in range(len(waveform_data)):
                 wave = waveform_data[ii]
@@ -137,16 +137,44 @@ class FragmentationStaff(QWidget):
                     if abs(point) > max_val:
                         max_val = abs(point)
 
-            scaling = 10/max_val
+            scaling = SCALE_LEN/max_val
 
+            # Plot all waveform data segments (for gaps in data)
             for ii in range(len(waveform_data)):
-
-                # wave = pg.PlotDataItem(x=waveform_data[ii]*scaling, y=time_data[ii] - nom_pick.time)
-                # self.height_canvas.addItem(wave, update=True)
                 self.height_plot.ax2.plot(waveform_data[ii]*scaling, time_data[ii] - nom_pick.time)
+
         except ValueError:
             print("Could not filter waveform!")
 
+
+
+        #########################
+        # Light Curve Plot
+        #########################
+
+        if len(self.setup.light_curve_file) > 0 or not hasattr(self.setup, "light_curve_file"):
+
+
+            light_curve = readLightCurve(self.setup.light_curve_file)
+
+            light_curve_list = processLightCurve(light_curve)
+
+            for L in light_curve_list:
+                self.height_plot.ax1.scatter(L.h, L.I, label=L.station)
+                # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
+                # self.light_curve_canvas.addItem(light_curve_curve)
+
+            
+
+            self.height_plot.ax1.legend()
+
+            # plt.gca().invert_yaxis()
+
+
+            # main_layout.addWidget(self.light_curve_view, 1, 101, 1, 10)
+
+            # blank_spacer = QWidget()
+            # main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
 
 
         
@@ -182,6 +210,7 @@ class FragmentationStaff(QWidget):
         #######################
         # base_points = pg.ScatterPlotItem()
         angle_off = []
+        no_wind_points = []
         u = np.array([self.setup.trajectory.vector.x,
                       self.setup.trajectory.vector.y,
                       self.setup.trajectory.vector.z])
@@ -191,9 +220,17 @@ class FragmentationStaff(QWidget):
 
             X = self.setup.fragmentation_point[i].position.elev
             Y = f_time - nom_pick.time
+            
             self.dots_x.append(X)
             self.dots_y.append(Y)
 
+
+            travel_dis = self.setup.fragmentation_point[i].position.pos_distance(stn.metadata.position)
+
+            travel_time = travel_dis/330
+
+            no_wind_points.append([self.setup.fragmentation_point[i].position.elev, \
+                         travel_time - nom_pick.time + self.setup.fragmentation_point[i].time])
 
             az = stn.times.fragmentation[i][0][1]
             tf = stn.times.fragmentation[i][0][2]
@@ -205,17 +242,15 @@ class FragmentationStaff(QWidget):
             angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
 
+            print("Points", X, Y, np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
-        colour_angle = abs(90 - np.array(angle_off))
-        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
             # base_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238), brush=(255, 0, 238), symbol='o')
 
         
         ptb_colors = [(0, 255, 26, 150), (3, 252, 176, 150), (252, 3, 3, 150), (176, 252, 3, 150), (255, 133, 3, 150),
                       (149, 0, 255, 150), (76, 128, 4, 150), (82, 27, 27, 150), (101, 128, 125, 150), (5, 176, 249, 150)]
         
-        cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
-        cbar.ax.set_xlabel("Difference from 90 deg [deg]")
+
         # base_points.setZValue(1)
         # self.height_canvas.addItem(base_points, update=True)
 
@@ -255,18 +290,29 @@ class FragmentationStaff(QWidget):
         # prt_points = pg.ScatterPlotItem()
         for i in range(len(self.setup.fragmentation_point)):
             data, remove = self.obtainPerts(stn.times.fragmentation, i)
+            azdata, remove = self.obtainPerts(stn.times.fragmentation, i, pt=1)
+            tfdata, remove = self.obtainPerts(stn.times.fragmentation, i, pt=2)
             Y = []
             X = self.setup.fragmentation_point[i].position.elev
-            for pt in data:
+            for pt, az, tf in zip(data, azdata, tfdata):
                 
                 Y = (pt - nom_pick.time)
 
                 self.dots_x.append(X)
                 self.dots_y.append(Y)
-                self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='m', alpha=0.3)
-                # prt_points.addPoints(x=[X], y=[Y], pen=(255, 0, 238, 150), brush=(255, 0, 238, 150), symbol='o')
 
-            # self.height_canvas.addItem(prt_points, update=True)
+                az = np.radians(az)
+                tf = np.radians(180 - tf)
+                v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+                angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
+
+        colour_angle = abs(90 - np.array(angle_off))
+        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
+        cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
+        cbar.ax.set_xlabel("Difference from 90 deg [deg]")
+        no_wind_points = np.array(no_wind_points)
+        self.height_plot.ax2.scatter(no_wind_points[:, 0]/1000, no_wind_points[:, 1], c='w')
 
         for pick in self.pick_list:
             if pick.group == 0:
@@ -680,3 +726,7 @@ class FragmentationStaff(QWidget):
         Ro_ws, Ro_lin = periodSearch(op, gem_inputs, paths=False)
 
         return Ro_ws, Ro_lin
+
+if __name__ == '__main__':
+
+    pass

@@ -116,3 +116,6 @@ def parseWeather(setup, t=0, lat=None, lon=None):
                              [99999.0, setup.v_sound, 0.0, 0.0]])
 
     return sounding
+if __name__ == '__main__':
+
+    pass

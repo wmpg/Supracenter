@@ -7,7 +7,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 
 from functools import partial
 
-from supra.Utils.Formatting import checkExt
+from supra.Utils.Formatting import checkExt, printMessage
 
 import numpy as np
 
@@ -34,14 +34,17 @@ def errorMessage(message, level, info='', title='Yikes!', detail=''):
         msg.setIcon(QMessageBox.Information)
         app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Info.png'), QtCore.QSize(16, 16))
         msg.setWindowIcon(app_icon)
+        print(printMessage('info'), "{:} {:} {:}".format(message, info, detail))
     elif level == 1:
         msg.setIcon(QMessageBox.Warning)
         app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Warning.png'), QtCore.QSize(16, 16))
         msg.setWindowIcon(app_icon)
+        print(printMessage('warning'), "{:} {:} {:}".format(message, info, detail))
     else:
         msg.setIcon(QMessageBox.Critical)
         app_icon.addFile(os.path.join('supra', 'GUI', 'Images', 'Critical.png'), QtCore.QSize(16, 16))
         msg.setWindowIcon(app_icon)
+        print(printMessage('error'), "{:} {:} {:}".format(message, info, detail))
 
     msg.setText(message)
     

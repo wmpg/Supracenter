@@ -1,10 +1,13 @@
 #!/usr/bin/env python
+
+from supra.Utils.Formatting import *
+
 try:
     import cdsapi
 except ModuleNotFoundError:
-    print('Not able to find cdsapi - Weather retrieval will not work!')
+    print(printMessage("warning"), 'Not able to find cdsapi - Weather retrieval will not work! (pip install cdsapi)')
 
-def copernicusAPI(variables, year, month, day, time, loc, ensemble=False):
+def copernicusAPI(variables, year, month, day, time, loc, ensemble=False, area=None):
 
     if ensemble:
         #product = 'ensemble_members'
@@ -49,6 +52,7 @@ def copernicusAPI(variables, year, month, day, time, loc, ensemble=False):
                 '925','950','975',
                 '1000'
             ],
+        "area": area,
         "product_type": product,
         "year": str(year),
         "month": str(month),

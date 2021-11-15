@@ -196,4 +196,4 @@ def saveStations(obj):
             stn_list.append(stn)
 
     obj.bam.stn_list = stn_list
-    save(obj)
+    save(obj, True)

@@ -32,6 +32,7 @@ Users may use the built in program version, or access the HTML via browser by 'C
    docs/Features
    docs/Methods
    docs/References
+   docs/UsefulLinks
 .. docs/Changelog
 
 

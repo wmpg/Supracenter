@@ -4,7 +4,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
-def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, target=None, debug=True, trace=False):
+def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False):
     # switched positions (Jun 2019)
 
     # This function should be called for every station
@@ -79,10 +79,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
     ### Scan Loop ###
     a, b = np.cos(phi), np.sin(phi)
     last_z = 0 
-    for i in range(n_layers - 1):
+    for i in range(n_layers - 1, 0, -1):
 
         s2 = s[i]**2
-        delz = z[i + 1] - z[i]
+        delz = z[i] - z[i - 1]
 
         # Winds Enabled
         if wind:
@@ -121,13 +121,13 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
 
             # Equation (3)
             X += p*(delz)/(np.sqrt(s2 - p**2))
-        last_z = i + 1
+        last_z = i - 1
 
 
         t_arrival += (s2/np.sqrt(s2 - p**2/(1 - p*u[i])**2))*delz
         
         if trace:
-            T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival])
+            T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival])
         # if v_tol is not None and h_tol is not None:
         #     dh = z[last_z] - target[2]
         #     dx = np.sqrt((S[0] + (a*X - b*Y) - target[0])**2 + (S[1] + (b*X + a*Y) - target[1])**2)
@@ -137,25 +137,25 @@ def anglescan(S, phi, theta, z_profile, wind=True, h_tol=None, v_tol=None, targe
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
     # E = np.sqrt(((a*X - b*Y)**2 + (b*X + a*Y)**2 + (z[n_layers - last_z - 1])**2)) 
 
-    D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[n_layers - last_z - 1], t_arrival]
+    D = [S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival]
 
     ##########################
     if trace:
-        return np.array(T)
+        return np.array(D), np.array(T)
     else:
         return np.array(D)
 
 if __name__ == '__main__':
-    S = np.array([0, 0, 33000])
+    S = np.array([0, 0, 1000])
 
     #takeoff
-    theta = 175
+    theta = 135
 
     #azimuth
     phi = 0
 
     z_profile = np.array([[    0, 330, 0, 0],
-                          [11500, 330, 0, 0],
-                          [33000, 330, 0, 0]])
-    D = anglescan(S, phi, theta, z_profile)
+                          [500, 330, 0, 0],
+                          [1000, 330, 0, 0]])
+    D = anglescan(S, phi, theta, z_profile, trace=True)
     print(D)

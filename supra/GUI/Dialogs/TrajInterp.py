@@ -87,7 +87,7 @@ class TrajInterpWindow(QWidget):
 
             self.bam.source_list.append(S)
 
-        save(self.obj)
+        save(self.obj, True)
         loadSourcesIntoBam(self.obj.bam)
 
         self.close()
