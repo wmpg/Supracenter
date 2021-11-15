@@ -3,11 +3,16 @@ import os
 import copy
 from functools import partial
 import multiprocessing
+import time
+
+from PyQt5.QtWidgets import *
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
 
 from supra.Utils.Classes import Position
 from supra.Fireballs.SeismicTrajectory import timeOfArrival
 from supra.Atmosphere.Parse import parseWeather
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 from supra.Utils.Formatting import *
 
 import pyximport
@@ -137,10 +142,10 @@ def printStatus(bam, prefs):
 
 
 
-def calcAllTimes(bam, prefs):
+def calcAllTimes(obj, bam, prefs):
     ''' Calculates all arrivals to all stations
     '''
-
+    time_step = -999
     #######################################
     # Check if times need to be calculated
     #######################################
@@ -150,6 +155,13 @@ def calcAllTimes(bam, prefs):
             printStatus(bam, prefs)
         return bam.stn_list
 
+
+    qm = QMessageBox()
+    ret = qm.question(obj, '', "No arrival times detected, calculate?", qm.Yes | qm.No)
+
+
+    if ret == qm.No:
+        return bam.stn_list
 
     ####################
     # Times Calculation
@@ -169,14 +181,13 @@ def calcAllTimes(bam, prefs):
     
 
     for ii, stn in enumerate(bam.stn_list):
-        
 
         if not hasattr(stn, 'times'):
             stn.times = Times()
 
         stn.times.ballistic = []
         stn.times.fragmentation = []
-        stn.metadata.position.pos_loc(ref_pos)
+
 
         ################
         # Fragmentation
@@ -186,8 +197,20 @@ def calcAllTimes(bam, prefs):
 
             for i, frag in enumerate(bam.setup.fragmentation_point):
 
+                if i == 0 and ii == 0:
+                    t1 = time.time()
+                elif i == 1 and ii == 0:
+                    time_step = time.time() - t1
+
                 step += 1
-                loadingBar('Calculating Station Times: ', step, total_steps)
+                time_hour = time_step*(total_steps-step)//3600
+                time_minute = time_step*(total_steps-step)%3600//60
+                time_second = time_minute*(total_steps-step)%60
+
+                time_string = "{:02d}:{:02d}:{:02d}".format(int(time_hour), int(time_minute), int(time_second))
+
+
+                loadingBar('Calculating Station Times - ETA {:}: '.format(time_string), step, total_steps)
 
                 offset = frag.time
 
@@ -196,18 +219,18 @@ def calcAllTimes(bam, prefs):
                 supra = frag.position
                 
                 # convert to local coordinates based off of the ref_pos
-                supra.pos_loc(ref_pos)
+                stn.metadata.position.pos_loc(supra)
+                supra.pos_loc(supra)
 
                 lats = [supra.lat, stn.metadata.position.lat]
                 lons = [supra.lon, stn.metadata.position.lon]
                 heights = [supra.elev, stn.metadata.position.elev]
 
-                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)
+                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime, spline=1000)
 
                 # Travel time of the fragmentation wave
                 f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), sounding, \
-                    wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
+                    wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
 
                 results = []
 
@@ -215,9 +238,9 @@ def calcAllTimes(bam, prefs):
                     for pert in perturbations:
                         step += 1
                         loadingBar('Calculating Station Times: ', step, total_steps)
-                        temp = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
-                            wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                            h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                        temp = cyscan(np.array([supra.x, supra.y, supra.z]), \
+                            np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), \
+                            sounding, wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist) 
                         temp[0] += offset
                         results.append(temp) 
 
@@ -229,17 +252,18 @@ def calcAllTimes(bam, prefs):
         # Ballistic
         ############
 
-        if prefs.ballistic_en:
+        if prefs.ballistic_en and bam.setup.trajectory is not None:
 
             step += 1
             loadingBar('Calculating Station Times: ', step, total_steps)
 
             a = []
             # define line bottom boundary
+
             max_height = bam.setup.trajectory.pos_i.elev
             min_height = bam.setup.trajectory.pos_f.elev
 
-            points = bam.setup.trajectory.trajInterp2(div=100, min_p=min_height, max_p=max_height)
+            points = bam.setup.trajectory.trajInterp2(div=1, min_p=min_height, max_p=max_height)
 
 
             u = np.array([bam.setup.trajectory.vector.x,
@@ -257,14 +281,14 @@ def calcAllTimes(bam, prefs):
                 lons = [S.lon, stn.metadata.position.lon]
                 heights = [S.elev, stn.metadata.position.elev]
 
-                S.pos_loc(ref_pos)
+                S.pos_loc(S)
 
-                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)
+                sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)
 
                 # Travel time of the fragmentation wave
-                _, az, tf, _ = cyscan(np.array([S.x, S.y, S.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), sounding, \
-                    wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                    h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                _, az, tf, _ = cyscan(np.array([S.x, S.y, S.z]), \
+                    np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), \
+                    sounding, wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
 
                 az = np.radians(az)
                 tf = np.radians(180 - tf)
@@ -290,18 +314,19 @@ def calcAllTimes(bam, prefs):
             supra = points[best_indx]
             ref_time = supra[3]
             supra = Position(supra[0], supra[1], supra[2])
-            supra.pos_loc(ref_pos)
+            supra.pos_loc(supra)
 
 
             lats = [supra.lat, stn.metadata.position.lat]
             lons = [supra.lon, stn.metadata.position.lon]
             heights = [supra.elev, stn.metadata.position.elev]
 
-            sounding, perturbations = bam.atmos.getSounding(lats, lons, heights)
+            sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)
             # Travel time of the fragmentation wave
-            f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), sounding, \
-                wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
+            f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), \
+                np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]),\
+                sounding, wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)   
+
 
             speed = bam.setup.trajectory.v
             distance = supra.pos_distance(bam.setup.trajectory.pos_f)
@@ -312,14 +337,14 @@ def calcAllTimes(bam, prefs):
                 for pert in perturbations:
                     step += 1
                     loadingBar('Calculating Station Times: ', step, total_steps)
-                    e, b, c, d = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), pert, \
-                        wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,
-                        h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                    e, b, c, d = cyscan(np.array([supra.x, supra.y, supra.z]), \
+                        np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]),\
+                        sounding, wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
                     e += timing
                     results.append(np.array([e, b, c, d])) 
 
 
-            a.append([ref_time + f_time , frag_azimuth, frag_takeoff, frag_err])
+            a.append([ref_time + f_time, frag_azimuth, frag_takeoff, frag_err])
             a.append(results)
 
             stn.times.ballistic.append(a)

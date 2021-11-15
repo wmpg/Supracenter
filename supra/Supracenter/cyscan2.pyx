@@ -97,7 +97,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] nwDir(np.ndarray[FLOAT_TYPE_t, ndim=1] w,
 ##########
 # CYSCAN #
 ##########
-@cython.wraparound(False)
+
 @cython.boundscheck(False)
 @cython.cdivision(True)
 @cython.nonecheck(False)
@@ -146,7 +146,8 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         float dy = detec_pos[1] - supra_pos[1]
 
         # azth - initial guess for azimuth
-        float azth = appatan2(dy, dx)
+        # float azth = appatan2(dy, dx)
+        float azth = np.arctan2(dy, dx)
 
         # The number of layers in the integration region
         int n_layers = len(z_profile)
@@ -172,17 +173,17 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
     # move theta off of the singularity at pi/2
     theta[0] += 1e-6
 
-    s_val = s[n_layers-1]
+    s_val = s[-1]
 
     cdef:
         np.ndarray[FLOAT_TYPE_t, ndim=2] Theta = np.tile(theta, (n_phi, 1)).T
 
         # Component of wind along the phi direction (azimuth)
-        np.ndarray[FLOAT_TYPE_t, ndim=2] u0 = np.tile(u[n_layers - 1, :], (n_theta, 1))
+        np.ndarray[FLOAT_TYPE_t, ndim=2] u0 = np.tile(u[-1, :], (n_theta, 1))
 
         # ray parameter
         np.ndarray[FLOAT_TYPE_t, ndim=2] p = s_val*np.sin(Theta)/(1 + s_val*u0*np.sin(Theta))
-
+                                         
         # Transformed x and y
         np.ndarray[FLOAT_TYPE_t, ndim=2] X = np.zeros((n_theta, n_phi))
         np.ndarray[FLOAT_TYPE_t, ndim=2] Y = np.zeros((n_theta, n_phi))
@@ -205,11 +206,15 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 #############
 # Scan Loop #
 #############
-
+    k, l = None, None
+    last_working_ray_trace = k, l
+    last_working_ray_trace_list = []
+    last_working_ray_net =  theta, phi
     while not found:
+
         if trace:
             trace_list = []
-            trace_list.append([supra_pos[0], supra_pos[1], supra_pos[2]])
+            trace_list.append([supra_pos[0]*np.ones((n_phi, n_theta)), supra_pos[1]*np.ones((n_phi, n_theta)), supra_pos[2]])
         count = 0
         a, b = np.cos(Phi), np.sin(Phi)
         last_z = 0
@@ -237,6 +242,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 # If this is true, the ray has reflected upward
                 if np.isnan(A).all():
+
                     break
 
                 # Equation (10)
@@ -258,11 +264,12 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
             # Calculate true destination positions (transform back)
             horizontal_error = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2))
-            vertical_error = z[n_layers - last_z - 1] - detec_pos[2]
+            vertical_error = z[n_layers - last_z - 2] - detec_pos[2]
 
             if trace:
-                k, l = np.where(horizontal_error == np.nanmin(horizontal_error))
-                trace_list.append([(a*X - b*Y)[k, l], (b*X + a*Y)[k, l], z[n_layers - 1 - last_z]])
+                delx = (a*(p2 + s2*u[i, :])*A - b*s2*v[i, :]*A)
+                dely = (b*(p2 + s2*u[i, :])*A + a*s2*v[i, :]*A)
+                trace_list.append([delx, dely, -delz])
 
             # If the ray is close enough to the station, stop calculating
             # done in order to reduce NaNs -> Theoretically it should go further if it can,
@@ -271,10 +278,11 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             if np.nanmin(horizontal_error) < h_tol and vertical_error < v_tol:
                 k, l = np.where(horizontal_error == np.nanmin(horizontal_error))
                 found = True
+
                 break
 
         # Compare these destinations with the desired destination, all imaginary values are "turned rays" and are ignored
-        E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 1] - detec_pos[2])**2)) 
+        E = np.sqrt(((a*X - b*Y - dx)**2 + (b*X + a*Y - dy)**2 + (z[n_layers - last_z - 2] - detec_pos[2])**2)) 
 
 
         # Fast way to check for all nan
@@ -284,24 +292,63 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
             # Caused by ray reflecting upwards
             if debug:
                 print('CYSCAN ERROR: All NaNs - Rays reflect upwards')
+
+            # Use last working ray-trace if possible
+            if k is None or l is None:
+
+                k, l = last_working_ray_trace
+                theta, phi = last_working_ray_net
+                if trace:
+                    trace_list = last_working_ray_trace_list
+
+                found = True
+                break
+
             if trace:
+
                 return np.array([np.nan, np.nan, np.nan, np.nan, trace_list])
             return np.array([np.nan, np.nan, np.nan, np.nan])
+
+
+        if not np.isnan(A).all():
+
+
+            last_working_ray_trace = k, l
+            last_working_ray_net = theta, phi
+
+            if trace:
+                last_working_ray_trace_list = trace_list
 
         # Ignore all nan slices - not interested in these points
         # Find the position of the smallest value
 
         k, l = np.unravel_index(np.nanargmin(E), (n_theta, n_phi))
 
+
+
         new_error = E[k, l]
 
-        if dphi < 1e-10:
+        if dphi < 1e-20:
 
             # RETURN 2 of 3:
             # Failure
             # Caused by getting stuck in a loop, cannot find solution
             if debug:
                 print('CYSCAN ERROR: Cannot find solution - Angle precision less than tolerance')
+
+            # Use last working ray-trace if possible
+            if k is None or l is None:
+
+                k, l = last_working_ray_trace
+
+                theta, phi = last_working_ray_net
+                if trace:
+                    trace_list = last_working_ray_trace_list
+                found = True
+
+                break
+
+            # if not, return errors
             if trace:
                 return np.array([np.nan, np.nan, np.nan, np.nan, trace_list])
             return np.array([np.nan, np.nan, np.nan, np.nan])
@@ -310,6 +357,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
         # if E[k, l] < v_tol or dtheta < h_tol or dphi < h_tol:
 
             # pass on the azimuth & ray parameter information for use in traveltime calculation
+
             found = True
 
 
@@ -327,7 +375,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
                 # Check: theta must be > 90 degrees
                 if theta[k] - dtheta < M_PI_2:
-                    theta = np.linspace(M_PI_2, theta[k] + 2*dtheta, n_theta)
+                    theta = np.linspace(M_PI_2, M_PI_2 + dtheta, n_theta)
                 else: 
                     theta = np.linspace(theta[k] - dtheta, theta[k] + dtheta, n_theta) 
                 dtheta = 2*dtheta/n_theta  
@@ -350,7 +398,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
                 phi = np.linspace(phi[l] - dphi, phi[l] + dphi, n_phi)         
                 dphi = 2*dphi/n_phi  
 
-                theta = np.linspace(M_PI_2, theta[k] + 2*dtheta, n_theta) 
+                theta = np.linspace(M_PI_2, M_PI_2 + dtheta, n_theta) 
                 dtheta = dtheta/n_theta/2
             
             # Update values, and try again
@@ -376,7 +424,7 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 #################
 # Return Values #
 #################
-    
+
     azimuth = (450 - phi[l]*180/M_PI)%360
 
     # Final solution for intial takeoff angle
@@ -396,6 +444,9 @@ cpdef np.ndarray[FLOAT_TYPE_t, ndim=1] cyscan(np.ndarray[FLOAT_TYPE_t, ndim=1] s
 
     # Return 3 of 3:
     # Success
+    # for h in range(n_layers):
+    #     print(trace_list[h][0][k][l], trace_list[h][1][k][l], trace_list[h][2])
+
     if trace:
         return np.array([t_arrival, azimuth, takeoff, E[k, l], trace_list])
     return np.array([t_arrival, azimuth, takeoff, E[k, l]])

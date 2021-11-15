@@ -15,7 +15,7 @@ from supra.GUI.Tools.GUITools import *
 
 
 from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
-from supra.Stations.ProcessStation import procTrace, procStream, findChn, findDominantPeriodPSD, genFFT
+from supra.Stations.ProcessStation import *
 from supra.Utils.Formatting import *
 from supra.Geminus.geminusSearch import periodSearch, presSearch
 
@@ -25,7 +25,8 @@ from supra.Geminus.geminusSearch import periodSearch, presSearch
 def hypfunc(x, a, b, h, k):
     return b*np.sqrt(1 + ((x - h)/a)**2) + k
 def invhypfunc(x, a, b, h, k):
-    return a*np.sqrt(((x - k)/b)**2 - 1) + h
+    result = np.abs(a*np.sqrt(((x - k)/b)**2 - 1) + h)
+    return result
 
 
 
@@ -35,18 +36,39 @@ class TrajSpace(QWidget):
 
         QWidget.__init__(self)
         
+        self.height_points = []
         self.bam = bam
         self.buildGUI()
         self.calculate()
 
 
     def clearax(self):
+        self.height_points = []
         # self.pvh_graph.ax1.clear()
         self.pvh_graph.ax2.clear()
         self.pvh_graph.ax3.clear()
         # self.pvh_graph.ax4.clear()
         self.pvh_graph.ax5.clear()
         self.pvh_graph.ax6.clear()
+
+    def binify(self):
+        bin_size = float(self.bin_edits.text())
+        h_min = float(self.min_height_edits.text())*1000
+        h_max = float(self.max_height_edits.text())*1000
+
+        bins = np.arange(h_min, h_max + bin_size, bin_size)
+        bin_content = [0]*len(bins)
+
+        pts = self.height_points
+        
+        for pt in pts:
+            h = pt[0]
+            a = pt[1]
+
+            indx = [n for n,i in enumerate(bins) if i >= h ][0] - 1
+            bin_content[indx] += a
+
+        # self.pvh_graph.ax4.scatter(bins + bin_size/2, bin_content, alpha=1.0)
 
     def calculate(self):
 
@@ -70,22 +92,27 @@ class TrajSpace(QWidget):
         l = float(self.l_edits.text())
 
 
-        for trace, resp, popt, infra in zip(trace_list, resp_list, popt_list, infra_list):
+        for tt, (trace, resp, popt, infra) in enumerate(zip(trace_list, resp_list, popt_list, infra_list)):
+
+
 
             if popt is None:
                 continue
 
             stn_name = "{:}-{:}".format(infra.metadata.network, infra.metadata.code)
 
-
             a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=None, backup=False)
+            a_new = [item for sublist in a for item in sublist]
+            t_new = [item for sublist in t for item in sublist]
 
+            a = np.array(a_new)
+            t = np.array(t_new)
             # p_list, h_list = self.convertTimes(a[0], t[0], popt)
         
-            heights = invhypfunc(t[0], *popt)
+            heights = invhypfunc(t, *popt)
             h_indicies = np.where(np.logical_and(heights>=h_min, heights<=h_max))
 
-
+            divide = 0
             for i in range(len(h_indicies[0])):
 
                 if h_indicies[0][i] - h_indicies[0][i-1] != 1:
@@ -97,23 +124,24 @@ class TrajSpace(QWidget):
 
             FASes = []
             logs = []
-            L = len(a[0])
+            L = len(a)
             spacer = int(L/(l*(1-N) + N))
-            shifter = int(spacer*(1-l)) 
-
+            shifter = int(spacer*(1-l))
+            print("{:} Window Length = {:.2f} s".format(stn_name, spacer/trace.stats.sampling_rate))
+            print("{:} Window Shift = {:.2f} s".format(stn_name, shifter/trace.stats.sampling_rate))
             for i in range((L - spacer)//shifter + 1):
-                a_temp, t_temp = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=[2, 8], backup=False)
+                a_temp, t_temp = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=None, backup=False)
                 # if self.h_space_tog.isChecked():
                 #     self.pvh_graph.ax1.plot(invhypfunc(t_temp[0][i*shifter:int(i*shifter + spacer)], *popt), a_temp[0][i*shifter:int(i*shifter + spacer)], alpha=0.5)
                 # else:
                 #     self.pvh_graph.ax1.plot(t_temp[0][i*shifter:int(i*shifter + spacer)], a_temp[0][i*shifter:int(i*shifter + spacer)], alpha=0.5)
 
-                freq, FAS = genFFT(a[0][i*shifter:int(i*shifter + spacer)], trace.stats.sampling_rate)
+                freq, FAS = genFFT(a[i*shifter:int(i*shifter + spacer)], trace.stats.sampling_rate)
                 if i == 0:
                     FAS_N = FAS
 
                 
-                FASes.append(np.sum(FAS/FAS_N))
+                FASes.append(np.sum(FAS))
                 logs.append(FAS/FAS_N)
 
             best_fas = np.argmax(FASes)
@@ -131,22 +159,83 @@ class TrajSpace(QWidget):
 
             filtered_freq = freq[j]
 
-            print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(filtered_freq[0], filtered_freq[-1]))
-            a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=[filtered_freq[0], filtered_freq[-1]], backup=False)
-            s2n = np.max(a[0])/np.median(np.abs(a[0]))
-            filtered_wave = a[0]
+            # print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(filtered_freq[0], filtered_freq[-1]))
+
+            if self.stat_bandpass.isChecked():
+                bnps = infra.bandpass
+            else:
+                bnps = [filtered_freq[0], filtered_freq[-1]]
+
+            if bnps is not None:
+                print("Optimal Frequency Range {:.2f} - {:.2f} Hz".format(bnps[0], bnps[-1]))
+
+            a, t = procTrace(trace, ref_datetime=self.bam.setup.fireball_datetime, resp=resp, bandpass=bnps, backup=False)
+
+
+
+            a_new = [item for sublist in a for item in sublist]
+            t_new = [item for sublist in t for item in sublist]
+
+            a = np.array(a_new)
+            t = np.array(t_new)
+
+
+            s2n = np.max(a)/np.median(np.abs(a))
+            filtered_wave = a
+
+            if tt == 0:
+                total_vals = []
+                total_elements = []
+                total_h = []
+
 
             if self.h_space_tog.isChecked():
-                h = invhypfunc(t[0], *popt)
+                h = invhypfunc(t, *popt)
                 if self.branchselector.isChecked():
                     h = h[branch_2]
-                    vals = a[0][branch_2]
+                    vals = a[branch_2]
                 else:
                     h = h[branch_1]
-                    vals = a[0][branch_1]
-                self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+                    vals = a[branch_1]
+                self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}".format(stn_name))
+                
+                # hil = reHilbert(vals)
+
+                # self.height_points.append([h, vals])
+                # # for ampl, heig in zip(vals, h):
+                # #     self.height_points.append([heig, ampl])
+
+
+                # # Last element
+                # if tt == len(trace_list) - 1:
+
+
+                #     # do the hilbert thing here
+
+                #     self.binify()
+                    
+                # self.pvh_graph.ax3.plot(h, vals, alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
             else:
-                self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+
+
+                # hil = reHilbert(a)
+                # total_vals.append(hil)
+                # total_elements.append(len(hil))
+
+                # # Last element
+
+                # if tt == len(trace_list) - 1:
+                #     min_trace = np.nanmin(total_elements)
+
+                #     for vv, val_cut in enumerate(total_vals):
+                #         if vv == 0:
+                #             adjusted_cut = val_cut[:min_trace]
+                #         else:
+                #             adjusted_cut += val_cut[:min_trace]
+
+                #     self.pvh_graph.ax4.plot(t[:len(adjusted_cut)], adjusted_cut[:len(t)], alpha=1.0)
+                # self.pvh_graph.ax3.plot(t[0], a[0], alpha=0.3, label="{:}: Optimal Bandpass ({:.2f} - {:.2f} Hz) S/N {:.2f}".format(stn_name, filtered_freq[0], filtered_freq[-1], s2n))
+                self.pvh_graph.ax3.plot(t, a, alpha=0.3, label="{:}".format(stn_name))
 
 
             # sig = a[0][j]
@@ -157,20 +246,20 @@ class TrajSpace(QWidget):
             # print("Dominant Period of Signal: {:.2f} s".format(p))
             
             shortest_period = 1/trace.stats.sampling_rate
-            longest_period = t[0][shifter] - t[0][0]
+            longest_period = t[shifter] - t[0]
             ax5h = []
             ax5p = []
             ax6h = []
             ax6p = []
             for i in range((L - spacer)//shifter + 1):
 
-                max_p = np.nanmax(a[0][i*shifter:int(i*shifter + spacer)])
-                min_p = np.nanmin(a[0][i*shifter:int(i*shifter + spacer)])
+                max_p = np.nanmax(a[i*shifter:int(i*shifter + spacer)])
+                min_p = np.nanmin(a[i*shifter:int(i*shifter + spacer)])
 
-                height_of_sol = invhypfunc(t[0][int(i*shifter + spacer//2)], *popt)
+                height_of_sol = invhypfunc(t[int(i*shifter + spacer//2)], *popt)
 
                 if self.h_space_tog.isChecked():
-                    h = invhypfunc(t[0][int(i*shifter + spacer//2)], *popt)
+                    h = invhypfunc(t[int(i*shifter + spacer//2)], *popt)
 
                     if h in heights[branch_1] and not self.branchselector.isChecked():
                         ax5h.append(h)
@@ -180,17 +269,17 @@ class TrajSpace(QWidget):
                         ax5h.append(h)
                         ax5p.append((max_p - min_p)/2)
                 else:
-                    ax5h.append(t[0][int(i*shifter + spacer//2)])
+                    ax5h.append(t[int(i*shifter + spacer//2)])
                     ax5p.append((max_p - min_p)/2)
 
-                p, freq, FAS = findDominantPeriodPSD(a[0][i*shifter:int(i*shifter + spacer)], trace.stats.sampling_rate, normalize=False)
+                p, freq, FAS = findDominantPeriodPSD(a[i*shifter:int(i*shifter + spacer)], trace.stats.sampling_rate, normalize=False)
                 
                 # if h_min <= height_of_sol and height_of_sol <= h_max:
 
 
                 if self.h_space_tog.isChecked():
 
-                    h = invhypfunc(t[0][int(i*shifter + spacer//2)], *popt)
+                    h = invhypfunc(t[int(i*shifter + spacer//2)], *popt)
 
                     if h in heights[branch_1] and not self.branchselector.isChecked():
                         self.geminus_heights.append(height_of_sol)
@@ -208,7 +297,7 @@ class TrajSpace(QWidget):
                         ax6h.append(h)
                         ax6p.append(p)
                 else:
-                    ax6h.append(t[0][int(i*shifter + spacer//2)])
+                    ax6h.append(t[int(i*shifter + spacer//2)])
                     ax6p.append(p)
 
                 self.pvh_graph.ax6.axhline(y=shortest_period, linestyle='-')
@@ -216,13 +305,15 @@ class TrajSpace(QWidget):
             self.pvh_graph.ax5.scatter(ax5h, ax5p, label=stn_name)
             self.pvh_graph.ax6.scatter(ax6h, ax6p, label=stn_name)
 
-            t_in_range = t[0][branch_1]
+
+
+            t_in_range = t[branch_1]
             try:
                 t_min_range_1 = t_in_range[0]
                 t_max_range_1 = t_in_range[-1]
             except IndexError:
                 t_min_range_1, t_max_range_1 = np.nan, np.nan
-            t_in_range = t[0][branch_2]
+            t_in_range = t[branch_2]
             try:
                 t_min_range_2 = t_in_range[0]
                 t_max_range_2 = t_in_range[-1]
@@ -284,8 +375,12 @@ class TrajSpace(QWidget):
         #     self.pvh_graph.ax1.plot(h_list[pp], np.abs(p_list[pp]), label="{:}".format(infra_list[pp].metadata.code), alpha=0.5)
         # #     self.pvh_graph.ax2.plot(period_h_list[pp], period_list[pp], label="{:}".format(infra_list[pp].metadata.code), alpha=0.5)
         
-        t_min = t[0][0]
-        t_max = t[0][-1]
+        try:
+            t_min = float(self.min_time_edits.text())
+            t_max = float(self.max_time_edits.text())
+        except:
+            t_min = t[0]
+            t_max = t[-1]
 
 
         # if self.h_space_tog.isChecked():
@@ -318,6 +413,13 @@ class TrajSpace(QWidget):
                 self.pvh_graph.ax3.axvline(x=t_max_range_1, linestyle='-')
         self.pvh_graph.ax3.set_ylabel("Overpressure [Pa]")
         
+        # if self.h_space_tog.isChecked():
+        #     self.pvh_graph.ax4.set_xlabel("Height [m]")
+        #     self.pvh_graph.ax4.set_xlim([h_min, h_max])
+        # else:
+        #     self.pvh_graph.ax4.set_xlabel("Time [s]")
+        #     self.pvh_graph.ax4.set_xlim([t_min, t_max])
+        # self.pvh_graph.ax4.set_ylabel("Overpressure [Pa]")        
 
         # self.pvh_graph.ax4.set_xlabel("Frequency [Hz]")
         # self.pvh_graph.ax4.set_ylabel("Gain")
@@ -351,9 +453,9 @@ class TrajSpace(QWidget):
                 self.pvh_graph.ax6.axvline(x=t_max_range_1, linestyle='-')
         self.pvh_graph.ax6.set_ylabel("Dominant Period [s]")
         self.pvh_graph.ax2.legend()
-        self.pvh_graph.ax3.legend()
-        self.pvh_graph.ax5.legend()
-        self.pvh_graph.ax6.legend()
+        # self.pvh_graph.ax3.legend()
+        # self.pvh_graph.ax5.legend()
+        # self.pvh_graph.ax6.legend()
         self.pvh_graph.show()
 
     def buildGUI(self):
@@ -386,6 +488,7 @@ class TrajSpace(QWidget):
         _, self.N_edits = createLabelEditObj("Number of Windows", layout, 2, width=1, h_shift=1, tool_tip='', validate='int', default_txt='100')
         _, self.l_edits = createLabelEditObj("Percent Overlap", layout, 3, width=1, h_shift=1, tool_tip='', validate='float', default_txt='0.5')
         self.h_space_tog = createToggle("Height Space", layout, 4, width=1, h_shift=2, tool_tip='')
+        self.h_space_tog.setChecked(True)
         self.auto_gain = createToggle("Auto Gain Limits", layout, 5, width=1, h_shift=2, tool_tip='')
         _, self.gain_edits = createLabelEditObj("Gain Cutoff", layout, 6, width=1, h_shift=1, tool_tip='', validate='float', default_txt='5')
         self.auto_gain.setChecked(True)
@@ -394,11 +497,16 @@ class TrajSpace(QWidget):
         _, self.max_height_edits = createLabelEditObj("Maximum Height [km]", layout, 9, width=1, h_shift=1, tool_tip='', validate='float', default_txt='40')
         self.branchselector = createToggle("Use Branch 2", layout, 10, width=1, h_shift=2, tool_tip='')
         self.branchselector.setChecked(True)
+        _, self.min_time_edits = createLabelEditObj("Minimum Time [s]", layout, 11, width=1, h_shift=1, tool_tip='', validate='float', default_txt='300')
+        _, self.max_time_edits = createLabelEditObj("Maximum Time [s]", layout, 12, width=1, h_shift=1, tool_tip='', validate='float', default_txt='600')
+        self.stat_bandpass = createToggle("Use Station Bandpass", layout, 13, width=1, h_shift=2, tool_tip='')
+        _, self.bin_edits = createLabelEditObj("Size of Bins [m]", layout, 14, width=1, h_shift=1, tool_tip='', validate='float', default_txt='100')
+        self.bin_edits.editingFinished.connect(self.binify)
 
         self.ro_graph = MatplotlibPyQT()
         self.ro_graph.ax = self.ro_graph.figure.add_subplot(111)
-        layout.addWidget(self.ro_graph, 11, 2, 90, 2)
-        export_ro = createButton("Export Relaxation Radii Curve", layout, 101, 3, self.exportro, args=[])
+        layout.addWidget(self.ro_graph, 15, 2, 90, 2)
+        export_ro = createButton("Export Relaxation Radii Curve", layout, 105, 3, self.exportro, args=[])
 
     def exportraw(self):
             
@@ -454,7 +562,7 @@ class TrajSpace(QWidget):
             lon =   [source.lon, stat_pos.lon]
             elev =  [source.elev, stat_pos.elev]
 
-            sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+            sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, ref_time=self.bam.setup.fireball_datetime)
 
             pres = 10*101.325*np.exp(-0.00012*sounding[:, 0])
             

@@ -14,6 +14,9 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.TryObj import *
 
 from supra.Stations.Filters import *
+from supra.Stations.ProcessStation import *
+from supra.Files.SaveLoad import save
+from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 
 
 class BandpassWindow(QWidget):
@@ -49,34 +52,40 @@ class BandpassWindow(QWidget):
         self.bandpass_view = pg.GraphicsLayoutWidget()
         self.bandpass_canvas = self.bandpass_view.addPlot()
 
-        self.bp_button = createButton('Bandpass', layout, 2, 2, self.bandpass)
+        self.bp_button = createButton('Bandpass', layout, 4, 2, self.bandpass)
+        self.save_button = createButton('Save', layout, 4, 3, self.bandpassSave)
 
         layout.addWidget(self.bandpass_view, 1, 1, 1, 2)
+
+        _, self.low_bandpass_edits = createLabelEditObj('Low Bandpass', layout, 2, width=1, h_shift=0, tool_tip='', validate='float', default_txt='2')
+        _, self.high_bandpass_edits  = createLabelEditObj('High Bandpass', layout, 3, width=1, h_shift=0, tool_tip='', validate='float', default_txt='8')
 
         self.stream = self.stn.stream.select(channel="{:}".format(self.channel))
 
         st = self.stn.stream.select(channel="{:}".format(self.channel))[0]
+        self.orig_trace = st.copy()
         stn = self.stn
 
-        delta = st.stats.delta
-        start_datetime = st.stats.starttime.datetime
-        end_datetime = st.stats.endtime.datetime
+        delta = self.orig_trace.stats.delta
+        start_datetime = self.orig_trace.stats.starttime.datetime
+        end_datetime = self.orig_trace.stats.endtime.datetime
 
         stn.offset = (start_datetime - self.bam.setup.fireball_datetime).total_seconds()
 
         self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, st.stats.npts / st.stats.sampling_rate, \
+        self.current_waveform_time = np.arange(0, self.orig_trace.stats.npts / self.orig_trace.stats.sampling_rate, \
              delta)
 
         time_data = np.copy(self.current_waveform_time)
         
-        st.detrend()
+        self.orig_trace.detrend()
 
         resp = stn.response
-        st = st.remove_response(inventory=resp, output="DISP")
-        st.remove_sensitivity(resp) 
+        if resp is not None:
+            self.orig_trace = self.orig_trace.remove_response(inventory=resp, output="DISP")
+        # st.remove_sensitivity(resp) 
 
-        waveform_data = st.data
+        waveform_data = self.orig_trace.data
 
         self.orig_data = np.copy(waveform_data)
 
@@ -107,6 +116,16 @@ class BandpassWindow(QWidget):
         self.bandpass_canvas.addItem(self.noise_selector)
         self.bandpass_canvas.addItem(self.signal_selector)
 
+        self.bandpass_graph = MatplotlibPyQT()
+        self.bandpass_graph.ax1 = self.bandpass_graph.figure.add_subplot(211)
+        self.bandpass_graph.ax2 = self.bandpass_graph.figure.add_subplot(212)
+        layout.addWidget(self.bandpass_graph, 1, 4, 1, 2)
+
+    def bandpassSave(self):
+        bandpass = [float(self.low_bandpass_edits.text()), float(self.high_bandpass_edits.text())]
+        self.stn.bandpass = bandpass
+        save(self.bam, file_check=False)
+
     def determineROIidx(self, roi):
         
         len_of_region = roi[1] - roi[0]
@@ -127,6 +146,9 @@ class BandpassWindow(QWidget):
 
     def bandpass(self):
 
+        self.bandpass_graph.ax1.clear()
+        self.bandpass_graph.ax2.clear()
+
         st = self.stn.stream.select(channel="{:}".format(self.channel))[0]
 
         noise_roi = self.noise_selector.getRegion()
@@ -135,42 +157,55 @@ class BandpassWindow(QWidget):
         noise_a, noise_b = self.determineROIidx(noise_roi)
         signal_a, signal_b = self.determineROIidx(signal_roi)
 
-        S = 1
-        N = 1
-        S_N = S/N
-        result = [np.nan, np.nan, np.nan]
 
-        fs = 1.0/self.current_waveform_delta
-        # 0.5*fs is the maximum possible filtering
-        # 0 is the lowest
+        waveform_data, t = procTrace(self.orig_trace, ref_datetime=self.bam.setup.fireball_datetime, \
+                    resp=self.stn.response, bandpass=None, backup=False)
 
-        low_pass =  np.linspace(0.01, 0.5*fs, 100, endpoint=False)
-        high_pass = np.linspace(0.01, 0.5*fs, 100, endpoint=False)
-        SmN_last = 0
-        for l in low_pass:
-            for h in high_pass:
+        S = waveform_data[0][signal_a:signal_b]
+        N = waveform_data[0][noise_a:noise_b]
 
-                if h > l + 1:
-                
-                    waveform_data = np.copy(self.orig_data)
 
-                    # Init the butterworth bandpass filter
-                    butter_b, butter_a = butterworthBandpassFilter(l, h, \
-                        fs, order=6)
+        # Need to detrend or bandpass first
+        zero_cross_p = findDominantPeriod(S, t[0][signal_a:signal_b], return_all=True)
 
-                    # Filter the data
-                    waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(waveform_data))
+        # Make sure the windows are the same length
+        if len(N) >= len(S):
+            N = N[:len(S)]
 
-                    S = np.mean(np.abs(waveform_data[signal_a:signal_b]))
-                    N = np.mean(np.abs(waveform_data[noise_a:noise_b]))
+        freq, FAS_S = genFFT(S, self.orig_trace.stats.sampling_rate, interp=False)
+        freq, FAS_N = genFFT(N, self.orig_trace.stats.sampling_rate, interp=False)
 
-                    S_N_last = S_N
-                    S_N = S/N
+        S_N_FAS = FAS_S/FAS_N
 
-                    if S_N > S_N_last and S - N > SmN_last:
-                        result = [S_N, l, h]
-                        SmN_last = S - N
+        self.bandpass_graph.ax2.loglog(freq, FAS_S, label="Signal")
+        self.bandpass_graph.ax2.loglog(freq, FAS_N, label="Noise")
+        self.bandpass_graph.ax1.loglog(freq, S_N_FAS, label="Signal/Noise")
+        self.bandpass_graph.ax1.axhline(y=1)
 
-        print("Signal/Noise:     {:.2f}".format(result[0]))
-        print("Optimal Lowpass:  {:.2f}".format(result[1]))
-        print("Optimal Highpass: {:.2f}".format(result[2]))
+        self.bandpass_graph.ax1.set_xlabel("Frequency [Hz]")
+        self.bandpass_graph.ax2.set_xlabel("Frequency [Hz]")
+
+
+        if len(zero_cross_p) == 0:
+            print("No Zero-Crossings!")
+        else:
+            print("Zero-Crossing Periods:")
+
+        for pp, p in enumerate(zero_cross_p):
+            if pp == 0:
+                self.bandpass_graph.ax1.axvline(x=p, label="Zero-Crossing Dominant Period")
+                self.bandpass_graph.ax2.axvline(x=p, label="Zero-Crossing Dominant Period")
+            else:
+                self.bandpass_graph.ax1.axvline(x=p)
+                self.bandpass_graph.ax2.axvline(x=p)
+            print("{:.2f} s".format(p))
+
+
+
+        self.bandpass_graph.ax1.legend()
+        self.bandpass_graph.ax2.legend()
+        self.bandpass_graph.show()
+
+if __name__ == '__main__':
+
+    pass

@@ -100,3 +100,6 @@ def parseRadio(file_name, time):
 	filt_data = filterData(data, sounde.levels)
 
 	return filt_data
+if __name__ == '__main__':
+
+    pass

@@ -20,3 +20,6 @@ phi = 45
 
 results = anglescan(S, phi, theta, sounding, wind=True, h_tol=330, v_tol=1000)
 print(results)
+if __name__ == '__main__':
+
+    pass

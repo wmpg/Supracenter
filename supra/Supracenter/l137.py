@@ -182,7 +182,7 @@ def estPressure(height):
 
 
 if __name__ == '__main__':
-	print(estPressure(37950))
+	print(estPressure(38700))
 	# n = 100
 	# min_height =  1000
 	# max_height =  30000

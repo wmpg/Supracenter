@@ -17,7 +17,7 @@ def splashMessage():
     print('#            Luke McFadden,             #')
     print('#              Denis Vida,              #') 
     print('#              Peter Brown              #')
-    print('#              2018 - 2020              #')
+    print('#              2018 - 2021              #')
     print('#########################################')
 
 def printTrue(result):
@@ -65,6 +65,10 @@ def printMessage(t):
 
     elif t.lower() == 'ballistic':
         return termchkr(t, color='blue')
+
+    elif t.lower() == 'info':
+        return termchkr(t, color='magenta')
+
 
     else:
         return termchkr(t, color='white')
@@ -131,24 +135,26 @@ def checkExt(file, ext):
     else:
         return file
 
-def stationFormat(stn, setup, ref_pos, more=True):
+def stationFormat(stn, setup, ref_pos, current_chn, more=True):
 
     lines = "#"*20
     cyan_tag = termchkr("#", color="cyan", rm_brace=True)
+    
     try:
         b_time = stn.times.ballistic[0][0][0]
-    except IndexError:
+    except:
         b_time = None
 
 
     try:
         b_prts = stn.times.ballistic[0][1][0]
-    except IndexError:
+    except:
         b_prts = None
 
 
     print(termchkr(lines, color="cyan", rm_brace=True), termchkr(lines, color="cyan", rm_brace=True))
     print("{:} Station: {:2}-{:5}".format(cyan_tag, stn.metadata.network, stn.metadata.code))
+    print("{:} Selected Channel: {:}".format(cyan_tag, current_chn))
     print(termchkr(lines, color="cyan", rm_brace=True))
     print("{:} {:}".format(cyan_tag, stn.metadata.name))
     print("{:} Latitude  {:.4f} °N".format(cyan_tag, stn.metadata.position.lat))

@@ -17,7 +17,7 @@ from supra.GUI.Tools.ReportHelper import *
 from supra.Utils.AngleConv import chauvenet
 from supra.Supracenter.anglescanrev import anglescanrev
 from supra.Supracenter.cyscanVectors import cyscan as cyscanV
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 
 from supra.GUI.Tabs.SupracenterSearch import supSearch, resultsPrint
 

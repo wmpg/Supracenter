@@ -347,3 +347,6 @@ if __name__ == "__main__":
         anglescanTests()
     elif selection == module_list[2]:
         anglescanrevTests()
+if __name__ == '__main__':
+
+    pass

@@ -21,7 +21,12 @@ def usage():
 
 import numpy as np
 import matplotlib.pyplot as plt
-import more_itertools as mit
+
+try:
+    import more_itertools as mit
+except ModuleNotFoundError:
+    pass
+
 from scipy.stats import median_abs_deviation
 
 from supra.Stations.Pick import Pick

@@ -50,13 +50,13 @@ def initMenuBar(obj, layout):
     file_qsave = QAction("Quick Save", obj)
     file_qsave.setShortcut('Ctrl+S')
     file_qsave.setStatusTip('Saves setup file')
-    file_qsave.triggered.connect(partial(save, obj))
+    file_qsave.triggered.connect(partial(save, obj, True))
     file_menu.addAction(file_qsave)
 
     file_save = QAction("Save", obj)
     file_save.setShortcut('Ctrl+Shift+S')
     file_save.setStatusTip('Saves setup file')
-    file_save.triggered.connect(partial(save, obj))
+    file_save.triggered.connect(partial(save, obj, True))
     file_menu.addAction(file_save)
 
     file_rep = QAction("Generate Report", obj)
@@ -117,6 +117,14 @@ def initMenuBar(obj, layout):
     # rtv_tool = QAction("Ray-Trace Visualization", obj)
     # rtv_tool.triggered.connect(obj.rtvWindow)
     # tools_menu.addAction(rtv_tool)
+
+    infratrajspace = QAction("Infrasound Trajectory Space", obj)
+    infratrajspace.triggered.connect(obj.trajSpace)
+    tools_menu.addAction(infratrajspace)
+
+    glm_viewer = QAction("GLM Viewer", obj)
+    glm_viewer.triggered.connect(obj.glmviewer)
+    tools_menu.addAction(glm_viewer)
 
 
 def initMainGUI(obj):
@@ -513,15 +521,22 @@ def addMakePicksWidgets(obj):
     make_picks_master.addLayout(obj.make_picks_top_graphs)
     make_picks_master.addLayout(obj.make_picks_bottom_graphs)
 
-    obj.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
-    obj.make_picks_station_graph_canvas = obj.make_picks_station_graph_view.addPlot()
-    obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
-    obj.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
-    obj.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
-    obj.make_picks_map_graph_canvas = obj.make_picks_map_graph_view.addPlot()
+    obj.make_picks_station_graph_view = MatplotlibPyQT()
+    obj.make_picks_station_graph_view.ax = obj.make_picks_station_graph_view.figure.add_subplot(111)
+    obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
+    # obj.make_picks_station_graph_view = pg.GraphicsLayoutWidget()
+    # obj.make_picks_station_graph_canvas = obj.make_picks_station_graph_view.addPlot()
+    # obj.make_picks_top_graphs.addWidget(obj.make_picks_station_graph_view)
+    # obj.make_picks_station_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+    
+
+    obj.make_picks_map_graph_view = MatplotlibPyQT()
+    obj.make_picks_map_graph_view.ax = obj.make_picks_map_graph_view.figure.add_subplot(111)
+    # obj.make_picks_map_graph_view = pg.GraphicsLayoutWidget()
+    # obj.make_picks_map_graph_canvas = obj.make_picks_map_graph_view.addPlot()
     obj.make_picks_top_graphs.addWidget(obj.make_picks_map_graph_view)
-    obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+    # obj.make_picks_map_graph_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
     obj.make_picks_waveform_view = pg.GraphicsLayoutWidget()
     obj.make_picks_waveform_canvas = obj.make_picks_waveform_view.addPlot()
@@ -563,10 +578,18 @@ def addMakePicksWidgets(obj):
     # obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
     # toggle_button_array.addWidget(obj.polmap_picks)
 
-    # obj.traj_space = ToggleButton(False, 5)
-    # obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
-    # obj.traj_space.clicked.connect(obj.traj_space.clickedEvt)
-    # toggle_button_array.addWidget(obj.traj_space)
+
+    obj.save_picks = ToggleButton(False, 8)
+    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.save_picks)
+
+    obj.rotatepol = ToggleButton(False, 5)
+    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    toggle_button_array.addWidget(obj.rotatepol)
+
+
 
     toggle_button_array.insertStretch(-1, 0)
 
@@ -596,6 +619,10 @@ def addMakePicksWidgets(obj):
     station_group_layout.addWidget(launch, 3, 0, 1, 2)
     launch.clicked.connect(obj.makePicks)
 
+    savtr = QPushButton('Save Current Trace')
+    station_group_layout.addWidget(savtr, 4, 0, 1, 2)
+    savtr.clicked.connect(obj.saveTrace)
+
     make_picks_filter_group = QGroupBox("Waveform Filtering")
     make_picks_control_panel.addWidget(make_picks_filter_group)
 
@@ -607,6 +634,16 @@ def addMakePicksWidgets(obj):
 
     obj.low_bandpass_edits.setText('2')
     obj.high_bandpass_edits.setText('8')
+
+    obj.make_picks_ref_pos_choice = QComboBox()
+    filter_group_layout.addWidget(obj.make_picks_ref_pos_choice, 3, 0, 1, 4)
+
+    obj.add_f_parameter = QPushButton('Add F-Statistic')
+    filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
+    obj.add_f_parameter.clicked.connect(obj.fPar)
+
+    obj.f_shift_edits = QLineEdit("0")
+    filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
 
     obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
     obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)
@@ -832,7 +869,7 @@ def addFetchATMWidgets(obj):
 
     load_from_bam = QPushButton('Load from BAM')
     fetch_content.addWidget(load_from_bam, 4, 2, 1, 1)
-    load_from_bam.clicked.connect(obj.fatmLoadAtm)
+    load_from_bam.clicked.connect(partial(obj.fatmLoadAtm, True))
 
     #############################
 
@@ -885,8 +922,16 @@ def addFetchATMWidgets(obj):
     # obj.fatm_open.clicked.connect(partial(obj.fatmFetch, False))
 
     obj.fatm_print = QPushButton("Print")
-    fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 2)
+    fetch_content.addWidget(obj.fatm_print, 16, 1, 1, 1)
     obj.fatm_print.clicked.connect(obj.fatmPrint)
+
+    obj.fatm_print = QPushButton("Print for InfraGA")
+    fetch_content.addWidget(obj.fatm_print, 16, 2, 1, 1)
+    obj.fatm_print.clicked.connect(partial(obj.fatmPrint, True))
+
+    obj.SCI_print = QPushButton("SCI Wind Index")
+    fetch_content.addWidget(obj.SCI_print, 16, 3, 1, 1)
+    obj.SCI_print.clicked.connect(obj.SCI)
 
     obj.fatm_start_label = QLabel("Start lat/lon/elev")
     obj.fatm_start_lat = QLineEdit()

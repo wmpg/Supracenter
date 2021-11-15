@@ -49,7 +49,7 @@ def periodSearch(p, gem_inputs, paths=False):
     tau = []
 
     search_min = [tol]
-    search_max = [30]
+    search_max = [100]
 
     Ro, f_opt = pso(overpressureErr, search_min, search_max, \
         args=gem_inputs + [p, 'period', 'ws'], swarmsize=SWARM_SIZE, maxiter=MAX_ITER, processes=1, minfunc=tol, minstep=1e-3) 
@@ -91,7 +91,7 @@ def presSearch(p, gem_inputs, paths=False):
 
     source_list, stat, v, theta, dphi, sounding_pres, sw, wind, dopplershift = gem_inputs
     search_min = [tol]
-    search_max = [30]
+    search_max = [100]
     Ro, f_opt = pso(overpressureErr, search_min, search_max, \
         args=gem_inputs + [p, 'pres', 'ws'], swarmsize=SWARM_SIZE, maxiter=MAX_ITER, processes=1, minfunc=tol, minstep=1e-3)
     Ro = Ro[0]
@@ -120,3 +120,7 @@ def presSearch(p, gem_inputs, paths=False):
         return Ro_ws, Ro_lin, weak_path, lin_path, tau, Z, it
 
     return Ro_ws, Ro_lin
+
+if __name__ == '__main__':
+
+    pass

@@ -58,35 +58,43 @@ def bandpassFilter(bandpass, delta, ampl_data):
 
     return ampl_data
 
-def procStream(stn, ref_time=None):
+def procStream(stn, ref_time=None, merge=False):
 
     mseed = stn.stream.copy()
     resp = stn.response
-
-    # Not sure why this error happens, float modulo Obspy error??
-    try:
-        mseed.merge()
-    except ZeroDivisionError:
-        pass
-
-    gaps = mseed.get_gaps()
-
-    gap_times = []
-    for gap in gaps:
-        start = gap[4]
-        end = gap[5]
-
-        ref = obspy.core.utcdatetime.UTCDateTime(ref_time)
-
-        start_ref = start - ref
-        end_ref = end - ref
-
-        gap_times.append([start_ref, end_ref])
+    # merge = True
+    if merge:
+        # Not sure why this error happens, float modulo Obspy error??
+        try:
+            mseed.merge()
+        except ZeroDivisionError:
+            pass
+        except Exception:
+            pass
 
 
-    return mseed, resp, gap_times
+        gaps = mseed.get_gaps()
+
+
+        gap_times = []
+        for gap in gaps:
+            start = gap[4]
+            end = gap[5]
+
+            ref = obspy.core.utcdatetime.UTCDateTime(ref_time)
+
+            start_ref = start - ref
+            end_ref = end - ref
+
+            gap_times.append([start_ref, end_ref])
+
+
+        return mseed, resp, gap_times
+    else:
+        return mseed, resp, []
 
 def findChn(st, chn):
+
     try:
         st = st.select(channel=chn)[0]
     except IndexError:
@@ -106,6 +114,16 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     resp - response data to remove from the trace
     bandpass - [low, high] bandpass filters to use for the data
     backup [Boolean] - keep a raw trace
+
+    Waveforms are returned as lists of segments to deal with gaps.
+    Example:
+    if a waveform is given as:
+        ////////{gap}/////////
+    the waveform will be returned as:
+        [[////////], [/////////]]
+
+    if there are no gaps, it will be returned as:
+        [[////////////////]]
     '''
 
 
@@ -115,6 +133,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     end_datetime    = trace.stats.endtime.datetime
     npts            = trace.stats.npts
     sampling_rate   = trace.stats.sampling_rate
+
 
     if ref_datetime is not None:
         offset = (start_datetime - ref_datetime).total_seconds()
@@ -135,15 +154,23 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         if resp is not None:
             tr.remove_response(inventory=resp, output="DISP")
             # trace.remove_sensitivity(resp) 
+    
 
         ampl_data = tr.data
+
+        ### DELETE THIS
+        ###############################
+        if resp is None:
+            ampl_data /= 176568.0
+        ###############################
 
         try:
             time_data = tr.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_datetime))
         except TypeError:
-            time_data = np.arange(0,  npts/sampling_rate, delta)
+            pass
+        # time_data = np.arange(0,  npts/sampling_rate, delta) + offset
         ampl_data = ampl_data[:len(time_data)]
-        # time_data = time_data[:len(ampl_data)]
+        time_data = time_data[:len(ampl_data)]
 
         raw_trace = ampl_data
         # Init the butterworth bandpass filter
@@ -160,7 +187,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
 
     return total_ampl, total_time
 
-def findDominantPeriod(wave, time):
+def findDominantPeriod(wave, time, return_all=False):
 
     """ Estimate the dominant period using the zero-crossing method
         This should be redone with PSDs in the future, once the infrasound curve method actually works
@@ -176,6 +203,8 @@ def findDominantPeriod(wave, time):
             zero_cross.append((time[ii+1] + time[ii])/2)
 
     if len(zero_cross) == 0:
+        if return_all:
+            return []
         return np.nan
 
     if len(zero_cross) < num_of_cross:
@@ -190,7 +219,8 @@ def findDominantPeriod(wave, time):
     for i in range(num_of_cross - 2):
         estimates.append(zero_cross[i+2] - zero_cross[i])
 
-
+    if return_all:
+        return estimates
     return np.mean(estimates)
 
 def findDominantPeriodPSD(wave, sf, normalize=False):
@@ -246,22 +276,32 @@ def subTrace(trace, begin_time, end_time, ref_time, clean=None):
     pt_0 = int(num_of_pts_in_offset + num_of_pts_to_roi)
     pt_1 = int(pt_0 + num_of_pts_in_roi)
 
-    cut_waveform = waveform_data[pt_0:pt_1]
-    cut_time = time_data[pt_0:pt_1]
+    cut_waveform = waveform_data[0][pt_0:pt_1]
+    cut_time = time_data[0][pt_0:pt_1]
 
     return cut_waveform, cut_time
 
 
 
-def genFFT(waveform, sampling_rate):
-
+def genFFT(waveform, sampling_rate, interp=False):
 
     freqs, psd = signal.welch(waveform)
 
-    func = interp1d(freqs, psd, kind="cubic")
+    func = interp1d(freqs, psd)# kind="cubic")
     f_new = np.logspace(np.log10(freqs[1]), np.log10(freqs[-2]))
 
     psd = func(f_new)
+
+    if interp:
+        
+        from scipy.interpolate import CubicSpline
+        f = CubicSpline(f_new, psd)
+
+        new_x = np.logspace(np.log10(f_new[0]), f_new[-1], 100)
+        new_y = f(new_x)
+
+        f_new = new_x
+        psd = new_y
 
     return f_new*sampling_rate, psd
 
@@ -276,6 +316,17 @@ def genSHM(freq, sampling_rate, time, phase=0):
     ampl_data = np.sin(2*np.pi*freq*time_data) + phase
 
     return np.array(ampl_data), np.array(time_data)
+
+def reHilbert(xs):
+    """ all arrays given in xs
+    """
+
+    from obspy.signal.util import stack
+
+    stacked = stack(xs)
+
+    # Envelope is the abs of complex
+    return stacked
 
 if __name__ == "__main__":
 

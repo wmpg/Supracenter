@@ -9,7 +9,21 @@ class LightCurve:
         self.t = t
         self.h = h
         self.M = M
-        self.I = 10**(-np.array(self.M)/2.5)
+        self.I = 1500*10**(-np.array(self.M)/2.5)
+
+    def genJoules(self):
+
+        self.J = []
+
+        for ii in range(len(self.t) - 1):
+
+            dt = self.t[ii + 1] - self.t[ii]
+
+            J = self.I[ii + 1]*dt
+
+            self.J.append(J)
+
+
 
 def processLightCurve(light_curve):
 

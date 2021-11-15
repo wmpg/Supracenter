@@ -19,7 +19,7 @@ def addSource(obj):
 
 def saveSource(obj):
 
-    save(obj)
+    save(obj, True)
     loadSourcesIntoBam(obj.bam)
 
 def loadSource(obj):

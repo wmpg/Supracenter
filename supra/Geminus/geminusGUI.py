@@ -114,7 +114,7 @@ class Geminus(QWidget):
             errorMessage("No points to plot!", 1, detail='Please use one of the searches to find Ro for both weak-shock and linear!')
             return None   
 
-        if not self.current_lin_Ro is None and self.current_ws_Ro and not self.current_height is None:
+        if not self.current_lin_Ro is None and not self.current_ws_Ro is None and not self.current_height is None:
             self.bam.infra_curve.append([self.current_lin_Ro, self.current_ws_Ro, self.current_height])
         
         if len(self.bam.infra_curve) == 0:
@@ -178,7 +178,7 @@ class Geminus(QWidget):
         if self.prefs.debug:
             print(printMessage("debug"), " Running Geminus on mode '{:}'".format(mode))
 
-        self.overpressure_plot.clear()
+        self.overpressure_plot.ax.clear()
 
         traj = self.bam.setup.trajectory
 
@@ -217,7 +217,7 @@ class Geminus(QWidget):
         lon =   [source.lon, stat_pos.lon]
         elev =  [source.elev, stat_pos.elev]
 
-        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev)
+        sounding, _ = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, ref_time=self.bam.setup.fireball_datetime)
 
         pres = 10*101.325*np.exp(-0.00012*sounding[:, 0])
         
@@ -284,6 +284,8 @@ class Geminus(QWidget):
             print('=========================================================')
             print("Blast Radius (Weak-Shock): {:.2f} m".format(Ro_ws))
             print("Blast Radius (Linear): {:.2f} m".format(Ro_lin))
+            self.current_lin_Ro = Ro_lin
+            self.current_ws_Ro = Ro_ws
 
         elif mode == "pres":
             
@@ -307,9 +309,12 @@ class Geminus(QWidget):
             print("Blast Radius (Weak-Shock): {:.2f} m".format(Ro_ws))
             print("Blast Radius (Linear): {:.2f} m".format(Ro_lin))
 
+            self.current_lin_Ro = Ro_lin
+            self.current_ws_Ro = Ro_ws
+
         elif mode == "pro" or mode == "proE":
 
-            Ro = np.linspace(0.01, 30.00, 30)
+            Ro = np.linspace(0.01, 100.00, 100)
 
             tau_list = []
             tau_ws_list = []
@@ -349,3 +354,6 @@ class Geminus(QWidget):
 
 
         self.current_height = float(self.source_height.text())
+if __name__ == '__main__':
+
+    pass

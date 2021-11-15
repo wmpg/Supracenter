@@ -79,13 +79,13 @@ class Prefs:
         self.pert_type = obj.pert_type.currentText()
         self.pert_num = tryInt(obj.pert_num.text())
         self.pso_debug = obj.pso_debug.isChecked()
-        self.pso_theta      = tryInt(obj.pso_theta.text())
-        self.pso_phi        = tryInt(obj.pso_phi.text())
+        # self.pso_theta      = tryInt(obj.pso_theta.text())
+        # self.pso_phi        = tryInt(obj.pso_phi.text())
         self.pso_min_ang    = tryFloat(obj.pso_min_ang.text())
         self.pso_min_dist   = tryFloat(obj.pso_min_dist.text())
         self.pso_max_iter   = tryInt(obj.pso_max_iter.text())
         self.pso_swarm_size = tryInt(obj.pso_swarm_size.text())
-        self.pso_run_times  = tryInt(obj.pso_run_times.text())
+        # self.pso_run_times  = tryInt(obj.pso_run_times.text())
         self.pso_min_error  = tryFloat(obj.pso_min_error.text())
         self.pso_min_step   = tryFloat(obj.pso_min_step.text())
         self.pso_phi_p      = tryFloat(obj.pso_phi_p.text())
@@ -112,9 +112,7 @@ class Atmos:
     def __init__(self, avg_sp_sound=310):
 
         self.avg_sp_sound = avg_sp_sound
-        self.default_weather = np.array([[    0.0, self.avg_sp_sound, 0.0, 0.0],
-                                         [    0.0, self.avg_sp_sound, 0.0, 0.0],
-                                         [99999.0, self.avg_sp_sound, 0.0, 0.0]])
+        self.default_weather = DefaultW()
 
     def __str__(self):
         
@@ -146,7 +144,7 @@ class Atmos:
         else:
             print('Unrecognized weather type')
 
-    def getSounding(self, lat=0, lon=0, heights=[100000, 0], spline=100):
+    def getSounding(self, lat=0, lon=0, heights=[100000, 0], ref_time=None, spline=100, perturbations=None):
         ''' lat = [start lat, end lat], etc
         '''
         prefs = Prefs()
@@ -155,28 +153,18 @@ class Atmos:
         
         if prefs.atm_type == 'ecmwf':
             if hasattr(self, 'ecmwf'):
-                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline)
-            else:
-                raise Exception("ECMWF is not loaded into the BAM file, trying to export default weather")
-                self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                                 [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                                 [heights[0], self.avg_sp_sound, 0.0, 0.0]])
-                return self.default_weather, None
-        elif prefs.atm_type == 'radio':
-            self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                 [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                 [heights[0], self.avg_sp_sound, 0.0, 0.0]])
-            return self.default_weather, None
-        elif prefs.atm_type == 'none':
-
-            self.default_weather = np.array([[heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                             [heights[1], self.avg_sp_sound, 0.0, 0.0],
-                                             [heights[0], self.avg_sp_sound, 0.0, 0.0]])
-
-            return self.default_weather, None
-
-        else:
-            print('Unrecognized weather type')
-            return self.default_weather, None
+                return self.ecmwf.getProfile(lat, lon, heights, prefs, spline=spline, ref_time=ref_time, perturbations=perturbations)
 
 
+        ### Not using weather
+
+        self.default_weather = DefaultW()
+
+        default_weather = self.default_weather.genProfile(lat, lon, heights, prefs, spline, ref_time)    
+
+        return default_weather, None
+
+
+if __name__ == '__main__':
+
+    pass

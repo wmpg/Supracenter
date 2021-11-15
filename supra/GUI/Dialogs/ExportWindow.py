@@ -13,7 +13,7 @@ from supra.GUI.Tools.Theme import theme
 
 from supra.Utils.Classes import Position
 from supra.Atmosphere.Parse import parseWeather
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 
 from supra.Fireballs.SeismicTrajectory import estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
 from supra.Utils.Formatting import *
@@ -255,3 +255,7 @@ class ExportWindow(QScrollArea):
 
 
         return sounding_p
+
+if __name__ == '__main__':
+
+    pass

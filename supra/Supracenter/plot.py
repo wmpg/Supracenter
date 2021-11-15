@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from supra.Utils.AngleConv import loc2Geo, geo2Loc
 from supra.Utils.Classes import Constants
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 from supra.Utils.Classes import Position
 from supra.Supracenter.slowscan2 import cyscan as slowscan
 from supra.GUI.Tools.GUITools import *

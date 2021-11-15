@@ -18,7 +18,7 @@ import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
 
-from supra.Supracenter.cyscan2 import cyscan
+from supra.Supracenter.cyscan5 import cyscan
 
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.WidgetBuilder import *
@@ -318,3 +318,6 @@ class AllWaveformViewer(QScrollArea):
 
 
         return sounding_p
+if __name__ == '__main__':
+
+    pass

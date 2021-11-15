@@ -1,7 +1,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
+import copy
 
 from supra.Utils.AngleConv import geo2Loc, loc2Geo, angle2NDE
+
+from wmpl.Utils.TrajConversions import latLonAlt2ECEF, ecef2LatLonAlt
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
@@ -158,10 +161,21 @@ class Position:
     def pos_distance(self, other):
         """ 3D distance between positions 'self' and 'other'
         """
-        self.pos_loc(self)
-        other.pos_loc(self)
 
-        return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2 + (self.z - other.z)**2)
+        A = latLonAlt2ECEF(self.lat_r, self.lon_r, self.elev) 
+        B = latLonAlt2ECEF(other.lat_r, other.lon_r, other.elev)
+
+        return np.sqrt((A[0] - B[0])**2 + (A[1] - B[1])**2 + (A[2] - B[2])**2)
+
+    def pos_distance_components(self, other):
+        """ returns dx dy dz between two points from A to B
+        """
+        A = latLonAlt2ECEF(self.lat_r, self.lon_r, self.elev) 
+        B = latLonAlt2ECEF(other.lat_r, other.lon_r, other.elev)
+
+        dx, dy, dz = B[0] - A[0], B[1] - A[1], B[2] - A[2]
+
+        return dx, dy, dz
 
     def ground_distance(self, other):
         """ 2D horizontal distance between positions 'self' and 'other'
@@ -203,6 +217,16 @@ class Position:
 
         return (self.x**2 + self.y**2 + self.z**2)**0.5
 
+    def angleBetween(self, other):
+
+        dLon = other.lon_r - self.lon_r
+
+        y = np.sin(dLon)*np.cos(other.lat_r)
+        x = np.cos(self.lat_r)*np.sin(other.lat_r) - np.sin(self.lat_r)*np.cos(other.lat_r)*np.cos(dLon)
+        brng = np.arctan2(y, x)
+        brng = angle2NDE(np.degrees(brng))
+
+        return brng
 
 
 class Vector3D:
@@ -233,7 +257,7 @@ class Vector3D:
 
 class Annote:
 
-    def __init__(self, title, time, length, group, source, height, notes, color):
+    def __init__(self, title, time, length, group, source, height, notes, color, bandpass):
 
         self.title = title
         self.time = time
@@ -243,6 +267,7 @@ class Annote:
         self.height = height
         self.notes = notes
         self.color = color
+        self.bandpass = bandpass
 
 
     def __str__(self):
@@ -280,7 +305,7 @@ class Trajectory:
         v_f -- old variable
         """
 
-
+        TOL = 2
         self.t = t
 
         # Find vector from angles
@@ -303,47 +328,73 @@ class Trajectory:
         # Case 2: end points are given
         elif pos_i.lat is not None and pos_f.lat is not None:
 
-            pos_i.pos_loc(pos_f)
-            pos_f.pos_loc(pos_f)
+            A = latLonAlt2ECEF(np.radians(pos_i.lat), np.radians(pos_i.lon), pos_i.elev) 
+            B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev)
 
-            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(pos_f.y - pos_i.y, pos_f.x - pos_i.x))))
+            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(B[1] - A[1], B[0] - A[0]))))
 
-            ground_distance = (np.sqrt((pos_f.y - pos_i.y)**2 + (pos_f.x - pos_i.x)**2))
+            ground_distance = (np.sqrt((B[1] - A[1])**2 + (B[0] - A[0])**2))
 
-            zenith = Angle(np.degrees(np.arctan2(ground_distance,-(pos_f.z - pos_i.z))))
+            zenith = Angle(np.degrees(np.arctan2(ground_distance, -(B[2] - A[2]))))
 
             self.vector = Vector3D(np.sin(azimuth.rad)*np.sin(zenith.rad), \
                                    np.cos(azimuth.rad)*np.sin(zenith.rad), \
                                                       -np.cos(zenith.rad))
 
-            scale = (pos_f.z - pos_i.z) / self.vector.z
+            scale = (B[2] - A[2]) / self.vector.z
 
         # Case 3: top point and angles are given
         elif pos_i.lat is not None and zenith is not None and azimuth is not None:
 
-            pos_i.pos_loc(pos_i)
+            A = latLonAlt2ECEF(np.radians(pos_i.lat), np.radians(pos_i.lon), pos_i.elev) 
 
-            scale = -pos_i.elev / self.vector.z
+            temp_pos = A
+            temp_geo = np.array([pos_i.lat, pos_i.lon, pos_i.elev])
 
-            pos_f = self.vector * scale + pos_i
+            old_height = temp_pos[2]
+            scale = 0
+            while np.abs(temp_geo[2]) > TOL: 
+                temp_pos = np.array([temp_pos[0] + TOL/2*self.vector.x, temp_pos[1] + TOL/2*self.vector.y, temp_pos[2] + TOL/2*self.vector.z])
+                temp_geo = ecef2LatLonAlt(*temp_pos)
 
-            pos_f.pos_geo(pos_i)
+                # If the zenith angle is too shallow, the distance travelled over the Earth will
+                # cause the trajectory to actually be rising in elevation
+                if temp_geo[2] >= old_height:
+                    print("Zenith angle is too shallow!")
+                    break
 
-            pos_i.z = pos_i.elev
-            pos_f.z = 0
-            pos_f.elev = 0
+                old_height = temp_geo[2]
 
+                scale += TOL/2
+
+            C = [self.vector.x*scale + A[0], self.vector.y*scale + A[1], self.vector.z*scale + A[2]]
+
+            c_geo = ecef2LatLonAlt(*C)
+
+            pos_f = Position(np.degrees(c_geo[0]), np.degrees(c_geo[1]), c_geo[2])
 
         # Case 4: bottom point and angles are given
         elif pos_f.lat is not None and zenith is not None and azimuth is not None:
 
-            pos_f.pos_loc(pos_f)
 
-            scale = -100000 / self.vector.z
+            B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev) 
 
-            pos_i = self.vector * -scale + pos_f 
+            temp_pos = B
+            temp_geo = np.array([pos_f.lat, pos_f.lon, pos_f.elev])
 
-            pos_i.pos_geo(pos_f)
+            scale = 0
+            while np.abs(temp_geo[2] - 80000) > TOL: 
+                temp_pos = np.array([temp_pos[0] - TOL/2*self.vector.x, temp_pos[1] - TOL/2*self.vector.y, temp_pos[2] - TOL/2*self.vector.z])
+                temp_geo = ecef2LatLonAlt(*temp_pos)
+
+                scale += TOL/2
+
+            C = [-self.vector.x*scale + B[0], -self.vector.y*scale + B[1], -self.vector.z*scale + B[2]]
+
+            c_geo = ecef2LatLonAlt(*C)
+
+            pos_i = Position(np.degrees(c_geo[0]), np.degrees(c_geo[1]), c_geo[2])
+
 
         # Case 5: not enough information is given
         else:
@@ -379,13 +430,16 @@ class Trajectory:
         # if using static vel: v == v_f == v_avg
 
     def __str__(self):
+        degree_sign= u'\N{DEGREE SIGN}'
 
         try:
-            A = "Trajectory: Lat: {:6.2f} deg N, Lon: {:6.2f} deg E, Elev: {:9.2f} m \n".format(self.pos_i.lat, self.pos_i.lon, self.pos_i.elev)
+            A = "Trajectory: Lat: {:6.4f}{:} N, Lon: {:6.4f}{:} E, Elev: {:9.2f} km \n".format(self.pos_i.lat, \
+                degree_sign, self.pos_i.lon, degree_sign, self.pos_i.elev/1000)
         except:
             A = "Trajectory: No known starting position \n"
         try:
-            B = "    to      Lat: {:6.2f} deg N, Lon: {:6.2f} deg E, Elev: {:9.2f} m \n".format(self.pos_f.lat, self.pos_f.lon, self.pos_f.elev)
+            B = "    to      Lat: {:6.4f}{:} N, Lon: {:6.4f}{:} E, Elev: {:9.2f} km \n".format(self.pos_f.lat, \
+                degree_sign, self.pos_f.lon, degree_sign, self.pos_f.elev/1000)
         except:
             B = "    to      No known ending position \n"
 
@@ -398,12 +452,12 @@ class Trajectory:
         D = "            Time:      {:4.2f} s \n".format(self.t)
 
         try:
-            E = "            Azimuth: {:6.2f} deg \n".format(self.azimuth.deg)
+            E = "            Azimuth: {:6.4f}{:} \n".format(self.azimuth.deg, degree_sign)
         except:
             E = "            No known azimuth \n"
 
         try: 
-            F = "            Zenith:  {:6.2f} deg \n".format(self.zenith.deg)
+            F = "            Zenith:  {:6.4f}{:} \n".format(self.zenith.deg, degree_sign)
         except:
             F = "            No known zenith \n"
 
@@ -423,156 +477,158 @@ class Trajectory:
                          np.cos(self.azimuth.rad)*np.sin(self.zenith.rad), \
                         -np.cos(self.zenith.rad)])
 
-    def trajInterp(self, div=10, write=False):
 
-        self.pos_i.pos_loc(self.pos_f)
-        self.pos_f.pos_loc(self.pos_f)
 
-        v = self.vector * self.scale
 
-        dv = v * (1/(div-1))
+    def trajInterp2(self, div=250, min_p=17000, max_p=80000, xyz=False):
+        """ Returns N points along a trajectory between two specified heights
 
-        P = [None]*div
-        for i in range(div):
+        Arguments:
+        div [int]       - N number of points to return (including both boundaries)
+        min_p [float]   - Lower boundary to print out [meters from surface]
+        max_p [float]   - upper boundary to print out [meters from surface]    
+        xyz [Boolean]   - If True, return ECEF coordinates, else return Lat/Lon/Elev
 
+        Returns:
+        [lat, lon, elev, time] - [4, div] array of latitude, longitude, elevation and 
+        time of each point given in deg, deg, meters, seconds.
+
+        if xyz is set to True, then lat, lon elev will be replaced by x, y, z in meters
+        in the ECEF coordinte system
+        """
+    
+        # Use this to go past the trajectory limits
+        SCALER = 1.5
+
+
+        # Convert trajectory into ECEF
+
+        A = latLonAlt2ECEF(np.radians(self.pos_i.lat), np.radians(self.pos_i.lon), self.pos_i.elev) 
+        B = latLonAlt2ECEF(np.radians(self.pos_f.lat), np.radians(self.pos_f.lon), self.pos_f.elev)
+
+        if div <= 2:
+            P = []
+            if xyz:
+                P.append([A[0], A[1], A[2], self.findTime(A[2])])
+                P.append([B[0], B[1], B[2], self.findTime(B[2])])   
+            else:
+                P.append([self.pos_i.lat, self.pos_i.lon, self.pos_i.elev, self.findTime(self.pos_i.elev)])
+                P.append([self.pos_f.lat, self.pos_f.lon, self.pos_f.elev, self.findTime(self.pos_f.elev)])
+
+            return P
+
+        # Points Array
+        P = [None]*(int(SCALER*div))
+
+        for i in range(int(SCALER*div)):
+
+            # Initialize position object, lat/lon/elev will be reset
             P[i] = Position(0, 0, 0)
 
-            P[i].x = self.pos_i.x + i*dv.x
-            P[i].y = self.pos_i.y + i*dv.y
-            P[i].z = self.pos_i.z + i*dv.z
+            # interp positions
+            P[i].x = A[0] + i*(B[0] - A[0])/(div-1)
+            P[i].y = A[1] + i*(B[1] - A[1])/(div-1)
+            P[i].z = A[2] + i*(B[2] - A[2])/(div-1)
 
-            P[i].pos_geo(self.pos_f)
-        
-        if write:
-            for pt in P:
-                print(pt, self.findTime(pt.elev))
-
-        return P
-
-    def trajInterp2(self, div=250, min_p=17000, max_p=80000, xyz=False, ref_loc=None):
-        
-        if ref_loc is None:
-            ref_loc = self.pos_f
-            ref_loc.elev = 0
-
-        self.pos_i.pos_loc(ref_loc)
-        self.pos_f.pos_loc(ref_loc)
-
-        A = self.pos_i.xyz
-        B = self.pos_f.xyz
-
-        P = [None]*(div + 1)
-        for i in range(div + 1):
-
-            P[i] = Position(0, 0, 0)
-
-            P[i].x = self.pos_i.x + i*(B[0] - A[0])/div
-            P[i].y = self.pos_i.y + i*(B[1] - A[1])/div
-            P[i].z = self.pos_i.z + i*(B[2] - A[2])/div
-
+            # Convert to lat/lon/elev if needed
             if not xyz:
-                P[i].pos_geo(ref_loc)
+                temp = ecef2LatLonAlt(P[i].x, P[i].y, P[i].z)
+                P[i].lat, P[i].lon, P[i].elev = np.degrees(temp[0]), np.degrees(temp[1]), temp[2]
 
+        # Organize Arrays
         A = []
         for pt in P:
             if xyz:
-                if min_p <= pt.z <= max_p:
-                    A.append([pt.x, pt.y, pt.z, self.findTime(pt.z)])
+                A.append([pt.x, pt.y, pt.z, self.findTime(pt.z)])
             else:
-                if min_p <= pt.elev <= max_p:
-                    A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
+                A.append([pt.lat, pt.lon, pt.elev, self.findTime(pt.elev)])
+
 
         return np.array(A)
-    
-    def findPoints(self, gridspace=250, min_p=0, max_p=0):    
-        
-        GRID_SPACE = gridspace
-        
-        if min_p == 0:
-            MIN_HEIGHT = self.pos_f.elev
-        else:
-            MIN_HEIGHT = min_p
-        if max_p == 0:
-            MAX_HEIGHT = self.pos_i.elev
-        else:
-            MAX_HEIGHT = max_p
 
-        u = self.vector.xyz
-
-        ground_point = np.array([0, 0, 0])
-        # find top boundary of line given maximum elevation of trajectory
-        if self.pos_i.elev != None:
-            scale = -self.pos_i.elev/u[2]
-
-        else:
-            scale = -100000/u[2]
-
-        # define line top boundary
-        top_point = ground_point - scale*u
-
-        ds = scale / (GRID_SPACE)
-
-        points = []
-
-        for i in range(GRID_SPACE + 1):
-            points.append(top_point + i*ds*u)
-
-        points = np.array(points)
-
-        offset = np.argmin(np.abs(points[:, 2] - MAX_HEIGHT))
-        bottom_offset = np.argmin(np.abs(points[:, 2] - MIN_HEIGHT))
-
-        points = np.array(points[offset:(bottom_offset+1)])
-
-        return points
 
     def findGeo(self, height):
-        
-        self.pos_i.pos_loc(self.pos_f)
-        self.pos_f.pos_loc(self.pos_f)
+        """ Returns the coordinates (lat/lon/elev) of the trajectory at a 
+        specific height
 
-        C = Position(0, 0, 0)
-        
-        C.z = height
-        s = (C.z - self.pos_i.z) / self.vector.z
+        Arguments:
+        height [float] - height to return lat/lon of [meters]
 
-        C.x = s*self.vector.x + self.pos_i.x
-        C.y = s*self.vector.y + self.pos_i.y
+        Returns:
+        Position Object with lat, lon, elev at the height
+        """
 
-        C.pos_geo(self.pos_f)
+        # Convert trajectory into ECEF
+        A = latLonAlt2ECEF(self.pos_i.lat_r, self.pos_i.lon_r, self.pos_i.elev) 
+        B = latLonAlt2ECEF(self.pos_f.lat_r, self.pos_f.lon_r, self.pos_f.elev)
 
-        return C
+        A = np.array(A)
+        B = np.array(B)
+
+        frac = (height - self.pos_i.elev)/(self.pos_f.elev - self.pos_i.elev) 
+
+        C = A + frac*(B - A)
+
+        geo = ecef2LatLonAlt(*C)
+
+        return Position(np.degrees(geo[0]), np.degrees(geo[1]), geo[2])
+
+    def verticalVel(self):
+        """ Returns the z component of the velocity
+        """
+
+        v_h = self.v*np.cos(self.zenith.rad)
+
+        return v_h
+
+
+    def approxHeight(self, time):
+        """ Returns the height of the meteoroid at a time in relation to the same 
+        reference time assuming no deceleration
+        """
+
+        dt = time - self.t
+        v_h = self.verticalVel()
+
+
+        height = self.pos_i.elev - dt*v_h
+        return height
 
     def findTime(self, height):
+        """ Returns the time that it takes for the meteor to get from its inital position
+        to a given height. Assumes that the bolide travels at a constant speed
 
-        
-        frac = (height - self.pos_f.elev) / (self.pos_i.elev - self.pos_f.elev)
+        Arguments:
+        height [float] - the height to find the time at [meters]
 
-        # v = (self.v_f + self.getVelAtHeight(height))/2
-        v = self.v
-        d = (1-frac)*(self.findLength())
+        Returns:
+        time [float] - the time at that point [seconds]
+        """
 
-        vect = self.getTrajVect()
-        s = -self.pos_f.elev*vect[2]
-        dist_vect = s*vect
 
-        d_ground = np.sqrt(dist_vect[0]**2 + dist_vect[1]**2 + dist_vect[2]**2) 
+        # Vertical component of velocity
+        v_h = self.verticalVel()
 
-        t = d/v + d_ground/self.v_f
+        dh = self.pos_i.elev - height
 
-        return self.t + t
+        # Get time travelled
+        t = dh/v_h + self.t
+
+        return t
 
 
 
     def findLength(self):
+        """ Returns the length of the meteor from given initial and final positions
+        in meters
+        """
 
-        self.pos_i.pos_loc(self.pos_f)
-        self.pos_f.pos_loc(self.pos_f)
+        # Convert trajectory into ECEF
+        A = latLonAlt2ECEF(self.pos_i.lat_r, self.pos_i.lon_r, self.pos_i.elev) 
+        B = latLonAlt2ECEF(self.pos_f.lat_r, self.pos_f.lon_r, self.pos_f.elev)
 
-        A = self.pos_i
-        B = self.pos_f
+        length_of_meteor = np.sqrt((A[0] - B[0])**2 + (A[1] - B[1])**2 + (A[2] - B[2])**2)
 
-        length_of_meteor = np.sqrt((A.x - B.x)**2 + (A.y - B.y)**2 + (A.z - B.z)**2)
         return length_of_meteor
 
     def getRanges(self, stat_pos, div=100, write=False):
@@ -734,7 +790,11 @@ class RectangleItem(pg.GraphicsObject):
 
 if __name__ == '__main__':
 
+    pos_i = Position(49.3, -116.9, 36000)
 
+    # A = Trajectory(0, 27760, pos_i=pos_i, azimuth=Angle(295.66), zenith=Angle(73.4))
+    A = Trajectory(0, 27760, pos_f=Position(48.9264, -119.3943, 0), pos_i=Position(49.6319, -114.2556, 80000))
+    print(A)
     # S = Position(48.8461, 13.7179, 0)
 
     # print("Line")
@@ -759,15 +819,15 @@ if __name__ == '__main__':
 
     # print(S_p)
     # print(S_m)Begin point on the trajectory:
-    pos_i = Position(48.1724466606, 13.0926245672, 50000)
-    A = Trajectory(2.471993030094728, 13913.0, pos_i=pos_i, \
-                             zenith=Angle(85), azimuth=Angle(354.67))
+    # pos_i = Position(48.1724466606, 13.0926245672, 50000)
+    # A = Trajectory(2.471993030094728, 13913.0, pos_i=pos_i, \
+    #                          zenith=Angle(85), azimuth=Angle(354.67))
 
-    s = Position(48.8461, 13.7179,   1141.10)
+    # s = Position(48.8461, 13.7179,   1141.10)
 
-    wrp = A.findGeo(43288.5906040269)
-    rag = wrp.pos_distance(s)
-    print(rag)
+    # wrp = A.findGeo(43288.5906040269)
+    # rag = wrp.pos_distance(s)
+    # print(rag)
     # import numpy as np
     # import matplotlib.pyplot as plt
 

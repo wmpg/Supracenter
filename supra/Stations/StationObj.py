@@ -8,8 +8,6 @@ class Metadata:
         self.name = name
         self.source = source
         self.enabled = True
-        self.low_bandstop = 2
-        self.high_bandstop = 8
 
 class Polarization:
 
@@ -91,6 +89,7 @@ class Station:
         self.response = response
         self.polarization = Polarization()
         self.annotation = AnnotationList()
+        self.bandpass = None
 
     def __str__(self):
         A = "Station: {:}\n".format(self.metadata.name)
