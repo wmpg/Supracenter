@@ -112,17 +112,12 @@ class PreferenceWindow(QWidget):
         self.debug.setChecked(prefs.debug)         
         self.ballistic_en.setChecked(prefs.ballistic_en)  
         self.recalc_times.setChecked(prefs.recalc_times)
-<<<<<<< HEAD
-        # try:
-        #     self.recalc_sigs.setChecked(prefs.recalc_sigs)  
-        # except AttributeError:
-        #     self.recalc_sigs.setChecked(False) 
-=======
+
         try:
             self.recalc_sigs.setChecked(prefs.recalc_sigs)  
         except (AttributeError, TypeError):
             self.recalc_sigs.setChecked(False) 
->>>>>>> dev
+
 
         self.frag_en.setChecked(prefs.frag_en)       
         self.wind_en.setChecked(prefs.wind_en)       
