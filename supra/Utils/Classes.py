@@ -223,8 +223,8 @@ class Position:
 
         y = np.sin(dLon)*np.cos(other.lat_r)
         x = np.cos(self.lat_r)*np.sin(other.lat_r) - np.sin(self.lat_r)*np.cos(other.lat_r)*np.cos(dLon)
-        brng = np.arctan2(y, x)
-        brng = angle2NDE(np.degrees(brng))
+        brng = np.degrees(np.arctan2(y, x))
+        # brng = angle2NDE(np.degrees(brng))
 
         return brng
 
