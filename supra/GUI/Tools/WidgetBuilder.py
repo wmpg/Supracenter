@@ -640,6 +640,13 @@ def addMakePicksWidgets(obj):
     obj.make_picks_ref_pos_choice = QComboBox()
     filter_group_layout.addWidget(obj.make_picks_ref_pos_choice, 3, 0, 1, 4)
 
+    obj.add_f_parameter = QPushButton('Add F-Statistic')
+    filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
+    obj.add_f_parameter.clicked.connect(obj.fPar)
+
+    obj.f_shift_edits = QLineEdit("0")
+    filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
+
     obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
     obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)
 
@@ -864,7 +871,7 @@ def addFetchATMWidgets(obj):
 
     load_from_bam = QPushButton('Load from BAM')
     fetch_content.addWidget(load_from_bam, 4, 2, 1, 1)
-    load_from_bam.clicked.connect(obj.fatmLoadAtm)
+    load_from_bam.clicked.connect(partial(obj.fatmLoadAtm, True))
 
     #############################
 
@@ -923,6 +930,10 @@ def addFetchATMWidgets(obj):
     obj.fatm_print = QPushButton("Print for InfraGA")
     fetch_content.addWidget(obj.fatm_print, 16, 2, 1, 1)
     obj.fatm_print.clicked.connect(partial(obj.fatmPrint, True))
+
+    obj.SCI_print = QPushButton("SCI Wind Index")
+    fetch_content.addWidget(obj.SCI_print, 16, 3, 1, 1)
+    obj.SCI_print.clicked.connect(obj.SCI)
 
     obj.fatm_start_label = QLabel("Start lat/lon/elev")
     obj.fatm_start_lat = QLineEdit()

@@ -1,6 +1,7 @@
 import obspy
 import sys
 import os
+import datetime
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -16,8 +17,10 @@ from supra.GUI.Tools.CustomWidgets import MatplotlibPyQT
 
 from supra.GUI.Tools.Theme import *
 from supra.GUI.Tools.GUITools import *
+from supra.Stations.ProcessStation import *
 
-N_ELEMENTS = 8
+N_ELEMENTS = 4
+
 CHN = "BDF"
 
 class ArrayStacker(QMainWindow):
@@ -50,25 +53,41 @@ class ArrayStacker(QMainWindow):
         self.stat_shifter_label = [None]*N_ELEMENTS
         self.stat_shifter_edits = [None]*N_ELEMENTS
 
-        self.stat_graph.ax = self.stat_graph.figure.add_subplot(111)
-        layout.addWidget(self.stat_graph, 0, 4, N_ELEMENTS, 1)
+        self.stat_graph.ax = []
+        for i in range(N_ELEMENTS):
+            if i == 0:
+                self.stat_graph.ax.append(self.stat_graph.figure.add_subplot(N_ELEMENTS, 1, i+1))
+            else:
 
-        self.sum_graph.ax = self.sum_graph.figure.add_subplot(111)
-        layout.addWidget(self.sum_graph, N_ELEMENTS, 4)
+                self.stat_graph.ax.append(self.stat_graph.figure.add_subplot(N_ELEMENTS, 1, i+1, sharex=self.stat_graph.ax[0]))
+
+        layout.addWidget(self.stat_graph, 0, 4, N_ELEMENTS*4, 1)
+
+
+        self.sum_graph.ax = self.sum_graph.figure.add_subplot(1, 1, 1, sharex=self.stat_graph.ax[0])
+        layout.addWidget(self.sum_graph, N_ELEMENTS*4 + 1, 4)
+
+
         for ii in range(N_ELEMENTS):
             self.mseed_browser_label[ii], self.mseed_browser_edits[ii], self.mseed_browser_buton[ii] = createFileSearchObj('mSeed File: {:}'.format(ii+1), layout, 2*ii, width=1, h_shift=0)
-            _, self.stat_shifter_edits = createLabelEditObj('Shift [s]', layout, 2*ii+1, width=1, h_shift=0, tool_tip='', validate='float', default_txt='0')
+            _, self.stat_shifter_edits[ii] = createLabelEditObj('Shift [s]', layout, 2*ii+1, width=1, h_shift=0, tool_tip='', validate='float', default_txt='0')
 
             self.mseed_browser_buton[ii].clicked.connect(partial(fileSearch, ['mSeed File (*.mseed)'], self.mseed_browser_edits[ii]))
+
 
             
         self.stack = createButton("Stack", layout, 2*N_ELEMENTS+2, 1, self.stack)
         self.read = createButton("Read", layout, 2*N_ELEMENTS+2, 0, self.read)
 
+    def resetGraphs(self):
+        for ii in range(N_ELEMENTS):
+            self.stat_graph.ax[ii].clear()
+        self.sum_graph.ax.clear()
+
     def read(self):
 
-        self.stat_graph.ax.clear()
-        self.sum_graph.ax.clear()
+
+        self.resetGraphs()
 
         for ii in range(N_ELEMENTS):
             stat_text = self.mseed_browser_edits[ii].text()
@@ -76,25 +95,61 @@ class ArrayStacker(QMainWindow):
                 
 
                 self.raw_traces[ii] = obspy.read(stat_text)
+
+
                 tr = self.raw_traces[ii].copy().select(channel=CHN)[0]
 
                 if ii == 0:
-                    ref_time = tr.stats.starttime
+                    ref_time = tr.stats.starttime.datetime
                 # tr.stats.starttime = tr.stats.starttime - float(self.stat_shifter_edits.text())
-                x = tr.times(reftime=ref_time - float(self.stat_shifter_edits.text()))
-                y = tr.data
+
+                y, x = procTrace(tr, ref_datetime=ref_time - datetime.timedelta(seconds=float(self.stat_shifter_edits[ii].text())), \
+                                        resp=None, bandpass=[3, 9.5], backup=False)
+                x = x[0]
+                y = y[0]
+
+                if ii == 3:
+                    self.startpoint = x[0]
                 # Bandpass
                 # Add shifter
-                print(tr.stats.starttime)
-                print(x)
 
-                self.stat_graph.ax.plot(x, y, label="Element {:}".format(ii + 1), alpha=0.2)
+                self.stat_graph.ax[ii].plot(x, y)
 
-        self.stat_graph.ax.legend()
+        # self.stat_graph.ax.legend()
         self.stat_graph.show()
 
+    def findCommonEnds(self):
+
+        common_start = None
+        common_end = None
+
+        for ii in range(N_ELEMENTS):
+
+            stat_text = self.mseed_browser_edits[ii].text()
+
+            if stat_text is not None and len(stat_text) > 0: 
+                st = obspy.read(stat_text)[0]
+
+                start = st.stats.starttime
+                end = st.stats.endtime
+
+                if common_start is None:
+                    common_start = start
+
+                if common_end is None:
+                    common_end = end
+
+                if start - common_start < 0:
+                    common_start = start
+
+                if end - common_end > 0:
+                    common_end = end
+
+        return common_start, common_end
 
     def stack(self):
+
+        
 
         for ii in range(N_ELEMENTS):
 
@@ -106,13 +161,13 @@ class ArrayStacker(QMainWindow):
                 # a = input("Shift?")
 
 
-                # st[0].stats.starttime = st[0].stats.starttime - float(a)
+                st[0].stats.starttime = st[0].stats.starttime - datetime.timedelta(seconds=float(self.stat_shifter_edits[ii].text()))
                 # print("Shifted", st)
-
+                common_start, common_end = self.findCommonEnds()
                 if ii == 0: 
                     master_st = st
-                    common_start, common_end = obspy.core.utcdatetime.UTCDateTime("2015-01-07T01:00:58.526038Z"),\
-                                                obspy.core.utcdatetime.UTCDateTime("2015-01-07T02:05:57.676038Z")
+                    # common_start, common_end = obspy.core.utcdatetime.UTCDateTime("2015-01-07T01:00:58.526038Z"),\
+                    #                             obspy.core.utcdatetime.UTCDateTime("2015-01-07T02:05:57.676038Z")
                     master_st[0].trim(starttime=common_start, endtime=common_end)
                 else:
 
@@ -120,14 +175,23 @@ class ArrayStacker(QMainWindow):
                     tr.trim(starttime=common_start, endtime=common_end)
                     master_st.append(tr)
 
-        print("Master", master_st)
+
+        
+        
+        stacked_st = master_st.stack(stack_type=('pw', 2), npts_tol=500, time_tol=0)
+        stacked_st[0].stats.starttime = obspy.read(self.mseed_browser_edits[-1].text())[0].stats.starttime
+
+        tr = stacked_st[0]
+
+        y, x = procTrace(tr, ref_datetime=tr.stats.starttime.datetime , \
+                                        resp=None, bandpass=[2, 8], backup=False)
+        x = x[0]
+        y = y[0]
 
 
-        stacked_st = master_st.stack(stack_type=('pw', 2), npts_tol=0, time_tol=0)
-        stacked_st[0].stats.starttime = obspy.core.utcdatetime.UTCDateTime("2015-01-07T01:00:58.526038Z")
-
-
-        print("stacked", stacked_st)
+        self.sum_graph.ax.plot(x + self.startpoint, y)
+        self.sum_graph.show()
+        # print("stacked", stacked_st)
         file_name = saveFile("mseed", note="")
         stacked_st.write(file_name)  
 

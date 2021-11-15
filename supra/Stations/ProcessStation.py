@@ -62,7 +62,7 @@ def procStream(stn, ref_time=None, merge=False):
 
     mseed = stn.stream.copy()
     resp = stn.response
-    merge = True
+    # merge = True
     if merge:
         # Not sure why this error happens, float modulo Obspy error??
         try:

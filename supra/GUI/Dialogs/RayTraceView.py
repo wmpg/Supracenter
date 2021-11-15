@@ -40,12 +40,13 @@ def heightErr(height, *cyscan_inputs):
 
 
     ### Ray Trace
-    r = cyscan(np.array([trial_source.x, trial_source.y, trial_source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
-                    sounding, trace=False, plot=False, particle_output=False, debug=False, \
-                    wind=True, h_tol=300, v_tol=3000, print_times=False, processes=1)
+    r, _ = cyscan(np.array([trial_source.x, trial_source.y, trial_source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
+                    sounding, trace=False, plot=False, particle_output=True, debug=False, \
+                    wind=True, h_tol=300, v_tol=3000, print_times=True, processes=1)
 
 
-    T = r[0]
+    T = r[0] + traj.findTime(trial_source.elev)
+
     try:
         t_err = (T - t)**2
     except:
@@ -270,7 +271,7 @@ class rtvWindowDialog(QWidget):
         source = self.getSource()
         stat_pos = self.getStat()
 
-        sounding, perturbations = self.getATM(source, stat_pos, perturbations=25)
+        sounding, perturbations = self.getATM(source, stat_pos, perturbations=0)
 
         stat_pos.pos_loc(source)
         source.pos_loc(source)
@@ -335,7 +336,7 @@ class rtvWindowDialog(QWidget):
 
         print("FINAL RESULTS")
         print("Nominal Height {:} km".format(nominal_height/1000))
-        print("Pert Heights {:} km".format(np.array(pert_height)/1000))
+        # print("Pert Heights {:} km".format(np.array(pert_height)/1000))
 
     def glm2LC(self):
         t, h, M = self.procGLM(plot=False)
@@ -618,6 +619,8 @@ class rtvWindowDialog(QWidget):
 
     def rayTraceFromSource(self, source, clean_mode=False, debug=False):
 
+        traj = self.bam.setup.trajectory
+
         ### Set up parameters of source
 
         stat_idx = self.station_combo.currentIndex()
@@ -658,6 +661,7 @@ class rtvWindowDialog(QWidget):
                 dx = np.abs(stat_pos.x - source.x)
                 dy = np.abs(stat_pos.y - source.y)
                 dz = np.abs(stat_pos.z - source.z)
+                time_along_trajectory = traj.findTime(source.elev)
                 print("###### RESULTS ######")
                 print("Time: {:.4f} s".format(r[0]))
                 print("Azimuth: {:.2f} deg from North".format(r[1]))
@@ -670,6 +674,8 @@ class rtvWindowDialog(QWidget):
                 print("Total Distance: {:.2f} m".format(np.sqrt(dx**2 + dy**2 + dz**2)))
                 print("No Winds Time: {:.2f} s".format(np.sqrt(dx**2 + dy**2 + dz**2)/330))
                 print("Time Difference: {:.2f} s".format(r[0] - np.sqrt(dx**2 + dy**2 + dz**2)/330))
+                print("Time Along Trajectory: {:.4f} s".format(time_along_trajectory))
+                print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
             else:
                 t_array = []
                 az_array = []

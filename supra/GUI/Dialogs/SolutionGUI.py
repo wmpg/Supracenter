@@ -169,6 +169,43 @@ class SolutionGUI(QMainWindow):
 
 
 
+    def fPar(self):
+
+        file_name = fileSearch(['CSV (*.csv)'], None)
+
+        #read csv
+        t = []
+        fpar = []
+
+        with open(file_name, "r+") as f:
+            for line in f:
+                a = line.split(',')
+                time = None
+                try:
+                    time = datetime.datetime.strptime(a[0], "%Y-%m-%dT%H:%M:%S.%fZ")            
+                    fpar.append(float(a[1]))
+                    
+                except:
+                    pass
+                if time is not None:
+                    shift = float(self.f_shift_edits.text())
+                    t.append((time - self.bam.setup.fireball_datetime).total_seconds() + shift)
+
+        ### scale fpar
+
+        min_fpar = np.min(fpar)
+        max_fpar = np.max(fpar)
+        fpar = fpar - min_fpar
+
+        axY = self.make_picks_waveform_canvas.getAxis('left')
+        waveform_min, waveform_max = axY.range
+
+        fpar = fpar/max_fpar*waveform_max
+
+        # print(t, fpar)
+        self.fpar_waveform = pg.PlotDataItem(x=t, y=fpar, pen='r')
+        self.make_picks_waveform_canvas.addItem(self.fpar_waveform)
+
     def viewToolbar(self):
 
         # Toggles the toolbar
@@ -864,7 +901,42 @@ class SolutionGUI(QMainWindow):
         c_eff = c + np.dot(k, w)
 
         return c_eff, nom_range, ray_range
-            
+
+    def SCI(self):
+        sounding, perturbations = self.fatmLoadAtm(plot=False)
+        
+        h = sounding[:, 0]
+        dirs = angle2NDE(np.degrees(sounding[:, 3]))
+        mags = sounding[:, 2]
+
+        u = mags*np.cos(np.radians(dirs))
+        v = mags*np.sin(np.radians(dirs))
+
+        h_index = np.where((h >= 40000) & (h <= 60000))
+
+        u_sci = u[h_index]
+        v_sci = v[h_index]
+
+        SCI_u = np.mean(u_sci)
+        SCI_v = np.mean(v_sci)
+
+        pos_i = Position(tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_start_elev.text()))
+        pos_f = Position(tryFloat(self.fatm_end_lat.text()), tryFloat(self.fatm_end_lon.text()), tryFloat(self.fatm_end_elev.text()))
+
+        angle = pos_i.angleBetween(pos_f)
+
+        wind_vect = np.array([SCI_u, SCI_v])
+        trav_vect = np.array([np.sin(np.radians(angle)), np.cos(np.radians(angle))])
+
+        # projection, but trav_vect is normalized
+        SCI = np.dot(wind_vect, trav_vect)
+
+        print("Wind Index:")
+        print("U-Component: {:.2f} m/s".format(SCI_u))
+        print("V-Component: {:.2f} m/s".format(SCI_v))
+        print("Angle of Travel: {:.2f} deg (N due E)".format(angle))
+        print("Total SCI: {:.2f} m/s".format(SCI))
+
 
     def fatmPlot(self, sounding, perturbations):
         
@@ -1023,7 +1095,7 @@ class SolutionGUI(QMainWindow):
 
         save(self, True)
 
-    def fatmLoadAtm(self):
+    def fatmLoadAtm(self, plot=True):
 
         lat = [tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_end_lat.text())]
         lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
@@ -1039,8 +1111,11 @@ class SolutionGUI(QMainWindow):
         except Exception as e:
             errorMessage("Unable to load sounding data from BAM", 1, detail="{:}".format(e))
             return None
-        
-        self.fatmPlot(*atmos)
+
+        if plot:
+            self.fatmPlot(*atmos)
+        else:
+            return atmos
 
 
     def fatmFetch(self, download):
@@ -2038,7 +2113,7 @@ class SolutionGUI(QMainWindow):
             llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
             urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='i', ax=self.make_picks_map_graph_view.ax)
+            resolution='l', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
@@ -2929,7 +3004,6 @@ class SolutionGUI(QMainWindow):
         # Merge the files without gaps
        
         
-    
         st = findChn(st, chn_selected)
 
         self.current_waveform_raw = st.data
@@ -3008,7 +3082,7 @@ class SolutionGUI(QMainWindow):
         expected_arrival_time = stn.ground_distance/330
 
         apx_arrival = pg.InfiniteLine(pos=expected_arrival_time, angle=90, pen='m', movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
-        self.make_picks_waveform_canvas.addItem(apx_arrival)
+        # self.make_picks_waveform_canvas.addItem(apx_arrival)
 
         # If shouing computer found signals
         if self.show_sigs.isChecked() and stn.signals is not None:

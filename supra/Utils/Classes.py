@@ -217,6 +217,16 @@ class Position:
 
         return (self.x**2 + self.y**2 + self.z**2)**0.5
 
+    def angleBetween(self, other):
+
+        dLon = other.lon_r - self.lon_r
+
+        y = np.sin(dLon)*np.cos(other.lat_r)
+        x = np.cos(self.lat_r)*np.sin(other.lat_r) - np.sin(self.lat_r)*np.cos(other.lat_r)*np.cos(dLon)
+        brng = np.arctan2(y, x)
+        brng = angle2NDE(np.degrees(brng))
+
+        return brng
 
 
 class Vector3D:
