@@ -1814,15 +1814,11 @@ class SolutionGUI(QMainWindow):
         self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
         self.light_curve_buton.clicked.connect(partial(save, self, True))
 
-<<<<<<< HEAD
-        # self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
-        # self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
-        # self.contour_file_buton.clicked.connect(partial(save, self))
-=======
+
         self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
         self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
         self.contour_file_buton.clicked.connect(partial(save, self, True))
->>>>>>> dev
+
 
         tab2 = QWidget()
         tab2_content = QGridLayout()
@@ -2635,7 +2631,7 @@ class SolutionGUI(QMainWindow):
         #         if current_chn_start in chn:
         #             count += 1
 
-<<<<<<< HEAD
+
         #     if count == 3:
         #         self.gr = ParticleMotion(self.make_picks_map_graph_canvas, self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000), group_no=self.group_no)
         #         self.gr.setGeometry(QRect(100, 100, 1600, 700))
@@ -2646,9 +2642,9 @@ class SolutionGUI(QMainWindow):
         #     else:
         #         errorMessage("If you are seeing this, then somehow more than 3 channels have been selected",\
         #                  2, detail="")
-=======
+
             save(self, True)
->>>>>>> dev
+
 
         #     save(self)
 
@@ -2676,7 +2672,7 @@ class SolutionGUI(QMainWindow):
         #             D = propegateBackwards(ref_pos, stn, self.bam)
 
 
-<<<<<<< HEAD
+
         #             for line in D:
         #                 if not np.isnan(line[0]): 
         #                     P = Position(0, 0, 0)
@@ -2694,7 +2690,7 @@ class SolutionGUI(QMainWindow):
         #     self.ts.setGeometry(QRect(100, 100, 1200, 700))
         #     self.ts.show() 
         #     self.traj_space.setState(False)
-=======
+
         elif self.save_picks.isChecked():
 
             # Turn this off once its been clicked 
@@ -2755,7 +2751,7 @@ class SolutionGUI(QMainWindow):
             self.rpol = RotatePolWindow(self.bam.stn_list[self.current_station], channel, lside, rside, start_time)
             self.rpol.setGeometry(QRect(200, 300, 1600, 800))
             self.rpol.show()
->>>>>>> dev
+
 
         # ### Annotations
         # elif self.annote_picks.isChecked():
