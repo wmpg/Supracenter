@@ -9,8 +9,9 @@ Computing fireball fragmentation locations and trajectory from seismic or infras
 
 ```
 conda install -c conda-forge pyhdf obspy simplekml pyopengl pyqtgraph folium
-conda install -c anaconda netcdf4
-pip install pyqt5==5.11.3
+conda install -c conda-forge netcdf4
+pip install PyQtWebEngine
+pip install pyqt5
 pip install pyswarm
 ```
 
@@ -20,14 +21,13 @@ pip install pyswarm
 pip install termcolor
 ```
 
-(Optional) If you need a higher altitude wind model. Temperatures are done through wmpl NRLMSISE.
-```
-pip install hwm93
-```
-This will require a fortran compiler to run, I use this:
+(Optional) If you need a higher altitude wind model. Temperatures are done through wmpl NRLMSISE. This will require a fortran compiler to run, I use this:
 ```
 conda install -c conda-forge fortran-compiler
+pip install hwm93
 ```
+
+
 (Optional) If you want to use the signal finder, you'll need this:
 ```
 pip install more-itertools
