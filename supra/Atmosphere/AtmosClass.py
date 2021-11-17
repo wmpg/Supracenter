@@ -306,7 +306,7 @@ class ECMWF(AtmosType):
         '''
 
         spread = True
-        print(perturbations)
+
         if perturbations is None:
             perturb = prefs.pert_num
         else:

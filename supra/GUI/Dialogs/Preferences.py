@@ -113,10 +113,11 @@ class PreferenceWindow(QWidget):
         self.ballistic_en.setChecked(prefs.ballistic_en)  
         self.recalc_times.setChecked(prefs.recalc_times)
 
-        try:
-            self.recalc_sigs.setChecked(prefs.recalc_sigs)  
-        except (AttributeError, TypeError):
-            self.recalc_sigs.setChecked(False) 
+        if hasattr(self, "recalc_sigs"):
+            try:
+                self.recalc_sigs.setChecked(prefs.recalc_sigs)  
+            except (AttributeError, TypeError):
+                self.recalc_sigs.setChecked(False) 
 
 
         self.frag_en.setChecked(prefs.frag_en)       
