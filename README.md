@@ -9,9 +9,8 @@ Computing fireball fragmentation locations and trajectory from seismic or infras
 
 ```
 conda install -c conda-forge pyhdf obspy simplekml pyopengl pyqtgraph folium
-conda install -c conda-forge netcdf4
-pip install PyQtWebEngine
 pip install pyqt5
+conda install -c conda-forge netcdf4 pyqtwebengine
 pip install pyswarm
 ```
 
