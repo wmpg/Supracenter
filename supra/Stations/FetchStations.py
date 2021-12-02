@@ -121,13 +121,22 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
 
     print('STATIONS')
 
+    infra_only = False
+    if obj is not None:
+        infra_only = obj.infra_only_toggle.isChecked()
+
+    if infra_only:
+        chn = "?DF"
+    else:
+        chn = "*"
+
     for ii, u in enumerate(urls):
         print('Downloading from: {:}'.format(noms[ii]))
 
         query ="{:}station/1/query?network=*&latitude={:.3f}&longitude={:.3f}" \
-            "&maxradius={:.3f}&start={:s}&end={:s}&channel=*&format=text" \
+            "&maxradius={:.3f}&start={:s}&end={:s}&channel={:}&format=text" \
             "&includerestricted=false&nodata=404".format(u, lat_centre, lon_centre, deg_radius, \
-            start_date, end_date)
+            start_date, end_date, chn)
 
 
         try:
@@ -164,8 +173,9 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                     resp_file = network_new + '_' + station_code + '_' + str(ii) + '.xml'
                     resp_file_path = os.path.join(dir_path, resp_file)
 
+
                     stn_query = ("{:}dataselect/1/query?network={:s}&station={:s}" \
-                        "&channel=*&start={:s}&end={:s}").format(u, network_new, station_code, start_time, \
+                        "&channel={:}&start={:s}&end={:s}").format(u, network_new, station_code, chn, start_time, \
                         end_time)
 
 
