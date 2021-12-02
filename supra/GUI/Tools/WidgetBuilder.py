@@ -248,6 +248,9 @@ def addStationsWidgets(obj):
                                                         countStation, args=[obj])    
 
 
+    obj.infra_only_toggle = createToggle('Download Only Infrasound?', obj.station_control_layout, 4, width=1, h_shift=1, tool_tip='')
+
+
     obj.station_layout.addLayout(obj.station_control_layout)
 
 
