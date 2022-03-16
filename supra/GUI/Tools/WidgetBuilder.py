@@ -114,9 +114,9 @@ def initMenuBar(obj, layout):
     # geminus_tool.triggered.connect(obj.geminus)
     # tools_menu.addAction(geminus_tool)
 
-    # rtv_tool = QAction("Ray-Trace Visualization", obj)
-    # rtv_tool.triggered.connect(obj.rtvWindow)
-    # tools_menu.addAction(rtv_tool)
+    rtv_tool = QAction("Ray-Trace Visualization", obj)
+    rtv_tool.triggered.connect(obj.rtvWindow)
+    tools_menu.addAction(rtv_tool)
 
     infratrajspace = QAction("Infrasound Trajectory Space", obj)
     infratrajspace.triggered.connect(obj.trajSpace)
