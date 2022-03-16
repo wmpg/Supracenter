@@ -8,6 +8,8 @@ from PyQt5.QtCore import *
 
 import pyqtgraph as pg
 
+from supra.GUI.Tools.GUITools import createLabelEditObj, createButton
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
@@ -259,6 +261,75 @@ class PositionEx(QWidget):
         layout.addWidget(self.elev)
 
         self.setLayout(layout)
+
+class TauEx(QWidget):
+    def __init__(self, energy, tau, heights):
+        super(TauEx, self).__init__()
+
+        self.mark_for_deletion = False
+        self.energy = energy
+
+        self.heights = heights
+
+        main_layout = QGridLayout()
+
+        self.toggle = ToggleButton(True, 0)
+        main_layout.addWidget(self.toggle, 1, 1)
+        self.toggle.clicked.connect(self.toggle.clickedEvt)
+        
+        self.icon = QLabel()
+
+        self.energy_label = QLabel("{:} @ {:} km".format(self.energy.source_type, self.energy.height/1000))
+        main_layout.addWidget(self.energy_label, 1, 2)
+
+        tau_label, self.tau_edits = createLabelEditObj("Tau: ", main_layout, 1, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(tau))
+        self.delete_self = createButton("Delete", main_layout, 2, 5, self.deleteSelf, args=[])
+
+        FRAG_ICON = os.path.join('supra', 'GUI', 'Images', "Fragmentation.png")
+        TRAJ_ICON = os.path.join('supra', 'GUI', 'Images', "Trajectory.png")
+
+        if heights[0] is None:
+            min_h_label, self.min_h_edits = createLabelEditObj("height_min [km]: ", main_layout, 3, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(self.energy.height/1000))
+            max_h_label, self.max_h_edits = createLabelEditObj("height_max [km]: ", main_layout, 4, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(self.energy.height/1000))
+        else:
+            min_h_label, self.min_h_edits = createLabelEditObj("height_min [km]: ", main_layout, 3, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(heights[0]))
+            max_h_label, self.max_h_edits = createLabelEditObj("height_max [km]: ", main_layout, 4, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(heights[1]))
+        
+        if self.energy.source_type.lower() == "fragmentation": 
+            pixmap = QPixmap(FRAG_ICON)
+        elif self.energy.source_type.lower() == "ballistic":
+            pixmap = QPixmap(TRAJ_ICON)
+        else:
+            print("Unknown source type")
+            pixmap = QPixmap()
+
+        self.icon.setPixmap(pixmap)
+        main_layout.addWidget(self.icon, 1, 0)
+
+        self.setMinimumHeight(126)
+
+        self.setLayout(main_layout)
+
+        self.setStyleSheet("""
+                QGroupBox {
+                    border: 3px solid grey;
+                    border-radius: 10px;
+                    }
+
+                QPushButton{color: white; background-color: rgb(0, 100, 200);}
+                """)
+    def getTau(self):
+        return float(self.tau_edits.text())
+
+    def getHeights(self):
+        min_height = float(self.min_h_edits.text())
+        max_height = float(self.max_h_edits.text())
+
+        return [min_height, max_height]
+
+    def deleteSelf(self):
+        self.mark_for_deletion = True
+
 
 class ToggleButton(QAbstractButton):
 

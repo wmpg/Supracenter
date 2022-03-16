@@ -260,8 +260,14 @@ def save(obj, file_check):
             errorMessage('Please name the fireball!', 2, info='Fireball name "{:}" is not accepted, setup has not been saved!'.format(obj.fireball_name_edits.text()))
             return None
 
-            #save setup
+        if hasattr(obj.bam.setup, "trajectory"):
+            traj = obj.bam.setup.trajectory
+
+        #save setup
         obj.bam.setup = saveSetup(obj)
+
+        if hasattr(obj.bam.setup, "trajectory"):       
+            obj.bam.setup.trajectory = traj
 
         if obj.bam.file_name is None:
             obj.bam.file_name = saveFile('bam', note="BAM file")
@@ -303,6 +309,8 @@ def load(obj):
     # save filename for autosaving feature
     bam.file_name = filename
     
+    if not hasattr(bam, "energy_measurements"):
+        bam.energy_measurements = []
 
     loadDisplay(bam.setup, obj)
     bam = loadSourcesIntoBam(bam)

@@ -223,6 +223,11 @@ def chauvenet(data):
 
     return data, remove
 
+def percDiff(a, b):
+
+    result = 2*np.abs(a - b)/(a + b) * 100
+
+    return result
 
 
 # if __name__ == "__main__":

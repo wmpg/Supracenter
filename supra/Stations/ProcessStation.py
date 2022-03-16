@@ -60,6 +60,7 @@ def bandpassFilter(bandpass, delta, ampl_data):
 
 def procStream(stn, ref_time=None, merge=False):
 
+    # print("Getting Raw Trace")
     mseed = stn.stream.copy()
     resp = stn.response
     # merge = True
@@ -147,25 +148,27 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
     total_time = []
 
     for tr in partial_traces:
+        # print("Detrend Waveform")
         tr.detrend()
 
         # Remove sensitivity and remove response do the same thing - response is better (obspy)
 
         if resp is not None:
-            tr.remove_response(inventory=resp, output="DISP")
+            # print("Removing Response")
+
+            if "DF" in tr.stats.channel:
+                tr.remove_response(inventory=resp)#, output="ACC")
+            else:
+                tr.remove_response(inventory=resp, output="DISP")
             # trace.remove_sensitivity(resp) 
     
 
         ampl_data = tr.data
 
-        ### DELETE THIS
-        ###############################
-        if resp is None:
-            ampl_data /= 176568.0
-        ###############################
 
         try:
             time_data = tr.times(reftime=obspy.core.utcdatetime.UTCDateTime(ref_datetime))
+
         except TypeError:
             pass
         # time_data = np.arange(0,  npts/sampling_rate, delta) + offset
@@ -175,7 +178,7 @@ def procTrace(trace, ref_datetime=None, resp=None, bandpass=[2, 8], backup=False
         raw_trace = ampl_data
         # Init the butterworth bandpass filter
         if bandpass is not None:
-
+            # print("Bandpassing Wave between {:.2f}-{:.2f} Hz".format(bandpass[0], bandpass[1]))
             # ampl_data = bandpassFilter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=5)
             ampl_data = butter_bandpass_filter(ampl_data, bandpass[0], bandpass[1], sampling_rate, order=6)
 

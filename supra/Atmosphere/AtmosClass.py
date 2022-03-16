@@ -11,10 +11,13 @@ from supra.Utils.AngleConv import roundToNearest
 from supra.Utils.Classes import Constants
 from supra.Supracenter.cyzInteg import zInteg
 from supra.GUI.Tools.GUITools import *
+from supra.Atmosphere.Pressure import pressureConv, estPressure
 from supra.Atmosphere.NRLMSISE import getAtmDensity
 from wmpl.Utils.TrajConversions import date2JD
 from supra.Atmosphere.HWM93 import getHWM
 consts = Constants()
+
+
 
 class AtmosType:
     def __init__(self):
@@ -71,16 +74,17 @@ class AtmosType:
 
         return level, speed, mags, dirs
 
-    def spline(self, level, speed, mags, dirs, interp=100):
+    def spline(self, level, speed, mags, dirs, pressure, interp=100):
         """
         Cubic spline the data for smooth profiles
         """
 
         speed, _ = self.splineSec(speed, level, interp=interp)
         mags, _ = self.splineSec(mags, level, interp=interp)
+        pressure, _ = self.splineSec(pressure, level, interp=interp)
         dirs, level = self.splineSec(dirs, level, interp=interp)
 
-        return level, speed, mags, dirs
+        return level, speed, mags, dirs, pressure
 
     def splineSec(self, y, x, interp=100):
         
@@ -124,6 +128,7 @@ class DefaultW(AtmosType):
         speed = []
         mags = []
         dirs = []
+        pressure = []
 
 
         for hh, la, lo in zip(missing_heights, missing_lats, missing_lons):
@@ -133,19 +138,20 @@ class DefaultW(AtmosType):
             u, v = getHWM(ref_time, la, lo, hh/1000)
             mags.append(np.sqrt(u**2 + v**2))
             dirs.append(np.arctan2(u, v))
+            pressure.append(estPressure(hh))
             level.append(hh)
 
         try:
-            level, speed, mags, dirs = self.spline(level, speed, mags, dirs, interp=spline)
+            level, speed, mags, dirs, pressure = self.spline(level, speed, mags, dirs, pressure, interp=spline)
 
             sounding = []
             for i in range(len(level)):
-                sounding.append([level[i], speed[i], mags[i], dirs[i]])
+                sounding.append([level[i], speed[i], mags[i], dirs[i], pressure[i]])
         except ValueError:
 
-            sounding =         np.array([[    0.0, 310, 0.0, 0.0],
-                                         [    0.0, 310, 0.0, 0.0],
-                                         [99999.0, 310, 0.0, 0.0]])
+            sounding =         np.array([[    0.0, 310, 0.0, 0.0, 0.0],
+                                         [    0.0, 310, 0.0, 0.0, 0.0],
+                                         [99999.0, 310, 0.0, 0.0, 0.0]])
 
 
         
@@ -243,6 +249,8 @@ class ECMWF(AtmosType):
     def generateProfile(self, t, u, v, z, h, lats, lons, spline=100, ref_time=None):
 
         level, speed, mags, dirs = self.convert(t, u, v, z)
+        pressure = pressureConv()
+
 
         # # Temp Hack to get NRL data
         # speed = []
@@ -262,12 +270,12 @@ class ECMWF(AtmosType):
         # speed = np.array(speed)
         # #######################
 
-
+        
         # If the region extends above available data
-        dh = 1000 #meters
+        dh = 2000 #meters
         if h[0] > level[0]:
-
-            missing_heights = np.arange(level[0] + dh, h[0] + dh, dh)
+            
+            missing_heights = np.arange(level[0] + dh, h[0], dh)
 
             lat = lats[0]
             lon = lons[0]
@@ -275,26 +283,34 @@ class ECMWF(AtmosType):
             jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
 
 
+            
             for hh in missing_heights:
-
+                
+                ### SLOW PART
                 t = getAtmDensity(lat, lon, hh, jd)
                 u, v = getHWM(ref_time, lat, lon, hh/1000)
                 mag = np.sqrt(u**2 + v**2)
                 d = np.arctan2(u, v)
+                p = estPressure(hh)
+                ###############
 
                 speed = np.insert(speed, 0, np.sqrt(consts.GAMMA*consts.R/consts.M_0*t)) 
                 mags = np.insert(mags, 0, mag)
                 dirs = np.insert(dirs, 0, d)
                 level = np.insert(level, 0, hh)
+                pressure = np.insert(pressure, 0, p)
 
 
-        level, speed, mags, dirs = self.spline(level, speed, mags, dirs, interp=spline)
+
+
+        level, speed, mags, dirs, pressure = self.spline(level, speed, mags, dirs, pressure, interp=spline)
 
         sounding = []
         for i in range(len(level)):
-            sounding.append([level[i], speed[i], mags[i], dirs[i]])
+            sounding.append([level[i], speed[i], mags[i], dirs[i], pressure[i]])
         
         sounding = zInteg(h[0], h[1], np.array(sounding))
+
 
         
         return sounding
@@ -304,9 +320,8 @@ class ECMWF(AtmosType):
             resulting curve into a smooth profile
             lat = [start lat, end lat]
         '''
-
+        import time
         spread = True
-        print(perturbations)
         if perturbations is None:
             perturb = prefs.pert_num
         else:
@@ -393,6 +408,8 @@ class ECMWF(AtmosType):
 
             last_frac = frac
 
+
+        
         t = np.array([item for sublist in t for item in sublist])
         u = np.array([item for sublist in u for item in sublist])
         v = np.array([item for sublist in v for item in sublist])
@@ -405,6 +422,7 @@ class ECMWF(AtmosType):
 
         sounding = self.generateProfile(t, u, v, z, heights, range_lats, range_lons, spline=spline, ref_time=ref_time)
 
+
         perturbations = []
 
         if perturb > 0 and prefs.pert_en and spread:
@@ -416,6 +434,7 @@ class ECMWF(AtmosType):
                 perturbations.append(np.array(per_sounding))
 
         perturbations = np.array(perturbations)
+
 
         return sounding, perturbations
 

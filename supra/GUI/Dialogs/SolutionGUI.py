@@ -42,10 +42,11 @@ from matplotlib.backends.backend_qt5agg import FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
+
 import pyximport
 pyximport.install(setup_args={'include_dirs':[np.get_include()]})
 
-from supra.Fireballs.SeismicTrajectory import timeOfArrival, trajSearch, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour
+from supra.Fireballs.SeismicTrajectory import timeOfArrival, trajSearch, estimateSeismicTrajectoryAzimuth, plotStationsAndTrajectory, waveReleasePointWindsContour,  waveReleasePointWinds
 
 from supra.Supracenter.slowscan2 import cyscan as slowscan
 from supra.Supracenter.psoSearch import psoSearch
@@ -69,6 +70,7 @@ from supra.GUI.Dialogs.ReportDialog import ReportWindow
 from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
 from supra.GUI.Dialogs.GLMReader import glmWindowDialog
 from supra.GUI.Dialogs.RotatePol import RotatePolWindow
+from supra.GUI.Dialogs.lumEffDialog import lumEffDialog
 
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.Theme import theme
@@ -149,6 +151,8 @@ class SolutionGUI(QMainWindow):
 
         self.bam = BAMFile()
         self.color = Color()
+
+        self.bam.energy_measurements = []
 
         # Initialize all of the pyqt things in the GUI
         initMainGUI(self)
@@ -280,6 +284,11 @@ class SolutionGUI(QMainWindow):
         self.glm = glmWindowDialog(self.bam)
         self.glm.setGeometry(QRect(100, 100, 1200, 700))
         self.glm.show()
+
+    def lumEffGUI(self):
+        self.leg = lumEffDialog(self.bam)
+        self.leg.setGeometry(QRect(100, 100, 1200, 700))
+        self.leg.show()
 
     def csvLoad(self, table):
         """ Loads csv file into a table
@@ -815,11 +824,11 @@ class SolutionGUI(QMainWindow):
         stn_list = stn_list + self.setup.stations
 
         for stn in stn_list:
-            if stn.code not in self.setup.rm_stat:
-                text = pg.TextItem(text='{:}-{:}'.format(stn.network, stn.code),\
+            if stn.metadata.code not in self.setup.rm_stat:
+                text = pg.TextItem(text='{:}-{:}'.format(stn.metadata.network, stn.metadata.code),\
                  border='w', color=(255, 255, 255), fill=(255, 255, 255, 100))
                 
-                text.setPos(stn.position.lon, stn.position.lat)
+                text.setPos(stn.metadata.position.lon, stn.metadata.position.lat)
                 self.ray_canvas.addItem(text)
 
         end_point = pg.ScatterPlotItem()
@@ -1440,11 +1449,11 @@ class SolutionGUI(QMainWindow):
     def refHighStats(self):
         for ii, stn in enumerate(self.stn_list):
 
-            if stn.code in self.setup.high_f and stn.code in self.setup.high_b:
+            if stn.metadata.code in self.setup.high_f and stn.metadata.code in self.setup.high_b:
                 self.ref_stn_view[ii].setBackground(self.color.both)
-            elif stn.code in self.setup.high_b:
+            elif stn.metadata.code in self.setup.high_b:
                 self.ref_stn_view[ii].setBackground(self.color.ballistic)
-            elif stn.code in self.setup.high_f:
+            elif stn.metadata.code in self.setup.high_f:
                 self.ref_stn_view[ii].setBackground((51, 153, 51))
 
     def refClearStations(self):
@@ -1468,19 +1477,18 @@ class SolutionGUI(QMainWindow):
         if not self.checkForWorkDir():
             return None
 
+        self.setup = self.bam.setup
+
             #Build seismic data path
         dir_path = os.path.join(self.prefs.workdir, self.setup.fireball_name)
 
         # Load the station and waveform files list
         data_file_path = os.path.join(dir_path, DATA_FILE)
-        self.stn_list = []
-        if os.path.isfile(data_file_path):
+
             
-            self.stn_list = readStationAndWaveformsListFile(data_file_path, rm_stat=self.setup.rm_stat)
-            self.stn_list = self.stn_list + self.setup.stations
-        else:
-            errorMessage('Station and waveform data file not found! Download the waveform files first!', 2)
-            sys.exit()
+        self.stn_list = self.bam.stn_list
+
+
 
         # Need to check for duplicates here
         stn_list = self.stn_list
@@ -1502,13 +1510,13 @@ class SolutionGUI(QMainWindow):
             stn = stn_list[index]
 
             if ballonly:
-                if stn.code not in self.setup.high_b:
+                if stn.metadata.code not in self.setup.high_b:
                     self.ref_stn_view.append(None)
                     self.ref_stn_canvas.append(None)
                     continue
 
             if fragonly:
-                if stn.code not in self.setup.high_f:
+                if stn.metadata.code not in self.setup.high_f:
                     self.ref_stn_view.append(None)
                     self.ref_stn_canvas.append(None)
                     continue
@@ -1522,7 +1530,7 @@ class SolutionGUI(QMainWindow):
             station_layout.addLayout(waveform_layout)
             # station_layout.addWidget(blankwidget, 10, 0, 1, 20)
 
-            label_layout.addWidget(QLabel('--- Station: {:2}-{:5} ---'.format(stn_list[index].network, stn_list[index].code)))
+            label_layout.addWidget(QLabel('--- Station: {:2}-{:5} ---'.format(stn_list[index].metadata.network, stn_list[index].metadata.code)))
 
             self.ref_stn_view.append(pg.GraphicsLayoutWidget())
             self.ref_stn_canvas.append(self.ref_stn_view[index].addPlot())
@@ -1574,18 +1582,22 @@ class SolutionGUI(QMainWindow):
 
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
 
-        sounding = parseWeather(self.setup)
 
-        self.ref_traj.pos_f.pos_loc(ref_pos)
+        # # sounding = parseWeather(self.setup)
 
-        points = self.ref_traj.findPoints(gridspace=100, min_p=17000, max_p=50000)
+
+        # self.ref_traj.pos_f.pos_loc(ref_pos
+        points = self.ref_traj.trajInterp2(div=100, min_p=17000, max_p=50000)
+
+        points = np.flipud(points)
 
         for ii, stn in enumerate(self.stn_list):
+            print("Station Number: {:}".format(ii+1))
+            stn.metadata.position.pos_loc(ref_pos)
 
-            stn.position.pos_loc(ref_pos)
-
-            b_time = timeOfArrival(stn.position.xyz, self.ref_traj, self.setup, points, sounding=sounding, \
-                            travel=False, fast=False, ref_loc=ref_pos, theo=False, div=37)
+            b_time, b_pert = waveReleasePointWinds(stn.metadata.position.xyz, self.bam, self.prefs, ref_pos, points, self.ref_traj.vector)
+            # b_time = timeOfArrival(stn.position.xyz, self.ref_traj, self.setup, points, sounding=sounding, \
+            #                 travel=False, fast=False, ref_loc=ref_pos, theo=False, div=37)
 
 
             try:
@@ -1686,62 +1698,22 @@ class SolutionGUI(QMainWindow):
         # Extract current station
         stn = self.stn_list[station_no]
 
-        # Get the miniSEED file path
-        mseed_file_path = os.path.join(self.prefs.workdir, setup.fireball_name, stn.file_name)
+        st, resp, gap_times = procStream(stn, ref_time=self.bam.setup.fireball_datetime, merge=False)
+        st = findChn(st, "*")
 
-        # Try reading the mseed file, if it doesn't work, skip to the next frame
-        try:
-            mseed = obspy.read(mseed_file_path)
-
-        except (TypeError, FileNotFoundError):
-
-            print('mseed file could not be read:', mseed_file_path)
-            return None, None
-
-
-        # Unpact miniSEED data
-        delta = mseed[0].stats.delta
-        start_datetime = mseed[0].stats.starttime.datetime
-        end_datetime = mseed[0].stats.endtime.datetime
-
-        stn.offset = (start_datetime - setup.fireball_datetime).total_seconds()
-
-        waveform_data = mseed[0].data
-
-        # Store raw data for bookkeeping on first open
-        self.current_waveform_raw = waveform_data
-
-        self.current_waveform_delta = delta
-        self.current_waveform_time = np.arange(0, (end_datetime - start_datetime).total_seconds() + delta, \
-            delta)
-
-        # Construct time array, 0 is at start_datetime
-        time_data = np.copy(self.current_waveform_time)
-
-        # Cut the waveform data length to match the time data
-        waveform_data = waveform_data[:len(time_data)]
-        time_data = time_data[:len(waveform_data)] + stn.offset
-
-        # Get bandpass filter values
-        bandpass_low = float(2)
-        bandpass_high = float(8)
-
-
-        # Init the butterworth bandpass filter
-        butter_b, butter_a = butterworthBandpassFilter(bandpass_low, bandpass_high, \
-            1.0/self.current_waveform_delta, order=6)
-
-        # Filter the data
-        waveform_data = scipy.signal.filtfilt(butter_b, butter_a, np.copy(self.current_waveform_raw))
+        self.current_waveform_raw = st.data
+        waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
+                        resp=resp, bandpass=[2, 8])
 
         # Plot the waveform
-        self.waveform_data[station_no] = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
-        canvas.addItem(self.waveform_data[station_no])
+        for ii in range(len(waveform_data)):
+            self.waveform_data[station_no] = pg.PlotDataItem(x=time_data[ii], y=waveform_data[ii], pen='w')
+            canvas.addItem(self.waveform_data[station_no])
         
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
 
         try:
-            t_arrival = stn.position.pos_distance(ref_pos)/self.prefs.avg_sp_sound
+            t_arrival = stn.metadata.position.pos_distance(ref_pos)/self.prefs.avg_sp_sound
             canvas.setXRange(t_arrival-100, t_arrival+100, padding=1)
 
         except TypeError:
@@ -2113,7 +2085,7 @@ class SolutionGUI(QMainWindow):
             llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
             urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='l', ax=self.make_picks_map_graph_view.ax)
+            resolution='h', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
@@ -2122,7 +2094,7 @@ class SolutionGUI(QMainWindow):
         self.m.drawparallels(np.arange(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
             self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
         self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
-            self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", rotation="vertical", fmt="%.1f")
+            self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", rotation="horizontal", fmt="%.1f")
 
         if hasattr(self.bam.setup, "contour_file"):
             if self.bam.setup.contour_file is not None:
@@ -2906,11 +2878,12 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='red', zorder=3)
                 self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='r', marker="^")
                 self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='r')
+                self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
             else:
-                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
+                # self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
                 self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='w', marker="^")
                 self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='w')
-            self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+            #self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
 
             if not hasattr(stn, 'annotation'):
@@ -3409,9 +3382,9 @@ class SolutionGUI(QMainWindow):
             self.make_picks_waveform_canvas.setTitle('')
         else:
             if self.inverted:
-                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.network, stn.code, stn.channel, stn.position), color=(0, 0, 0))
+                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.metadata.network, stn.metadata.code, stn.metadata.channel, stn.metadata.position), color=(0, 0, 0))
             else:
-                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.network, stn.code, stn.channel, stn.position), color=(255, 255, 255))
+                self.make_picks_waveform_canvas.setTitle('{:}-{:} [{:}] {:}'.format(stn.metadata.network, stn.metadata.code, stn.metadata.channel, stn.metadata.position), color=(255, 255, 255))
 
         self.showtitled = not self.showtitled
 

@@ -27,9 +27,9 @@ def refractiveFactor(S, D, zProfile, D_ANGLE=2):
     S.pos_loc(S)
 
     # Find launch angles in the ideal atmosphere (straight lines)
-    dx, dy, dz = S.xyz - D.xyz
-    tf_ideal_n = np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))
-    az_ideal_n = np.degrees(np.arctan2(dx, dy))
+    dx, dy, dz = D.xyz - S.xyz 
+    tf_ideal_n = np.degrees(np.arctan2(dz, np.sqrt((dy)**2 + (dx)**2))) + 90
+    az_ideal_n = np.degrees(np.arctan2(dx, dy))%360
 
 
     # Find actual angles
@@ -52,8 +52,12 @@ def refractiveFactor(S, D, zProfile, D_ANGLE=2):
         dx, dy, dz = D_n[0:3] - S.xyz
 
         # Find ideal atmosphere angles to get to new launch points
-        tf = np.abs((np.degrees(np.arctan2(-dz, np.sqrt((dy)**2 + (dx)**2)))) - tf_ideal_n)
-        az = np.abs((np.degrees(np.arctan2(dx, dy))) - az_ideal_n)
+        tf = np.degrees(np.arctan2(dz, np.sqrt((dy)**2 + (dx)**2))) + 90
+        az = (np.degrees(np.arctan2(dx, dy)))%360
+
+        tf = (tf - tf_ideal_n)
+        az = (az - az_ideal_n) 
+
 
         d_angle_ideal.append(addAngleComp(tf, az, deg=True))
 
@@ -61,6 +65,7 @@ def refractiveFactor(S, D, zProfile, D_ANGLE=2):
 
     if np.isnan(d_angle_ideal).all():
         return np.nan
+
 
     d_angle_ideal = np.nanmean(d_angle_ideal)
 
@@ -180,8 +185,6 @@ if __name__ == "__main__":
 
     x = []
     y = []
-
-
 
 
     for pt in points:

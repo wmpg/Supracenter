@@ -18,6 +18,7 @@ from supra.Geminus.geminusSearch import periodSearch, presSearch
 from supra.Files.SaveLoad import save
 from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
 from supra.Utils.Formatting import *
+from supra.Utils.Energy import EnergyObj
 
 def Efunction(Ro, h):
     k = 1
@@ -90,6 +91,7 @@ class Geminus(QWidget):
         self.proE_sim = createButton("Period vs. Energy", control_panel, 5, 2, self.overpressure, args=["proE"])
         self.infra_curve = createButton("Infrasound Curve", control_panel, 5, 3, self.infraCurve)
         self.clear_infra = createButton("Clear Curve", control_panel, 6, 1, self.clearInfra)
+        self.save_energy = createButton("Save Energy", control_panel, 6, 2, self.saveInfra)
 
         self.vary_period.setChecked(True)
         self.add_winds.setChecked(True)
@@ -100,6 +102,31 @@ class Geminus(QWidget):
         graph_layout.addWidget(self.overpressure_plot)
 
         theme(self)
+
+    def saveInfra(self):
+        a = EnergyObj()
+        a.source_type = "Ballistic"
+        a.height = self.current_height
+        stat_idx = self.station_combo.currentIndex()
+        a.station = self.bam.stn_list[stat_idx]
+        a.linear_Ro = self.current_lin_Ro
+        a.ws_Ro = self.current_ws_Ro
+        a.linear_E = Efunction(self.current_lin_Ro, self.current_height)
+        a.ws_E = Efunction(self.current_ws_Ro, self.current_height)
+
+        try:
+            a.period = float(self.dom_period.text())
+        except:
+            a.period = None
+
+        try:
+            a.overpress = float(self.over_pres.text())
+        except:
+            a.overpress = None
+
+        self.bam.energy_measurements.append(a)
+
+
 
     def clearInfra(self):
         self.bam.infra_curve = []
