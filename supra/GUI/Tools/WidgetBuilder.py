@@ -35,7 +35,7 @@ def initTabs(obj):
     addFetchATMWidgets(obj)
     # addProfileWidgets(obj)
     # addRayTracerWidgets(obj)
-    addRefineWidgets(obj)
+    # addRefineWidgets(obj)
 
 
 def initMenuBar(obj, layout):
@@ -587,10 +587,10 @@ def addMakePicksWidgets(obj):
     obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
     toggle_button_array.addWidget(obj.save_picks)
 
-    obj.rotatepol = ToggleButton(False, 5)
-    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
-    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
-    toggle_button_array.addWidget(obj.rotatepol)
+    # obj.rotatepol = ToggleButton(False, 5)
+    # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    # obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    # toggle_button_array.addWidget(obj.rotatepol)
 
 
 
@@ -674,9 +674,9 @@ def addMakePicksWidgets(obj):
     pick_group_layout.addWidget(obj.W_est)
     obj.W_est.clicked.connect(obj.W_estGUI)
 
-    obj.lum_eff = QPushButton('Luminous Efficiency')
-    pick_group_layout.addWidget(obj.lum_eff)
-    obj.lum_eff.clicked.connect(obj.lumEffGUI)
+    # obj.lum_eff = QPushButton('Luminous Efficiency')
+    # pick_group_layout.addWidget(obj.lum_eff)
+    # obj.lum_eff.clicked.connect(obj.lumEffGUI)
 
     make_picks_check_group = QGroupBox("Toggles")
     make_picks_control_panel.addWidget(make_picks_check_group)
