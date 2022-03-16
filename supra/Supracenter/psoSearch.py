@@ -127,6 +127,7 @@ def timeFunction(x, *args):
         #err = np.dot(wn, np.absolute(sotc - motc))/nwn
         err = 0
         for s in sotc:
+            print(s, motc)
             err += (1 + (s - motc)**2)**0.5 - 1
 
         err = err/N_s
