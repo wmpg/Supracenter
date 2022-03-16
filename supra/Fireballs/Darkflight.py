@@ -214,6 +214,12 @@ def readDarkflight(output, mass, header=30, partial=False):
                 line[i] = float(entry.strip())
             line.append(mass)
 
+            # Skip if the first coordinate is NaN
+            if np.isnan(line[0]):
+                continue
+
+            print(line)
+
             # Add the contents of the line to the data list
             data = np.vstack((data, np.array(line)))
 
@@ -261,6 +267,11 @@ def plotData(data, del_data, params, mass_list):
 
     # Each index for each mass
     for i in range(len(mass_list)):
+
+        # Skip NaN values
+        if np.isnan(data[i][:, 0].all()) or np.isnan(data[i][:, 1].all()):
+            continue
+
         lat.append(data[i][:, 0])
         lon.append(data[i][:, 1])
         alt.append(data[i][:, 2])
@@ -310,19 +321,6 @@ def plotData(data, del_data, params, mass_list):
 
     plt.show()
 
-    # 2D map plot
-    m = GroundMap(np.radians(lat_long), np.radians(lon_long), border_size=5, color_scheme='light')
-
-    for i in range(len(mass_list)):
-        m.plot(np.radians(lat[i]), np.radians(lon[i]))
-        x, y = m.m(lon[i][-1], lat[i][-1])
-        plt.text(x, y, '{:10.1E} kg'.format(mas[i][-1]), size=6)
-
-    #m.scatter(np.radians(lat[-1]), np.radians(lon[-1]), marker='*', c='r')
-
-    plt.savefig(params.output + '_darkflight_map.png', dpi=300)
-
-    plt.show()
 
     #.kml file
     mass = [0]*len(mass_list)
@@ -433,6 +431,23 @@ def plotData(data, del_data, params, mass_list):
 
     
     kml.save(params.output + '_darkflight_map.kml')
+
+
+
+    # 2D map plot
+    print(np.radians(lat_long), np.radians(lon_long))
+    m = GroundMap(np.radians(lat_long), np.radians(lon_long), border_size=5, color_scheme='light')
+
+    for i in range(len(mass_list)):
+        m.plot(np.radians(lat[i]), np.radians(lon[i]))
+        x, y = m.m(lon[i][-1], lat[i][-1])
+        plt.text(x, y, '{:10.1E} kg'.format(mas[i][-1]), size=6)
+
+    #m.scatter(np.radians(lat[-1]), np.radians(lon[-1]), marker='*', c='r')
+
+    plt.savefig(params.output + '_darkflight_map.png', dpi=300)
+
+    plt.show()
 
 
 def readInfile(infile):
