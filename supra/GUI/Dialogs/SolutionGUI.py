@@ -2902,10 +2902,10 @@ class SolutionGUI(QMainWindow):
                 self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='r')
                 self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
             else:
-                # self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
+                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
                 self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='w', marker="^")
                 self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='w')
-            #self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+            self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
 
             if not hasattr(stn, 'annotation'):
