@@ -641,12 +641,12 @@ def addMakePicksWidgets(obj):
     obj.make_picks_ref_pos_choice = QComboBox()
     filter_group_layout.addWidget(obj.make_picks_ref_pos_choice, 3, 0, 1, 4)
 
-    obj.add_f_parameter = QPushButton('Add F-Statistic')
-    filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
-    obj.add_f_parameter.clicked.connect(obj.fPar)
+    # obj.add_f_parameter = QPushButton('Add F-Statistic')
+    # filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
+    # obj.add_f_parameter.clicked.connect(obj.fPar)
 
-    obj.f_shift_edits = QLineEdit("0")
-    filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
+    # obj.f_shift_edits = QLineEdit("0")
+    # filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
 
     obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
     obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)
