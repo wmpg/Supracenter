@@ -23,6 +23,27 @@ class LightCurve:
 
             self.J.append(J)
 
+    def getDataList(self):
+
+        return np.array(self.M), np.array(self.h)
+
+    def interpCurve(self, dh=100):
+
+        dH = self.h[0] - self.h[-1]
+
+        N = dh
+
+        x = np.linspace(self.h[0], self.h[-1], N)
+
+        x = x[::-1]
+
+        xp = np.array(self.h[::-1])
+        fp = np.array(self.M[::-1])
+
+
+        f = np.interp(x, xp, fp)
+
+        return x[::-1], f[::-1]
 
 
 def processLightCurve(light_curve):

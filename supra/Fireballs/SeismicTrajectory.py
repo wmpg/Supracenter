@@ -176,7 +176,11 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
     beta = math.sqrt(1 - (prefs.avg_sp_sound/traj.v_avg/1000)**2)
 
     # Difference from the reference point on the trajectory and the station
-    b = stat_coord - traj.findGeo(0).xyz
+    g = traj.findGeo(0)
+
+    g.pos_loc(ref_loc)
+
+    b = stat_coord - g.xyz
 
     u = traj.getTrajVect()
 
@@ -187,8 +191,8 @@ def timeOfArrival(stat_coord, traj, bam, prefs, points, ref_loc=Position(0, 0, 0
     # Calculate the distance perpendicular to the trajectory
     dp = math.sqrt(abs(vectMag(b)**2 - dt**2))
 
-    R = waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u)
 
+    R = waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u)
     # if travel:
     #     # travel from trajectory only
     #     ti = R[3]*beta
@@ -443,6 +447,7 @@ def waveReleasePointWindsContour(bam, traj, ref_loc, points, div=37, mode='balli
 def angle2Geo(loc_coord, ref_loc):
 
     point = Position(0, 0, 0)
+
     point.x, point.y, point.z = loc_coord[0], loc_coord[1], loc_coord[2]
     point.pos_geo(ref_loc)
 
@@ -459,7 +464,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
 
     # Cut down atmospheric profile to the correct heights, and interp
 
-
+    u = np.array([u.x, u.y, u.z])
     
     a = (len(points))
 
@@ -467,7 +472,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     D = np.array(stat_coord)
 
     cyscan_res = []
-
+    import time
 
     # Compute time of flight residuals for all stations
     for i in range(a):
@@ -480,11 +485,18 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
         lons = [traj_point.lon, stat_point.lon]
         heights = [traj_point.elev, stat_point.elev]
 
-        sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)    
+        if traj_point.elev < 17000 or traj_point.elev > 50000:
+            continue
+
+        sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime, perturbations=0, spline=50)    
+
 
         if prefs.wind_en:
+
             A = cyscan(S, D, sounding, \
-                 wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                 wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist, processes=1)
+
+
         else:
 
             dx, dy, dz = D[0] - S[0], D[1] - S[1], D[2] - S[2]
@@ -497,10 +509,22 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
 
             A = np.array([T, az, tf, np.nan])
 
+        az = np.radians(A[1])
+        tf = np.radians(A[2])
+
+        v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+
+        
+        mag_u = u/np.sqrt(u.dot(u))
+        mag_v = v/np.sqrt(v.dot(v))
+
+        angle = np.abs(90 - np.degrees(np.arccos(np.dot(mag_u, mag_v))))
+
+        print("\tHeight: {:.2f} km | Angle: {:.2f} deg".format(traj_point.elev/1000, angle))
         cyscan_res.append(A)
 
     T_nom = getTimes(np.array(cyscan_res), u, a)
-    
+
     T_pert = []
 
     # if perturbations is not None:
@@ -546,7 +570,7 @@ def getTimes(arr, u, a):
 
     v = []
 
-    for ii in range(a):
+    for ii in range(len(az)):
         v = np.array([np.sin(az[ii])*np.sin(tf[ii]), np.cos(az[ii])*np.sin(tf[ii]), -np.cos(tf[ii])])
 
         mag_v = v/np.sqrt(v.dot(v))
@@ -629,6 +653,7 @@ def planeConst(params, station_list, sounding, ref_pos, setup, rest_plane):
 
 def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_on_traj):
     
+
     if point_on_traj is None:
             
         x0, y0, t0, v, azim, zangle = params
@@ -652,9 +677,10 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
 
         temp_traj = Trajectory(point_on_traj.time, v, zenith=Angle(zangle), azimuth=Angle(azim), pos_f=pos_f)
 
+
     #points = temp_traj.findPoints(gridspace=1000, min_p=pos_f.elev, max_p=100000)
 
-    points = temp_traj.trajInterp2(div=100, min_p=17000, max_p=100000, xyz=True, ref_loc=ref_pos)
+    points = temp_traj.trajInterp2(div=50, min_p=17000, max_p=60000, xyz=False)
 
     if prefs.debug:
         dif = points[1] - points[0]

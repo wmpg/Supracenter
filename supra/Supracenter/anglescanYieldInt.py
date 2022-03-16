@@ -7,12 +7,9 @@ from supra.Utils.Classes import Constants
 
 consts = Constants()
 
-def getPressure(z):
-    p = 10*101.325*np.exp(-0.00012*z)*100
-    # in Pa
-    return p
 
-def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, trace=False, plot=False):
+
+def anglescan(S, phi, theta, z_profile, vfreq, wind=True, debug=True, trace=False, plot=False):
     # Originally by Wayne Edwards (Supracenter)
 
     """ Ray-traces from a point given initial launch angles
@@ -35,10 +32,10 @@ def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, tra
         D: [list] (x, y, z, t) final position and travel time of the raytrace
         T: [list] returned if trace is set to True, (x, y, z, t) of all points along the ray-trace
     """
-    b_const = 1.119e-4
-    k_const = 2.0e-4
+    b_const = 1/consts.SCALE_HEIGHT
+    k_const = consts.ABSORPTION_COEFF
     T = z_profile[-1, 1]
-    P = getPressure(z_profile[-1, 0])
+    P = z_profile[-1, 4]
     # Azimuths and Wind directions are measured as angles from north, and increasing clockwise to the East
     phi = (phi - 90)%360
 
@@ -88,14 +85,35 @@ def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, tra
     a, b = np.cos(phi), np.sin(phi)
     last_z = 0 
     g = 0
+    f = 0
 
+    T_0 = 288.15 # 15 deg C
+    P_0 = 101325 # Standard Pressure
+    dz_counter = 0
+    path_length = 0
+    pdr = 0
+    reed_attenuation = 0
     #for i in range(n_layers - 1):
     for i in range(n_layers - 1, 0, -1):
 
         s2 = s[i]**2
         delz = z[i] - z[i-1]
-        pres_1 = getPressure(z[i])
-        pres   = getPressure(z[i-1])
+        pres_1 = z_profile[i, 4]
+        pres   = z_profile[i-1, 4]
+
+        pres_mean = (pres + pres_1)/2
+        T_mean = (z_profile[i, 1]**2/consts.GAMMA/consts.R*consts.M_0 + z_profile[i-1, 1]**2/consts.GAMMA/consts.R*consts.M_0)/2
+
+        dz_counter += delz
+
+        del_f = (pres_mean/P_0)**(1/3)*(T_mean/T_0)**(-1/3)*delz
+        if not np.isnan(del_f):
+            f += del_f
+        else:
+            # at least one layer is had an error contributing to f
+            pass
+
+
 
         # clear old variables
 
@@ -113,9 +131,9 @@ def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, tra
                 print("ANGLESCAN ERROR: All NaNs - rays reflect upwards")
 
             if trace:
-                return np.array([[np.nan, np.nan, np.nan, np.nan]])
+                return np.array([[np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan]])
             else:
-                return np.array([np.nan, np.nan, np.nan, np.nan])
+                return np.array([np.nan, np.nan, np.nan, np.nan, np.nan, np.nan, np.nan])
 
         # Equation (10)
         dx = (p2 + s2*U)*A
@@ -127,10 +145,23 @@ def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, tra
 
         horizontal_change = np.sqrt((a*dx - b*dy)**2 + (b*dx + a*dy)**2)
         angle_of_depression = np.arctan(delz/horizontal_change)
+
+        dr = np.sqrt(horizontal_change**2 + delz**2)
+
+        path_length += dr
+
+        pdr += pres_mean*dr**3
+
+        d_reed = -k_const*vfreq**2*dr*(1/pres_1 - 1/pres)/np.log(pres_1/pres)
+
+        if not np.isnan(d_reed):
+            reed_attenuation += d_reed
+
         # snell = delz / np.sqrt(delz**2 + (a*dx - b*dy)**2 + (b*dx + a*dy)**2)
 
         # sin(arctan(x)) == x / (sqrt(x^2 + 1))
-        G = -vfreq**2*k_const/b_const*(np.exp(b_const*z[i]) - np.exp(b_const*z[i-1]))/np.sin(angle_of_depression)/101325
+        #G = -vfreq**2*k_const/b_const*(np.exp(b_const*z[i]) - np.exp(b_const*z[i-1]))/np.sin(angle_of_depression)/z_profile[0, 4]
+        G = -vfreq**2*k_const/b_const*(z_profile[i, 4] - z_profile[i-1, 4])/np.sin(angle_of_depression)/P_0**2
         g += G
         # Calculate true destination positions (transform back)
         #0.0016s
@@ -176,22 +207,25 @@ def anglescan(S, phi, theta, z_profile, vfreq, P_amb, wind=True, debug=True, tra
 
     T_0 = z_profile[0, 1]**2/consts.GAMMA/consts.R*consts.M_0
 
-    P_0 = getPressure(z_profile[0, 0])
+    P_0 = z_profile[0, 4]
 
     z_2 = z_profile[-1, 0]
     z_1 = z_profile[0, 0]
 
-    P_2 = getPressure(z_2)
-    P_1 = getPressure(z_1)
+    P_2 = z_profile[-1, 4]
+    P_1 = z_profile[0, 4]
 
     T_2 = z_profile[-1, 1]**2*consts.M_0/consts.GAMMA/consts.R
     T_1 = z_profile[1, 1]**2*consts.M_0/consts.GAMMA/consts.R
 
     # needs to be average f_d
-    f = ((T_0/P_0)**(0.33)*(((P_2/T_2)**(0.33)*z_2 - (P_1/T_1)**(0.33)*z_1)/(z_2 - z_1)) + 1)/2
-    
+    # f = ((T_0/P_0)**(0.33)*(((P_2/T_2)**(0.33)*z_2 - (P_1/T_1)**(0.33)*z_1)/(z_2 - z_1)) + 1)/2
+
+    f_final = f/dz_counter
+    P = np.array([P_2, P_1])
+
     ##########################
-    return np.array([f, np.exp(g), T, P])
+    return np.array([f_final, np.exp(g), T, P, path_length, pdr, reed_attenuation])
 
 if __name__ == '__main__':
     S = np.array([0, 0, 1000])

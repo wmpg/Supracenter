@@ -5,11 +5,11 @@ from obspy.io.mseed.util import *
 
 
 def shift():
-	in_file = "F:\\Desktop\\Romania\\RO_IPH3_11.mseed"
-	out_file = "F:\\Desktop\\Romania\\RO_IPH3_Shift_small.mseed"
+	in_file = "F:\\Documents\\Meteor Research\\Event\\CrawfordBay\\IM_I56H2_0.mseed"
+	out_file = "F:\\Documents\\Meteor Research\\Event\\CrawfordBay\\IM_I56H2_shift.mseed"
 
 	# shift in seconds
-	shifter = -2.397
+	shifter = -1.65
 
 
 

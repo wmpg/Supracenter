@@ -35,7 +35,7 @@ def initTabs(obj):
     addFetchATMWidgets(obj)
     # addProfileWidgets(obj)
     # addRayTracerWidgets(obj)
-    # addRefineWidgets(obj)
+    addRefineWidgets(obj)
 
 
 def initMenuBar(obj, layout):
@@ -457,9 +457,9 @@ def addRefineWidgets(obj):
     obj.ref_buttons.addWidget(load_traj)
     load_traj.clicked.connect(obj.refLoadTrajectory)
 
-    high_stats = QPushButton("Highlight Stations")
-    obj.ref_buttons.addWidget(high_stats)
-    high_stats.clicked.connect(obj.refHighStats)
+    # high_stats = QPushButton("Highlight Stations")
+    # obj.ref_buttons.addWidget(high_stats)
+    # high_stats.clicked.connect(obj.refHighStats)
 
     sync_heights = QPushButton("Sync Heights to Trajectory")
     obj.ref_buttons.addWidget(sync_heights)
@@ -477,17 +477,17 @@ def addRefineWidgets(obj):
     obj.ref_wave_control.addWidget(clear_stations)
     clear_stations.clicked.connect(obj.refClearStations)
 
-    ball_stations = QPushButton("Show Ballistic")
-    obj.ref_wave_control.addWidget(ball_stations)
-    ball_stations.clicked.connect(obj.refBallStations)
+    # ball_stations = QPushButton("Show Ballistic")
+    # obj.ref_wave_control.addWidget(ball_stations)
+    # ball_stations.clicked.connect(obj.refBallStations)
 
-    frag_stations = QPushButton("Show Fragmentations")
-    obj.ref_wave_control.addWidget(frag_stations)
-    frag_stations.clicked.connect(obj.refFragStations)
+    # frag_stations = QPushButton("Show Fragmentations")
+    # obj.ref_wave_control.addWidget(frag_stations)
+    # frag_stations.clicked.connect(obj.refFragStations)
 
-    both_stations = QPushButton("Show Fragmentation and Ballistic")
-    obj.ref_wave_control.addWidget(both_stations)
-    both_stations.clicked.connect(obj.refBothStations)
+    # both_stations = QPushButton("Show Fragmentation and Ballistic")
+    # obj.ref_wave_control.addWidget(both_stations)
+    # both_stations.clicked.connect(obj.refBothStations)
 
 
     obj.ref_control.addLayout(obj.ref_traj)
@@ -673,6 +673,10 @@ def addMakePicksWidgets(obj):
     obj.W_est = QPushButton('Yield Estimate')
     pick_group_layout.addWidget(obj.W_est)
     obj.W_est.clicked.connect(obj.W_estGUI)
+
+    obj.lum_eff = QPushButton('Luminous Efficiency')
+    pick_group_layout.addWidget(obj.lum_eff)
+    obj.lum_eff.clicked.connect(obj.lumEffGUI)
 
     make_picks_check_group = QGroupBox("Toggles")
     make_picks_control_panel.addWidget(make_picks_check_group)

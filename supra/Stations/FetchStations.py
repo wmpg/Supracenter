@@ -5,6 +5,7 @@ import datetime
 import obspy
 import pickle
 import requests
+import certifi
 from socket import timeout
 
 from wmpl.Utils.OSTools import mkdirP
@@ -30,7 +31,7 @@ def urlList():
         'http://eida.ipgp.fr/fdsnws/',
         'http://webservices.ingv.it/fdsnws/',
         'http://erde.geophysik.uni-muenchen.de/fdsnws/',
-        'http://eida-sc3.infp.ro/fdsnws/',
+        'https://eida-sc3.infp.ro//fdsnws/',
         'http://eida.gein.noa.gr/fdsnws/',
         'http://www.orfeus-eu.org/fdsnws/',
         'http://ws.resif.fr/fdsnws/',
@@ -140,7 +141,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
 
 
         try:
-            txt = urllibrary.urlopen(query).read().decode('utf-8')
+            txt = urllibrary.urlopen(query, cafile=certifi.where()).read().decode('utf-8')
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 pass
@@ -183,7 +184,7 @@ def getAllStations(lat_centre, lon_centre, deg_radius, fireball_datetime, dir_pa
                                 "format=xml&nodata=404&level=response".format(u, network_new, station_code, start_time))
 
                     try:
-                        stn_query_txt = urllibrary.urlopen(stn_query)
+                        stn_query_txt = urllibrary.urlopen(stn_query, cafile=certifi.where())
                     except urllib.error.HTTPError as e:
                         if e.code == 404:
                             pass

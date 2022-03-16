@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import pickle
 import multiprocessing
@@ -96,6 +97,7 @@ class rtvWindowDialog(QWidget):
         self.current_eigen = None
         self.current_loaded_rays = []
 
+        self.plot_ba_data = []
 
     def buildGUI(self):
         self.setWindowTitle('Ray-Trace Viewer')
@@ -637,7 +639,7 @@ class rtvWindowDialog(QWidget):
             print("Station Location")
             print(stat_pos)
 
-        sounding, perturbations = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, spline=100, ref_time=self.bam.setup.fireball_datetime)
+        sounding, perturbations = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, spline=1000, ref_time=self.bam.setup.fireball_datetime)
 
         ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
@@ -654,15 +656,28 @@ class rtvWindowDialog(QWidget):
 
         r, tr, f_particle = cyscan(np.array([source.x, source.y, source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
                             sounding, trace=True, plot=False, particle_output=True, debug=False, \
-                            wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True)
+                            wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True, processes=1)
 
         if not clean_mode:
+            az = np.radians(r[1])
+            tf = np.radians(180 - r[2])
+            u = np.array([traj.vector.x,
+                        traj.vector.y,
+                        traj.vector.z])
+            v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+            angle_off = abs(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))) - 90)
             if not self.pertstog.isChecked():
                 dx = np.abs(stat_pos.x - source.x)
                 dy = np.abs(stat_pos.y - source.y)
                 dz = np.abs(stat_pos.z - source.z)
                 time_along_trajectory = traj.findTime(source.elev)
+                
                 print("###### RESULTS ######")
+                print("Time Along Trajectory (wrt Reference): {:.4f} s".format(time_along_trajectory))
+                print("Acoustic Path Time: {:.4f} s".format(r[0]))
+                print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
+                print("Launch Angle {:.2f} deg".format(angle_off))
+                print("###### EXTRAS #######")
                 print("Time: {:.4f} s".format(r[0]))
                 print("Azimuth: {:.2f} deg from North".format(r[1]))
                 print("Takeoff: {:.2f} deg from up".format(r[2]))
@@ -681,10 +696,12 @@ class rtvWindowDialog(QWidget):
                 az_array = []
                 tk_array = []
                 err_array = []
+                angle_off_array = []
                 t_array.append(r[0])
                 az_array.append(r[1])
                 tk_array.append(r[2])
                 err_array.append(r[3])
+                angle_off_array.append(angle_off)
 
 
         try:
@@ -778,7 +795,10 @@ class rtvWindowDialog(QWidget):
                 az_array = []
                 tk_array = []
                 err_array = []
-            for pert in perturbations:
+                angle_off_array = []
+            for pert_idx, pert in enumerate(perturbations):
+                sys.stdout.write("\r Working on Perturbation {:}/{:}".format(pert_idx+1, len(perturbations)))
+                sys.stdout.flush()
                 r, tr, f_particle = cyscan(np.array([source.x, source.y, source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
                                 pert, trace=True, plot=False, particle_output=True, debug=False, \
                                 wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True)
@@ -788,6 +808,16 @@ class rtvWindowDialog(QWidget):
                 az_array.append(r[1])
                 tk_array.append(r[2])
                 err_array.append(r[3])
+
+
+                az = np.radians(r[1])
+                tf = np.radians(180 - r[2])
+                u = np.array([traj.vector.x,
+                            traj.vector.y,
+                            traj.vector.z])
+                v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
+                angle_off = abs(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))) - 90)
+                angle_off_array.append(angle_off)
 
                 try:
 
@@ -803,17 +833,29 @@ class rtvWindowDialog(QWidget):
                 except TypeError:
                     pass
         
+            print()
+            print("###### NOMINAL RESULTS ######")
+            print("Time: {:.4f} s".format(t_array[0]))
+            print("Azimuth: {:.2f} deg from North".format(az_array[1]))
+            print("Takeoff: {:.2f} deg from up".format(tk_array[2]))
+            print("Error in Solution {:.2f} m".format(err_array[3]))
+            print("### UNCERTAINTIES ###")
+            print("Time: {:.4f} - {:.4f} s ({:.4f} s)".format(np.nanmin(t_array), np.nanmax(t_array), np.nanmax(t_array) - np.nanmin(t_array)))
+            print("Azimuth: {:.2f} - {:.2f} deg from North ({:.2f} deg)".format(np.nanmin(az_array), np.nanmax(az_array), np.nanmax(az_array) - np.nanmin(az_array)))
+            print("Takeoff: {:.2f} - {:.2f} deg from up ({:.2f} deg)".format(np.nanmin(tk_array), np.nanmax(tk_array), np.nanmax(tk_array) - np.nanmin(tk_array)))
+            print("Error in Solution {:.2f} - {:.2f} m ({:.2f} m)".format(np.nanmin(err_array), np.nanmax(err_array), np.nanmax(err_array) - np.nanmin(err_array)))
+            print("Angle Off {:.2f} - {:.2f} deg ({:.2f} deg)".format(np.nanmin(angle_off_array), np.nanmax(angle_off_array), np.nanmax(angle_off_array) - np.nanmin(angle_off_array)))
 
-            # print("###### NOMINAL RESULTS ######")
-            # print("Time: {:.4f} s".format(t_array[0]))
-            # print("Azimuth: {:.2f} deg from North".format(az_array[1]))
-            # print("Takeoff: {:.2f} deg from up".format(tk_array[2]))
-            # print("Error in Solution {:.2f} m".format(err_array[3]))
-            # print("### UNCERTAINTIES ###")
-            # print("Time: {:.4f} - {:.4f} s ({:.4f} s)".format(np.nanmin(t_array), np.nanmax(t_array), np.nanmax(t_array) - np.nanmin(t_array)))
-            # print("Azimuth: {:.2f} - {:.2f} deg from North ({:.2f} deg)".format(np.nanmin(az_array), np.nanmax(az_array), np.nanmax(az_array) - np.nanmin(az_array)))
-            # print("Takeoff: {:.2f} - {:.2f} deg from up ({:.2f} deg)".format(np.nanmin(tk_array), np.nanmax(tk_array), np.nanmax(tk_array) - np.nanmin(tk_array)))
-            # print("Error in Solution {:.2f} - {:.2f} m ({:.2f} m)".format(np.nanmin(err_array), np.nanmax(err_array), np.nanmax(err_array) - np.nanmin(err_array)))
+            print("Saving CSV of Perturbations")
+            file_name = saveFile("csv", note="Perturbations")
+
+            with open(file_name, "w+") as f:
+                f.write("Height [km], Time [s], Azimuth [deg from North], Takeoff [deg from Up], Error [m], Angle Off [deg]\n")
+                for ll, line in enumerate(t_array):
+                    if ll == len(t_array):
+                        f.write("{:}, {:}, {:}, {:}, {:}, {:}".format(source.elev/1000, t_array[ll], az_array[ll], tk_array[ll], err_array[ll], angle_off_array[ll]))
+                    else:
+                        f.write("{:}, {:}, {:}, {:}, {:}, {:}\n".format(source.elev/1000, t_array[ll], az_array[ll], tk_array[ll], err_array[ll], angle_off_array[ll]))
 
     def loadAngleCSV(self):
         

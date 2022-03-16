@@ -34,9 +34,9 @@ class Constants:
         # standard gravity at mean sea level
         self.g_0 = 9.80665 #m/s^2
 
-        self.k = 2e-4
+        self.ABSORPTION_COEFF = 2e-4 # kg/m^2
 
-        self.b = 1.19e-4
+        self.SCALE_HEIGHT = 8500 # meters
 
         self.R_EARTH = 6378100
 
@@ -253,6 +253,9 @@ class Vector3D:
 
     def __str__(self):
         return '[ {:.4f}, {:.4f}, {:.4f}]'.format(self.x, self.y, self.z)
+
+    def mag(self):
+        return np.sqrt(self.x**2 + self.y**2 + self.z**2)
 
 
 class Annote:
@@ -682,6 +685,12 @@ class Color:
         b = np.random.randint(0, 255)
         return (r, g, b)
 
+    def generateLight(self):
+        r = np.random.randint(150, 255)
+        g = np.random.randint(150, 255)
+        b = np.random.randint(150, 255)
+        return (r, g, b)
+
 class RectangleItem(pg.GraphicsObject):
     def __init__(self, data, c_map="forward", alpha=70):
         pg.GraphicsObject.__init__(self)
@@ -793,8 +802,84 @@ if __name__ == '__main__':
     pos_i = Position(49.3, -116.9, 36000)
 
     # A = Trajectory(0, 27760, pos_i=pos_i, azimuth=Angle(295.66), zenith=Angle(73.4))
-    A = Trajectory(0, 27760, pos_f=Position(48.9264, -119.3943, 0), pos_i=Position(49.6319, -114.2556, 80000))
+    A = Trajectory(-5.29, 14700, pos_i=Position(49.2726, -116.4978, 80000), azimuth=Angle(343.12), zenith=Angle(53.80))
+    times = np.array([20.6261503,
+20.88808301,
+21.0931017,
+21.24130258,
+21.42329915,
+21.61658234,
+21.98007849,
+22.34354258,
+22.59343517,
+22.94548439,
+23.03643459,
+23.29780617,
+23.46838787,
+23.66210393,
+23.82106235,
+23.85594824,
+23.98099874,
+23.99287853,
+24.07241386,
+24.12876675,
+24.19669482,
+24.22994543,
+24.35390574,
+24.56065591,
+24.65154197,
+24.74212342,
+24.79703342,
+24.8770978,
+25.0587577,
+25.2404176,
+25.24133144,
+25.36508333,
+25.41183298,
+25.46887525,
+25.52643055,
+25.65119247,
+25.66196605,
+25.74130899,
+25.76375395,
+25.85455985,
+25.8776942,
+26.02480489,
+26.04824384,
+26.13906578,
+26.35367168,
+26.72824602,
+26.82052688,
+26.92353322,
+27.03747347,
+27.27482894,
+27.36642041,
+27.44265312,
+27.62618878,
+27.79431758,
+27.96406562,
+27.97511174,
+28.07624233,
+28.12501202,
+28.26235916,
+28.30752163,
+28.3166439,
+28.33852774,
+28.32639143,
+28.45072048,
+28.7221923,
+28.85803241,
+28.94906276,
+29.07388881,
+29.26648262,
+29.41335283,
+29.58173814])
     print(A)
+    heights = []
+    for t in times:
+        h = A.approxHeight(t - 27)
+        print(h)
+
     # S = Position(48.8461, 13.7179, 0)
 
     # print("Line")
