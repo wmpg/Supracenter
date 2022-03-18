@@ -117,6 +117,9 @@ def dweight(data, d_min, d_max):
     ns = len(data)
     w = [1]*ns
 
+    ### OVERRIDE
+    return w
+
     # full weighting
     if d_max == 0:
         return w

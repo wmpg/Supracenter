@@ -73,7 +73,7 @@ def timeFunction(x, *args):
 
     # Residuals to each station
     sotc = np.empty(n_stations)
-    
+
     for j in range(n_stations):
         # if station has weight
         if w[j] > 0:
@@ -85,13 +85,13 @@ def timeFunction(x, *args):
             if pert_num == 0:
 
                 # No perturbations used here
-                sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+                sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
            
             else:
 
                 # Sounding is a specfic perturbation number
                 # TODO: Go back and fix how this is done, not all perts need to be generated, just one here 
-                nom, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev])
+                nom, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
                 
                 # sounding is none when there is an error in getting sounding
                 if sounding is not None:
@@ -104,8 +104,7 @@ def timeFunction(x, *args):
 
             # Use distance and atmospheric data to find path time
             time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \
-                        wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
-                        h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                        wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
             # Residual time for each station
             sotc[j] = tobs[j] - time3D[j]
 
@@ -113,7 +112,7 @@ def timeFunction(x, *args):
         else:
             sotc[j] = tobs[j]
     
-    motc = np.mean(sotc)
+    motc = np.nanmean(sotc)
     ##########
     N_s = np.count_nonzero(~np.isnan(sotc))
     # User defined occurrence time
@@ -125,12 +124,20 @@ def timeFunction(x, *args):
     # Unknown occurrence time
     else:
         #err = np.dot(wn, np.absolute(sotc - motc))/nwn
+        N_s = 0
         err = 0
-        for s in sotc:
-            print(s, motc)
-            err += (1 + (s - motc)**2)**0.5 - 1
 
-        err = err/N_s
+        for s in sotc:
+            if np.isnan(s):
+                continue
+            else:
+                err += (1 + (s - motc)**2)**0.5 - 1
+                N_s += 1
+        
+        if N_s == 0:
+            err = np.inf
+        else:
+            err = err/N_s
 
     # if setup.debug:
     #     # print out current search location
