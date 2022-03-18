@@ -108,7 +108,7 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
         D.pos_geo(ref_pos)
 
 
-        sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev])
+        sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev], ref_time=setup.fireball_datetime)
 
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
@@ -154,8 +154,7 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
         #                  wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
         #                     h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
         time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
-                         wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
-                            h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+                         wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist, processes=1)
         # trace.append(temp_trace)
 
         # find residuals

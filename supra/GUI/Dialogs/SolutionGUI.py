@@ -1625,25 +1625,32 @@ class SolutionGUI(QMainWindow):
 
         ref_pos = Position(self.setup.lat_centre, self.setup.lon_centre, 0)
 
-        sounding = parseWeather(self.setup)
+        # sounding = parseWeather(self.setup)
 
         for jj, f in enumerate(frags):
+
             S = Position(f[1], f[2], f[0])
             S.pos_loc(ref_pos)
             T = f[3]
             U = f[4]
             
 
-            if U == 0:
+            if True:
+            # if U == 0:
                 for ii, stn in enumerate(self.stn_list):
-                    stn.position.pos_loc(ref_pos)
-
+                    print("Station No: {:}".format(ii+1))
+                    stn.metadata.position.pos_loc(ref_pos)
+                    stat_pos = stn.metadata.position
                     # Cut down atmospheric profile to the correct heights, and interp
-                    zProfile, _ = getWeather(np.array([S.lat, S.lon, S.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False)
+                    lat =   [S.lat, stat_pos.lat]
+                    lon =   [S.lon, stat_pos.lon]
+                    elev =  [S.elev, stat_pos.elev]
+                    sounding, perturbations = self.bam.atmos.getSounding(lat=lat, lon=lon, heights=elev, spline=1000, ref_time=self.bam.setup.fireball_datetime)
+                    # zProfile, _ = getWeather(np.array([S.lat, S.lon, S.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+                    #         [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False)
                     # Travel time of the fragmentation wave
-                    f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(S.xyz, stn.position.xyz, zProfile, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+                    f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(S.xyz, stn.metadata.position.xyz, sounding, \
+                        wind=self.prefs.wind_en, h_tol=self.prefs.pso_min_ang, v_tol=self.prefs.pso_min_dist, processes=1)
 
                     try:
                         self.ref_stn_canvas[ii].addItem(pg.InfiniteLine(pos=(f_time, 0), angle=90, pen=colors[jj]))
@@ -1653,44 +1660,44 @@ class SolutionGUI(QMainWindow):
                     except:
                         # no f_time
                         pass
-            else:
-                P_upper = self.ref_traj.findGeo(f[0] + U)
-                T_upper = self.ref_traj.findTime(f[0] + U)
+            # else:
+            #     P_upper = self.ref_traj.findGeo(f[0] + U)
+            #     T_upper = self.ref_traj.findTime(f[0] + U)
 
-                P_lower = self.ref_traj.findGeo(f[0] - U)
-                T_lower = self.ref_traj.findTime(f[0] - U)
+            #     P_lower = self.ref_traj.findGeo(f[0] - U)
+            #     T_lower = self.ref_traj.findTime(f[0] - U)
 
 
-                for ii, stn in enumerate(self.stn_list):
+            #     for ii, stn in enumerate(self.stn_list):
 
-                    stn.position.pos_loc(ref_pos)
+            #         stn.position.pos_loc(ref_pos)
 
-                    # Cut down atmospheric profile to the correct heights, and interp
-                    zProfile_u, _ = getWeather(np.array([P_upper.lat, P_upper.lon, P_upper.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False)
+            #         # Cut down atmospheric profile to the correct heights, and interp
+            #         zProfile_u, _ = getWeather(np.array([P_upper.lat, P_upper.lon, P_upper.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+            #                 [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False)
                     
-                    # Cut down atmospheric profile to the correct heights, and interp
-                    zProfile_l, _ = getWeather(np.array([P_lower.lat, P_lower.lon, P_lower.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
-                            [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False) 
+            #         # Cut down atmospheric profile to the correct heights, and interp
+            #         zProfile_l, _ = getWeather(np.array([P_lower.lat, P_lower.lon, P_lower.elev]), np.array([stn.position.lat, stn.position.lon, stn.position.elev]), self.setup.weather_type, \
+            #                 [ref_pos.lat, ref_pos.lon, ref_pos.elev], copy.copy(sounding), convert=False) 
                     
-                    # Travel time of the fragmentation wave
-                    f_time_u, frag_azimuth, frag_takeoff, frag_err = cyscan(P_upper.xyz, stn.position.xyz, zProfile_u, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            #         # Travel time of the fragmentation wave
+            #         f_time_u, frag_azimuth, frag_takeoff, frag_err = cyscan(P_upper.xyz, stn.position.xyz, zProfile_u, wind=True, \
+            #             n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
-                    f_time_l, frag_azimuth, frag_takeoff, frag_err = cyscan(P_lower.xyz, stn.position.xyz, zProfile_l, wind=True, \
-                        n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
+            #         f_time_l, frag_azimuth, frag_takeoff, frag_err = cyscan(P_lower.xyz, stn.position.xyz, zProfile_l, wind=True, \
+            #             n_theta=self.setup.n_theta, n_phi=self.setup.n_phi, h_tol=self.setup.h_tol, v_tol=self.setup.v_tol)
 
-                    try:
+            #         try:
 
-                        self.ref_stn_canvas[ii].addItem(pg.LinearRegionItem(values=(f_time_l, f_time_u), pen=colors[jj], brush=colors_alpha[jj], movable=False))
+            #             self.ref_stn_canvas[ii].addItem(pg.LinearRegionItem(values=(f_time_l, f_time_u), pen=colors[jj], brush=colors_alpha[jj], movable=False))
 
-                        # self.ref_stn_canvas[ii].addItem(pg.InfiniteLine(pos=(f_time, 0), angle=90, pen=colors[jj]))
-                        # self.setColortoRow(self.ref_table, jj, QColor("blue"))
-                        for j in range(5):
-                            self.ref_table.item(jj, j).setBackground(colors[jj])
-                    except:
-                        # no f_time
-                        pass
+            #             # self.ref_stn_canvas[ii].addItem(pg.InfiniteLine(pos=(f_time, 0), angle=90, pen=colors[jj]))
+            #             # self.setColortoRow(self.ref_table, jj, QColor("blue"))
+            #             for j in range(5):
+            #                 self.ref_table.item(jj, j).setBackground(colors[jj])
+            #         except:
+            #             # no f_time
+            #             pass
         
         SolutionGUI.update(self)
 

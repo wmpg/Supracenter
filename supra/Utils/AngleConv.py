@@ -58,6 +58,10 @@ def geo2Loc(lat0, lon0, elev0, lat, lon, elev):
     # Convert to radians
 
     lat0, lon0 = np.radians(lat0), np.radians(lon0)
+
+    if lat is None or lon is None:
+        return np.nan, np.nan, np.nan
+
     lat, lon = np.radians(lat), np.radians(lon)
 
 
