@@ -36,7 +36,7 @@ def timeFunction(x, *args):
     '''
 
     # Retrieve passed arguments
-    stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num = args
+    stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo = args
 
     # number of stations total
     n_stations = len(stns)
@@ -82,36 +82,40 @@ def timeFunction(x, *args):
             D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
             D.pos_geo(ref_pos)
 
-            if pert_num == 0:
+            if not theo:
+                if pert_num == 0:
 
-                # No perturbations used here
-                sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
-           
-            else:
-
-                # Sounding is a specfic perturbation number
-                # TODO: Go back and fix how this is done, not all perts need to be generated, just one here 
-                nom, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
-                
-                # sounding is none when there is an error in getting sounding
-                if sounding is not None:
-                
-                    sounding = sounding[pert_num - 1]
-                
+                    # No perturbations used here
+                    sounding, _ = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
+               
                 else:
-                
-                    sounding = nom
 
-            # Use distance and atmospheric data to find path time
-            time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \
-                        wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
-            # Residual time for each station
+                    # Sounding is a specfic perturbation number
+                    # TODO: Go back and fix how this is done, not all perts need to be generated, just one here 
+                    nom, sounding = atmos.getSounding(lat=[S.lat, D.lat], lon=[S.lon, D.lon], heights=[S.elev, D.elev], ref_time=setup.fireball_datetime)
+                    
+                    # sounding is none when there is an error in getting sounding
+                    if sounding is not None:
+                    
+                        sounding = sounding[pert_num - 1]
+                    
+                    else:
+                    
+                        sounding = nom
+
+                # Use distance and atmospheric data to find path time
+                time3D[j], _, _, _ = cyscan(S.xyz, D.xyz, sounding, \
+                            wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist, processes=1)
+                # Residual time for each station
+            else:
+                distance = np.sqrt((S.x - D.x)**2 + (S.y - D.y)**2 + (S.z - D.z)**2)
+                time3D[j] = distance/prefs.avg_sp_sound
             sotc[j] = tobs[j] - time3D[j]
 
         # If station has no weight
         else:
             sotc[j] = tobs[j]
-    
+
     motc = np.nanmean(sotc)
     ##########
     N_s = np.count_nonzero(~np.isnan(sotc))
@@ -138,6 +142,7 @@ def timeFunction(x, *args):
             err = np.inf
         else:
             err = err/N_s
+
 
     # if setup.debug:
     #     # print out current search location
@@ -247,7 +252,7 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, override_supra=[]):
+def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, override_supra=[], theo=False):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
@@ -347,7 +352,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         #  [x, y, z] local coordinates
 
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num)
+        args = (stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location
@@ -367,12 +372,11 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         #             phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega, \
         #             minfunc=prefs.pso_min_error, minstep=prefs.pso_min_step, processes=1, particle_output=True) 
         
-        # Unrestricted
 
         x_opt_temp, f_opt, sup, errors = pso(timeFunction, search_min.xyz, search_max.xyz, \
-                args=args, swarmsize=int(prefs.pso_swarm_size), maxiter=int(prefs.pso_max_iter), \
-                phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega,\
-                minfunc=prefs.pso_min_error, minstep=prefs.pso_min_step, processes=1, particle_output=True) 
+                    args=args, swarmsize=int(prefs.pso_swarm_size), maxiter=int(prefs.pso_max_iter), \
+                    phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega,\
+                    minfunc=prefs.pso_min_error, minstep=prefs.pso_min_step, processes=1, particle_output=True) 
 
 
         print('Done Searching')
@@ -385,6 +389,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
 
     # If manual search
     else:
+
         single_point.position.pos_loc(ref_pos)
         x_opt = single_point.position
         sup = single_point.position.xyz
@@ -393,7 +398,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
 
     # Get results for current Supracenter
     time3D, az, tf, r, motc, sotc, trace = outputWeather(n_stations, x_opt, stns, setup, \
-                                                ref_pos, atmos, output_name, s_name, kotc, w, prefs)
+                                                ref_pos, atmos, output_name, s_name, kotc, w, prefs, theo)
 
     for ii, element in enumerate(time3D):
         if np.isnan(element):

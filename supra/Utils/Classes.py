@@ -164,6 +164,7 @@ class Position:
 
         A = latLonAlt2ECEF(self.lat_r, self.lon_r, self.elev) 
         B = latLonAlt2ECEF(other.lat_r, other.lon_r, other.elev)
+        print(A, B)
 
         return np.sqrt((A[0] - B[0])**2 + (A[1] - B[1])**2 + (A[2] - B[2])**2)
 

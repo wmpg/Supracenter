@@ -346,6 +346,11 @@ class SolutionGUI(QMainWindow):
 
         errorMessage('Output to CSV!', 0, title='Exported!', detail='Filename: {:}'.format(file_name))
 
+    def supTheoSetup(self, manual):
+
+        supSearch(self.bam, self.prefs, manual=manual, results_print=False, obj=self, theo=True)
+
+
     def supSearchSetup(self, manual):
 
         supSearch(self.bam, self.prefs, manual=manual, results_print=False, obj=self)

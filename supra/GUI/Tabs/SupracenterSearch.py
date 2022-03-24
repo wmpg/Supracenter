@@ -11,11 +11,24 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.AngleConv import loc2Geo
 from supra.Utils.Classes import Position, Supracenter
 
-def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=False):
+def theoSearch(bam, prefs):
+    ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
+    s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
+
+    n_stations = len(s_name)
+
+    xstn = s_info[0:n_stations, 0:3]
+
+    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, pert_num=0, theo=True)
+
+def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=False, theo=False):
     """
     Function to initiate PSO Search of a Supracenter
     """
     
+    if theo:
+        theoSearch(bam, prefs)
+        return None
     # Reference location to convert to local coordinates
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
 
@@ -68,7 +81,7 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
             norm_res += res**2
 
     if stat != 0:
-        print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+        print('Residual Norm: {:.4f} s'.format(np.sqrt(norm_res)/stat))
     else:
         print('Residual Norm: Undefined')
 
@@ -96,7 +109,7 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
                     norm_res += res**2
 
             if stat != 0:
-                print('Residual Norm: {:.4f} s'.format(norm_res/stat))
+                print('Residual Norm: {:.4f} s'.format(np.sqrt(norm_res)/stat))
             else:
                 print('Residual Norm: Undefined')
             reses.append(norm_res/stat)
