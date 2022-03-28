@@ -282,6 +282,7 @@ def calcAllTimes(obj, bam, prefs):
                 heights = [S.elev, stn.metadata.position.elev]
 
                 S.pos_loc(S)
+                stn.metadata.position.pos_loc(S)
 
                 sounding, perturbations = bam.atmos.getSounding(lats, lons, heights, ref_time=bam.setup.fireball_datetime)
 

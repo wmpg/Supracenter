@@ -353,6 +353,10 @@ def addSupraWidgets(obj):
     obj.supra_res_table = QTableWidget(0, 0)
     obj.supra_tab_content.addWidget(obj.supra_res_table)
 
+    obj.theo_button = QPushButton('Theoretical Search')
+    obj.supra_tab_content.addWidget(obj.theo_button)
+    obj.theo_button.clicked.connect(partial(obj.supTheoSetup, True))
+
     obj.search_button = QPushButton('Manual Search')
     obj.supra_tab_content.addWidget(obj.search_button)
     obj.search_button.clicked.connect(partial(obj.supSearchSetup, True))

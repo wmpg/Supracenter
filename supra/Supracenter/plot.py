@@ -47,7 +47,7 @@ def pointsList(sounding, points):
     return locs
 
 
-def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s_name, kotc, w, prefs):
+def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s_name, kotc, w, prefs, theo):
     """ Function to calculate the results of the optimal Supracenter and export interpolated weather data
         from each station.
 
@@ -106,9 +106,8 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
         D = Position(0, 0, 0)
         D.x, D.y, D.z = xstn[j, 0], xstn[j, 1], xstn[j, 2]
         D.pos_geo(ref_pos)
-
-
-        sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev], ref_time=setup.fireball_datetime)
+        if not theo:
+            sounding, _ = atmos.getSounding(lat=[x_opt.lat, D.lat], lon=[x_opt.lon, D.lon], heights=[x_opt.elev, D.elev], ref_time=setup.fireball_datetime)
 
         # Rotate winds to match with coordinate system
         #sounding[:, 3] = np.radians(angle2NDE(np.degrees(sounding[:, 3])))
@@ -153,8 +152,11 @@ def outputWeather(n_stations, x_opt, stns, setup, ref_pos, atmos, output_name, s
         # _, _, _, _, temp_trace = slowscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
         #                  wind=prefs.wind_en, n_theta=prefs.pso_theta, n_phi=prefs.pso_phi,\
         #                     h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
-        time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
+
+            time3D[j], _, _, _ = cyscan(x_opt.xyz, np.array(xstn[j, :]), sounding, \
                          wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist, processes=1)
+        else:
+            time3D[j] = x_opt.pos_distance(D)/prefs.avg_sp_sound
         # trace.append(temp_trace)
 
         # find residuals
