@@ -17,7 +17,7 @@ except:
     # Python 3
     import configparser
 
-def halfMags(low, high, div):
+def halfMags(low, high, divs):
     """ Returns a list of magnitude values and half-magnitude values between low and high
 
     Example: low = 0.049 and high = 100
@@ -26,9 +26,10 @@ def halfMags(low, high, div):
     Arguments:
         low: [float] lowest value to be in list
         high: [float] highest value to be in list
-        div: [int] Spacing between intermediate magnitudes is log10(div)
+        div: [list of ints] Spacing between intermediate magnitudes is log10(div)
                     div = 10 - every magnitude
                     div = 5  - every magnitude and half magnitude
+                    e.g. [2.5, 5] to have a list like 0.1, 0.25, 0.5, 1, 1.25, etc.
 
     Returns:
         [list] list of values between low and high (inclusive) with half-magnitudes between
@@ -43,14 +44,28 @@ def halfMags(low, high, div):
     # every magnitude
     a = np.round((np.arange(l, h)))
 
-    # every partial magnitude above each magnitude
-    b = np.round((np.arange(l, h))) + np.log10(div)
+    if isinstance(divs, list) or isinstance(divs, np.ndarray):
+        pass
+    else:
+        divs = [divs]
 
-    # every partial magnitude below each magnitude
-    c = np.round((np.arange(l, h))) - (1 - np.log10(div))
+
+    b_list = []
+    c_list = []
+    for div in divs:
+
+        # every partial magnitude above each magnitude
+        b = np.round((np.arange(l, h))) + np.log10(div)
+        b_list.append(b)
+
+        # every partial magnitude below each magnitude
+        c = np.round((np.arange(l, h))) - (1 - np.log10(div))
+        c_list.append(c)
+
+    comb = np.append(b_list, c_list)
 
     # combine all magnitudes and remove duplicate
-    s = np.sort(np.concatenate((np.array([l, h]), a, b, c)))
+    s = np.sort(np.concatenate((np.array([l, h]), a, comb)))
 
     temp = s[s <= h]
     mass_list = temp[temp >= l]
@@ -638,8 +653,7 @@ if __name__ == "__main__":
     params = readInfile(cml_args.input_file)
 
     # What masses are chosen
-    mass_list = halfMags(params.mass_min, params.mass_max, params.mags)
-    #mass_list = [1, 0.1, 0.05, 0.02, 0.01, 0.001]
+    mass_list = halfMags(params.mass_min, params.mass_max, [2.5, 5])
 
     print("Masses used:", mass_list)
 
