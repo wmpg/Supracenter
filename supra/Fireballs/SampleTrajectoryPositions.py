@@ -14,7 +14,8 @@ import matplotlib.pyplot as plt
 import scipy.interpolate
 import scipy.signal
 
-from wmpl.Utils.TrajConversions import cartesian2Geo, eci2RaDec, raDec2AltAz, altAz2RADec
+from wmpl.Utils.TrajConversions import cartesian2Geo, eci2RaDec, raDec2AltAz, altAz2RADec, \
+    equatorialCoordPrecession, J2000_JD
 from wmpl.Utils.Math import lineAndSphereIntersections, vectMag, vectNorm
 from wmpl.Utils.Pickling import loadPickle
 
@@ -263,6 +264,11 @@ def sampleTrajectory(dir_path, file_name, beg_ht, end_ht, sample_step):
 
             # Compute the radiant without Earth's rotation included
             ra_norot, dec_norot = eci2RaDec(vectNorm(v_ref_nocorr))
+
+            # Precess to the epoch of date
+            ra_norot, dec_norot = equatorialCoordPrecession(J2000_JD.days, jd, ra_norot, dec_norot)
+
+            # Compute apparent alt/az
             azim_norot, elev_norot = raDec2AltAz(ra_norot, dec_norot, jd, lat, lon)
 
 
@@ -278,6 +284,7 @@ def sampleTrajectory(dir_path, file_name, beg_ht, end_ht, sample_step):
         print("{:s}{:7.3f}, {:13.1f}, {:10.6f}, {:11.6f}, {:10.1f}, {:10.6f}, {:10.6f}".format(time_marker, t_est, ht, np.degrees(lat), np.degrees(lon), ele_geo, np.degrees(azim_norot), np.degrees(elev_norot)))
 
     print('The star * denotes heights extrapolated after the end of the fireball, with the fixed velocity of 3 km/s.')
+    print("The horizontal coordinates are apparent above a fixed ground, not topocentric in J2000!")
 
 
     print('End coordinates (observed):')
