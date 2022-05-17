@@ -89,11 +89,11 @@ def massString(mass):
         mass *= 1000
         if mass < 1:
             mass *= 1000
-            mass_str = str(eval("%.0e" % (mass))) + ' mg'
+            mass_str = str(eval("%.1e" % (mass))) + ' mg'
         else:
-            mass_str = str(eval("%.0e" % (mass))) + ' g'
+            mass_str = str(eval("%.1e" % (mass))) + ' g'
     else:
-        mass_str = str(eval("%.0e" % (mass))) + ' kg'
+        mass_str = str(eval("%.1e" % (mass))) + ' kg'
 
     return mass_str
 
