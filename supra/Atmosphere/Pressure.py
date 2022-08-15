@@ -22,6 +22,23 @@ def pressureConv():
 	return ERA5_PRESSURE_LEVELS
 
 def estPressure(z):
+    """ z in meters
+    """
+
     p = 10*101.325*np.exp(-0.00012*z)*100
     # in Pa
     return p
+
+
+def millibar2Pascal(mB):
+
+    Pa = 100*mB
+
+    return Pa
+
+
+def pascal2Millibar(Pa):
+
+    mB = Pa/100
+
+    return mB

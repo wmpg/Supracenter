@@ -15,6 +15,8 @@ from supra.Supracenter.plot import outputWeather
 from supra.GUI.Tools.GUITools import *
 from supra.Utils.Formatting import *
 
+OUTFILE = "F:\\Desktop\\supracenter_samples.csv"
+
 def timeFunction(x, *args):
     ''' Helper function for PSO
     Takes in supracenter ranges, and calculates the travel time, which is used to find the error.
@@ -153,7 +155,7 @@ def timeFunction(x, *args):
     perc_fail = 100 - (n_stations-N_s)/n_stations*100
 
     # temporary adjustment to try and get the most stations
-    if N_s >= 3:
+    if N_s >= 1:
         total_error = err# + 2*max(error_list)*(failed_stats)
     else:
         total_error = np.inf
@@ -165,6 +167,10 @@ def timeFunction(x, *args):
         print("Error {:10.4f} | Solution {:10.4f}N {:10.4f}E {:8.2f} km {:8.2f} s | Failed Stats {:3} {:}".format(total_error, S.lat, S.lon, S.elev/1000, motc, n_stations-N_s, printPercent(perc_fail, N_s)))
         # Quick adjustment to try and better include stations
 
+    with open(OUTFILE, "a+") as f:
+        f.write("{:}, {:}, {:}, {:}, {:}, {:}\n".format(total_error, S.lat, S.lon, S.elev, motc, N_s))
+
+        f.close()
 
     return total_error
 

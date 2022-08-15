@@ -27,7 +27,40 @@ class LightCurve:
 
         return np.array(self.M), np.array(self.h)
 
+
+    def estimateHeight(self, traj):
+
+        h = []
+
+        for t in self.t:
+            h.append(traj.approxHeight(t)/1000)
+
+        h = np.array(h)
+
+        self.h = h
+
+    def removeNAN(self):
+
+        t = []
+        h = []
+        I = []
+        M = []
+
+        for ii in range(len(self.h)):
+            if not np.isnan(self.M[ii]):
+                t.append(self.t[ii])
+                h.append(self.h[ii])
+                I.append(self.I[ii])
+                M.append(self.M[ii])
+
+        self.t = np.array(t)
+        self.h = np.array(h)
+        self.I = np.array(I)
+        self.M = np.array(M)
+
     def interpCurve(self, dh=100):
+
+        self.removeNAN()
 
         dH = self.h[0] - self.h[-1]
 
@@ -122,6 +155,51 @@ def readLightCurve(csv):
     light_curve = [x for x in light_curve if x != []]
 
     return light_curve
+
+def readCNEOSlc(file_name):
+
+    data_list = []
+
+    t_list = [] 
+    I_list = []
+
+    latitude = None
+    longitude = None
+
+
+    # EXTRACT DATA
+    with open(file_name, "r+") as f:
+        lines = f.readlines()
+        for line in lines:
+            if line[0] == "(":
+                line = line[1:-3]
+                line = line.split(",")
+                data_list.append(line)
+
+           
+
+
+    # MAKE POINTS
+    for pair in data_list:
+        t = float(pair[0])
+        I = float(pair[1])
+
+        t_list.append(t)
+        I_list.append(I)
+
+
+    t_list = np.array(t_list)
+    I_list = np.array(I_list)
+
+    # USING BROWN ET AL 1996 
+    M_bol = 6 - 2.5*np.log10(I_list)
+
+    L = LightCurve("CNEOS", t_list, None, M_bol)
+
+    L.I = I_list
+    L.M = M_bol
+
+    return [L]
 
 if __name__ == "__main__":
 

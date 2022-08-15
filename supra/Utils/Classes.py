@@ -4,7 +4,7 @@ import copy
 
 from supra.Utils.AngleConv import geo2Loc, loc2Geo, angle2NDE
 
-from wmpl.Utils.TrajConversions import latLonAlt2ECEF, ecef2LatLonAlt
+from wmpl.Utils.TrajConversions import latLonAlt2ECEF, ecef2LatLonAlt, ecef2ENU
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
@@ -295,7 +295,7 @@ class Supracenter:
         return [self.position.lat, self.position.lon, self.position.elev, self.time]       
 
 class Trajectory:
-    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None), v_f=None):
+    def __init__(self, t, v, zenith=None, azimuth=None, pos_i=Position(None, None, None), pos_f=Position(None, None, None), v_f=None, verbose=False):
         """ A trajectory object
 
         Arguements:
@@ -323,6 +323,8 @@ class Trajectory:
         # Case 1: everything is given
         if pos_i.lat is not None and pos_f.lat is not None and zenith is not None and azimuth is not None:
 
+            if verbose:
+                print("Case 1: Everything is given")
             pos_i.pos_loc(pos_f)
             pos_f.pos_loc(pos_f)
 
@@ -331,76 +333,120 @@ class Trajectory:
         # Case 2: end points are given
         elif pos_i.lat is not None and pos_f.lat is not None:
 
-            A = latLonAlt2ECEF(np.radians(pos_i.lat), np.radians(pos_i.lon), pos_i.elev) 
-            B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev)
 
-            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(B[1] - A[1], B[0] - A[0]))))
+            if verbose:
+                print("Case 2: End points are given")
 
-            ground_distance = (np.sqrt((B[1] - A[1])**2 + (B[0] - A[0])**2))
+            pos_i.pos_loc(pos_f)
+            pos_f.pos_loc(pos_f)
 
-            zenith = Angle(np.degrees(np.arctan2(ground_distance, -(B[2] - A[2]))))
+            dx = pos_f.x - pos_i.x
+            dy = pos_f.y - pos_i.y
+            dz = pos_f.z - pos_i.z
+            dh = np.sqrt(dx**2 + dy**2)
+
+
+            # A = latLonAlt2ECEF(np.radians(pos_i.lat), np.radians(pos_i.lon), pos_i.elev) 
+            # B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev)
+
+            # # Note: lat/lon here is incorrect
+            # A = ecef2ENU(np.radians(90-pos_i.lat), np.radians(pos_i.lon-90), A[0], A[1], A[2])
+            # B = ecef2ENU(np.radians(90-pos_f.lat), np.radians(pos_f.lon-90), B[0], B[1], B[2])
+
+
+            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(dx, dy))))
+
+
+            zenith = Angle(np.degrees(np.arctan2(dh, -dz)))
 
             self.vector = Vector3D(np.sin(azimuth.rad)*np.sin(zenith.rad), \
                                    np.cos(azimuth.rad)*np.sin(zenith.rad), \
                                                       -np.cos(zenith.rad))
 
-            scale = (B[2] - A[2]) / self.vector.z
+            scale = dz / self.vector.z
 
         # Case 3: top point and angles are given
         elif pos_i.lat is not None and zenith is not None and azimuth is not None:
 
-            A = latLonAlt2ECEF(np.radians(pos_i.lat), np.radians(pos_i.lon), pos_i.elev) 
+            END_HEIGHT = 11400
 
-            temp_pos = A
-            temp_geo = np.array([pos_i.lat, pos_i.lon, pos_i.elev])
+            if verbose:
+                print("Case 3: Top point and angles are given")
 
-            old_height = temp_pos[2]
-            scale = 0
-            while np.abs(temp_geo[2]) > TOL: 
-                temp_pos = np.array([temp_pos[0] + TOL/2*self.vector.x, temp_pos[1] + TOL/2*self.vector.y, temp_pos[2] + TOL/2*self.vector.z])
-                temp_geo = ecef2LatLonAlt(*temp_pos)
+            pos_i.pos_loc(pos_i)
 
-                # If the zenith angle is too shallow, the distance travelled over the Earth will
-                # cause the trajectory to actually be rising in elevation
-                if temp_geo[2] >= old_height:
-                    print("Zenith angle is too shallow!")
-                    break
+            A = pos_i.xyz
+            
+            vector = Vector3D(np.cos(azimuth.rad)*np.sin(zenith.rad), \
+                              np.sin(azimuth.rad)*np.sin(zenith.rad), \
+                                                      -np.cos(zenith.rad))
 
-                old_height = temp_geo[2]
 
-                scale += TOL/2
+            scale = (END_HEIGHT - A[2])/vector.z 
 
-            C = [self.vector.x*scale + A[0], self.vector.y*scale + A[1], self.vector.z*scale + A[2]]
+            B = A + vector.xyz*scale
 
-            c_geo = ecef2LatLonAlt(*C)
+            pos_f = Position(0, 0, 0)
+            pos_f.x = B[0]
+            pos_f.y = B[1]
+            pos_f.z = B[2]
+            pos_f.pos_geo(pos_i)
 
-            pos_f = Position(np.degrees(c_geo[0]), np.degrees(c_geo[1]), c_geo[2])
+            self.vector = vector
+
 
         # Case 4: bottom point and angles are given
         elif pos_f.lat is not None and zenith is not None and azimuth is not None:
 
+            START_HEIGHT = 81300
 
-            B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev) 
+            if verbose:
+                print("Case 4: Bottom point and angles are given")
 
-            temp_pos = B
-            temp_geo = np.array([pos_f.lat, pos_f.lon, pos_f.elev])
+            pos_f.pos_loc(pos_f)
 
-            scale = 0
-            while np.abs(temp_geo[2] - 80000) > TOL: 
-                temp_pos = np.array([temp_pos[0] - TOL/2*self.vector.x, temp_pos[1] - TOL/2*self.vector.y, temp_pos[2] - TOL/2*self.vector.z])
-                temp_geo = ecef2LatLonAlt(*temp_pos)
+            B = pos_f.xyz
 
-                scale += TOL/2
+            vector = Vector3D(np.cos(azimuth.rad)*np.sin(zenith.rad), \
+                              np.sin(azimuth.rad)*np.sin(zenith.rad), \
+                                                      -np.cos(zenith.rad))
 
-            C = [-self.vector.x*scale + B[0], -self.vector.y*scale + B[1], -self.vector.z*scale + B[2]]
+            scale = (B[2] - START_HEIGHT)/vector.z
 
-            c_geo = ecef2LatLonAlt(*C)
+            A = B - vector.xyz*scale
 
-            pos_i = Position(np.degrees(c_geo[0]), np.degrees(c_geo[1]), c_geo[2])
+            pos_i = Position(0, 0, 0)
+            pos_i.x = A[0]
+            pos_i.y = A[1]
+            pos_i.z = A[2]
+            pos_i.pos_geo(pos_f)
+
+            self.vector = vector
+
+            ### OLD
+            # B = latLonAlt2ECEF(np.radians(pos_f.lat), np.radians(pos_f.lon), pos_f.elev) 
+
+            # temp_pos = B
+            # temp_geo = np.array([pos_f.lat, pos_f.lon, pos_f.elev])
+
+            # scale = 0
+            # while np.abs(temp_geo[2] - 80000) > TOL: 
+            #     temp_pos = np.array([temp_pos[0] - TOL/2*self.vector.x, temp_pos[1] - TOL/2*self.vector.y, temp_pos[2] - TOL/2*self.vector.z])
+            #     temp_geo = ecef2LatLonAlt(*temp_pos)
+
+            #     scale += TOL/2
+
+            # C = [-self.vector.x*scale + B[0], -self.vector.y*scale + B[1], -self.vector.z*scale + B[2]]
+
+            # c_geo = ecef2LatLonAlt(*C)
+
+            # pos_i = Position(np.degrees(c_geo[0]), np.degrees(c_geo[1]), c_geo[2])
 
 
         # Case 5: not enough information is given
         else:
+            if verbose:
+                print("Case 5: Not enough information is given")
             scale = None
 
         if pos_i.lat == None:
@@ -591,10 +637,12 @@ class Trajectory:
         """
 
         dt = time - self.t
+
         v_h = self.verticalVel()
 
 
         height = self.pos_i.elev - dt*v_h
+
         return height
 
     def findTime(self, height):
@@ -798,6 +846,32 @@ class RectangleItem(pg.GraphicsObject):
         return QtCore.QRectF(self.picture.boundingRect())
 
 if __name__ == '__main__':
+
+    try:
+        print("Trajectory Testing")
+        pos_i = Position(59.737, 16.511, 81300)
+        pos_f = Position(59.826, 16.873, 11400)
+
+        A = Trajectory(0, 17400, pos_i=pos_i, pos_f=pos_f, verbose=True)
+        B = Trajectory(0, 17400, pos_i=pos_i, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
+        C = Trajectory(0, 17400, pos_f=pos_f, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
+        
+
+        from tabulate import tabulate
+        
+        print(tabulate([["Pos_i - lat", A.pos_i.lat, B.pos_i.lat, C.pos_i.lat], \
+                        ["Pos_i - lon", A.pos_i.lon, B.pos_i.lon, C.pos_i.lon], \
+                        ["Pos_i - elev", A.pos_i.elev, B.pos_i.elev, C.pos_i.elev], \
+                        ["Pos_f - lat", A.pos_f.lat, B.pos_f.lat, C.pos_f.lat], \
+                        ["Pos_f - lon", A.pos_f.lon, B.pos_f.lon, C.pos_f.lon], \
+                        ["Pos_f - elev", A.pos_f.elev, B.pos_f.elev, C.pos_f.elev], \
+                        ["Azimuth", A.azimuth.deg, B.azimuth.deg, C.azimuth.deg], \
+                        ["Zenith", A.zenith.deg, B.zenith.deg, C.zenith.deg]], \
+                        headers=["Case 2", "Case 3", "Case 4"]))
+    except:
+        pass
+
+    exit()
 
     pos_i = Position(49.3, -116.9, 36000)
 

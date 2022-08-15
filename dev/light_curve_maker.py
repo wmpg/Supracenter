@@ -6,7 +6,7 @@ from supra.Lightcurve.light_curve import processLightCurve, readLightCurve
 v = 27760
 c = ['r', 'b', 'g', 'm', 'c']
 
-file_name = "/home/luke/Documents/Fireballs/Romania/romania_lc.csv"
+file_name = "F:/Documents/Meteor_Research/Event/Romania/romania_lc.csv"
 
 light_curve = readLightCurve(file_name)
 

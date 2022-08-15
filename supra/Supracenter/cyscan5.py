@@ -30,7 +30,12 @@ MINSTEP = 1e-6
 
 def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debug=False, wind=False, h_tol=330, v_tol=3000, \
         print_times=False, processes=1):
-    
+    """
+    S and D are given as xyz positions
+    Results given as Time, Azimuth, Take Off, Error
+    """
+
+
 
     # phi, theta
     search_min = [0, 90]

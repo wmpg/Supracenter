@@ -63,7 +63,7 @@ def procStream(stn, ref_time=None, merge=False):
     # print("Getting Raw Trace")
     mseed = stn.stream.copy()
     resp = stn.response
-    # merge = True
+    merge = False
     if merge:
         # Not sure why this error happens, float modulo Obspy error??
         try:

@@ -659,24 +659,44 @@ class rtvWindowDialog(QWidget):
                             wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True, processes=1)
 
         if not clean_mode:
+            
             az = np.radians(r[1])
             tf = np.radians(180 - r[2])
-            u = np.array([traj.vector.x,
-                        traj.vector.y,
-                        traj.vector.z])
+            
+            try:
+                u = np.array([traj.vector.x,
+                            traj.vector.y,
+                            traj.vector.z])
+            except AttributeError:
+                # If no trajectory data is available
+                pass
+
             v = np.array([np.sin(az)*np.sin(tf), np.cos(az)*np.sin(tf), -np.cos(tf)])
-            angle_off = abs(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))) - 90)
+            
+            try:
+                angle_off = abs(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))) - 90)
+            except:
+                pass
+
             if not self.pertstog.isChecked():
                 dx = np.abs(stat_pos.x - source.x)
                 dy = np.abs(stat_pos.y - source.y)
                 dz = np.abs(stat_pos.z - source.z)
-                time_along_trajectory = traj.findTime(source.elev)
-                
+                try:
+                    time_along_trajectory = traj.findTime(source.elev)
+                except:
+                    pass
+
                 print("###### RESULTS ######")
-                print("Time Along Trajectory (wrt Reference): {:.4f} s".format(time_along_trajectory))
                 print("Acoustic Path Time: {:.4f} s".format(r[0]))
-                print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
-                print("Launch Angle {:.2f} deg".format(angle_off))
+
+                try:
+                    print("Time Along Trajectory (wrt Reference): {:.4f} s".format(time_along_trajectory))
+                    print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
+                    print("Launch Angle {:.2f} deg".format(angle_off))
+                except:
+                    pass
+
                 print("###### EXTRAS #######")
                 print("Time: {:.4f} s".format(r[0]))
                 print("Azimuth: {:.2f} deg from North".format(r[1]))
@@ -689,8 +709,13 @@ class rtvWindowDialog(QWidget):
                 print("Total Distance: {:.2f} m".format(np.sqrt(dx**2 + dy**2 + dz**2)))
                 print("No Winds Time: {:.2f} s".format(np.sqrt(dx**2 + dy**2 + dz**2)/330))
                 print("Time Difference: {:.2f} s".format(r[0] - np.sqrt(dx**2 + dy**2 + dz**2)/330))
-                print("Time Along Trajectory: {:.4f} s".format(time_along_trajectory))
-                print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
+                
+                try:
+                    print("Time Along Trajectory: {:.4f} s".format(time_along_trajectory))
+                    print("Total Time from Reference: {:.4f} s".format(r[0] + time_along_trajectory))
+                except:
+                    pass
+
             else:
                 t_array = []
                 az_array = []
@@ -701,8 +726,10 @@ class rtvWindowDialog(QWidget):
                 az_array.append(r[1])
                 tk_array.append(r[2])
                 err_array.append(r[3])
-                angle_off_array.append(angle_off)
-
+                try:
+                    angle_off_array.append(angle_off)
+                except:
+                    pass
 
         try:
 
@@ -890,6 +917,13 @@ class rtvWindowDialog(QWidget):
 
         traj = self.bam.setup.trajectory
 
+        try:
+            source_lat = float(self.source_lat.text())
+            source_lon = float(self.source_lon.text())
+            print("Overwritting source with source lat and lon")
+        except:
+            source_lat = None
+            source_lon = None
 
         if not self.trajmode.isChecked():
             if self.netmode.isChecked():
@@ -905,6 +939,10 @@ class rtvWindowDialog(QWidget):
                 stat = self.bam.stn_list[stat_idx]
                 stat_pos = stat.metadata.position
                 source = traj.findGeo(float(self.source_height.text()))
+
+                if source_lat is not None:
+                    source.lat = source_lat
+                    source.lon = source_lon
 
                 h_tol = float(self.horizontal_tol.text())
                 v_tol = float(self.vertical_tol.text())

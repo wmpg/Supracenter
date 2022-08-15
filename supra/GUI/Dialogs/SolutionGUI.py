@@ -71,6 +71,7 @@ from supra.GUI.Dialogs.RayTraceView import rtvWindowDialog
 from supra.GUI.Dialogs.GLMReader import glmWindowDialog
 from supra.GUI.Dialogs.RotatePol import RotatePolWindow
 from supra.GUI.Dialogs.lumEffDialog import lumEffDialog
+from supra.GUI.Dialogs.TauSpread2 import TauSpreadGUI
 
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.Theme import theme
@@ -170,6 +171,13 @@ class SolutionGUI(QMainWindow):
         self.geminus_gui = Geminus(self.bam, self.prefs)
         self.geminus_gui.setGeometry(QRect(100, 100, 1000, 800))
         self.geminus_gui.show()
+
+
+    def tauSpread(self):
+
+        self.tSpr = TauSpreadGUI(self.bam, self.prefs)
+        self.tSpr.setGeometry(QRect(100, 100, 1000, 800))
+        self.tSpr.show()
 
 
 
@@ -1279,10 +1287,11 @@ class SolutionGUI(QMainWindow):
             return None
 
         z = sounding[:, 0]
-        t = sounding[:, 1]
+        t = (sounding[:, 1]**2)/consts.GAMMA/consts.R*consts.M_0 - 273.15
         u = sounding[:, 2]
-        v = sounding[:, 3]
-        p = 10*101.325*np.exp(-0.00012*z)
+        v = np.degrees(sounding[:, 3])
+        p = sounding[:, 4]/100
+
 
         ### Taken from ecmwf_extractor.py
         den0 = 0.001225
@@ -1352,8 +1361,8 @@ class SolutionGUI(QMainWindow):
 
                 for line in range(len(sounding)):
                     info = ''
-                    for v in range(6):
-                        if v == 5:
+                    for v in [0, 3, 1, 2, 4]:
+                        if v == 4:
                             info = info + str(atmos_vars[v][line]) + '\n'
                         else:
                             info = info + str(atmos_vars[v][line]) + ','
@@ -1795,7 +1804,7 @@ class SolutionGUI(QMainWindow):
         self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", tab1_content, 14, tool_tip='fireball_datetime')
 
         self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
-        self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)'], self.light_curve_edits))
+        self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.light_curve_edits))
         self.light_curve_buton.clicked.connect(partial(save, self, True))
 
         self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
@@ -2898,6 +2907,7 @@ class SolutionGUI(QMainWindow):
             self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
 
+
             if not hasattr(stn, 'annotation'):
                 stn.annotation = AnnotationList()
 
@@ -2907,7 +2917,12 @@ class SolutionGUI(QMainWindow):
                 groups.add(an.group)
                 group_list.append([an.group, an.time, an.length, stn])
 
-
+        # put a sample mark on the map
+        # LON = 174.4
+        # LAT = -41.25
+        # x, y = self.m(LON, LAT)
+        # self.make_picks_map_graph_view.ax.scatter(x, y, 48, marker='*', color='red', zorder=4)
+        
         if len(groups) > 0:
             groups = list(groups)
 
@@ -2988,10 +3003,13 @@ class SolutionGUI(QMainWindow):
 
         # Merge the files without gaps
        
-        
+
         st = findChn(st, chn_selected)
 
+
         self.current_waveform_raw = st.data
+
+
         waveform_data, time_data = procTrace(st, ref_datetime=self.bam.setup.fireball_datetime,\
                         resp=resp, bandpass=bandpass)
 
@@ -3007,8 +3025,32 @@ class SolutionGUI(QMainWindow):
         # self.current_station_waveform = pg.PlotDataItem(x=time_data, y=waveform_data, pen='w')
         # 2.370980392E10
 
+        def getDeriv(tt, ww):
+
+            ddt = tt[1] - tt[0]
+
+            dw = []
+            dt = []
+            for w in range(len(ww) - 1):
+
+                dl = ww[w + 1] - ww[w]
+
+                dw.append(dl/ddt)
+                dt.append(tt[w])
+
+            return np.array(dt), np.array(dw)
+
         for ii in range(len(waveform_data)):
+
+            ## Derivatives
+            # dt, dw = getDeriv(time_data[ii], waveform_data[ii])
+            # print(len(dt), len(dw))
+            # self.current_station_waveform = pg.PlotDataItem(x=dt, y=dw, pen='r')
+            # self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
+            ##
+
             self.current_station_waveform = pg.PlotDataItem(x=time_data[ii], y=waveform_data[ii], pen='w')
+
             self.make_picks_waveform_canvas.addItem(self.current_station_waveform)
 
         for gap in gap_times:

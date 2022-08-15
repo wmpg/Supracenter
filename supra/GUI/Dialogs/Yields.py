@@ -25,6 +25,7 @@ from supra.Utils.Classes import Position, Constants, Color
 
 from supra.Utils.AngleConv import percDiff
 
+from supra.Yields.YieldCalcs import *
 
 from supra.Atmosphere.Parse import parseWeather
 
@@ -348,7 +349,7 @@ class Yield(QWidget):
 
             self.reed_attenuation = reed_attenuation
 
-            rf = refractiveFactor(point, stn.metadata.position, zProfile, D_ANGLE=D_ANGLE)
+            rf = 1#refractiveFactor(point, stn.metadata.position, zProfile, D_ANGLE=D_ANGLE)
             trans.append(f)
             ints.append(g)
             ts.append(T)
@@ -570,7 +571,7 @@ class Yield(QWidget):
             print("Scaled Distance from Overpressure  (Nuclear):    {:10.2f} km".format(Z_nuc/1000))
             print("Scaled Distance from Duration  (Nuclear):        {:10.2f} km".format(Z_nuc_d/1000))
 
-            Yield_chem = (self.f_d*self.R/Z_chem)**3*self.W_0
+            Yield_chem = overpressure2YieldKG(del_P, height, stn_pos.elev, true_range)
             Yield_nuc = (self.f_d*self.R/Z_nuc)**3*self.W_0*1e6
 
             Yield_chem_d = (self.f_d*self.R/Z_chem_d)**3*self.W_0

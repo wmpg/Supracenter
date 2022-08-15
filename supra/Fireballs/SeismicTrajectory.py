@@ -74,7 +74,7 @@ from wmpl.Utils.PlotCelestial import CelestialPlot
 
 #     return points
 
-
+OUTFILE = "F:\\Desktop\\trajectory_samples.csv"
 
 def mergeChannels(seismic_data):
     """ Merge seismic data from the same channels which are fragmented into several chunks which start at a
@@ -463,9 +463,12 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
     #u = np.array([-np.cos(azim)*np.sin(zangle), np.sin(azim)*np.sin(zangle), -np.cos(zangle)])
 
     # Cut down atmospheric profile to the correct heights, and interp
+    try:
+        u = np.array([u.x, u.y, u.z])
+    except AttributeError:
+        # u is already a np.array
+        pass
 
-    u = np.array([u.x, u.y, u.z])
-    
     a = (len(points))
 
 
@@ -523,8 +526,10 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
         print("\tHeight: {:.2f} km | Angle: {:.2f} deg".format(traj_point.elev/1000, angle))
         cyscan_res.append(A)
 
-    T_nom = getTimes(np.array(cyscan_res), u, a)
-
+    try:
+        T_nom = getTimes(np.array(cyscan_res), u, a)
+    except IndexError:
+        T_nom = np.array(np.nan)
     T_pert = []
 
     # if perturbations is not None:
@@ -577,8 +582,14 @@ def getTimes(arr, u, a):
         angle.append(np.degrees(np.arccos(np.dot(mag_u, mag_v))))
 
 
-    angle = np.array(angle)    
-    best_indx = np.nanargmin(abs(angle - 90))
+    angle = np.array(angle)
+    try:    
+        best_indx = np.nanargmin(abs(angle - 90))
+    except ValueError:
+        # All nan slice?
+        return np.array(np.nan)
+
+
     best_angle = abs(90 - angle[best_indx])
 
     if best_angle > ANGLE_TOL:
@@ -720,7 +731,7 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
 
 
     # temporary adjustment to try and get the most stations
-    if N - failed_stats >= 3:
+    if N - failed_stats >= 1:
         total_error = sum(error_list)/(N - failed_stats)# + 2*max(error_list)*(failed_stats)
     else:
         total_error = np.inf
@@ -728,6 +739,11 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
     if prefs.debug:
         print("Error {:10.4f} | Failed Stats {:3} {:} | Error between points: {:.2f} km ({:.2f} s)".format(total_error, failed_stats, printPercent(perc_fail, N - failed_stats), dis/1000, tim))
         # Quick adjustment to try and better include stations
+
+    with open(OUTFILE, "a+") as f:
+        f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}\n".format(temp_traj.t, temp_traj.v, temp_traj.zenith.deg, temp_traj.azimuth.deg, temp_traj.pos_f.lat, temp_traj.pos_f.lon, total_error, failed_stats))
+
+        f.close()
 
     for i in range(6):
 

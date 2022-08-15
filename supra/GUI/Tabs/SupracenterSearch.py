@@ -11,6 +11,8 @@ from supra.GUI.Tools.GUITools import *
 from supra.Utils.AngleConv import loc2Geo
 from supra.Utils.Classes import Position, Supracenter
 
+
+
 def theoSearch(bam, prefs):
     ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
     s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
@@ -278,7 +280,7 @@ def resultsPrint(results, pert_results, reses, s_name, prefs, doc=None):
         for ii in range(len(s_name)):
             doc.add_paragraph('{:}: {:.4f} s'.format(s_name[ii], results.r[ii]))
 
-def getStationData(picks_file, ref_pos):
+def getStationData(picks_file, ref_pos, expectedcols=6):
 
     try:
         s_info, s_name, weights = convStationDat(picks_file, ref_pos)

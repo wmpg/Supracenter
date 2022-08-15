@@ -126,6 +126,11 @@ def initMenuBar(obj, layout):
     glm_viewer.triggered.connect(obj.glmviewer)
     tools_menu.addAction(glm_viewer)
 
+    tau_spread = QAction("Yield Spread", obj)
+    tau_spread.triggered.connect(obj.tauSpread)
+    tools_menu.addAction(tau_spread)
+
+
 
 def initMainGUI(obj):
 
