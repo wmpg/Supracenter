@@ -230,23 +230,26 @@ class lumEffDialog(QWidget):
                 print(self.bam.energy_measurements[ii].linear_E)
                 continue
             
+            try:
+                # Luminous Energy between heights
+                for L in self.light_curve_list:
+                    h_list, M_list = L.interpCurve(dh=10000)
 
-            # Luminous Energy between heights
-            for L in self.light_curve_list:
-                h_list, M_list = L.interpCurve(dh=10000)
+                h_list = np.array(h_list)
+                idx = np.where((h_list > min_h)*(h_list < max_h))
+                dh = np.abs((h_list[1] - h_list[0])*1000)
 
-            h_list = np.array(h_list)
-            idx = np.where((h_list > min_h)*(h_list < max_h))
-            dh = np.abs((h_list[1] - h_list[0])*1000)
+                mags = M_list[idx]
+                intensity = 0
+                for m in mags:
+                    
+                    dI = I_0*10**((m)/-2.5)
+                    #dI = 10**(m - 6)/(-2.5)
+                    intensity += dI*dh
+                v = self.v
+            except TypeError as e:
+                print(e)
 
-            mags = M_list[idx]
-            intensity = 0
-            for m in mags:
-                
-                dI = I_0*10**((m)/-2.5)
-                #dI = 10**(m - 6)/(-2.5)
-                intensity += dI*dh
-            v = self.v
             #print("Luminous Energy {:.2E} J".format(intensity))
             #print("Tau {:.2f} %".format(intensity/self.bam.energy_measurements[ii].chem_pres/v*100))
 
@@ -279,19 +282,22 @@ class lumEffDialog(QWidget):
 
 
             try:
-
                 # OTHER
                 light_curve = readLightCurve(self.setup.light_curve_file)
                 self.light_curve_list = processLightCurve(light_curve)
-            except ValueError:
+
+            except:
             
                 # CNEOS USG DATA
                 self.light_curve_list = readCNEOSlc(self.setup.light_curve_file)
                 self.light_curve_list[0].estimateHeight(self.bam.setup.trajectory)
 
+            if light_curve is None:
+                # CNEOS USG DATA
+                self.light_curve_list = readCNEOSlc(self.setup.light_curve_file)
+                self.light_curve_list[0].estimateHeight(self.bam.setup.trajectory)
 
             for L in self.light_curve_list:
-
 
                 h, M = L.interpCurve(dh=10000)
                 self.light_curve.ax.plot(h, M)#, label=L.station)
@@ -363,7 +369,8 @@ class lumEffDialog(QWidget):
                 print("Magnitude {:.2f}".format(ws_mag))
                 self.light_curve.ax.scatter(h/1000, ws_mag, label="Ballistic Measurement - Weak Shock")
 
-
+                tau_max = tau
+                tau_min = tau
             ### FRAGMENTATION
             elif energy.source_type.lower() == "fragmentation":
 
@@ -393,6 +400,8 @@ class lumEffDialog(QWidget):
                                  yerr=[[np.abs(h/1000 - energy_area[0, 1])], [np.abs(h/1000 - energy_area[-1, 1])]],\
                                  fmt="o", capsize=5)
             except TypeError:
+                pass
+            except UnboundLocalError:
                 pass
 
         self.lum_curve.ax.set_xlabel("Luminous Efficiency [%]")

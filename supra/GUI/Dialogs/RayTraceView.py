@@ -657,6 +657,7 @@ class rtvWindowDialog(QWidget):
         r, tr, f_particle = cyscan(np.array([source.x, source.y, source.z]), np.array([stat_pos.x, stat_pos.y, stat_pos.z]), \
                             sounding, trace=True, plot=False, particle_output=True, debug=False, \
                             wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True, processes=1)
+        print("Cyscan Results", r)
 
         if not clean_mode:
             
@@ -765,8 +766,9 @@ class rtvWindowDialog(QWidget):
                 if i > 0:
                     path_len += np.sqrt((tr[i, 0] - tr[i-1, 0])**2 + (tr[i, 1] - tr[i-1, 1])**2 + (tr[i, 2] - tr[i-1, 2])**2)
 
-                else:
-                    path_len += np.sqrt((tr[i, 0] - 0)**2 + (tr[i, 1] - 0)**2 + (tr[i, 2] - 0)**2)
+                # else:
+                #     path_len += np.sqrt((tr[i, 0] - 0)**2 + (tr[i, 1] - 0)**2 + (tr[i, 2] - 0)**2)
+
 
                 A.pos_geo(source)
                 positions.append([A.lon, A.lat, A.elev])

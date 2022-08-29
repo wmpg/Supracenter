@@ -142,7 +142,7 @@ def printStatus(bam, prefs):
 
 
 
-def calcAllTimes(obj, bam, prefs):
+def calcAllTimes(obj, bam, prefs, verbose=True):
     ''' Calculates all arrivals to all stations
     '''
     time_step = -999
@@ -192,7 +192,7 @@ def calcAllTimes(obj, bam, prefs):
         ################
         # Fragmentation
         ################
-
+        if verbose: print(printMessage("debug"), "Fragmentation Section")
         if prefs.frag_en:
 
             for i, frag in enumerate(bam.setup.fragmentation_point):
@@ -210,7 +210,7 @@ def calcAllTimes(obj, bam, prefs):
                 time_string = "{:02d}:{:02d}:{:02d}".format(int(time_hour), int(time_minute), int(time_second))
 
 
-                loadingBar('Calculating Station Times - ETA {:}: '.format(time_string), step, total_steps)
+                if not verbose: loadingBar('Calculating Station Times - ETA {:}: '.format(time_string), step, total_steps)
 
                 offset = frag.time
 
@@ -222,6 +222,11 @@ def calcAllTimes(obj, bam, prefs):
                 stn.metadata.position.pos_loc(supra)
                 supra.pos_loc(supra)
 
+
+                if verbose: print(printMessage("debug"), "Station Name", stn.metadata.code)
+                if verbose: print(printMessage("debug"), "Source Position", supra)
+                if verbose: print(printMessage("debug"), "Station Position", stn.metadata.position)
+
                 lats = [supra.lat, stn.metadata.position.lat]
                 lons = [supra.lon, stn.metadata.position.lon]
                 heights = [supra.elev, stn.metadata.position.elev]
@@ -230,7 +235,11 @@ def calcAllTimes(obj, bam, prefs):
 
                 # Travel time of the fragmentation wave
                 f_time, frag_azimuth, frag_takeoff, frag_err = cyscan(np.array([supra.x, supra.y, supra.z]), np.array([stn.metadata.position.x, stn.metadata.position.y, stn.metadata.position.z]), sounding, \
-                    wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)           
+                    wind=prefs.wind_en, h_tol=prefs.pso_min_ang, v_tol=prefs.pso_min_dist)
+
+                if verbose: print(printMessage("debug"), "Cyscan Results:", f_time, frag_azimuth, frag_takeoff, frag_err)
+
+                if verbose: print(printMessage("debug"), "Reported Results: Height {:.2f} km, Time {:.2f} s".format(supra.elev/1000, f_time + offset))           
 
                 results = []
 

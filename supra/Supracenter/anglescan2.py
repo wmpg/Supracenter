@@ -130,11 +130,10 @@ def anglescan(S, phi, theta, z_profile, wind=True, debug=True, trace=False, plot
 
 
         # If possible, use the ray timing, else just use the distance with the sound speed at that layer
-        if not np.isnan(dt):
-            t_arrival += dt
-        else:
-            t_arrival += np.sqrt((a*dx - b*dy)**2 + (b*dx + a*dy)**2 + delz**2)*s[i]
-
+        # if not np.isnan(dt):
+        t_arrival += dt
+        # else:
+        #     t_arrival += np.sqrt((a*dx - b*dy)**2 + (b*dx + a*dy)**2 + delz**2)*s[i]
 
         if trace:
             T.append([S[0] + (a*X - b*Y), S[1] + (b*X + a*Y), z[last_z], t_arrival])

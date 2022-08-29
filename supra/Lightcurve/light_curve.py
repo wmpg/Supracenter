@@ -90,7 +90,8 @@ def processLightCurve(light_curve):
     light_curve_list = []
 
 
-
+    if light_curve is None:
+        return None
 
     for ii, line in enumerate(light_curve):
 
@@ -147,7 +148,10 @@ def readLightCurve(csv):
 
                     break
                 else:
-                    temp_line.append(float(item.strip()))
+                    try:
+                        temp_line.append(float(item.strip()))
+                    except:
+                        return None
 
     
             light_curve.append(temp_line)
