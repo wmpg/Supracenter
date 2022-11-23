@@ -1,3 +1,7 @@
+
+###############
+### IMPORTS
+###############
 import os
 import numpy as np
 import pickle
@@ -26,36 +30,55 @@ from supra.Lightcurve.light_curve import *
 from supra.Files.SaveLoad import save
 
 I_0 = 3030
-
 mode = "cneos"
 
 def findArea(height, energy, data_h, data_m, magnitude=None):
+    """ A fragmentation is shown on the light curve as the 
+    area under the intensity-height plot with the height 
+    boundaries of the fragmentation.
 
-    v = 20200
+    Given the height of largest amplitude, this function will
+    symmetrically extend the heights until the total area under
+    the light curve is just larger than the energy given.
 
+    Inputs:
+    height [float] - height of the fragmentation in km
+    energy [float] - energy of the fragmentation in J
+    data_h [list] - list of height values in the light curve in km
+    data_m [list] - list of magnitude values in the light curve
+    magnitude [float] - use if you want the area to be under a constant
+        magnitude instead of the data_m light curve values. Set to None to
+        ignore
 
+    Outputs:
+    final_data [ndarray] - array of points [magnitude, height] following the
+    light curve but limited to the area calculated
+    """
+
+    # HARD CODED PER EVENT - should change this
+    v = 16400
+
+    # Use light curve
     if magnitude is None:
 
-        #data_I = 1500*10**((data_m)/-2.5)
+        # From CNEOS light curves
         if mode == "cneos":
             data_I = 10**((6 - data_m)/2.5)
+        
+        # From cameras using an I_0, ie/ Borovicka uses 1500 W
         else:
             data_I = I_0*10**((data_m)/-2.5)
 
         #find closest height in data
         h_indx = np.nanargmin(np.abs(data_h - height))
 
-
         total_energy = 0
         offset = -1
 
-
+        # Main loop
         while total_energy < energy:
 
             offset += 1
-
-            # dE = dI * dt * 4 pi
-            # dE = dI * dh/v_h * 4 pi
 
             if offset == 0:
 
@@ -63,6 +86,8 @@ def findArea(height, energy, data_h, data_m, magnitude=None):
                 try:
                     dh = np.abs(data_h[h_indx + 1] - data_h[h_indx - 1])/2*1000
                 except IndexError:
+
+                    # Catch if area exceeds light curve data
                     print("Index Error: Energy needs to be {:.2E} J, but curve only contains {:.2E} J".format(energy, total_energy))
                     return []
 
@@ -70,10 +95,12 @@ def findArea(height, energy, data_h, data_m, magnitude=None):
 
             else:
                 try:
-
+                    # Search both sides symmetrically - not sure if this is reasonable, but works for now
                     total_energy += data_I[h_indx + offset]*np.abs(data_h[h_indx + offset + 1] - data_h[h_indx + offset - 1])*1000/2/v*4*np.pi
                     total_energy += data_I[h_indx - offset]*np.abs(data_h[h_indx - offset + 1] - data_h[h_indx - offset - 1])*1000/2/v*4*np.pi
                 except IndexError:
+
+                    # Catch if area exceeds light curve data
                     print("Index Error: Energy needs to be {:.2E} J, but curve only contains {:.2E} J".format(energy, total_energy))
                     return []
 
@@ -82,6 +109,7 @@ def findArea(height, energy, data_h, data_m, magnitude=None):
             final_data.append([data_m[i], data_h[i]])
         return np.array(final_data)
 
+    # Use constant magnitude
     else:
         if mode == "cneos":
             I = 10**((6 - magnitude)/-2.5)
@@ -94,6 +122,33 @@ def findArea(height, energy, data_h, data_m, magnitude=None):
                                [magnitude, height + dh/2]])
         return final_data
 
+def findAreaUnderCurve(h_min, h_max, L):
+
+    h_list, M_list = L.interpCurve(dh=10000)
+    I_list = 10**((6 - M_list)/2.5)
+
+    # HARD CODED PER EVENT - should change this
+    v = 16400
+
+
+    #find closest height in data
+    min_indx = np.nanargmin(np.abs(h_list - h_min))
+    max_indx = np.nanargmin(np.abs(h_list - h_max))
+
+    h_list = h_list[max_indx:min_indx]
+    I_list = I_list[max_indx:min_indx]
+
+    try:
+        dh = np.abs(h_list[1] - h_list[0])
+    except:
+        return 0
+
+    total_energy = 0
+
+    for ii in range(len(I_list) - 1):
+        total_energy += (I_list[ii] + I_list[ii+1])*dh*1000/2/v*4*np.pi
+
+    return total_energy
 
 class lumEffDialog(QWidget):
 
@@ -105,7 +160,10 @@ class lumEffDialog(QWidget):
         self.setup = self.bam.setup
 
         self.v = self.bam.setup.trajectory.v
+
+        # Assume they are all 5% now, and change later
         self.tau = [5.00]*len(self.bam.energy_measurements)
+        
         self.height_list = []
         for i in range(len(self.bam.energy_measurements)):
             self.height_list.append([None, None])
@@ -166,11 +224,13 @@ class lumEffDialog(QWidget):
 
     def clearEnergy(self):
 
+        # TODO - whenever the number of fragmentations is changed the program needs to be restarted
         self.bam.energy_measurements = []
         self.redraw()
 
     def addFrag(self):
 
+        ### Currently a terminal input, will put to GUI later...
         a = EnergyObj()
         a.source_type = "Fragmentation"
         a.height = float(input("Height of Fragmentation in m: "))
@@ -216,7 +276,7 @@ class lumEffDialog(QWidget):
         self.height_list = []
 
         # Get Taus
-        print("Energies")
+
         for ii in range(len(self.source_widget)):
             self.tau[ii] = self.source_widget[ii].getTau()
 
@@ -299,8 +359,13 @@ class lumEffDialog(QWidget):
 
             for L in self.light_curve_list:
 
+                ## Need a way to process light curve with trajectory here
                 h, M = L.interpCurve(dh=10000)
+
+                func = np.poly1d(np.polyfit(h, M, 10))
+                xp = np.linspace(h[0], h[-1], 100)
                 self.light_curve.ax.plot(h, M)#, label=L.station)
+                self.light_curve.ax.plot(xp, func(xp))
 
             self.light_curve.ax.invert_yaxis()
             # self.light_curve.ax.legend()
@@ -379,7 +444,8 @@ class lumEffDialog(QWidget):
 
                 energy_area = fragEnergy2Mag(chem_pres_yield, h, tau, self.v)
                 if energy_area is not None and len(energy_area) > 0:
-                    self.light_curve.ax.fill_between(energy_area[:, 1], energy_area[:, 0], color="w", alpha=0.3, label="Fragmentation: {:.1f} km".format(h/1000))
+                    
+                    self.light_curve.ax.fill_between(energy_area[:, 1], energy_area[:, 0], color="w", alpha=0.1, label="Fragmentation: {:.1f} km".format(h/1000))
 
                 h_min = float(self.source_widget[ee].min_h_edits.text())
                 h_max = float(self.source_widget[ee].max_h_edits.text())
@@ -387,13 +453,34 @@ class lumEffDialog(QWidget):
                 self.light_curve.ax.axvline(x=h_min, color='w', linestyle='--')
                 self.light_curve.ax.axvline(x=h_max, color='w', linestyle='--')
 
+                for L in self.light_curve_list:
+                    Height, Magnitude = L.interpCurve(dh=10000)
+
+                    max_idx = np.argmin(abs(Height - h_min))
+                    min_idx = np.argmin(abs(Height - h_max))
+
+                    h1 = [Height[min_idx], Height[max_idx]]
+                    m1 = [Magnitude[min_idx], Magnitude[max_idx]]
+
+                    E = findAreaUnderCurve(h_min, h_max, L)
+
+                print("#########")
+                print("Fragmentation from {:.2f} - {:.2f} km".format(h_min, h_max))
+                print("Energy under curve:       {:.2E}".format(E))
+                print("Expected Acoustic Energy: {:.2E}".format(chem_pres_yield))
+                print("Tau Estimate:       {:.2f} %".format(E/chem_pres_yield*100))
+                print("#########")
+
+                self.light_curve.ax.fill_between(h1, m1, color="r", alpha=0.3)
+
+
                 try:
                     tau_max = energy.chem_pres*tau/energy.chem_pres_max
                     tau_min = energy.chem_pres*tau/energy.chem_pres_min 
                 except:
                     tau_max = tau
                     tau_min = tau
-            print(tau, tau_min, tau_max)
+            
             self.lum_curve.ax.scatter(tau*100, h/1000, label=energy.source_type)
             try:
                 self.lum_curve.ax.errorbar(tau*100, h/1000, xerr=[[np.abs(tau*100 - tau_min*100)], [np.abs(tau*100 - tau_max*100)]],\

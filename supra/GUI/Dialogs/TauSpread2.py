@@ -32,10 +32,13 @@ from supra.Utils.pso import pso
 
 import multiprocessing
 
-FILENAME = "F:\\Desktop\\Nord_08_09_22.csv"
+FILENAME = "F:\\Desktop\\Nord_09_27_22.csv"
 #INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\Romania\\Romania_Yield_Search_Picks.csv"
 #INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\alaska_picks_2.csv"
-INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\meteoroids2020_fireball_picks.csv"
+INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\meteoroids2020_picks_3.csv"
+
+search_min = [59.0, 16.0, 42000]
+search_max = [60.0, 17.5, 50000]
 
 
 class Pick():
@@ -231,9 +234,7 @@ class TauSpreadGUI(QWidget):
 
         print("Number of points to search for: {:}".format(number_of_pts))
 
-        search_min = [59.5, 16.5, 20000]
-        search_max = [60.5, 17.2, 24000]
-
+ 
         ref_pos = Position(self.bam.setup.lat_centre, self.bam.setup.lon_centre, 0)
 
         multi_args = [pick_list, ref_pos, FILENAME, self.bam]
@@ -242,8 +243,8 @@ class TauSpreadGUI(QWidget):
             f.write("Latitude [N], Longitude [E], Height [m], Time Error [s], Yield [J], Number of Successful Stations, Total Number of Stations \n")
 
         f_opt, x_opt = pso(multiLoop, search_min, search_max, \
-            args=multi_args, processes=6, particle_output=False, swarmsize=50,\
-                 maxiter=50)
+            args=multi_args, processes=6, particle_output=False, swarmsize=20,\
+                 maxiter=20)
 
 
 

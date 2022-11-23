@@ -44,7 +44,13 @@ def saveSetup(obj):
     # setup.replot_points_file = obj.points_name_edits.text()
 
     setup.lat_centre = tryFloat(obj.lat_centre_edits.text())
-    setup.lon_centre = tryFloat(obj.lon_centre_edits.text())
+    setup.lon_centre = tryFloat(obj.lon_centre_edits.text())%360
+
+    # Fetch station API only accepts longitudes between -180 and 180, so this is a fix
+    # Tell them to fix their code!!
+    if setup.lon_centre > 180:
+        setup.lon_centre -= 360
+
     setup.deg_radius = tryFloat(obj.deg_radius_edits.text())
     setup.fireball_datetime = obj.fireball_datetime_edits.dateTime().toPyDateTime()
     obj.fatm_datetime_edits.setDateTime(setup.fireball_datetime)

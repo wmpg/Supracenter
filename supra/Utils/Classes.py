@@ -360,13 +360,13 @@ class Trajectory:
             # B = ecef2ENU(np.radians(90-pos_f.lat), np.radians(pos_f.lon-90), B[0], B[1], B[2])
 
 
-            azimuth = Angle(angle2NDE(np.degrees(np.arctan2(dx, dy))))
+            azimuth = Angle(np.degrees(np.arctan2(dx, dy)))
 
 
             zenith = Angle(np.degrees(np.arctan2(dh, -dz)))
 
-            self.vector = Vector3D(np.sin(azimuth.rad)*np.sin(zenith.rad), \
-                                   np.cos(azimuth.rad)*np.sin(zenith.rad), \
+            self.vector = Vector3D(np.cos(azimuth.rad)*np.sin(zenith.rad), \
+                                   np.sin(azimuth.rad)*np.sin(zenith.rad), \
                                                       -np.cos(zenith.rad))
 
             scale = dz / self.vector.z
@@ -543,12 +543,16 @@ class Trajectory:
         if max_p is None:
             max_p = self.pos_i.elev
 
-        # Convert trajectory into local coords
-        self.pos_i.pos_loc(self.pos_f)
-        self.pos_f.pos_loc(self.pos_f)
+        pos_i = self.findGeo(max_p)
+        pos_f = self.findGeo(min_p)
 
-        A = self.pos_i.xyz
-        B = self.pos_f.xyz
+
+        # Convert trajectory into local coords
+        pos_i.pos_loc(pos_f)
+        pos_f.pos_loc(pos_f)
+
+        A = pos_i.xyz
+        B = pos_f.xyz
 
         # A = latLonAlt2ECEF(np.radians(self.pos_i.lat), np.radians(self.pos_i.lon), self.pos_i.elev) 
         # B = latLonAlt2ECEF(np.radians(self.pos_f.lat), np.radians(self.pos_f.lon), self.pos_f.elev)
@@ -627,30 +631,87 @@ class Trajectory:
 
         return geo
 
-    def verticalVel(self):
+    def verticalVel(self, v=None):
         """ Returns the z component of the velocity
         """
-
-        v_h = self.v*np.cos(self.zenith.rad)
+        if v is None:
+            v_h = self.v*np.cos(self.zenith.rad)
+        else:
+            v_h = v*np.cos(self.zenith.rad)
 
         return v_h
 
 
-    def approxHeight(self, time):
+    def approxHeight(self, time, v_list=[]):
         """ Returns the height of the meteoroid at a time in relation to the same 
         reference time assuming no deceleration
         """
 
-        dt = time - self.t
+        v_list = np.array([[self.pos_i.elev, 17.600],
+                          [60000, 17.600],
+                          [40200, 17.503],
+                          [35500, 17.411],
+                          [26400, 16.780],
+                          [20000, 15.090],
+                          [17900, 13.731],
+                          [16690, 13.000],
+                          [14900, 11.118],
+                          [13300,  9.598],
+                          [12200,  7.345],
+                          [11100,  6.000],
+                          [ 9500,  3.000],
+                          [    0,  3.000]])
 
-        v_h = self.verticalVel()
+        # constant velocity
+        if len(v_list) == 0:
+
+            dt = time - self.t
+
+            v_h = self.verticalVel()
+
+            height = self.pos_i.elev - dt*v_h
+
+            return height
+
+        else:
+
+            target_dt = 0
+            target_h = self.pos_i.elev
+
+            # time from beginning to target height
+            dt = time - self.t
+
+            h_list = v_list[:, 0]
+            vs = v_list[:, 1]*1000
+
+            dt_list = []
+
+            for ii in range(1, len(v_list)):
+
+                vh = (self.verticalVel(v=vs[ii-1]) + self.verticalVel(v=vs[ii]))/2
+                dh = abs(h_list[ii] - h_list[ii - 1])
 
 
-        height = self.pos_i.elev - dt*v_h
+                if target_dt + dh/vh > dt:
 
-        return height
+                    frac = (dt - target_dt)/(dh/vh)
 
-    def findTime(self, height):
+                    final_h = frac*(-dh) + target_h
+                    # print("Final Answer: Time: {:}, Height: {:.2f}, Vertical Velocity: {:.2f}, Layer: {:}".format(dt, final_h, vh, ii))
+                    return final_h
+
+                else:
+
+                    target_dt += dh/vh
+                    target_h -= dh
+
+                # print("Temp: Time: {:}, Height: {:.2f}, Vertical Velocity: {:.2f}, Layer: {:}".format(target_dt, target_h, vh, ii))
+
+            return None
+
+
+
+    def findTime(self, height, v_list=[]):
         """ Returns the time that it takes for the meteor to get from its inital position
         to a given height. Assumes that the bolide travels at a constant speed
 
@@ -661,16 +722,18 @@ class Trajectory:
         time [float] - the time at that point [seconds]
         """
 
+        # constant time
+        if len(v_list) == 0:
 
-        # Vertical component of velocity
-        v_h = self.verticalVel()
+            # Vertical component of velocity
+            v_h = self.verticalVel()
 
-        dh = self.pos_i.elev - height
+            dh = self.pos_i.elev - height
 
-        # Get time travelled
-        t = dh/v_h + self.t
+            # Get time travelled
+            t = dh/v_h + self.t
 
-        return t
+            return t
 
 
 
@@ -855,25 +918,42 @@ if __name__ == '__main__':
 
     print("### Trajectory Testing ###")
     print("# Check parameters of trajectory are the same")
-    pos_i = Position(59.737, 16.511, 81300)
-    pos_f = Position(59.826, 16.873, 11400)
+    pos_i = Position(43.085167, -80.726829, 63910)
+    pos_f = Position(43.192440, -79.446173, 21799)
 
     A = Trajectory(0, 17400, pos_i=pos_i, pos_f=pos_f, verbose=True)
-    B = Trajectory(0, 17400, pos_i=pos_i, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
-    C = Trajectory(0, 17400, pos_f=pos_f, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
+    print(A)
+    # times = [0, 1, 2, 3, 4]
+    # v_list = np.array([[60000, 17.385],
+    #                   [40200, 17.306],
+    #                   [35500, 17.214],
+    #                   [26400, 16.576],
+    #                   [17900, 14.11],
+    #                   [14900, 11.97],
+    #                   [13300, 10.27],
+    #                   [11100, 6.50],
+    #                   [ 9000,  2.96],
+    #                   [    0,  0.00]])
+
+    # for tt in times:
+    #     A.approxHeight(tt, v_list)
+
+
+    # B = Trajectory(0, 17400, pos_i=pos_i, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
+    # C = Trajectory(0, 17400, pos_f=pos_f, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
     
 
-    from tabulate import tabulate
+    # from tabulate import tabulate
     
-    print(tabulate([["Pos_i - lat", A.pos_i.lat, B.pos_i.lat, C.pos_i.lat], \
-                    ["Pos_i - lon", A.pos_i.lon, B.pos_i.lon, C.pos_i.lon], \
-                    ["Pos_i - elev", A.pos_i.elev, B.pos_i.elev, C.pos_i.elev], \
-                    ["Pos_f - lat", A.pos_f.lat, B.pos_f.lat, C.pos_f.lat], \
-                    ["Pos_f - lon", A.pos_f.lon, B.pos_f.lon, C.pos_f.lon], \
-                    ["Pos_f - elev", A.pos_f.elev, B.pos_f.elev, C.pos_f.elev], \
-                    ["Azimuth", A.azimuth.deg, B.azimuth.deg, C.azimuth.deg], \
-                    ["Zenith", A.zenith.deg, B.zenith.deg, C.zenith.deg]], \
-                    headers=["Case 2", "Case 3", "Case 4"]))
+    # print(tabulate([["Pos_i - lat", A.pos_i.lat, B.pos_i.lat, C.pos_i.lat], \
+    #                 ["Pos_i - lon", A.pos_i.lon, B.pos_i.lon, C.pos_i.lon], \
+    #                 ["Pos_i - elev", A.pos_i.elev, B.pos_i.elev, C.pos_i.elev], \
+    #                 ["Pos_f - lat", A.pos_f.lat, B.pos_f.lat, C.pos_f.lat], \
+    #                 ["Pos_f - lon", A.pos_f.lon, B.pos_f.lon, C.pos_f.lon], \
+    #                 ["Pos_f - elev", A.pos_f.elev, B.pos_f.elev, C.pos_f.elev], \
+    #                 ["Azimuth", A.azimuth.deg, B.azimuth.deg, C.azimuth.deg], \
+    #                 ["Zenith", A.zenith.deg, B.zenith.deg, C.zenith.deg]], \
+    #                 headers=["Case 2", "Case 3", "Case 4"]))
 
 
     

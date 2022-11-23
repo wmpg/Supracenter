@@ -9,7 +9,7 @@ from scipy.optimize import curve_fit
 #FILE_NAME = "F:\\Desktop\\alaska_ANSI_KG85_winds.csv"
 # FILE_NAME = "F:\\Desktop\\alaska_07_19_22_h.csv"
 #FILE_NAME = "F:\\Desktop\\romania_sens_winds_10_grid.csv"
-FILE_NAME = "F:\\Desktop\\Nord_08_09_22.csv"
+FILE_NAME = "F:\\Desktop\\Nord_Low_Frag.csv"
 # FILE_NAME = "F:\\Desktop\\NZ_07_28_22.csv"
 # FILE_NAME = "F:\\Desktop\\Nord_08_02_22.csv"
 
@@ -34,6 +34,7 @@ def bimodal(x,mu1,sigma1,A1,mu2,sigma2,A2):
     return gauss(x,mu1,sigma1,A1) + gauss(x,mu2,sigma2,A2)
 
 def readFile(file_name):
+    print("Reading File...")
     lats = []
     lons = []
     heights = []
@@ -63,7 +64,7 @@ def readFile(file_name):
                 heights.append(h)
                 energies.append(e)
                 residuals.append(r)
-            print(stats >= STATS_TOL)
+
 
     lats = np.array(lats)
     lons = np.array(lons)
@@ -73,8 +74,19 @@ def readFile(file_name):
 
     return lats, lons, heights, energies, residuals
 
-lats1, lons1, heights1, energies1, residuals1 = readFile(FILE_NAME)
+def findBestSol(lats1, lons1, heights1, energies1, residuals1):
 
+    best_res = np.nanargmin(residuals1)
+
+    return [lats1[best_res], lons1[best_res], heights1[best_res], energies1[best_res], residuals1[best_res]]
+
+def findAvgSol(lat, lon, h, e, res):
+
+    return [np.mean(lat), np.mean(lon), np.mean(h), np.mean(e), np.mean(res)]
+
+
+lats1, lons1, heights1, energies1, residuals1 = readFile(FILE_NAME)
+print("Initializing...")
 N = len(lats1)
 
 plt.ion()
@@ -85,6 +97,8 @@ mu_list = []
 err_list = []
 min_list = []
 max_list = []
+
+best_sol = findBestSol(lats1, lons1, heights1, energies1, residuals1)
 
 print("Restricting to {:} stations".format(STATS_TOL))
 
@@ -196,7 +210,7 @@ while True:
     plt.xlabel("Energy [kT TNT]")
     plt.legend()
 
-
+    print(findAvgSol(lats1_filt, lons1_filt, heights1_filt, energies1_filt, residuals1_filt))
     plt.subplot(233)
 
     SIGMA = 3
@@ -219,5 +233,5 @@ while True:
     plt.draw()
     plt.pause(0.0001)
 
-    
+print(best_sol)  
 plt.waitforbuttonpress()

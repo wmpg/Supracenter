@@ -34,6 +34,7 @@ class LightCurve:
 
         for t in self.t:
             h.append(traj.approxHeight(t)/1000)
+            
 
         h = np.array(h)
 

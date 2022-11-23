@@ -659,6 +659,8 @@ class rtvWindowDialog(QWidget):
                             wind=True, h_tol=h_tol, v_tol=v_tol, print_times=True, processes=1)
         print("Cyscan Results", r)
 
+
+
         if not clean_mode:
             
             az = np.radians(r[1])
@@ -886,6 +888,9 @@ class rtvWindowDialog(QWidget):
                     else:
                         f.write("{:}, {:}, {:}, {:}, {:}, {:}\n".format(source.elev/1000, t_array[ll], az_array[ll], tk_array[ll], err_array[ll], angle_off_array[ll]))
 
+        # Total Time from Ref
+        return traj.findTime(source.elev) + r[0]
+
     def loadAngleCSV(self):
         
         times = []
@@ -1012,22 +1017,35 @@ class rtvWindowDialog(QWidget):
                 self.rayTraceFromSource(source, debug=True)
         
         else:
+
+            ##### Traj Mode is on
             
             self.plot_ba_data = []
             # define line bottom boundary
-            max_height = traj.pos_i.elev
-            min_height = traj.pos_f.elev
+            # max_height = traj.pos_i.elev
+            # min_height = traj.pos_f.elev
 
-            points = traj.trajInterp2(div=50, min_p=min_height, max_p=max_height)
+            h_list = []
+            t_list = []
+
+            max_height = float(input("Maximum height [m]: "))
+            min_height = float(input("Minimum height [m]: "))
+            div = float(input("Number of divisions: "))
+
+            points = traj.trajInterp2(div=div, min_p=min_height, max_p=max_height)
 
             loadingBar('Calculating Station Times: ', 0, len(points))
             for pp, pt in enumerate(points):
                 loadingBar('Calculating Station Times: ', pp, len(points))
                 source = Position(pt[0], pt[1], pt[2])
-                self.rayTraceFromSource(source, clean_mode=True, debug=True)
+                h_list.append(source.elev)
+                t_list.append(self.rayTraceFromSource(source, clean_mode=True, debug=True))
                 loadingBar('Calculating Station Times: ', pp+1, len(points))
 
-            self.drawTraj()
+            try:
+                self.drawTraj()
+            except:
+                pass
 
             self.rtv_graph.show()
 
@@ -1053,6 +1071,10 @@ class rtvWindowDialog(QWidget):
             
             # self.pol_graph.ax1.axvline(x=float(self.source_height.text()), linestyle='-')
             # self.pol_graph.ax2.axvline(x=float(self.source_height.text()), linestyle='-')
+            print("### Heights ###")
+            print(h_list)
+            print("### Times ###")
+            print(t_list)
 
 if __name__ == '__main__':
 
