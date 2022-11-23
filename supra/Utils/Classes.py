@@ -922,7 +922,8 @@ if __name__ == '__main__':
     pos_f = Position(43.192440, -79.446173, 21799)
 
     A = Trajectory(0, 17400, pos_i=pos_i, pos_f=pos_f, verbose=True)
-    print(A)
+    B = Trajectory(0, 17400, pos_i=pos_i, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
+    C = Trajectory(0, 17400, pos_f=pos_f, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
     # times = [0, 1, 2, 3, 4]
     # v_list = np.array([[60000, 17.385],
     #                   [40200, 17.306],
@@ -943,17 +944,17 @@ if __name__ == '__main__':
     # C = Trajectory(0, 17400, pos_f=pos_f, azimuth=A.azimuth, zenith=A.zenith, verbose=True)
     
 
-    # from tabulate import tabulate
+    from tabulate import tabulate
     
-    # print(tabulate([["Pos_i - lat", A.pos_i.lat, B.pos_i.lat, C.pos_i.lat], \
-    #                 ["Pos_i - lon", A.pos_i.lon, B.pos_i.lon, C.pos_i.lon], \
-    #                 ["Pos_i - elev", A.pos_i.elev, B.pos_i.elev, C.pos_i.elev], \
-    #                 ["Pos_f - lat", A.pos_f.lat, B.pos_f.lat, C.pos_f.lat], \
-    #                 ["Pos_f - lon", A.pos_f.lon, B.pos_f.lon, C.pos_f.lon], \
-    #                 ["Pos_f - elev", A.pos_f.elev, B.pos_f.elev, C.pos_f.elev], \
-    #                 ["Azimuth", A.azimuth.deg, B.azimuth.deg, C.azimuth.deg], \
-    #                 ["Zenith", A.zenith.deg, B.zenith.deg, C.zenith.deg]], \
-    #                 headers=["Case 2", "Case 3", "Case 4"]))
+    print(tabulate([["Pos_i - lat", A.pos_i.lat, B.pos_i.lat, C.pos_i.lat], \
+                    ["Pos_i - lon", A.pos_i.lon, B.pos_i.lon, C.pos_i.lon], \
+                    ["Pos_i - elev", A.pos_i.elev, B.pos_i.elev, C.pos_i.elev], \
+                    ["Pos_f - lat", A.pos_f.lat, B.pos_f.lat, C.pos_f.lat], \
+                    ["Pos_f - lon", A.pos_f.lon, B.pos_f.lon, C.pos_f.lon], \
+                    ["Pos_f - elev", A.pos_f.elev, B.pos_f.elev, C.pos_f.elev], \
+                    ["Azimuth", A.azimuth.deg, B.azimuth.deg, C.azimuth.deg], \
+                    ["Zenith", A.zenith.deg, B.zenith.deg, C.zenith.deg]], \
+                    headers=["Case 2", "Case 3", "Case 4"]))
 
 
     

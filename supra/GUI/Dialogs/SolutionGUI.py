@@ -1767,22 +1767,23 @@ class SolutionGUI(QMainWindow):
 
     def addIniDockWidgets(self):
 
-        all_vars = QGroupBox()
-        self.ini_dock.setWidget(all_vars)
+        self.all_vars = QGroupBox(objectName="all_vars")
+        self.all_vars.setStyleSheet("QGroupBox#all_vars{color: white; background: rgb(0, 0, 0);}")
+        self.ini_dock.setWidget(self.all_vars)
 
-        dock_layout = QVBoxLayout()
-        all_vars.setLayout(dock_layout)
+        dock_layout = QGridLayout()
+        self.all_vars.setLayout(dock_layout)
 
         ini_tabs = QTabWidget()
-        dock_layout.addWidget(ini_tabs)
+        dock_layout.addWidget(ini_tabs, 0, 0, 1, 2)
 
         self.load_button = QPushButton('Load')
-        dock_layout.addWidget(self.load_button)
+        dock_layout.addWidget(self.load_button, 2, 0)
         #self.load_button.clicked.connect(partial(loadGUI, self))
         self.load_button.clicked.connect(partial(load, self))
 
         self.save_button = QPushButton('Save')
-        dock_layout.addWidget(self.save_button)
+        dock_layout.addWidget(self.save_button, 2, 1)
         # self.save_button.clicked.connect(partial(saveGUI, self, True))
         self.save_button.clicked.connect(partial(save, self, True))
 
@@ -1791,25 +1792,35 @@ class SolutionGUI(QMainWindow):
         tab1.setLayout(tab1_content)
         ini_tabs.addTab(tab1, "General")
 
-        self.fireball_name_label, self.fireball_name_edits = createLabelEditObj('Fireball Name:', tab1_content, 1, tool_tip='fireball_name')
-     
-        self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', tab1_content, 15, width=1, h_shift=0, tool_tip='station_picks_file')
-        self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
-        self.station_picks_buton.clicked.connect(partial(save, self, True))
         
 
-        self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', tab1_content, 11, tool_tip='lat_centre', validate='float')
-        self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', tab1_content, 12, tool_tip='lon_centre', validate='float')
-        self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', tab1_content, 13, tool_tip='deg_radius', validate='float')
-        self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", tab1_content, 14, tool_tip='fireball_datetime')
+        data_groupbox = QGroupBox("Fireball Data") 
+        tab1_content.addWidget(data_groupbox, 1, 0, 1, 3)
+        data_groupbox_content = QGridLayout()
+        data_groupbox.setLayout(data_groupbox_content)    
 
-        self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', tab1_content, 16, width=1, h_shift=0)
+        file_groupbox = QGroupBox("Input Files")
+        tab1_content.addWidget(file_groupbox, 3, 0, 1, 3)
+        file_groupbox_content = QGridLayout()
+        file_groupbox.setLayout(file_groupbox_content)
+
+        self.fireball_name_label, self.fireball_name_edits = createLabelEditObj('Fireball Name:', data_groupbox_content, 1, tool_tip='fireball_name')
+        self.lat_centre_label, self.lat_centre_edits = createLabelEditObj('Latitude Center:', data_groupbox_content, 2, tool_tip='lat_centre', validate='float')
+        self.lon_centre_label, self.lon_centre_edits = createLabelEditObj('Longitude Center:', data_groupbox_content, 3, tool_tip='lon_centre', validate='float')
+        self.deg_radius_label, self.deg_radius_edits = createLabelEditObj('Degrees in Search Radius:', data_groupbox_content, 4, tool_tip='deg_radius', validate='float')
+        self.fireball_datetime_label, self.fireball_datetime_edits = createLabelDateEditObj("Fireball Datetime", data_groupbox_content, 5, tool_tip='fireball_datetime')
+
+        self.light_curve_label, self.light_curve_edits, self.light_curve_buton = createFileSearchObj('Light Curve File: ', file_groupbox_content, 1, width=1, h_shift=0)
         self.light_curve_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.light_curve_edits))
         self.light_curve_buton.clicked.connect(partial(save, self, True))
 
-        self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', tab1_content, 17, width=1, h_shift=0)
+        self.contour_file_label, self.contour_file_edits, self.contour_file_buton = createFileSearchObj('Contour File: ', file_groupbox_content, 2, width=1, h_shift=0)
         self.contour_file_buton.clicked.connect(partial(fileSearch, ['NPY (*.npy)'], self.contour_file_edits))
         self.contour_file_buton.clicked.connect(partial(save, self, True))
+
+        self.station_picks_label, self.station_picks_edits, self.station_picks_buton = createFileSearchObj('Station Picks File: ', file_groupbox_content, 3, width=1, h_shift=0, tool_tip='station_picks_file')
+        self.station_picks_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], self.station_picks_edits))
+        self.station_picks_buton.clicked.connect(partial(save, self, True))
 
         tab2 = QWidget()
         tab2_content = QGridLayout()

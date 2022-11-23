@@ -71,7 +71,7 @@ def theme(obj):
     QTabBar::tab:hover {
     background: rgb(64, 64, 64);
     }
-    QLabel{color: white; background: black;}
+    QLabel{color: white;}
     QLineEdit {
     background: rgb(64, 64, 64);
     selection-background-color: rgb(0, 100, 200);
@@ -91,7 +91,7 @@ def theme(obj):
     }
     QProgressBar::chunk{background-color: rgb(0, 100, 200);}
     QDockWidget{color: white; background: black;}
-    QGroupBox{color: white;}
+    QGroupBox{color: white; background: rgb(25, 25, 25);}
     QGroupBox{ 
     border: 2px white; 
     border-radius: 0px; }
@@ -110,6 +110,7 @@ def theme(obj):
     QHeaderView::section{Background-color:black;}
     QTableView QTableCornerButton::section {
     background: black;
+
 }
     """
 
