@@ -334,94 +334,83 @@ def plotData(data, del_data, params, mass_list):
 
     plt.savefig(params.output + '_darkflight_path.png', dpi=300)
 
-    plt.show()
+    plt.clf()
+    plt.close()
 
 
-    #.kml file
+    ### Init the KML file
     mass = [0]*len(mass_list)
-    kml=simplekml.Kml()
-    # traj = kml.newfolder(name='Fall Path')
-    # uncs = kml.newfolder(name='Monte Carlo')
-    # poin = kml.newfolder(name='Best Points')
+    kml = simplekml.Kml()
     pnt = [None]*len(mass_list)
 
+    # Create a list of colors to cycle through
+    colors = [simplekml.Color.blue, simplekml.Color.orange, simplekml.Color.green, simplekml.Color.red, 
+        simplekml.Color.purple, simplekml.Color.brown, simplekml.Color.pink, simplekml.Color.grey, 
+        simplekml.Color.yellow, simplekml.Color.black]
+
+    # Create a new folder for the fall curves for each mass
+    fall_curves = kml.newfolder(name='Fall Curves')
+
+    # Folder for the sampled points on the fall curve
+    fall_points = kml.newfolder(name='Fall Curve Points')
+
+    # Add fall curves to the KML file for each mass
+    for i in range(len(mass_list)):
+
+        mass_name = massString(mass_list[i])
+
+        lat_list = lat[i]
+        lon_list = lon[i]
+        alt_list = alt[i]
+
+        # Construct a 2D array of the lon, lat, and alt (in meters) values
+        coords = np.array([lon_list, lat_list, alt_list*1000]).T
+        
+        # Add the fall curve to the KML file
+        fc = fall_curves.newlinestring(name=mass_name, coords=coords, altitudemode='absolute')
+        fc.style.linestyle.width = 2
+        fc.style.linestyle.color = colors[i%len(colors)]
+
+        # Make a new folder for each mass bin of fall points
+        fall_points_mass = fall_points.newfolder(name=mass_name)
+
+        # Add sample points on the fall curve (take every 100th point, make sure the last one is included)
+        for j in list(range(0, len(lon_list), 100)) + [len(lon_list)-1]:
+            
+            pnt[i] = fall_points_mass.newpoint(coords=[(lon_list[j], lat_list[j], alt_list[j]*1000)], 
+                altitudemode='absolute')
+            pnt[i].style.iconstyle.color = colors[i%len(colors)]
+            pnt[i].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
+
+            # Add coordinates, heights, and time to the description
+            pnt[i].description = 'Lat = {:10.6f}, Lon = {:10.6f}\nHeight = {:10.1f} km\nTime = {:10.1f} s'.format(
+                lat_list[j], lon_list[j], alt_list[j], t[i][j])
+
+
     if params.error:
+
+        # Create a KML directory for the points computed using Monte Carlo
+        mc_kml_dir = kml.newfolder(name='Monte Carlo')
+
         # Trajectory points
         for j in range(len(mass_list)):
-            mass[j] = kml.newfolder(name=massString(mass_list[j]))
+            mass[j] = mc_kml_dir.newfolder(name=massString(mass_list[j]))
             for i in range(len(del_lat[j])):
-            # pnt[j] = traj.newpoint(coords=[(lon[j][i], lat[j][i], alt[j][i]*1000)], altitudemode='clampToGround')
-
-            # if j%10 == 0:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.blue
-            
-            # elif j%10 == 1:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.orange
-
-            # elif j%10 == 2:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.green
-
-            # elif j%10 == 3:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.red
-    
-            # elif j%10 == 4:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.purple
-
-            # elif j%10 == 5:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.brown
-
-            # elif j%10 == 6:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.pink
-
-            # elif j%10 == 7:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.grey
-
-            # elif j%10 == 8:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.yellow
-
-            # elif j%10 == 9:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.black
-            
-            # pnt[j].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
-
 
                 # Monte Carlo points
-                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], altitudemode='clampToGround')
-
-                if j%10 == 0:
-                    pnt[j].style.iconstyle.color = simplekml.Color.blue
-                
-                elif j%10 == 1:
-                    pnt[j].style.iconstyle.color = simplekml.Color.orange
-
-                elif j%10 == 2:
-                    pnt[j].style.iconstyle.color = simplekml.Color.green
-
-                elif j%10 == 3:
-                    pnt[j].style.iconstyle.color = simplekml.Color.red
-        
-                elif j%10 == 4:
-                    pnt[j].style.iconstyle.color = simplekml.Color.purple
-
-                elif j%10 == 5:
-                    pnt[j].style.iconstyle.color = simplekml.Color.brown
-
-                elif j%10 == 6:
-                    pnt[j].style.iconstyle.color = simplekml.Color.pink
-
-                elif j%10 == 7:
-                    pnt[j].style.iconstyle.color = simplekml.Color.grey
-
-                elif j%10 == 8:
-                    pnt[j].style.iconstyle.color = simplekml.Color.yellow
-
-                elif j%10 == 9:
-                    pnt[j].style.iconstyle.color = simplekml.Color.black
+                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], 
+                    altitudemode='clampToGround')
+                pnt[j].style.iconstyle.color = colors[j%len(colors)]
 
                 pnt[j].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
 
+
+    # Make a new KML directory for the nominal points
+    nominal_kml_dir = kml.newfolder(name='Nominal Points')
+
+    # Add nominal dark flight positions to the KML file
     for j in range(len(mass_list)):
-        mass[j] = kml.newfolder(name=massString(mass_list[j]))
+        mass[j] = nominal_kml_dir.newfolder(name=massString(mass_list[j]))
         
         best_t = t[j][-1]
         
@@ -462,7 +451,8 @@ def plotData(data, del_data, params, mass_list):
 
     plt.savefig(params.output + '_darkflight_map.png', dpi=300)
 
-    plt.show()
+    plt.clf()
+    plt.close()
 
 
 def readInfile(infile):
