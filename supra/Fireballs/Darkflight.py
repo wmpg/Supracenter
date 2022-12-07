@@ -98,15 +98,19 @@ def massString(mass):
 
     return mass_str
 
-def runDarkflight(params, mass, uncertainty=False):
+def runDarkflight(params, mass, output_path, uncertainty=False):
     """ Wrapper function for Darkflight
         Predicts the travel path of the meteor in darkflight given the initial conditions. Uses Monte Carlo to 
-        find uncertainty in locations. Exports a .txt file to params.output which is read later in the program 
+        find uncertainty in locations. Exports a .txt file to output_path which is read later in the program 
         containing the solution to the darkflight.
 
     Arguments:
         params: [Object] contains all .ini variables, including all inputs into the Darkflight code
         mass: [float] current mass to be calculated (this function runs multiple times for various masses)
+        output_path: [string] Path to the output directory and file name. The file name should not have an 
+            extension.
+
+    Keyword arguments:
         uncertainty: [boolean] True - Calculate the uncertainty mode
                                False - Calculate the darkflight path
     """
@@ -136,7 +140,7 @@ def runDarkflight(params, mass, uncertainty=False):
     max_iter = str(params.max_iter)
     drg = str(params.drag)
 
-    # Directory of Darkflight
+    # Directory of the darkflight binary
     dir1 = "/home/dvida/source/darkflight"
     dir2 = "C:\\Users\\lmcfd\\Desktop\\"
     dir3 = "/srv/meteor/fireballs/darkflight"
@@ -147,7 +151,7 @@ def runDarkflight(params, mass, uncertainty=False):
     elif os.path.isdir(dir3):
         darkflight_dir = dir3
     else:
-        print("The directory with the darkflight code cannot be found!")
+        print("The directory with the darkflight binary cannot be found!")
         print("Tried these directories:")
         print(dir1)
         print(dir2)
@@ -173,7 +177,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        '--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, '--frag',\
-                        '--atm', params.atm,'--out',  params.output + '_uncertainty' + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
         
         # no fragmentation
         else:
@@ -183,7 +187,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        '--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg,\
-                        '--atm', params.atm,'--out',  params.output + '_uncertainty' + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
 
     # Best trajectory points
     else:
@@ -195,7 +199,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        #'--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        #'--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, \
-                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
 
     # Run terminal call
     p.communicate()
@@ -234,8 +238,6 @@ def readDarkflight(output, mass, header=30, partial=False):
             if np.isnan(line[0]):
                 continue
 
-            print(line)
-
             # Add the contents of the line to the data list
             data = np.vstack((data, np.array(line)))
 
@@ -252,16 +254,21 @@ def readDarkflight(output, mass, header=30, partial=False):
             return data
 
 
-def plotData(data, del_data, params, mass_list):
+def plotData(dir_path, file_name, data, del_data, params, mass_list):
     """ Function to plot the darkflight data, and create the .kml file
 
     Arguments:
+        dir_path: [string] Directory path to save the plots and the KML file.
+        file_name: [string] Template file name.
         data: [ndarray] array containing parsed data from darkflight output
         del_data: [ndarray] array containing parsed data from darkflight uncertainty output
         params: [Object] object containing all .ini configuration variables
         mass_list: [list] list of masses used in simulation
 
     """
+
+    # Construct a file path
+    file_path = os.path.join(dir_path, file_name)
 
     # Initialize lists
     lat = []
@@ -333,7 +340,7 @@ def plotData(data, del_data, params, mass_list):
     ax1.set_zlabel('Elevation (km)')
     ax1.set_title('Darkflight Path')
 
-    plt.savefig(params.output + '_darkflight_path.png', dpi=300)
+    plt.savefig(file_path + '_darkflight_path.png', dpi=300)
 
     plt.clf()
     plt.close()
@@ -384,15 +391,16 @@ def plotData(data, del_data, params, mass_list):
             pnt[i].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
 
             # Add coordinates, heights, and time to the description
-            pnt[i].description = 'Lat = {:10.6f}, Lon = {:10.6f}\nHeight = {:10.1f} km\nTime = {:10.1f} s'.format(
+            pnt[i].description = 'Lat = {:10.6f}, Lon = {:10.6f}\nHeight = {:10.1f} km\nTime = {:+10.1f} s'.format(
                 lat_list[j], lon_list[j], alt_list[j], t[i][j])
 
-            # If absolute time is given, add the absolute time to the description
+            # If absolute time is given, add the absolute timing information
             if params.ref_time:
-                pnt[i].description += '\n{:s}'.format(params.ref_time.strftime('%Y-%m-%d %H:%M:%S.%f'))
 
                 # Compute the time when the point reached the given height
                 time_at_height = params.ref_time + datetime.timedelta(seconds=t[i][j])
+
+                pnt[i].description += '\n{:s}'.format(time_at_height.strftime('%Y-%m-%d %H:%M:%S.%f'))
 
                 # Add point timing information
                 pnt[i].timestamp.when = time_at_height.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
@@ -445,12 +453,11 @@ def plotData(data, del_data, params, mass_list):
 
 
     
-    kml.save(params.output + '_darkflight_map.kml')
+    kml.save(file_path + '_darkflight_map.kml')
 
 
 
     # 2D map plot
-    print(np.radians(lat_long), np.radians(lon_long))
     m = GroundMap(np.radians(lat_long), np.radians(lon_long), border_size=5, color_scheme='light')
 
     for i in range(len(mass_list)):
@@ -460,7 +467,7 @@ def plotData(data, del_data, params, mass_list):
 
     #m.scatter(np.radians(lat[-1]), np.radians(lon[-1]), marker='*', c='r')
 
-    plt.savefig(params.output + '_darkflight_map.png', dpi=300)
+    plt.savefig(file_path + '_darkflight_map.png', dpi=300)
 
     plt.clf()
     plt.close()
@@ -486,11 +493,10 @@ def readInfile(infile):
     config.read(infile)
 
     try:
-        params.output =  config.get('General', 'output')
         params.atm    =  config.get('General', 'atm')
         params.error  =  config.get('General', 'error')
     except:
-        print('INI ERROR: [General] expected variables: output, atm, error')
+        print('INI ERROR: [General] expected variables: atm, error')
         sys.exit()
 
     try:
@@ -669,7 +675,20 @@ if __name__ == "__main__":
     # Parse the command line arguments
     cml_args = arg_parser.parse_args()
 
+    # Check that the input file exists
+    if not os.path.isfile(cml_args.input_file):
+        raise FileNotFoundError("Input file does not exist! {:s}".format(cml_args.input_file))
+
+    # Extract the directory path from the input file
+    dir_path = os.path.dirname(os.path.realpath(cml_args.input_file))
+    file_name = os.path.basename(dir_path)
+
+    # Read the input file
     params = readInfile(cml_args.input_file)
+
+    # Add absolute path to the atmosphere file
+    if os.path.isfile(os.path.join(dir_path, params.atm)):
+        params.atm = os.path.abspath(os.path.join(dir_path, params.atm))
 
     # What masses are chosen
     mass_list = halfMags(params.mass_min, params.mass_max, [2.5, 5])
@@ -678,22 +697,26 @@ if __name__ == "__main__":
 
     params.error = (params.error.lower() == 'true')
 
-    if not os.path.exists(params.output):
-        os.makedirs(params.output)
-
-    print('start')
+    print('Start dark flight calculations')
     data = []
     del_data = []
     for i in range(len(mass_list)):
 
         mass_str = massString(mass_list[i])
 
-        runDarkflight(params, mass_list[i], uncertainty=False)
-        data.append(readDarkflight(params.output + '_' + mass_str, mass_list[i], header=34))
+        # Create the output name
+        output_path = os.path.join(dir_path, file_name + "_" + mass_str)
+
+        runDarkflight(params, mass_list[i], output_path, uncertainty=False)
+        data.append(readDarkflight(output_path, mass_list[i], header=34))
 
         if params.error:
-            runDarkflight(params, mass_list[i], uncertainty=True)
-            del_data.append(readDarkflight(params.output + '_uncertainty' + '_' + mass_str, mass_list[i], header=34, partial=False))
-    print("end")
+            
+            output_path = os.path.join(dir_path, file_name + '_uncertainty' + '_' + mass_str)
 
-    plotData(data, del_data, params, mass_list)
+            runDarkflight(params, mass_list[i], output_path, uncertainty=True)
+            del_data.append(readDarkflight(output_path, mass_list[i], header=34, partial=False))
+    
+    print("End calculations")
+
+    plotData(dir_path, file_name, data, del_data, params, mass_list)
