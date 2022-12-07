@@ -5,6 +5,7 @@ import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 import simplekml
 
 from wmpl.Utils.PlotMap import GroundMap
@@ -386,6 +387,16 @@ def plotData(data, del_data, params, mass_list):
             pnt[i].description = 'Lat = {:10.6f}, Lon = {:10.6f}\nHeight = {:10.1f} km\nTime = {:10.1f} s'.format(
                 lat_list[j], lon_list[j], alt_list[j], t[i][j])
 
+            # If absolute time is given, add the absolute time to the description
+            if params.ref_time:
+                pnt[i].description += '\n{:s}'.format(params.ref_time.strftime('%Y-%m-%d %H:%M:%S.%f'))
+
+                # Compute the time when the point reached the given height
+                time_at_height = params.ref_time + datetime.timedelta(seconds=t[i][j])
+
+                # Add point timing information
+                pnt[i].timestamp.when = time_at_height.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
 
     if params.error:
 
@@ -510,6 +521,24 @@ def readInfile(infile):
     except:
         print('INI ERROR: [Variables] expected variables: x, y, z, v, az, ze - must be strictly floats!')
         sys.exit()
+
+    try:
+        ref_time = config.get('Variables', 'ref_time')
+        params.ref_time = datetime.datetime.strptime(ref_time, '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        params.ref_time = None
+        print("No reference time was given, skipping timed dark flight KML output! The time should be given in the YYYY-MM-DD HH:MM:SS.ss format.")
+
+    # Load the time delta, if given
+    if params.ref_time is not None:
+        try:
+            ref_time_ds = float(config.get('Variables', 'ref_time_ds'))
+
+            # Apply the time delta to the refernece time
+            params.ref_time += datetime.timedelta(seconds=ref_time_ds)
+        except:
+            print("No reference time delta was given, using the reference time as the time of ejection!")
+
 
     try:
         params.mass_min =    float(config.get('Variables', 'mass_min'))
