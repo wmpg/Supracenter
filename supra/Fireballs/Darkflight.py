@@ -522,11 +522,22 @@ def readInfile(infile):
         params.z =       float(config.get('Variables', 'z'))
         params.v =       float(config.get('Variables', 'v'))
         params.az =      float(config.get('Variables', 'az'))
-        params.ze =      float(config.get('Variables', 'ze'))
 
     except:
-        print('INI ERROR: [Variables] expected variables: x, y, z, v, az, ze - must be strictly floats!')
+        print('INI ERROR: [Variables] expected variables: x, y, z, v, az - must be strictly floats!')
         sys.exit()
+
+    try:
+        # Load the altitude instaed of the zenith angle
+        alt = float(config.get('Variables', 'alt'))
+        params.ze = 90.0 - alt
+
+    except:
+        # Try loading the zenith angle instead
+        try:
+            params.ze =      float(config.get('Variables', 'ze'))
+        except:
+            raise ValueError("The altitude or zenith angle must be given in the input file!")
 
     try:
         ref_time = config.get('Variables', 'ref_time')
