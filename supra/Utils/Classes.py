@@ -782,8 +782,6 @@ class Plane:
         else:
             return False
 
-# Using American spelling to avoid confusion with other "colour" related tools, sorry
-# This program is proudly Canadian
 class Color:
     def __init__(self):
         self.nominal = (255, 0, 238)

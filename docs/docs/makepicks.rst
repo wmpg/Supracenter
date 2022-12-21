@@ -45,6 +45,8 @@ Station Navigation
 
 The stations can be navigated most easily by "A" and "D" to go to the previous and next waveforms respectively. The waveforms are ordered in distance away from the lat/lon_centre defined in the INI Builder. Using the drop down menus, any station can be jumped to, and the channel of the waveform may be selected. For measuring meteors seismically and infrasonically, typically the BHZ, HHZ, and BDF bands are used.
 
+Stations with an infrasound component will appear with a star next to their name in the station selection combo box.
+
 Exporting Picks
 ===============
 

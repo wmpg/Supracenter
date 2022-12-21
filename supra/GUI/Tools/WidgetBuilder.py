@@ -560,45 +560,10 @@ def addMakePicksWidgets(obj):
     toggle_button_array.setSpacing(0)
     obj.make_picks_bottom_graphs.addLayout(toggle_button_array, 1, 1)
 
-    obj.tog_picks = ToggleButton(False, 1)
-    obj.tog_picks.setToolTip("Click the waveform to make a pick")
-    obj.tog_picks.clicked.connect(obj.tog_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.tog_picks)
 
-    obj.tog_rm_picks = ToggleButton(False, 4)
-    obj.tog_rm_picks.setToolTip("Click the waveform to remove a pick")
-    obj.tog_rm_picks.clicked.connect(obj.tog_rm_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.tog_rm_picks)
 
-    obj.annote_picks = ToggleButton(False, 2)
-    obj.annote_picks.setToolTip("Click the waveform to make an annotation")
-    obj.annote_picks.clicked.connect(obj.annote_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.annote_picks)
 
-    obj.gnd_mot_picks = ToggleButton(False, 3)
-    obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
-    obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.gnd_mot_picks)
 
-    obj.bandpass_picks = ToggleButton(False, 6)
-    obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
-    obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.bandpass_picks)
-
-    obj.polmap_picks = ToggleButton(False, 7)
-    obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
-    obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.polmap_picks)
-
-    obj.save_picks = ToggleButton(False, 8)
-    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
-    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.save_picks)
-
-    obj.rotatepol = ToggleButton(False, 5)
-    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
-    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
-    toggle_button_array.addWidget(obj.rotatepol)
 
     # obj.traj_space = ToggleButton(False, 5)
     # obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
@@ -623,19 +588,21 @@ def addMakePicksWidgets(obj):
     station_group_layout.addWidget(obj.make_picks_channel_choice, 1, 0, 1, 2)
     obj.make_picks_channel_choice.currentIndexChanged.connect(partial(obj.drawWaveform, 1))
 
-    obj.prev_stat = QPushButton('Prev')
+    obj.prev_stat = ToggleButton(False, 14)
+    obj.prev_stat.setToolTip("View the previous closest station")
+    obj.prev_stat.clicked.connect(obj.decrementStation)
     station_group_layout.addWidget(obj.prev_stat, 2, 0, 1, 1)
 
-    obj.next_stat = QPushButton('Next')
+    obj.next_stat = ToggleButton(False, 13)
+    obj.next_stat.setToolTip("View the next closest station")
+    obj.next_stat.clicked.connect(obj.incrementStation)
     station_group_layout.addWidget(obj.next_stat, 2, 1, 1, 1)
 
-    launch = QPushButton('Load Station Data')
-    station_group_layout.addWidget(launch, 3, 0, 1, 2)
-    launch.clicked.connect(obj.makePicks)
+    obj.launch = QPushButton('Load Station Data')
+    station_group_layout.addWidget(obj.launch, 3, 0, 1, 2)
+    obj.launch.clicked.connect(obj.makePicks)
 
-    savtr = QPushButton('Save Current Trace')
-    station_group_layout.addWidget(savtr, 4, 0, 1, 2)
-    savtr.clicked.connect(obj.saveTrace)
+
 
     make_picks_filter_group = QGroupBox("Waveform Filtering")
     make_picks_control_panel.addWidget(make_picks_filter_group)
@@ -652,12 +619,12 @@ def addMakePicksWidgets(obj):
     obj.make_picks_ref_pos_choice = QComboBox()
     filter_group_layout.addWidget(obj.make_picks_ref_pos_choice, 3, 0, 1, 4)
 
-    obj.add_f_parameter = QPushButton('Add F-Statistic')
-    filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
-    obj.add_f_parameter.clicked.connect(obj.fPar)
+    # obj.add_f_parameter = QPushButton('Add F-Statistic')
+    # filter_group_layout.addWidget(obj.add_f_parameter, 4, 0, 1, 2)
+    # obj.add_f_parameter.clicked.connect(obj.fPar)
 
-    obj.f_shift_edits = QLineEdit("0")
-    filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
+    # obj.f_shift_edits = QLineEdit("0")
+    # filter_group_layout.addWidget(obj.f_shift_edits, 4, 2, 1, 2)
 
     obj.low_bandpass_edits.textChanged.connect(obj.updatePlot)
     obj.high_bandpass_edits.textChanged.connect(obj.updatePlot)
@@ -665,43 +632,172 @@ def addMakePicksWidgets(obj):
     obj.filter_combo_box = QComboBox()
     filter_group_layout.addWidget(obj.filter_combo_box, 2, 0, 1, 4)
 
-    make_picks_picks_group = QGroupBox("Arrival Picks")
-    make_picks_control_panel.addWidget(make_picks_picks_group)
+    # make_picks_picks_group = QGroupBox("Arrival Picks")
+    # make_picks_control_panel.addWidget(make_picks_picks_group)
 
-    pick_group_layout = QGridLayout()
-    make_picks_picks_group.setLayout(pick_group_layout)
+    # pick_group_layout = QGridLayout()
+    # make_picks_picks_group.setLayout(pick_group_layout)
 
-    obj.export_to_csv = QPushButton('Export Picks to CSV')
-    pick_group_layout.addWidget(obj.export_to_csv)
+    # obj.export_to_image = QPushButton('Export Image')
+    # pick_group_layout.addWidget(obj.export_to_image)
+    # obj.export_to_image.clicked.connect(obj.exportImage)
 
-    obj.export_to_all_times = QPushButton('Export Arrival Times')
-    pick_group_layout.addWidget(obj.export_to_all_times)
 
-    obj.export_to_image = QPushButton('Export Image')
-    pick_group_layout.addWidget(obj.export_to_image)
-    obj.export_to_image.clicked.connect(obj.exportImage)
 
-    obj.W_est = QPushButton('Yield Estimate')
-    pick_group_layout.addWidget(obj.W_est)
+    # make_picks_check_group = QGroupBox("Toggles")
+    # make_picks_control_panel.addWidget(make_picks_check_group)
+
+    # check_group_layout = QVBoxLayout()
+    # make_picks_check_group.setLayout(check_group_layout)
+
+    ####################
+    # PROCESS DATA
+    ####################
+
+    make_picks_process_group = QGroupBox("Process Data")
+    make_picks_control_panel.addWidget(make_picks_process_group)
+
+    process_layout = QGridLayout()
+    make_picks_process_group.setLayout(process_layout)
+
+    obj.W_est = ToggleButton(False, 21)
+    obj.W_est.setToolTip('Yield Estimate')
+    process_layout.addWidget(obj.W_est, 1, 1)
     obj.W_est.clicked.connect(obj.W_estGUI)
 
-    obj.lum_eff = QPushButton('Luminous Efficiency')
-    pick_group_layout.addWidget(obj.lum_eff)
+    obj.lum_eff = ToggleButton(False, 22)
+    obj.lum_eff.setToolTip('Luminous Efficiency')
+    process_layout.addWidget(obj.lum_eff, 2, 1)
     obj.lum_eff.clicked.connect(obj.lumEffGUI)
 
-    make_picks_check_group = QGroupBox("Toggles")
-    make_picks_control_panel.addWidget(make_picks_check_group)
+    obj.show_height = ToggleButton(False, 23)
+    obj.show_height.setToolTip('Show Height Prediction')
+    process_layout.addWidget(obj.show_height, 3, 1)
 
-    check_group_layout = QVBoxLayout()
-    make_picks_check_group.setLayout(check_group_layout)
+    ####################
+    # WAVEFORM Display
+    ####################
+    make_picks_waveform_edit_group_box = QGroupBox("Waveform Display")
+    make_picks_control_panel.addWidget(make_picks_waveform_edit_group_box)
 
-    obj.show_frags = QCheckBox('Show Fragmentations')
-    check_group_layout.addWidget(obj.show_frags)
-    obj.show_frags.stateChanged.connect(partial(obj.updatePlot, True))
+    waveform_edit_layout = QGridLayout()
+    make_picks_waveform_edit_group_box.setLayout(waveform_edit_layout)
+    waveform_edit_layout.setHorizontalSpacing(0)
+    waveform_edit_layout.setVerticalSpacing(0)
 
-    obj.show_ball = QCheckBox('Show Ballistic')
-    check_group_layout.addWidget(obj.show_ball)
-    obj.show_ball.stateChanged.connect(partial(obj.updatePlot, True))
+    obj.tog_picks = ToggleButton(False, 1)
+    obj.tog_picks.setToolTip("Click the waveform to make a pick")
+    obj.tog_picks.clicked.connect(obj.tog_picks.clickedEvt)
+    waveform_edit_layout.addWidget(obj.tog_picks, 1, 1)
+
+    obj.tog_rm_picks = ToggleButton(False, 4)
+    obj.tog_rm_picks.setToolTip("Click the waveform to remove a pick")
+    obj.tog_rm_picks.clicked.connect(obj.tog_rm_picks.clickedEvt)
+    waveform_edit_layout.addWidget(obj.tog_rm_picks, 1, 2)
+
+    obj.annote_picks = ToggleButton(False, 2)
+    obj.annote_picks.setToolTip("Click the waveform to make an annotation")
+    obj.annote_picks.clicked.connect(obj.annote_picks.clickedEvt)
+    waveform_edit_layout.addWidget(obj.annote_picks, 1, 3)
+
+    obj.invert_picks = ToggleButton(False, 9)
+    obj.invert_picks.setToolTip("Invert the waveform")
+    obj.invert_picks.clicked.connect(obj.invertGraph)
+    waveform_edit_layout.addWidget(obj.invert_picks, 2, 1)
+
+
+    obj.show_frags = ToggleButton(False, 10)
+    obj.show_frags.setToolTip("Show fragmentations in the waveform")
+    obj.show_frags.clicked.connect(obj.show_frags.switchState)
+    obj.show_frags.clicked.connect(partial(obj.updatePlot, True))
+    waveform_edit_layout.addWidget(obj.show_frags, 3, 1)
+
+    obj.show_ball = ToggleButton(False, 11)
+    obj.show_ball.setToolTip("Show trajectory in the waveform")
+    obj.show_ball.clicked.connect(obj.show_ball.switchState)
+    obj.show_ball.clicked.connect(partial(obj.updatePlot, True))
+    waveform_edit_layout.addWidget(obj.show_ball, 3, 2)
+
+    obj.show_perts = ToggleButton(False, 12)
+    obj.show_perts.setToolTip("Show perturbations in the waveform")
+    obj.show_perts.clicked.connect(obj.show_perts.switchState)
+    obj.show_perts.clicked.connect(partial(obj.updatePlot, True))
+    waveform_edit_layout.addWidget(obj.show_perts, 3, 3)
+
+
+
+    #####################
+    # EXPORT group
+    #####################
+
+    make_picks_waveform_export_group_box = QGroupBox("Export")
+    make_picks_control_panel.addWidget(make_picks_waveform_export_group_box)
+
+    export_edit_layout = QGridLayout()
+    make_picks_waveform_export_group_box.setLayout(export_edit_layout)
+    export_edit_layout.setHorizontalSpacing(0)
+    export_edit_layout.setVerticalSpacing(0)
+
+    obj.export_to_csv = ToggleButton(False, 19)
+    obj.export_to_csv.setToolTip('Export Picks to CSV')
+    export_edit_layout.addWidget(obj.export_to_csv, 2, 1)
+
+    obj.export_to_all_times = ToggleButton(False, 20)
+    obj.export_to_all_times.setToolTip('Export Arrival Times')
+    export_edit_layout.addWidget(obj.export_to_all_times, 2, 2)
+
+    obj.show_contour = ToggleButton(False, 18)
+    obj.show_contour.setToolTip('Calculate Ballistic Contour')
+    export_edit_layout.addWidget(obj.show_contour, 3, 2)
+    obj.show_contour.clicked.connect(partial(obj.showContour, 'ballistic'))
+
+    obj.show_f_contour = ToggleButton(False, 17)
+    obj.show_f_contour.setToolTip('Calculate Fragmentation Contour')
+    export_edit_layout.addWidget(obj.show_f_contour, 3, 1)
+    obj.show_f_contour.clicked.connect(partial(obj.showContour, 'fragmentation'))
+
+    obj.save_picks = ToggleButton(False, 8)
+    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    export_edit_layout.addWidget(obj.save_picks, 1, 1)
+
+    obj.savtr = ToggleButton(False, 16)
+    obj.savtr.setToolTip('Save Current Trace')
+    export_edit_layout.addWidget(obj.savtr, 1, 2)
+    obj.savtr.clicked.connect(obj.saveTrace)
+
+
+    #####################
+    # EXPERIMENTAL
+    #####################
+
+    make_picks_waveform_experimental_group_box = QGroupBox("Experimental Features")
+    make_picks_control_panel.addWidget(make_picks_waveform_experimental_group_box)
+
+    experimental_edit_layout = QGridLayout()
+    make_picks_waveform_experimental_group_box.setLayout(experimental_edit_layout)
+    experimental_edit_layout.setHorizontalSpacing(0)
+    experimental_edit_layout.setVerticalSpacing(0)
+
+    obj.gnd_mot_picks = ToggleButton(False, 3)
+    obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
+    obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
+    experimental_edit_layout.addWidget(obj.gnd_mot_picks, 1, 1)
+
+    obj.bandpass_picks = ToggleButton(False, 6)
+    obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
+    obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
+    experimental_edit_layout.addWidget(obj.bandpass_picks, 2, 1)
+
+    obj.polmap_picks = ToggleButton(False, 7)
+    obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
+    obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
+    experimental_edit_layout.addWidget(obj.polmap_picks, 3, 1)
+
+    obj.rotatepol = ToggleButton(False, 5)
+    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    experimental_edit_layout.addWidget(obj.rotatepol, 4, 1)
 
     # obj.show_prec = QCheckBox('Show Precursors')
     # check_group_layout.addWidget(obj.show_prec)
@@ -711,16 +807,13 @@ def addMakePicksWidgets(obj):
     # check_group_layout.addWidget(obj.rm_resp)
     # obj.rm_resp.stateChanged.connect(partial(obj.updatePlot, True))
 
-    obj.show_perts = QCheckBox('Show Perturbations')
-    check_group_layout.addWidget(obj.show_perts)
-    obj.show_perts.stateChanged.connect(partial(obj.updatePlot, True))
 
-    obj.show_height = QCheckBox('Show Height Prediction')
-    check_group_layout.addWidget(obj.show_height)
 
-    obj.show_sigs = QCheckBox('Show Signals')
-    check_group_layout.addWidget(obj.show_sigs)
-    obj.show_sigs.stateChanged.connect(partial(obj.updatePlot, True))
+
+
+    # obj.show_sigs = QCheckBox('Show Signals')
+    # check_group_layout.addWidget(obj.show_sigs)
+    # obj.show_sigs.stateChanged.connect(partial(obj.updatePlot, True))
 
     # obj.psd = QCheckBox('[EXPERIMENTAL] PSD')
     # check_group_layout.addWidget(obj.psd)
@@ -729,27 +822,14 @@ def addMakePicksWidgets(obj):
     # obj.solve_height = QCheckBox('Solve Heights')
     # check_group_layout.addWidget(obj.solve_height)
 
-    make_picks_plot_tools_group = QGroupBox("Plot Tools")
-    make_picks_control_panel.addWidget(make_picks_plot_tools_group)
 
-    plot_tweaks_layout = QVBoxLayout()
-    make_picks_plot_tools_group.setLayout(plot_tweaks_layout)
 
-    obj.invert = QCheckBox('Invert') 
-    plot_tweaks_layout.addWidget(obj.invert)
-    obj.invert.stateChanged.connect(obj.invertGraph)
+
 
     # obj.show_title = QCheckBox('Show Title')
     # plot_tweaks_layout.addWidget(obj.show_title)
     # obj.show_title.stateChanged.connect(obj.showTitle)
 
-    obj.show_contour = QPushButton('Show Ballistic Contour')
-    plot_tweaks_layout.addWidget(obj.show_contour)
-    obj.show_contour.clicked.connect(partial(obj.showContour, 'ballistic'))
-
-    obj.show_f_contour = QPushButton('Show Fragmentation Contour')
-    plot_tweaks_layout.addWidget(obj.show_f_contour)
-    obj.show_f_contour.clicked.connect(partial(obj.showContour, 'fragmentation'))
 
     # obj.save_contour = QPushButton('Save Contour')
     # plot_tweaks_layout.addWidget(obj.save_contour)

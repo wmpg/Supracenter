@@ -294,9 +294,18 @@ class SolutionGUI(QMainWindow):
         self.glm.show()
 
     def lumEffGUI(self):
+
+        self.lum_eff.setState(True)
+        qApp.processEvents()
+
         self.leg = lumEffDialog(self.bam)
         self.leg.setGeometry(QRect(100, 100, 1200, 700))
         self.leg.show()
+
+        self.lum_eff.setState(False)
+        qApp.processEvents()
+
+
 
     def csvLoad(self, table):
         """ Loads csv file into a table
@@ -675,6 +684,9 @@ class SolutionGUI(QMainWindow):
         """ Opens up yield estimater GUI
         """
 
+        self.W_est.setState(True)
+        qApp.processEvents()
+
         try:
             self.w = Yield(self.bam, self.prefs, self.current_station)
         except AttributeError as e:
@@ -683,6 +695,10 @@ class SolutionGUI(QMainWindow):
         self.w.setGeometry(QRect(100, 100, 800, 200))
         
         self.w.show()
+
+        self.W_est.setState(False)
+        qApp.processEvents()
+
 
     def showContour(self, mode):
 
@@ -772,6 +788,8 @@ class SolutionGUI(QMainWindow):
 
         plt.show()
 
+        self.show_f_contour.setState(False)
+        self.show_contour.setState(False)
         ### below will make a contour as before
         # self.contour_data_squares = RectangleItem(data)
         # self.make_picks_map_graph_canvas.addItem(self.contour_data_squares)
@@ -1438,12 +1456,21 @@ class SolutionGUI(QMainWindow):
 
     def saveTrace(self):
 
+        # Put button back
+        self.savtr.setState(True)
+        qApp.processEvents()
+
         try:
             station_no = self.current_station
 
         # No current station    
         except AttributeError:
             print(printMessage("warning"), "No current station selected, no trace can be saved!")
+            
+            # Put button back
+            self.savtr.setState(False)
+            qApp.processEvents()
+
             return None
         # Extract current station
         stn = self.bam.stn_list[station_no]
@@ -1459,6 +1486,10 @@ class SolutionGUI(QMainWindow):
         file_name = saveFile("mseed", note="")
 
         st.write(file_name, format="MSEED") 
+
+        # Put button back
+        self.savtr.setState(False)
+        qApp.processEvents()
 
     def refHighStats(self):
         for ii, stn in enumerate(self.stn_list):
@@ -1984,6 +2015,8 @@ class SolutionGUI(QMainWindow):
     
     def makePicks(self):
 
+        self.launch.setEnabled(False)
+
         if not self.checkForWorkDir():
             return None
 
@@ -2306,9 +2339,7 @@ class SolutionGUI(QMainWindow):
         self.make_picks_station_choice.clear()
 
         self.pick_list = []
-
-        self.prev_stat.clicked.connect(self.decrementStation)
-        self.next_stat.clicked.connect(self.incrementStation)
+        
 
         self.filter_combo_box.addItem('Raw Data')
         self.filter_combo_box.addItem('Bandpass Filter')
@@ -2323,7 +2354,20 @@ class SolutionGUI(QMainWindow):
         self.station_marker = [None]*len(self.bam.stn_list)
         self.station_waveform = [None]*len(self.bam.stn_list)
         for ii, stn in enumerate(self.bam.stn_list):
-            self.make_picks_station_choice.addItem("{:}-{:}".format(stn.metadata.network, stn.metadata.code))
+
+            # Check for infrasound channels in the station data
+            infra = False
+            for i in range(len(stn.stream)):
+                if "DF" in stn.stream[i].stats.channel:
+                    infra = True
+                    break
+
+            # Add a star to the station if it contains an infrasound station
+            if infra:
+                self.make_picks_station_choice.addItem("{:}-{:}*".format(stn.metadata.network, stn.metadata.code))
+            else:
+                self.make_picks_station_choice.addItem("{:}-{:}".format(stn.metadata.network, stn.metadata.code))
+
             self.station_marker[ii] = pg.ScatterPlotItem()
             self.station_waveform[ii] = pg.PlotCurveItem()
 
@@ -2462,7 +2506,8 @@ class SolutionGUI(QMainWindow):
 
     def incrementStation(self, event=None):
         """ Increments the current station index. """
-
+        self.next_stat.setState(True)
+        qApp.processEvents()
         self.make_picks_waveform_canvas.clear()
 
         self.current_station += 1
@@ -2476,11 +2521,14 @@ class SolutionGUI(QMainWindow):
         #         self.current_station = 0
 
         self.updatePlot(stn_changed=True)
-
+        self.next_stat.setState(False)
+        qApp.processEvents()
 
     def decrementStation(self, event=None):
         """ Decrements the current station index. """
 
+        self.prev_stat.setState(True)
+        qApp.processEvents()
         self.make_picks_waveform_canvas.clear()
 
         self.current_station -= 1
@@ -2494,7 +2542,8 @@ class SolutionGUI(QMainWindow):
         #         self.current_station = len(self.bam.stn_list) - 1
 
         self.updatePlot(stn_changed=True)
-
+        self.prev_stat.setState(False)
+        qApp.processEvents()
 
     def checkExists(self):
         """
@@ -3123,23 +3172,23 @@ class SolutionGUI(QMainWindow):
         # self.make_picks_waveform_canvas.addItem(apx_arrival)
 
         # If shouing computer found signals
-        if self.show_sigs.isChecked() and stn.signals is not None:
+        # if self.show_sigs.isChecked() and stn.signals is not None:
 
 
-            offset = (st.stats.starttime.datetime - self.bam.setup.fireball_datetime).total_seconds()
+        #     offset = (st.stats.starttime.datetime - self.bam.setup.fireball_datetime).total_seconds()
 
-            for sig in stn.signals:
+        #     for sig in stn.signals:
 
-                start   = sig[0] + offset
-                finish  = sig[1] + offset
+        #         start   = sig[0] + offset
+        #         finish  = sig[1] + offset
 
-                roi_box = pg.LinearRegionItem(values=(start, finish))
-                roi_box.setMovable(False)
+        #         roi_box = pg.LinearRegionItem(values=(start, finish))
+        #         roi_box.setMovable(False)
 
-                self.make_picks_waveform_canvas.addItem(roi_box)
+        #         self.make_picks_waveform_canvas.addItem(roi_box)
 
         # If manual ballistic search is on
-        if self.prefs.ballistic_en and self.show_ball.isChecked():
+        if self.prefs.ballistic_en and self.show_ball.getState() == True:
 
             src = self.bam.setup.traj_metadata[0]
 
@@ -3170,7 +3219,7 @@ class SolutionGUI(QMainWindow):
                 # Fragmentation Prediction
 
             # If manual fragmentation search is on
-        if self.prefs.frag_en and self.show_frags.isChecked():
+        if self.prefs.frag_en and self.show_frags.getState() == True:
             
             for i, frag in enumerate(self.bam.setup.fragmentation_point):
 
@@ -3365,6 +3414,9 @@ class SolutionGUI(QMainWindow):
     def exportCSV(self, event):
         """ Save picks to a CSV file. """
 
+        self.export_to_csv.setState(True)
+        qApp.processEvents()
+
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
         file_name = checkExt(dlg[0], '.csv')
@@ -3389,12 +3441,20 @@ class SolutionGUI(QMainWindow):
                         stn.metadata.code, stn.metadata.position.lat, stn.metadata.position.lon, stn.metadata.position.elev, pick_jd, pick.time, pick.stn_no))
         except FileNotFoundError as e:
             errorMessage('Could not find file!', 2, detail='{:}'.format(e))
+            self.export_to_csv.setState(False)
+            qApp.processEvents()
             return None
 
         errorMessage('Output to CSV!', 0, title='Exported!')
 
+        self.export_to_csv.setState(False)
+        qApp.processEvents()
+
     def exportToAllTimes(self):
         
+        self.export_to_all_times.setState(True)
+        qApp.processEvents()
+
         dlg = QFileDialog.getSaveFileName(self, 'Save File')
 
         file_name = dlg[0]
@@ -3402,6 +3462,9 @@ class SolutionGUI(QMainWindow):
         np.save(file_name, self.arrTimes)
 
         errorMessage("Saved Output File", 0)
+
+        self.export_to_all_times.setState(False)
+        qApp.processEvents()
 
     def exportImage(self):
 
@@ -3436,6 +3499,7 @@ class SolutionGUI(QMainWindow):
         self.select(self.inverted)
 
         self.inverted = not self.inverted
+        self.invert_picks.setState(self.inverted)
         
     def showTitle(self):
 

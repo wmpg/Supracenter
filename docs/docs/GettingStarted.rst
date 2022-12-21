@@ -40,6 +40,8 @@ Downloading Stations
 
 Once the "variables" tab is filled in as best as possible (most importantly the approximate time and location) and saved, then it is time to download nearby stations. The Degrees in Search Radius variable defines the radius of stations to be downloaded around the latitude and longitude center. 
 
+To download the stations, go to the "Stations" tab. Here, we can select what data to download (for now, you can choose whether you want to download only infrasound data by checking "Download only infrasound?"). When you are ready to download stations, click "Download Station Data", and the program will download stations automatically. The terminal will let you know when it is done, and there will be a pop-up message. Stations will be listed in the main window in blue, or in red if they have at least one "BDF" or "HDF" station. (In general, BAM defines an infrasound station if it can find a "*DF" channel in the file).
+
 Picking Data Centers
 --------------------
 

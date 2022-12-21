@@ -1,4 +1,5 @@
 import os
+import time
 
 from functools import partial
 
@@ -334,7 +335,7 @@ class TauEx(QWidget):
 class ToggleButton(QAbstractButton):
 
     """ Creates a basic toggle button with a picture as one of the following.
-    A more general version
+    A more general version.
 
     """
 
@@ -380,6 +381,51 @@ class ToggleButton(QAbstractButton):
         elif dict_item == 8:
             on_pix = 'save_icon_down.png'
             off_pix = 'save_icon_up.png'
+        elif dict_item == 9:
+            on_pix = 'Invert_down.png'
+            off_pix = 'Invert_up.png'
+        elif dict_item == 10:
+            on_pix = 'show_frags_down.png'
+            off_pix = 'show_frags_up.png'
+        elif dict_item == 11:
+            on_pix = 'show_traj_down.png'
+            off_pix = 'show_traj_up.png'
+        elif dict_item == 12:
+            on_pix = 'perts_down.png'
+            off_pix = 'perts_up.png'
+        elif dict_item == 13:
+            on_pix = 'right_arrow_down.png'
+            off_pix = 'right_arrow_up.png'
+        elif dict_item == 14:
+            on_pix = 'left_arrow_down.png'
+            off_pix = 'left_arrow_up.png'
+        elif dict_item == 15:
+            on_pix = 'folder_down.png'
+            off_pix = 'folder_up.png'
+        elif dict_item == 16:
+            on_pix = 'save_trace_down.png'
+            off_pix = 'save_trace_up.png'
+        elif dict_item == 17:
+            on_pix = 'frag_contour_down.png'
+            off_pix = 'frag_contour_up.png'   
+        elif dict_item == 18:
+            on_pix = 'ball_contour_down.png'
+            off_pix = 'ball_contour_up.png'           
+        elif dict_item == 19:
+            on_pix = 'pick_save_down.png'
+            off_pix = 'pick_save_up.png'
+        elif dict_item == 20:
+            on_pix = 'Export_times_down.png'
+            off_pix = 'Export_times_up.png'   
+        elif dict_item == 21:
+            on_pix = 'calc_yield_down.png'
+            off_pix = 'calc_yield_up.png'
+        elif dict_item == 22:
+            on_pix = 'tau_down.png'
+            off_pix = 'tau_up.png'   
+        elif dict_item == 23:
+            on_pix = 'staff_down.png'
+            off_pix = 'staff_up.png'   
 
 
         return on_pix, off_pix
@@ -401,6 +447,11 @@ class ToggleButton(QAbstractButton):
 
     def isChecked(self):
         return self.status
+
+    def switchState(self):
+        self.setState(not self.getState())
+        self.update()
+
 
     def paintEvent(self, event):
         painter = QPainter(self)
