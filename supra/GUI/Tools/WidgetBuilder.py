@@ -584,10 +584,10 @@ def addMakePicksWidgets(obj):
     # toggle_button_array.addWidget(obj.polmap_picks)
 
 
-    obj.save_picks = ToggleButton(False, 8)
-    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
-    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.save_picks)
+    # obj.save_picks = ToggleButton(False, 8)
+    # obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    # obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.save_picks)
 
     # obj.rotatepol = ToggleButton(False, 5)
     # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
