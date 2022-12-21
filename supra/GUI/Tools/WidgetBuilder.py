@@ -118,17 +118,17 @@ def initMenuBar(obj, layout):
     rtv_tool.triggered.connect(obj.rtvWindow)
     tools_menu.addAction(rtv_tool)
 
-    infratrajspace = QAction("Infrasound Trajectory Space", obj)
-    infratrajspace.triggered.connect(obj.trajSpace)
-    tools_menu.addAction(infratrajspace)
+    # infratrajspace = QAction("Infrasound Trajectory Space", obj)
+    # infratrajspace.triggered.connect(obj.trajSpace)
+    # tools_menu.addAction(infratrajspace)
 
-    glm_viewer = QAction("GLM Viewer", obj)
-    glm_viewer.triggered.connect(obj.glmviewer)
-    tools_menu.addAction(glm_viewer)
+    # glm_viewer = QAction("GLM Viewer", obj)
+    # glm_viewer.triggered.connect(obj.glmviewer)
+    # tools_menu.addAction(glm_viewer)
 
-    tau_spread = QAction("Yield Spread", obj)
-    tau_spread.triggered.connect(obj.tauSpread)
-    tools_menu.addAction(tau_spread)
+    # tau_spread = QAction("Yield Spread", obj)
+    # tau_spread.triggered.connect(obj.tauSpread)
+    # tools_menu.addAction(tau_spread)
 
 
 
@@ -584,19 +584,19 @@ def addMakePicksWidgets(obj):
     # toggle_button_array.addWidget(obj.polmap_picks)
 
 
-    obj.save_picks = ToggleButton(False, 8)
-    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
-    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
-    toggle_button_array.addWidget(obj.save_picks)
+    # obj.save_picks = ToggleButton(False, 8)
+    # obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    # obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.save_picks)
 
-    # obj.rotatepol = ToggleButton(False, 5)
-    # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
-    # obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
-    # toggle_button_array.addWidget(obj.rotatepol)
+    # # obj.rotatepol = ToggleButton(False, 5)
+    # # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    # # obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    # # toggle_button_array.addWidget(obj.rotatepol)
 
 
 
-    toggle_button_array.insertStretch(-1, 0)
+    # toggle_button_array.insertStretch(-1, 0)
 
     make_picks_control_panel = QHBoxLayout()
     obj.make_picks_bottom_graphs.addLayout(make_picks_control_panel, 2, 1, 1, 2)
@@ -799,33 +799,33 @@ def addMakePicksWidgets(obj):
     # EXPERIMENTAL
     #####################
 
-    make_picks_waveform_experimental_group_box = QGroupBox("Experimental Features")
-    make_picks_control_panel.addWidget(make_picks_waveform_experimental_group_box)
+    # make_picks_waveform_experimental_group_box = QGroupBox("Experimental Features")
+    # make_picks_control_panel.addWidget(make_picks_waveform_experimental_group_box)
 
-    experimental_edit_layout = QGridLayout()
-    make_picks_waveform_experimental_group_box.setLayout(experimental_edit_layout)
-    experimental_edit_layout.setHorizontalSpacing(0)
-    experimental_edit_layout.setVerticalSpacing(0)
+    # experimental_edit_layout = QGridLayout()
+    # make_picks_waveform_experimental_group_box.setLayout(experimental_edit_layout)
+    # experimental_edit_layout.setHorizontalSpacing(0)
+    # experimental_edit_layout.setVerticalSpacing(0)
 
-    obj.gnd_mot_picks = ToggleButton(False, 3)
-    obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
-    obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
-    experimental_edit_layout.addWidget(obj.gnd_mot_picks, 1, 1)
+    # obj.gnd_mot_picks = ToggleButton(False, 3)
+    # obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
+    # obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
+    # experimental_edit_layout.addWidget(obj.gnd_mot_picks, 1, 1)
 
-    obj.bandpass_picks = ToggleButton(False, 6)
-    obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
-    obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
-    experimental_edit_layout.addWidget(obj.bandpass_picks, 2, 1)
+    # obj.bandpass_picks = ToggleButton(False, 6)
+    # obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
+    # obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
+    # experimental_edit_layout.addWidget(obj.bandpass_picks, 2, 1)
 
-    obj.polmap_picks = ToggleButton(False, 7)
-    obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
-    obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
-    experimental_edit_layout.addWidget(obj.polmap_picks, 3, 1)
+    # obj.polmap_picks = ToggleButton(False, 7)
+    # obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
+    # obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
+    # experimental_edit_layout.addWidget(obj.polmap_picks, 3, 1)
 
-    obj.rotatepol = ToggleButton(False, 5)
-    # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
-    obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
-    experimental_edit_layout.addWidget(obj.rotatepol, 4, 1)
+    # obj.rotatepol = ToggleButton(False, 5)
+    # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    # obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    # experimental_edit_layout.addWidget(obj.rotatepol, 4, 1)
 
     # obj.show_prec = QCheckBox('Show Precursors')
     # check_group_layout.addWidget(obj.show_prec)
