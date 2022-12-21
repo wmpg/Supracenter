@@ -922,10 +922,14 @@ def addFetchATMWidgets(obj):
     fetch.setLayout(fetch_master)
     obj.tab_widget.addTab(fetch, "Fetch Atmosphere")
 
-    obj.fatm_view = pg.GraphicsLayoutWidget()
-    obj.fatm_canvas = obj.fatm_view.addPlot()
-    fetch_plots.addWidget(obj.fatm_view)
-    obj.fatm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
+
+    obj.fatm_plot = MatplotlibPyQT()
+    obj.fatm_plot.ax = obj.fatm_plot.figure.add_subplot(111)
+
+    # obj.fatm_view = pg.GraphicsLayoutWidget()
+    # obj.fatm_canvas = obj.fatm_view.addPlot()
+    fetch_plots.addWidget(obj.fatm_plot)
+    # obj.fatm_view.sizeHint = lambda: pg.QtCore.QSize(100, 100)
 
     obj.fatm_variable_combo = QComboBox()
     fetch_plots.addWidget(obj.fatm_variable_combo)

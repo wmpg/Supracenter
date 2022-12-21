@@ -1,19 +1,23 @@
 <!DOCTYPE html>
 <html class="writer-html5" lang="en" >
 <head>
-  <meta charset="utf-8" />
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>All Times Files &mdash; Western Meteor Physics Group Bolide Acoustic Modeling Program  documentation</title><link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
-    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" /><link rel="shortcut icon" href="../_static/BAM_logo.png"/>
+  <title>All Times Files &mdash; Western Meteor Physics Group Bolide Acoustic Modeling Program  documentation</title>
+      <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
+    <link rel="shortcut icon" href="../_static/BAM_logo.png"/>
   <!--[if lt IE 9]>
     <script src="../_static/js/html5shiv.min.js"></script>
   <![endif]-->
-  <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+  
+        <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
         <script src="../_static/jquery.js"></script>
         <script src="../_static/underscore.js"></script>
+        <script src="../_static/_sphinx_javascript_frameworks_compat.js"></script>
         <script src="../_static/doctools.js"></script>
-        <script src="../_static/language_data.js"></script>
-        <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script src="../_static/sphinx_highlight.js"></script>
     <script src="../_static/js/theme.js"></script>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" /> 
@@ -34,7 +38,7 @@
   </form>
 </div>
         </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
-              <p class="caption"><span class="caption-text">Contents:</span></p>
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="About.html">About</a></li>
 <li class="toctree-l1"><a class="reference internal" href="Installation.html">Requirements</a></li>
@@ -61,8 +65,8 @@
         <div class="rst-content">
           <div role="navigation" aria-label="Page navigation">
   <ul class="wy-breadcrumbs">
-      <li><a href="../index.html" class="icon icon-home"></a> &raquo;</li>
-      <li>All Times Files</li>
+      <li><a href="../index.html" class="icon icon-home"></a></li>
+      <li class="breadcrumb-item active">All Times Files</li>
       <li class="wy-breadcrumbs-aside">
             <a href="../_sources/docs/alltimesfiles.rst.txt" rel="nofollow"> View page source</a>
       </li>
@@ -72,21 +76,21 @@
           <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
            <div itemprop="articleBody">
              
-  <div class="section" id="all-times-files">
-<h1>All Times Files<a class="headerlink" href="#all-times-files" title="Permalink to this headline">¶</a></h1>
+  <section id="all-times-files">
+<h1>All Times Files<a class="headerlink" href="#all-times-files" title="Permalink to this heading"></a></h1>
 <p>These files contain the estimated arrival times for each perturbation at each station for all fragmentation and ballistic arrivals. This .npy file is used to quickly save and load data and prevent long loading times. The data can be called from a numpy array with the data loaded in as follows:</p>
 <p>[perturbation #, station #, 0 - ballistic/ 1 - fragmentation, frag number (0 if using ballistic)]</p>
 <p>The intended use of this is to save estimates for arrival times that take a long time to load, such as perturbation calculations. It is recommended that each .npy file which contains perturbations is saved in a proper place so that it may be reused.</p>
 <p>All Times files are automatically created by the Make Picks window when the stations are loaded in, under <strong>all_pick_times.npy</strong> in your current working directory, but a file may be exported by the Make Picks window by selecting <strong>Export All Times File</strong>.</p>
 <p>All Times files may be loaded in through the ini file being used.</p>
-<div class="section" id="theoretical-all-times-files">
-<h2>Theoretical All Times Files<a class="headerlink" href="#theoretical-all-times-files" title="Permalink to this headline">¶</a></h2>
+<section id="theoretical-all-times-files">
+<h2>Theoretical All Times Files<a class="headerlink" href="#theoretical-all-times-files" title="Permalink to this heading"></a></h2>
 <p>An all times file created by the TheoreticalPicks code has two extra entries (zenith and velocity), and is missing the frag number tag. Therefore, it is not compatable with the rest of the program.</p>
 <p>[perturbation, station, 0 - ballistic/ 1 - fragmentation, zeniths, velocity]</p>
 <div class="toctree-wrapper compound">
 </div>
-</div>
-</div>
+</section>
+</section>
 
 
            </div>

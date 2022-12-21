@@ -988,9 +988,11 @@ class SolutionGUI(QMainWindow):
         lon = tryFloat(self.fatm_end_lon.text())
         ref_time = self.bam.setup.fireball_datetime
 
-        self.fatm_canvas.clear()
-        self.fatm_canvas.setLabel('left', "Height", units='m', size='24pt')
+        self.fatm_plot.ax.clear()
+        self.fatm_plot.ax.set_ylabel("Height [km]")
+
         if self.fatm_variable_combo.currentText() == 'Sound Speed':
+
             X = sounding[:, 1]
 
             jd = date2JD(ref_time.year, ref_time.month, ref_time.day, ref_time.hour, ref_time.minute, ref_time.second)
@@ -1005,7 +1007,8 @@ class SolutionGUI(QMainWindow):
                 NTS.append(c)
 
 
-            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')
+            self.fatm_plot.ax.set_xlabel("Sound Speed [m/s]")
+
         elif self.fatm_variable_combo.currentText() == 'Wind Magnitude':
             X = sounding[:, 2]
 
@@ -1018,7 +1021,7 @@ class SolutionGUI(QMainWindow):
                 NTS.append(c)
 
 
-            self.fatm_canvas.setLabel('bottom', "Wind Magnitude", units='m/s', size='24pt')
+            self.fatm_plot.ax.set_xlabel("Wind Magnitude [m/s]")
         elif self.fatm_variable_combo.currentText() == 'Wind Direction':
             X = np.degrees(sounding[:, 3])
 
@@ -1029,10 +1032,11 @@ class SolutionGUI(QMainWindow):
 
                 NTS.append(c)
 
-            self.fatm_canvas.setLabel('bottom', "Wind Direction", units='deg from N', size='24pt')
+            self.fatm_plot.ax.set_xlabel("Wind Direction [deg from N]")
+
         elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
             X, nom_range, nom_ray_range = self.effectiveSoundSpeed(sounding)
-            self.fatm_canvas.setLabel('bottom', "Sound Speed", units='m/s', size='24pt')    
+            self.fatm_plot.ax.set_xlabel("Sound Speed [m/s]")  
         elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
@@ -1043,6 +1047,7 @@ class SolutionGUI(QMainWindow):
                 u, v = getHWM(ref_time, lat, lon, hh/1000)
 
                 NTS.append(u)
+            self.fatm_plot.ax.set_xlabel("U-Component of Wind [m/s]") 
 
         elif self.fatm_variable_combo.currentText() == 'V-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
@@ -1054,20 +1059,21 @@ class SolutionGUI(QMainWindow):
                 u, v = getHWM(ref_time, lat, lon, hh/1000)
 
                 NTS.append(v)
-
+            self.fatm_plot.ax.set_xlabel("V-Component of Wind [m/s]") 
         else:
             return None
         Y = sounding[:, 0]
 
         NTS = np.array(NTS)
 
-        
-        self.fatm_canvas.plot(x=X, y=Y, pen='w')
+        self.fatm_plot.ax.plot(X, Y/1000, c="w", label="Nominal Profile (ERA5 & Model)")
 
         if len(NTS) == len(Y):
-            self.fatm_canvas.plot(x=NTS, y=Y, pen='m')
+            self.fatm_plot.ax.plot(NTS, Y/1000, c='m', label="NRLMSISE & HWM")
         SolutionGUI.update(self)
         perts_range = []
+        if perturbations is None:
+            perturbations = []
         if len(perturbations) != 0:
             for ii, ptb in enumerate(perturbations):
                 
@@ -1091,7 +1097,7 @@ class SolutionGUI(QMainWindow):
                 else:
                     return None
                 Y = ptb[:, 0]
-                self.fatm_canvas.plot(x=X, y=Y, pen='g')
+                self.fatm_plot.ax.plot(X, Y/1000, c='g', label="MC Realizations")
                 SolutionGUI.update(self)
         perts_range = np.array(perts_range)
         try:
@@ -1103,15 +1109,18 @@ class SolutionGUI(QMainWindow):
             pass
         font=QtGui.QFont()
         font.setPixelSize(20)
-        self.fatm_canvas.getAxis("bottom").tickFont = font
-        self.fatm_canvas.getAxis("left").tickFont = font
-        self.fatm_canvas.getAxis('bottom').setPen(self.color.WHITE) 
-        self.fatm_canvas.getAxis('left').setPen(self.color.WHITE)
+        # self.fatm_canvas.getAxis("bottom").tickFont = font
+        # self.fatm_canvas.getAxis("left").tickFont = font
+        # self.fatm_canvas.getAxis('bottom').setPen(self.color.WHITE) 
+        # self.fatm_canvas.getAxis('left').setPen(self.color.WHITE)
         # self.fatm_canvas.getLabel("bottom").tickFont = font
         # self.fatm_canvas.getLabel("left").tickFont = font
         # self.fatm_canvas.getLabel('bottom').setPen(self.color.WHITE) 
         # self.fatm_canvas.getLabel('left').setPen(self.color.WHITE)
 
+        self.fatm_plot.ax.grid(alpha=0.2)
+        self.fatm_plot.ax.legend()
+        self.fatm_plot.show()
         SolutionGUI.update(self)
 
     def fatmSaveAtm(self):
