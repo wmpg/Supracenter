@@ -5,6 +5,7 @@ import sys
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 import simplekml
 
 from wmpl.Utils.PlotMap import GroundMap
@@ -17,7 +18,7 @@ except:
     # Python 3
     import configparser
 
-def halfMags(low, high, div):
+def halfMags(low, high, divs):
     """ Returns a list of magnitude values and half-magnitude values between low and high
 
     Example: low = 0.049 and high = 100
@@ -26,9 +27,10 @@ def halfMags(low, high, div):
     Arguments:
         low: [float] lowest value to be in list
         high: [float] highest value to be in list
-        div: [int] Spacing between intermediate magnitudes is log10(div)
+        div: [list of ints] Spacing between intermediate magnitudes is log10(div)
                     div = 10 - every magnitude
                     div = 5  - every magnitude and half magnitude
+                    e.g. [2.5, 5] to have a list like 0.1, 0.25, 0.5, 1, 1.25, etc.
 
     Returns:
         [list] list of values between low and high (inclusive) with half-magnitudes between
@@ -43,14 +45,28 @@ def halfMags(low, high, div):
     # every magnitude
     a = np.round((np.arange(l, h)))
 
-    # every partial magnitude above each magnitude
-    b = np.round((np.arange(l, h))) + np.log10(div)
+    if isinstance(divs, list) or isinstance(divs, np.ndarray):
+        pass
+    else:
+        divs = [divs]
 
-    # every partial magnitude below each magnitude
-    c = np.round((np.arange(l, h))) - (1 - np.log10(div))
+
+    b_list = []
+    c_list = []
+    for div in divs:
+
+        # every partial magnitude above each magnitude
+        b = np.round((np.arange(l, h))) + np.log10(div)
+        b_list.append(b)
+
+        # every partial magnitude below each magnitude
+        c = np.round((np.arange(l, h))) - (1 - np.log10(div))
+        c_list.append(c)
+
+    comb = np.append(b_list, c_list)
 
     # combine all magnitudes and remove duplicate
-    s = np.sort(np.concatenate((np.array([l, h]), a, b, c)))
+    s = np.sort(np.concatenate((np.array([l, h]), a, comb)))
 
     temp = s[s <= h]
     mass_list = temp[temp >= l]
@@ -74,23 +90,27 @@ def massString(mass):
         mass *= 1000
         if mass < 1:
             mass *= 1000
-            mass_str = str(eval("%.0e" % (mass))) + ' mg'
+            mass_str = str(eval("%.1e" % (mass))) + ' mg'
         else:
-            mass_str = str(eval("%.0e" % (mass))) + ' g'
+            mass_str = str(eval("%.1e" % (mass))) + ' g'
     else:
-        mass_str = str(eval("%.0e" % (mass))) + ' kg'
+        mass_str = str(eval("%.1e" % (mass))) + ' kg'
 
     return mass_str
 
-def runDarkflight(params, mass, uncertainty=False):
+def runDarkflight(params, mass, output_path, uncertainty=False):
     """ Wrapper function for Darkflight
         Predicts the travel path of the meteor in darkflight given the initial conditions. Uses Monte Carlo to 
-        find uncertainty in locations. Exports a .txt file to params.output which is read later in the program 
+        find uncertainty in locations. Exports a .txt file to output_path which is read later in the program 
         containing the solution to the darkflight.
 
     Arguments:
         params: [Object] contains all .ini variables, including all inputs into the Darkflight code
         mass: [float] current mass to be calculated (this function runs multiple times for various masses)
+        output_path: [string] Path to the output directory and file name. The file name should not have an 
+            extension.
+
+    Keyword arguments:
         uncertainty: [boolean] True - Calculate the uncertainty mode
                                False - Calculate the darkflight path
     """
@@ -120,7 +140,7 @@ def runDarkflight(params, mass, uncertainty=False):
     max_iter = str(params.max_iter)
     drg = str(params.drag)
 
-    # Directory of Darkflight
+    # Directory of the darkflight binary
     dir1 = "/home/dvida/source/darkflight"
     dir2 = "C:\\Users\\lmcfd\\Desktop\\"
     dir3 = "/srv/meteor/fireballs/darkflight"
@@ -131,7 +151,7 @@ def runDarkflight(params, mass, uncertainty=False):
     elif os.path.isdir(dir3):
         darkflight_dir = dir3
     else:
-        print("The directory with the darkflight code cannot be found!")
+        print("The directory with the darkflight binary cannot be found!")
         print("Tried these directories:")
         print(dir1)
         print(dir2)
@@ -139,7 +159,8 @@ def runDarkflight(params, mass, uncertainty=False):
 
     # Run Darkflight through terminal calls
 
-    print("Running the darkflight binary...")
+    print()
+    print("Running the darkflight binary for the {:.3f} kg mass bin...".format(float(mass)))
 
     # darkflight.c help menu
     if params.help:
@@ -156,7 +177,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        '--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, '--frag',\
-                        '--atm', params.atm,'--out',  params.output + '_uncertainty' + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
         
         # no fragmentation
         else:
@@ -166,7 +187,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        '--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        '--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg,\
-                        '--atm', params.atm,'--out',  params.output + '_uncertainty' + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
 
     # Best trajectory points
     else:
@@ -178,7 +199,7 @@ def runDarkflight(params, mass, uncertainty=False):
                        #'--dsp', dlat + ',' + dlon + ',' + dh + ',' + dv, \
                        #'--dra', daz + ',' + dze, \
                        '--itr', max_iter, '--drg', drg, \
-                        '--atm', params.atm,'--out',  params.output + '_' + mass_str], cwd=darkflight_dir)
+                        '--atm', params.atm,'--out',  output_path], cwd=darkflight_dir)
 
     # Run terminal call
     p.communicate()
@@ -213,6 +234,10 @@ def readDarkflight(output, mass, header=30, partial=False):
                 line[i] = float(entry.strip())
             line.append(mass)
 
+            # Skip if the first coordinate is NaN
+            if np.isnan(line[0]):
+                continue
+
             # Add the contents of the line to the data list
             data = np.vstack((data, np.array(line)))
 
@@ -229,16 +254,21 @@ def readDarkflight(output, mass, header=30, partial=False):
             return data
 
 
-def plotData(data, del_data, params, mass_list):
+def plotData(dir_path, file_name, data, del_data, params, mass_list):
     """ Function to plot the darkflight data, and create the .kml file
 
     Arguments:
+        dir_path: [string] Directory path to save the plots and the KML file.
+        file_name: [string] Template file name.
         data: [ndarray] array containing parsed data from darkflight output
         del_data: [ndarray] array containing parsed data from darkflight uncertainty output
         params: [Object] object containing all .ini configuration variables
         mass_list: [list] list of masses used in simulation
 
     """
+
+    # Construct a file path
+    file_path = os.path.join(dir_path, file_name)
 
     # Initialize lists
     lat = []
@@ -260,6 +290,11 @@ def plotData(data, del_data, params, mass_list):
 
     # Each index for each mass
     for i in range(len(mass_list)):
+
+        # Skip NaN values
+        if np.isnan(data[i][:, 0].all()) or np.isnan(data[i][:, 1].all()):
+            continue
+
         lat.append(data[i][:, 0])
         lon.append(data[i][:, 1])
         alt.append(data[i][:, 2])
@@ -305,109 +340,96 @@ def plotData(data, del_data, params, mass_list):
     ax1.set_zlabel('Elevation (km)')
     ax1.set_title('Darkflight Path')
 
-    plt.savefig(params.output + '_darkflight_path.png', dpi=300)
+    plt.savefig(file_path + '_darkflight_path.png', dpi=300)
 
-    plt.show()
+    plt.clf()
+    plt.close()
 
-    # 2D map plot
-    m = GroundMap(np.radians(lat_long), np.radians(lon_long), border_size=5, color_scheme='light')
 
-    for i in range(len(mass_list)):
-        m.plot(np.radians(lat[i]), np.radians(lon[i]))
-        x, y = m.m(lon[i][-1], lat[i][-1])
-        plt.text(x, y, '{:10.1E} kg'.format(mas[i][-1]), size=6)
-
-    #m.scatter(np.radians(lat[-1]), np.radians(lon[-1]), marker='*', c='r')
-
-    plt.savefig(params.output + '_darkflight_map.png', dpi=300)
-
-    plt.show()
-
-    #.kml file
+    ### Init the KML file
     mass = [0]*len(mass_list)
-    kml=simplekml.Kml()
-    # traj = kml.newfolder(name='Fall Path')
-    # uncs = kml.newfolder(name='Monte Carlo')
-    # poin = kml.newfolder(name='Best Points')
+    kml = simplekml.Kml()
     pnt = [None]*len(mass_list)
 
+    # Create a list of colors to cycle through
+    colors = [simplekml.Color.blue, simplekml.Color.orange, simplekml.Color.green, simplekml.Color.red, 
+        simplekml.Color.purple, simplekml.Color.brown, simplekml.Color.pink, simplekml.Color.grey, 
+        simplekml.Color.yellow, simplekml.Color.black]
+
+    # Create a new folder for the fall curves for each mass
+    fall_curves = kml.newfolder(name='Fall Curves')
+
+    # Folder for the sampled points on the fall curve
+    fall_points = kml.newfolder(name='Fall Curve Points')
+
+    # Add fall curves to the KML file for each mass
+    for i in range(len(mass_list)):
+
+        mass_name = massString(mass_list[i])
+
+        lat_list = lat[i]
+        lon_list = lon[i]
+        alt_list = alt[i]
+
+        # Construct a 2D array of the lon, lat, and alt (in meters) values
+        coords = np.array([lon_list, lat_list, alt_list*1000]).T
+        
+        # Add the fall curve to the KML file
+        fc = fall_curves.newlinestring(name=mass_name, coords=coords, altitudemode='absolute')
+        fc.style.linestyle.width = 2
+        fc.style.linestyle.color = colors[i%len(colors)]
+
+        # Make a new folder for each mass bin of fall points
+        fall_points_mass = fall_points.newfolder(name=mass_name)
+
+        # Add sample points on the fall curve (take every 100th point, make sure the last one is included)
+        for j in list(range(0, len(lon_list), 100)) + [len(lon_list)-1]:
+            
+            pnt[i] = fall_points_mass.newpoint(coords=[(lon_list[j], lat_list[j], alt_list[j]*1000)], 
+                altitudemode='absolute')
+            pnt[i].style.iconstyle.color = colors[i%len(colors)]
+            pnt[i].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
+
+            # Add coordinates, heights, and time to the description
+            pnt[i].description = 'Lat = {:10.6f}, Lon = {:10.6f}\nHeight = {:10.1f} km\nTime = {:+10.1f} s'.format(
+                lat_list[j], lon_list[j], alt_list[j], t[i][j])
+
+            # If absolute time is given, add the absolute timing information
+            if params.ref_time:
+
+                # Compute the time when the point reached the given height
+                time_at_height = params.ref_time + datetime.timedelta(seconds=t[i][j])
+
+                pnt[i].description += '\n{:s}'.format(time_at_height.strftime('%Y-%m-%d %H:%M:%S.%f'))
+
+                # Add point timing information
+                pnt[i].timestamp.when = time_at_height.strftime('%Y-%m-%dT%H:%M:%S.%fZ')
+
+
     if params.error:
+
+        # Create a KML directory for the points computed using Monte Carlo
+        mc_kml_dir = kml.newfolder(name='Monte Carlo')
+
         # Trajectory points
         for j in range(len(mass_list)):
-            mass[j] = kml.newfolder(name=massString(mass_list[j]))
+            mass[j] = mc_kml_dir.newfolder(name=massString(mass_list[j]))
             for i in range(len(del_lat[j])):
-            # pnt[j] = traj.newpoint(coords=[(lon[j][i], lat[j][i], alt[j][i]*1000)], altitudemode='relativeToGround')
-
-            # if j%10 == 0:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.blue
-            
-            # elif j%10 == 1:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.orange
-
-            # elif j%10 == 2:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.green
-
-            # elif j%10 == 3:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.red
-    
-            # elif j%10 == 4:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.purple
-
-            # elif j%10 == 5:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.brown
-
-            # elif j%10 == 6:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.pink
-
-            # elif j%10 == 7:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.grey
-
-            # elif j%10 == 8:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.yellow
-
-            # elif j%10 == 9:
-            #     pnt[j].style.iconstyle.color = simplekml.Color.black
-            
-            # pnt[j].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
-
 
                 # Monte Carlo points
-                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], altitudemode='relativeToGround')
-
-                if j%10 == 0:
-                    pnt[j].style.iconstyle.color = simplekml.Color.blue
-                
-                elif j%10 == 1:
-                    pnt[j].style.iconstyle.color = simplekml.Color.orange
-
-                elif j%10 == 2:
-                    pnt[j].style.iconstyle.color = simplekml.Color.green
-
-                elif j%10 == 3:
-                    pnt[j].style.iconstyle.color = simplekml.Color.red
-        
-                elif j%10 == 4:
-                    pnt[j].style.iconstyle.color = simplekml.Color.purple
-
-                elif j%10 == 5:
-                    pnt[j].style.iconstyle.color = simplekml.Color.brown
-
-                elif j%10 == 6:
-                    pnt[j].style.iconstyle.color = simplekml.Color.pink
-
-                elif j%10 == 7:
-                    pnt[j].style.iconstyle.color = simplekml.Color.grey
-
-                elif j%10 == 8:
-                    pnt[j].style.iconstyle.color = simplekml.Color.yellow
-
-                elif j%10 == 9:
-                    pnt[j].style.iconstyle.color = simplekml.Color.black
+                pnt[j] = mass[j].newpoint(coords=[(del_lon[j][i], del_lat[j][i], del_alt[j][i]*1000)], 
+                    altitudemode='clampToGround')
+                pnt[j].style.iconstyle.color = colors[j%len(colors)]
 
                 pnt[j].style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/shapes/placemark_circle.png'
 
+
+    # Make a new KML directory for the nominal points
+    nominal_kml_dir = kml.newfolder(name='Nominal Points')
+
+    # Add nominal dark flight positions to the KML file
     for j in range(len(mass_list)):
-        mass[j] = kml.newfolder(name=massString(mass_list[j]))
+        mass[j] = nominal_kml_dir.newfolder(name=massString(mass_list[j]))
         
         best_t = t[j][-1]
         
@@ -420,18 +442,35 @@ def plotData(data, del_data, params, mass_list):
 
         #Best ground points
         if params.enable_time and params.error:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}, {:5.2f} +/- {:3.2f} s'.format(massString(mas[j][-1]), best_t, dt))
         elif params.enable_time:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}, {:5.2f} s'.format(massString(mas[j][-1]), best_t))
         else:
-            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='relativeToGround',\
+            pnt[j] = mass[j].newpoint(coords=[(lon[j][-1], lat[j][-1], alt[j][-1]*1000)], altitudemode='clampToGround',\
                 name='{:}'.format(massString(mas[j][-1])))
 
 
     
-    kml.save(params.output + '_darkflight_map.kml')
+    kml.save(file_path + '_darkflight_map.kml')
+
+
+
+    # 2D map plot
+    m = GroundMap(np.radians(lat_long), np.radians(lon_long), border_size=5, color_scheme='light')
+
+    for i in range(len(mass_list)):
+        m.plot(np.radians(lat[i]), np.radians(lon[i]))
+        x, y = m.m(lon[i][-1], lat[i][-1])
+        plt.text(x, y, '{:10.1E} kg'.format(mas[i][-1]), size=6)
+
+    #m.scatter(np.radians(lat[-1]), np.radians(lon[-1]), marker='*', c='r')
+
+    plt.savefig(file_path + '_darkflight_map.png', dpi=300)
+
+    plt.clf()
+    plt.close()
 
 
 def readInfile(infile):
@@ -454,11 +493,10 @@ def readInfile(infile):
     config.read(infile)
 
     try:
-        params.output =  config.get('General', 'output')
         params.atm    =  config.get('General', 'atm')
         params.error  =  config.get('General', 'error')
     except:
-        print('INI ERROR: [General] expected variables: output, atm, error')
+        print('INI ERROR: [General] expected variables: atm, error')
         sys.exit()
 
     try:
@@ -476,7 +514,7 @@ def readInfile(infile):
     try:
         params.mags = float(config.get('Tweaks', 'mags'))
     except:
-        params.mags = 10
+        params.mags = 5
 
     try:
         params.x =       float(config.get('Variables', 'lat'))
@@ -484,11 +522,40 @@ def readInfile(infile):
         params.z =       float(config.get('Variables', 'z'))
         params.v =       float(config.get('Variables', 'v'))
         params.az =      float(config.get('Variables', 'az'))
-        params.ze =      float(config.get('Variables', 'ze'))
 
     except:
-        print('INI ERROR: [Variables] expected variables: x, y, z, v, az, ze - must be strictly floats!')
+        print('INI ERROR: [Variables] expected variables: x, y, z, v, az - must be strictly floats!')
         sys.exit()
+
+    try:
+        # Load the altitude instaed of the zenith angle
+        alt = float(config.get('Variables', 'alt'))
+        params.ze = 90.0 - alt
+
+    except:
+        # Try loading the zenith angle instead
+        try:
+            params.ze =      float(config.get('Variables', 'ze'))
+        except:
+            raise ValueError("The altitude or zenith angle must be given in the input file!")
+
+    try:
+        ref_time = config.get('Variables', 'ref_time')
+        params.ref_time = datetime.datetime.strptime(ref_time, '%Y-%m-%d %H:%M:%S.%f')
+    except:
+        params.ref_time = None
+        print("No reference time was given, skipping timed dark flight KML output! The time should be given in the YYYY-MM-DD HH:MM:SS.ss format.")
+
+    # Load the time delta, if given
+    if params.ref_time is not None:
+        try:
+            ref_time_ds = float(config.get('Variables', 'ref_time_ds'))
+
+            # Apply the time delta to the refernece time
+            params.ref_time += datetime.timedelta(seconds=ref_time_ds)
+        except:
+            print("No reference time delta was given, using the reference time as the time of ejection!")
+
 
     try:
         params.mass_min =    float(config.get('Variables', 'mass_min'))
@@ -619,32 +686,48 @@ if __name__ == "__main__":
     # Parse the command line arguments
     cml_args = arg_parser.parse_args()
 
+    # Check that the input file exists
+    if not os.path.isfile(cml_args.input_file):
+        raise FileNotFoundError("Input file does not exist! {:s}".format(cml_args.input_file))
+
+    # Extract the directory path from the input file
+    dir_path = os.path.dirname(os.path.realpath(cml_args.input_file))
+    file_name = os.path.basename(dir_path)
+
+    # Read the input file
     params = readInfile(cml_args.input_file)
 
+    # Add absolute path to the atmosphere file
+    if os.path.isfile(os.path.join(dir_path, params.atm)):
+        params.atm = os.path.abspath(os.path.join(dir_path, params.atm))
+
     # What masses are chosen
-    mass_list = halfMags(params.mass_min, params.mass_max, params.mags)
-    #mass_list = [1, 0.1, 0.05, 0.02, 0.01, 0.001]
+    mass_list = halfMags(params.mass_min, params.mass_max, [2.5, 5])
 
     print("Masses used:", mass_list)
 
     params.error = (params.error.lower() == 'true')
 
-    if not os.path.exists(params.output):
-        os.makedirs(params.output)
-
-    print('start')
+    print('Start dark flight calculations')
     data = []
     del_data = []
     for i in range(len(mass_list)):
 
         mass_str = massString(mass_list[i])
 
-        runDarkflight(params, mass_list[i], uncertainty=False)
-        data.append(readDarkflight(params.output + '_' + mass_str, mass_list[i], header=34))
+        # Create the output name
+        output_path = os.path.join(dir_path, file_name + "_" + mass_str)
+
+        runDarkflight(params, mass_list[i], output_path, uncertainty=False)
+        data.append(readDarkflight(output_path, mass_list[i], header=34))
 
         if params.error:
-            runDarkflight(params, mass_list[i], uncertainty=True)
-            del_data.append(readDarkflight(params.output + '_uncertainty' + '_' + mass_str, mass_list[i], header=34, partial=False))
-    print("end")
+            
+            output_path = os.path.join(dir_path, file_name + '_uncertainty' + '_' + mass_str)
 
-    plotData(data, del_data, params, mass_list)
+            runDarkflight(params, mass_list[i], output_path, uncertainty=True)
+            del_data.append(readDarkflight(output_path, mass_list[i], header=34, partial=False))
+    
+    print("End calculations")
+
+    plotData(dir_path, file_name, data, del_data, params, mass_list)

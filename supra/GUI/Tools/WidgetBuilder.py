@@ -35,7 +35,7 @@ def initTabs(obj):
     addFetchATMWidgets(obj)
     # addProfileWidgets(obj)
     # addRayTracerWidgets(obj)
-    addRefineWidgets(obj)
+    # addRefineWidgets(obj)
 
 
 def initMenuBar(obj, layout):
@@ -110,9 +110,9 @@ def initMenuBar(obj, layout):
     traj_interp.triggered.connect(obj.trajInterpDialog)
     tools_menu.addAction(traj_interp)
 
-    geminus_tool = QAction("Geminus", obj)
-    geminus_tool.triggered.connect(obj.geminus)
-    tools_menu.addAction(geminus_tool)
+    # geminus_tool = QAction("Geminus", obj)
+    # geminus_tool.triggered.connect(obj.geminus)
+    # tools_menu.addAction(geminus_tool)
 
     rtv_tool = QAction("Ray-Trace Visualization", obj)
     rtv_tool.triggered.connect(obj.rtvWindow)
@@ -563,12 +563,38 @@ def addMakePicksWidgets(obj):
 
 
 
+    # obj.annote_picks = ToggleButton(False, 2)
+    # obj.annote_picks.setToolTip("Click the waveform to make an annotation")
+    # obj.annote_picks.clicked.connect(obj.annote_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.annote_picks)
+
+    # obj.gnd_mot_picks = ToggleButton(False, 3)
+    # obj.gnd_mot_picks.setToolTip("Click the waveform to get the ground motion")
+    # obj.gnd_mot_picks.clicked.connect(obj.gnd_mot_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.gnd_mot_picks)
+
+    # obj.bandpass_picks = ToggleButton(False, 6)
+    # obj.bandpass_picks.setToolTip("Click the waveform to open optimal bandpass dialog")
+    # obj.bandpass_picks.clicked.connect(obj.bandpass_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.bandpass_picks)
+
+    # obj.polmap_picks = ToggleButton(False, 7)
+    # obj.polmap_picks.setToolTip("Click the waveform to open polarization heat map dialog")
+    # obj.polmap_picks.clicked.connect(obj.polmap_picks.clickedEvt)
+    # toggle_button_array.addWidget(obj.polmap_picks)
 
 
-    # obj.traj_space = ToggleButton(False, 5)
-    # obj.traj_space.setToolTip("Click to plot all infrasound stations in pressure vs. height")
-    # obj.traj_space.clicked.connect(obj.traj_space.clickedEvt)
-    # toggle_button_array.addWidget(obj.traj_space)
+    obj.save_picks = ToggleButton(False, 8)
+    obj.save_picks.setToolTip("Click the waveform to export data into project folder")
+    obj.save_picks.clicked.connect(obj.save_picks.clickedEvt)
+    toggle_button_array.addWidget(obj.save_picks)
+
+    # obj.rotatepol = ToggleButton(False, 5)
+    # # obj.rotatepol.setToolTip("Click the waveform to export data into project folder")
+    # obj.rotatepol.clicked.connect(obj.rotatepol.clickedEvt)
+    # toggle_button_array.addWidget(obj.rotatepol)
+
+
 
     toggle_button_array.insertStretch(-1, 0)
 
@@ -665,10 +691,12 @@ def addMakePicksWidgets(obj):
     process_layout.addWidget(obj.W_est, 1, 1)
     obj.W_est.clicked.connect(obj.W_estGUI)
 
+
     obj.lum_eff = ToggleButton(False, 22)
     obj.lum_eff.setToolTip('Luminous Efficiency')
     process_layout.addWidget(obj.lum_eff, 2, 1)
     obj.lum_eff.clicked.connect(obj.lumEffGUI)
+
 
     obj.show_height = ToggleButton(False, 23)
     obj.show_height.setToolTip('Show Height Prediction')
@@ -806,7 +834,6 @@ def addMakePicksWidgets(obj):
     # obj.rm_resp = QCheckBox('Remove Response (EXPERIMENTAL)')
     # check_group_layout.addWidget(obj.rm_resp)
     # obj.rm_resp.stateChanged.connect(partial(obj.updatePlot, True))
-
 
 
 

@@ -320,8 +320,9 @@ class ECMWF(AtmosType):
             resulting curve into a smooth profile
             lat = [start lat, end lat]
         '''
-        import time
+
         spread = True
+
         if perturbations is None:
             perturb = prefs.pert_num
         else:

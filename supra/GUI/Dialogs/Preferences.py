@@ -52,7 +52,7 @@ class PreferenceWindow(QWidget):
         self.ballistic_en = createToggle('Show Ballistic', general_tab_layout, 4, width=1, h_shift=1, tool_tip='')
         self.frag_en = createToggle('Show Fragmentation', general_tab_layout, 5, width=1, h_shift=1, tool_tip='')
         self.recalc_times = createToggle('Recalculate Times', general_tab_layout, 6, width=1, h_shift=1, tool_tip='')
-        self.recalc_sigs = createToggle('Recalculate Signals', general_tab_layout, 7, width=1, h_shift=1, tool_tip='')
+        # self.recalc_sigs = createToggle('Recalculate Signals', general_tab_layout, 7, width=1, h_shift=1, tool_tip='')
 
         browse_button = QPushButton('Browse')
         general_tab_layout.addWidget(browse_button, 0, 3)
@@ -112,10 +112,13 @@ class PreferenceWindow(QWidget):
         self.debug.setChecked(prefs.debug)         
         self.ballistic_en.setChecked(prefs.ballistic_en)  
         self.recalc_times.setChecked(prefs.recalc_times)
-        try:
-            self.recalc_sigs.setChecked(prefs.recalc_sigs)  
-        except (AttributeError, TypeError):
-            self.recalc_sigs.setChecked(False) 
+
+        if hasattr(self, "recalc_sigs"):
+            try:
+                self.recalc_sigs.setChecked(prefs.recalc_sigs)  
+            except (AttributeError, TypeError):
+                self.recalc_sigs.setChecked(False) 
+
 
         self.frag_en.setChecked(prefs.frag_en)       
         self.wind_en.setChecked(prefs.wind_en)       

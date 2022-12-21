@@ -54,10 +54,7 @@ class FragmentationStaff(QWidget):
         ###########
 
         self.height_plot = MatplotlibPyQT()
-        self.height_plot.ax1 = self.height_plot.figure.add_subplot(211)
-        self.height_plot.ax2 = self.height_plot.figure.add_subplot(212, sharex=self.height_plot.ax1)
-        
- 
+
         main_layout.addWidget(self.height_plot, 1, 1, 1, 100)
 
         export_button = QPushButton('Export')
@@ -78,6 +75,43 @@ class FragmentationStaff(QWidget):
         # All points are placed here
         self.dots_x = []
         self.dots_y = []
+
+        #########################
+        # Light Curve Plot
+        #########################
+        if len(self.setup.light_curve_file) > 0 and hasattr(self.setup, "light_curve_file"):
+            self.height_plot.ax1 = self.height_plot.figure.add_subplot(211)
+            self.height_plot.ax2 = self.height_plot.figure.add_subplot(212, sharex=self.height_plot.ax1)
+            # lc_plot = MatplotlibPyQT()
+            # main_layout.addWidget(lc_plot, 1, 1, 1, 100)
+            # self.light_curve_view = pg.GraphicsLayoutWidget()
+            # self.light_curve_canvas = self.light_curve_view.addPlot()
+
+
+            light_curve = readLightCurve(self.setup.light_curve_file)
+
+            light_curve_list = processLightCurve(light_curve)
+
+            for L in light_curve_list:
+                self.height_plot.ax1.scatter(L.h, L.I, label=L.station)
+                # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
+                # self.light_curve_canvas.addItem(light_curve_curve)
+
+            self.height_plot.ax1.legend()
+            # plt.gca().invert_yaxis()
+
+
+            # main_layout.addWidget(self.light_curve_view, 1, 101, 1, 10)
+
+            # blank_spacer = QWidget()
+            # main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
+
+
+            self.height_plot.ax1.set_xlim((-10, 100))
+            self.height_plot.ax1.set_xlabel("Height [km]")
+            self.height_plot.ax1.set_ylabel("Intensity")
+        else:
+            self.height_plot.ax2 = self.height_plot.figure.add_subplot(111)
 
         #########################
         # Station Plot
@@ -113,6 +147,7 @@ class FragmentationStaff(QWidget):
             print("Could not filter waveform!")
 
 
+
         #########################
         # Light Curve Plot
         #########################
@@ -145,6 +180,7 @@ class FragmentationStaff(QWidget):
             # main_layout.addWidget(blank_spacer, 2, 101, 2, 10)
 
 
+        
         ########################
         # Generate Hyperbola
         ########################
@@ -533,13 +569,12 @@ class FragmentationStaff(QWidget):
         # self.height_canvas.setLabel('bottom', 'Height of Solution', units='m')
         # self.angle_canvas.setLabel('bottom', 'Height of Solution', units='m')
         tol = 5 #seconds
-        self.height_plot.ax1.set_xlim((-10, 100))
+
         self.height_plot.ax2.set_xlim((-10, 100))
         self.height_plot.ax2.set_ylim((np.min([0, np.nanmin(self.dots_y)]) - tol, tol + np.max([0, np.nanmax(self.dots_y)])))
         # print(len(X), len(Y))
         # self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='m')
-        self.height_plot.ax1.set_xlabel("Height [km]")
-        self.height_plot.ax1.set_ylabel("Intensity")
+
         self.height_plot.ax2.set_xlabel("Height [km]")
         self.height_plot.ax2.set_ylabel("Time after {:.2f} [s]".format(nom_pick.time))
 
