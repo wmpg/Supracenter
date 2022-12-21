@@ -53,6 +53,7 @@
 <li class="toctree-l3"><a class="reference internal" href="#isotropic-atmospheric-data">Isotropic Atmospheric Data</a></li>
 </ul>
 </li>
+<li class="toctree-l2"><a class="reference internal" href="#atmosphere-profile-combination">Atmosphere Profile Combination</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#perturbations">Perturbations</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#loading-data-into-an-event">Loading Data into an Event</a><ul class="simple">
 </ul>
@@ -130,6 +131,11 @@
 <p>No file is required for an isotropic profile.</p>
 <p>The speed_of_sound variable must be set, and the program will make a custom atmospheric dataset using the given speed of sound.</p>
 </section>
+</section>
+<section id="atmosphere-profile-combination">
+<h2>Atmosphere Profile Combination<a class="headerlink" href="#atmosphere-profile-combination" title="Permalink to this heading"></a></h2>
+<p>The atmosphere will by default use NRLMSISE and HWM93 models (HWM2014 still to be added). If ERA5 data is downloaded and added to the .bam file, then the ERA5 data will be used at the heights where available, and the NRLMSISE/HWM models will be used at heights above. The entire profile will be cubic splined to allow for a smooth profile for ray-tracing.</p>
+<p>Perturbations are calculated the same way from ERA5 data. However, perturbations are not generated for model data. Therefore, if you are using ERA5 with perturbations, the perturbations are only calculated for the heights that the ERA5 data is defined for, not for the NRLMSISE/HWM data!</p>
 </section>
 <section id="perturbations">
 <h2>Perturbations<a class="headerlink" href="#perturbations" title="Permalink to this heading"></a></h2>

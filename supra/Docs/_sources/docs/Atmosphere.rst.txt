@@ -172,6 +172,13 @@ No file is required for an isotropic profile.
 The speed_of_sound variable must be set, and the program will make a custom atmospheric dataset using the given speed of sound.
 
 
+Atmosphere Profile Combination
+==============================
+
+The atmosphere will by default use NRLMSISE and HWM93 models (HWM2014 still to be added). If ERA5 data is downloaded and added to the .bam file, then the ERA5 data will be used at the heights where available, and the NRLMSISE/HWM models will be used at heights above. The entire profile will be cubic splined to allow for a smooth profile for ray-tracing.
+
+Perturbations are calculated the same way from ERA5 data. However, perturbations are not generated for model data. Therefore, if you are using ERA5 with perturbations, the perturbations are only calculated for the heights that the ERA5 data is defined for, not for the NRLMSISE/HWM data!
+
 Perturbations
 =============
 

@@ -1097,7 +1097,12 @@ class SolutionGUI(QMainWindow):
                 else:
                     return None
                 Y = ptb[:, 0]
-                self.fatm_plot.ax.plot(X, Y/1000, c='g', label="MC Realizations")
+
+                PERT_ALPHA = 0.4
+                if ii == 0:
+                    self.fatm_plot.ax.plot(X, Y/1000, c='g', alpha=PERT_ALPHA, label="MC Realizations")
+                else:
+                    self.fatm_plot.ax.plot(X, Y/1000, c='g', alpha=PERT_ALPHA)
                 SolutionGUI.update(self)
         perts_range = np.array(perts_range)
         try:
