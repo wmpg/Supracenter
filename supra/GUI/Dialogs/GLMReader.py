@@ -160,7 +160,9 @@ class glmWindowDialog(QWidget):
 
         blackbody_f = 1.018e3
 
-        E = np.array(energy)*geo_f*blackbody_f
+        time_f = 1/0.002
+
+        E = np.array(energy)*geo_f*blackbody_f*time_f
 
         return E
 

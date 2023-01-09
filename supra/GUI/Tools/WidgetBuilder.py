@@ -110,9 +110,9 @@ def initMenuBar(obj, layout):
     traj_interp.triggered.connect(obj.trajInterpDialog)
     tools_menu.addAction(traj_interp)
 
-    # geminus_tool = QAction("Geminus", obj)
-    # geminus_tool.triggered.connect(obj.geminus)
-    # tools_menu.addAction(geminus_tool)
+    geminus_tool = QAction("Geminus", obj)
+    geminus_tool.triggered.connect(obj.geminus)
+    tools_menu.addAction(geminus_tool)
 
     rtv_tool = QAction("Ray-Trace Visualization", obj)
     rtv_tool.triggered.connect(obj.rtvWindow)
@@ -701,6 +701,7 @@ def addMakePicksWidgets(obj):
     obj.show_height = ToggleButton(False, 23)
     obj.show_height.setToolTip('Show Height Prediction')
     process_layout.addWidget(obj.show_height, 3, 1)
+    obj.show_height.clicked.connect(obj.showHeight)
 
     ####################
     # WAVEFORM Display
