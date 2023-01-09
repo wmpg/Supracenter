@@ -510,7 +510,7 @@ class TrajSpace(QWidget):
 
     def exportraw(self):
             
-        file_name = saveFile('.csv')
+        file_name = saveFile('csv')
 
         with open(file_name, 'w+') as f:
             f.write('Station, Height [m], Overpressure [Pa], Dominant Period [s] \n')
@@ -521,7 +521,7 @@ class TrajSpace(QWidget):
     
     def exportro(self):
             
-        file_name = saveFile('.csv')
+        file_name = saveFile('csv')
 
         with open(file_name, 'w+') as f:
             f.write('Station, Height [m], Overpressure [Pa], Dominant Period [s], Ro (Weak-Shock, Overpressure) [m], Ro (Linear, Overpressure) [m], Ro (Weak-Shock, Dominant Period) [m], Ro (Linear, Dominant Period) [m]\n')

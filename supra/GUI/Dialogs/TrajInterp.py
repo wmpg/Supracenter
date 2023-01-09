@@ -64,7 +64,7 @@ class TrajInterpWindow(QWidget):
                                   min_p=tryFloat(self.low_point.text()),\
                                   max_p=tryFloat(self.high_point.text()))
 
-        file_name = saveFile('.csv')
+        file_name = saveFile('csv')
 
         with open(file_name, 'w+') as f:
             for pt in points:
