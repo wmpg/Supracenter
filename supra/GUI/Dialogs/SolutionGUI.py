@@ -305,6 +305,9 @@ class SolutionGUI(QMainWindow):
         self.lum_eff.setState(False)
         qApp.processEvents()
 
+    def showHeight(self):
+        self.show_height.switchState()
+        qApp.processEvents()
 
 
     def csvLoad(self, table):
