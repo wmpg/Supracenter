@@ -702,7 +702,7 @@ class SolutionGUI(QMainWindow):
 
     def showContour(self, mode):
 
-        filename = saveFile('.npy')
+        filename = saveFile('npy')
 
         print('Working on contour - This could take a while...')
         self.clearContour()
@@ -1097,7 +1097,12 @@ class SolutionGUI(QMainWindow):
                 else:
                     return None
                 Y = ptb[:, 0]
-                self.fatm_plot.ax.plot(X, Y/1000, c='g', label="MC Realizations")
+
+                PERT_ALPHA = 0.4
+                if ii == 0:
+                    self.fatm_plot.ax.plot(X, Y/1000, c='g', alpha=PERT_ALPHA, label="MC Realizations")
+                else:
+                    self.fatm_plot.ax.plot(X, Y/1000, c='g', alpha=PERT_ALPHA)
                 SolutionGUI.update(self)
         perts_range = np.array(perts_range)
         try:
@@ -1188,18 +1193,37 @@ class SolutionGUI(QMainWindow):
 
             if download:
                 
-                loc = saveFile(".nc")
+                loc = saveFile("nc")
+
+                # If empty file string with extension 'nc' (they hit cancel in the file selection
+                # dialog)
+                if len(loc) == 2:
+                    print(printMessage("status"), "Not downloading anything")
+                    return None
                 
                 qm = QtGui.QMessageBox
-                ret = qm.question(self, '', "Only Download Perturbations?", qm.Yes | qm.No)
+                ret = qm.question(self, 'File Download - Reanalysis', "Download Nominal Profile?", qm.Yes | qm.No)
 
                 try:
                     if ret == qm.Yes:
-                        print(printMessage("status"), "Downloading Perturbation Ensemble")
-                        perts = True
-                    else:
                         print(printMessage("status"), "Downloading Reanalysis")
                         perts = False
+                    else:
+                        qm = QtGui.QMessageBox
+                        ret = qm.question(self, 'File Download - Perturbations', "Download Perturbations?", qm.Yes | qm.No)
+                        try:
+                            if ret == qm.Yes:
+                                print(printMessage("status"), "Downloading Perturbation Ensemble")
+                                perts = True
+                            else:
+                                print(printMessage("status"), "Not downloading anything")
+                                return None
+
+                        except AttributeError:
+                            print(printMessage("error"), "Attribute Error")
+                            # If the "x" is clicked
+                            return None
+
                 except AttributeError:
                     print(printMessage("error"), "Attribute Error")
                     # If the "x" is clicked
