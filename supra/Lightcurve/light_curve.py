@@ -133,12 +133,12 @@ def processLightCurve(light_curve):
 def readLightCurve(csv):
 
     light_curve = []
-    with open(csv, 'r+') as f:
+    with open(csv, 'r+', encoding='utf-8-sig') as f:
     
         for line in f:
             line = line.split(',')
             temp_line = []
-    
+            print(line)
             for item in line:
                 if line[0][0] == "#":
 
@@ -149,10 +149,8 @@ def readLightCurve(csv):
 
                     break
                 else:
-                    try:
-                        temp_line.append(float(item.strip()))
-                    except:
-                        return None
+                    temp_line.append(float(item.strip()))
+
 
     
             light_curve.append(temp_line)

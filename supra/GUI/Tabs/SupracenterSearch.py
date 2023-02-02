@@ -45,7 +45,10 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
     if prefs.debug:
         print("Current status: Nominal Supracenter")
 
-    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=0)
+    min_stats = int(obj.no_stats_edits.text())
+    print("Minimum number of stations: {:}".format(min_stats))
+
+    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, min_stats, manual=manual, pert_num=0)
 
     # Check for if results returns None
     try:

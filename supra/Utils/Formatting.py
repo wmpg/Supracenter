@@ -73,11 +73,11 @@ def printMessage(t):
     else:
         return termchkr(t, color='white')
 
-def printPercent(num, pas):
+def printPercent(num, pas, tol=4):
 
-    if pas > 4:       
+    if pas > tol:       
         return termchkr("{:.2f}%".format(num), color='green')
-    elif pas == 4:
+    elif pas == tol:
         return termchkr("{:.2f}%".format(num), color='yellow')
     else:
         return termchkr("{:.2f}%".format(num), color='red')

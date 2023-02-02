@@ -378,6 +378,8 @@ class SolutionGUI(QMainWindow):
  
     def trajSearchSetup(self):
 
+        self.bam.seis_out_file = self.seis_out_edits.text()
+
         x, fopt, geo, stat_names, stat_picks = trajectorySearch(self.bam, self.prefs)
         # x, fopt = trajectorySearch(self.bam, self.prefs)
 

@@ -523,7 +523,7 @@ def waveReleasePointWinds(stat_coord, bam, prefs, ref_loc, points, u):
 
         angle = np.abs(90 - np.degrees(np.arccos(np.dot(mag_u, mag_v))))
 
-        print("\tHeight: {:.2f} km | Angle: {:.2f} deg".format(traj_point.elev/1000, angle))
+        # print("\tHeight: {:.2f} km | Angle: {:.2f} deg".format(traj_point.elev/1000, angle))
         cyscan_res.append(A)
 
     try:
@@ -706,7 +706,7 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
     failed_stats = 0
     error_list = []
     N = len(station_list)
-
+    all_errors_list = []
 
 
     for stn in station_list:
@@ -717,15 +717,19 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
 
         if not np.isnan(t_theo):
 
-            cost_value = ((1 + (t_theo - t_obs)**2)**0.5 - 1)
+            # This term - abs(t_theo - t_obs) is approximately 0
+            cost_value = ((1 + (t_theo - t_obs)**2)**0.5)
             error_list.append(cost_value)
 
         else:
             failed_stats += 1
+            cost_value = np.inf
         # if np.isnan(t_theo): 
         #     if prefs.debug:
         #         print(np.inf)
         #     return np.inf   
+
+        all_errors_list.append(cost_value)
 
     perc_fail = 100 - failed_stats/len(station_list)*100
 
@@ -740,9 +744,11 @@ def trajSearch(params, station_list, ref_pos, bam, prefs, plot, ax, fig, point_o
         print("Error {:10.4f} | Failed Stats {:3} {:} | Error between points: {:.2f} km ({:.2f} s)".format(total_error, failed_stats, printPercent(perc_fail, N - failed_stats), dis/1000, tim))
         # Quick adjustment to try and better include stations
 
-    with open(OUTFILE, "a+") as f:
-        f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}\n".format(temp_traj.t, temp_traj.v, temp_traj.zenith.deg, temp_traj.azimuth.deg, temp_traj.pos_f.lat, temp_traj.pos_f.lon, total_error, failed_stats))
-
+    with open(bam.seis_out_file, "a+") as f:
+        f.write("{:}, {:}, {:}, {:}, {:}, {:}, {:}, {:}".format(temp_traj.t, temp_traj.v, temp_traj.zenith.deg, temp_traj.azimuth.deg, temp_traj.pos_f.lat, temp_traj.pos_f.lon, total_error, failed_stats))
+        for stat_error in all_errors_list:
+            f.write(",{:}".format(stat_error))
+        f.write("\n")
         f.close()
 
     for i in range(6):

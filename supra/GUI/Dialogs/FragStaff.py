@@ -90,10 +90,16 @@ class FragmentationStaff(QWidget):
 
             light_curve = readLightCurve(self.setup.light_curve_file)
 
+            if light_curve is None:
+                print("Light curve is None")
+
             light_curve_list = processLightCurve(light_curve)
 
+            if light_curve_list is None:
+                print("Light curve list is None")
+
             for L in light_curve_list:
-                self.height_plot.ax1.scatter(L.h, L.I, label=L.station)
+                self.height_plot.ax1.plot(L.h, L.I, label=L.station)
                 # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
                 # self.light_curve_canvas.addItem(light_curve_curve)
 

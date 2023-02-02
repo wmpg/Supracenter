@@ -38,7 +38,10 @@ def timeFunction(x, *args):
     '''
 
     # Retrieve passed arguments
-    stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo = args
+    stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo, stat_min = args
+
+    # Minimum number of stations for a supra point to not fail
+    N_MIN_STATIONS = stat_min
 
     # number of stations total
     n_stations = len(stns)
@@ -155,7 +158,7 @@ def timeFunction(x, *args):
     perc_fail = 100 - (n_stations-N_s)/n_stations*100
 
     # temporary adjustment to try and get the most stations
-    if N_s >= 1:
+    if N_s >= N_MIN_STATIONS:
         total_error = err# + 2*max(error_list)*(failed_stats)
     else:
         total_error = np.inf
@@ -164,7 +167,7 @@ def timeFunction(x, *args):
         total_error = np.inf
 
     if prefs.debug:
-        print("Error {:10.4f} | Solution {:10.4f}N {:10.4f}E {:8.2f} km {:8.2f} s | Failed Stats {:3} {:}".format(total_error, S.lat, S.lon, S.elev/1000, motc, n_stations-N_s, printPercent(perc_fail, N_s)))
+        print("Error {:10.4f} | Solution {:10.4f}N {:10.4f}E {:8.2f} km {:8.2f} s | Failed Stats {:3} {:}".format(total_error, S.lat, S.lon, S.elev/1000, motc, n_stations-N_s, printPercent(perc_fail, N_s, tol=N_MIN_STATIONS)))
         # Quick adjustment to try and better include stations
 
     with open(OUTFILE, "a+") as f:
@@ -258,7 +261,7 @@ def trajConstraints(x, *args):
     else:
         return -diff
 
-def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, override_supra=[], theo=False):
+def psoSearch(stns, w, s_name, bam, prefs, ref_pos, min_stats, manual=False, pert_num=0, override_supra=[], theo=False):
     """ Optimizes the paths between the detector stations and a supracenter to find the best fit for the 
         position of the supracenter, within the given search area. The supracenter is found with an initial guess,
         in a given grid, and is moved closer to points of better fit through particle swarm optimization.
@@ -344,7 +347,6 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         if prefs.debug:
             print("Free Search")
 
-
     # If automatic search
     if not manual:
         
@@ -358,7 +360,7 @@ def psoSearch(stns, w, s_name, bam, prefs, ref_pos, manual=False, pert_num=0, ov
         #  [x, y, z] local coordinates
 
         # arguments to be passed to timeFunction()
-        args = (stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo)
+        args = (stns, w, kotc, setup, ref_pos, atmos, prefs, v, pert_num, theo, min_stats)
 
         # Particle Swarm Optimization
         # x_opt - optimal supracenter location
