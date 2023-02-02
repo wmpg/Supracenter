@@ -69,6 +69,13 @@ def psoTrajectory(station_list, bam, prefs):
 
             plot.append(ax[i, j].scatter([], []))
 
+    with open(bam.seis_out_file, "a+") as f:
+        f.write("{:}".format("Time [s], Velocity, Zenith, Azimuth, Latitude, Longitude, Total Error, No of Failed Stats"))
+        for stat in station_list:
+            f.write(",{:}-{:}".format(stat[1], stat[2]))
+        f.write("\n")
+        f.close()
+
     x, fopt = pso(trajSearch, lower_bounds, upper_bounds, args=(station_list, ref_pos, bam, prefs, plot, ax, fig, point_on_traj), \
         maxiter=prefs.pso_max_iter, swarmsize=prefs.pso_swarm_size, \
         phip=prefs.pso_phi_p, phig=prefs.pso_phi_g, debug=False, omega=prefs.pso_omega, \

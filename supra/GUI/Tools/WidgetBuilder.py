@@ -341,7 +341,7 @@ def addSupraWidgets(obj):
 
     supra_tab = QWidget()
     obj.master_supra = QGridLayout()
-    obj.supra_tab_content = QVBoxLayout()
+    obj.supra_tab_content = QGridLayout()
     obj.plots = QVBoxLayout()
 
     obj.residfig = FigureCanvas(Figure())
@@ -353,21 +353,23 @@ def addSupraWidgets(obj):
     obj.plots.addWidget(obj.suprafig)
 
     obj.results_label = QLabel("Results: ")
-    obj.supra_tab_content.addWidget(obj.results_label)
+    obj.supra_tab_content.addWidget(obj.results_label, 1, 1)
 
-    obj.supra_res_table = QTableWidget(0, 0)
-    obj.supra_tab_content.addWidget(obj.supra_res_table)
+    obj.supra_res_table = QTableWidget(0, 0)               #Rush
+    obj.supra_tab_content.addWidget(obj.supra_res_table, 2, 1, 1, 2)
+
+    obj.no_stats_label, obj.no_stats_edits = createLabelEditObj("Minimum Number of Stations", obj.supra_tab_content, 3, tool_tip='', validate='', default_txt='4')
 
     obj.theo_button = QPushButton('Theoretical Search')
-    obj.supra_tab_content.addWidget(obj.theo_button)
+    obj.supra_tab_content.addWidget(obj.theo_button, 4, 1, 1, 2)
     obj.theo_button.clicked.connect(partial(obj.supTheoSetup, True))
 
     obj.search_button = QPushButton('Manual Search')
-    obj.supra_tab_content.addWidget(obj.search_button)
+    obj.supra_tab_content.addWidget(obj.search_button, 5, 1, 1, 2)
     obj.search_button.clicked.connect(partial(obj.supSearchSetup, True))
 
     obj.search_p_button = QPushButton('PSO Search')
-    obj.supra_tab_content.addWidget(obj.search_p_button)
+    obj.supra_tab_content.addWidget(obj.search_p_button, 6, 1, 1, 2)
     obj.search_p_button.clicked.connect(partial(obj.supSearchSetup, False))
 
     obj.master_supra.addLayout(obj.supra_tab_content, 1, 1, 1, 100)
@@ -891,6 +893,10 @@ def addSeisTrajWidgets(obj):
 
     tab_layout = QGridLayout()
     obj.seis_tab_input.addLayout(tab_layout)
+
+    obj.seis_out_label, obj.seis_out_edits, obj.seis_out_buton = createFileSearchObj('Output File: ', tab_layout, 3, width=1, h_shift=0)
+    obj.seis_out_buton.clicked.connect(partial(fileSearch, ['CSV (*.csv)', 'Text File (*.txt)'], obj.seis_out_edits))
+
 
     obj.seis_search = QPushButton('Search')
     tab_layout.addWidget(obj.seis_search, 0, 1, 1, 100)
