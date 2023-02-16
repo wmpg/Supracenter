@@ -466,7 +466,7 @@ class Trajectory:
         # if using static vel: v == v_f == v_avg
 
     def __str__(self):
-        degree_sign= u'\N{DEGREE SIGN}'
+        degree_sign= 'o'
 
         try:
             A = "Trajectory: Lat: {:6.4f}{:} N, Lon: {:6.4f}{:} E, Elev: {:9.2f} km \n".format(self.pos_i.lat, \
