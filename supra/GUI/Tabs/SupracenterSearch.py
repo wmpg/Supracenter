@@ -69,7 +69,7 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
             if prefs.debug:
                 print("Current status: Perturbation {:}".format(i+1))
 
-            pert_results[i] = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, manual=manual, pert_num=i+1)
+            pert_results[i] = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, min_stats, manual=manual, pert_num=i+1)
 
 
     
@@ -423,7 +423,7 @@ def residPlot(bam, prefs, results_arr, pert_res, s_name, xstn, output_name, pare
     fig = plt.figure(figsize=plt.figaspect(0.5))
     fig.set_size_inches(20.9, 11.7)
     ax = fig.add_subplot(1, 1, 1)
-    res = ax.scatter(xstn[:, 1], xstn[:, 0], c=abs(resid), marker='^', cmap='viridis_r', s=21)
+    res = ax.scatter(xstn[:, 1], xstn[:, 0], c=resid, marker='^', cmap='viridis_r', s=21)
 
     for nn in range(n_stations):
         ax.text(xstn[nn, 1], xstn[nn, 0],  '%s' % ('{:}'.format(s_name[nn])), size=10, zorder=1, color='w')

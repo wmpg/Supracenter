@@ -104,7 +104,7 @@ class Position:
 
 
     def __str__(self):
-        degree_sign= u'\N{DEGREE SIGN}'
+        degree_sign= 'o'
         try:
             result = "Lat: {:8.4f}{:}N, Lon: {:8.4f}{:}E, Elev: {:10.2f} m".format(self.lat, degree_sign, self.lon, degree_sign, self.elev)
         except TypeError:
