@@ -88,18 +88,24 @@ class FragmentationStaff(QWidget):
             # self.light_curve_canvas = self.light_curve_view.addPlot()
 
 
+
             light_curve = readLightCurve(self.setup.light_curve_file)
 
             if light_curve is None:
                 print("Light curve is None")
+
 
             light_curve_list = processLightCurve(light_curve)
 
             if light_curve_list is None:
                 print("Light curve list is None")
 
+
             for L in light_curve_list:
+
                 self.height_plot.ax1.plot(L.h, L.I, label=L.station)
+
+
                 # light_curve_curve = pg.ScatterPlotItem(x=L.M, y=L.t)
                 # self.light_curve_canvas.addItem(light_curve_curve)
 
@@ -174,7 +180,7 @@ class FragmentationStaff(QWidget):
                     # self.light_curve_canvas.addItem(light_curve_curve)
 
                 
-
+                self.height_plot.ax1.grid(alpha=0.2)
                 self.height_plot.ax1.legend()
 
             # plt.gca().invert_yaxis()
@@ -217,6 +223,7 @@ class FragmentationStaff(QWidget):
         #######################
         # Plot nominal points
         #######################
+        NO_WIND_SPEED = 330
         # base_points = pg.ScatterPlotItem()
         angle_off = []
         no_wind_points = []
@@ -236,7 +243,7 @@ class FragmentationStaff(QWidget):
 
             travel_dis = self.setup.fragmentation_point[i].position.pos_distance(stn.metadata.position)
 
-            travel_time = travel_dis/330
+            travel_time = travel_dis/NO_WIND_SPEED
 
             no_wind_points.append([self.setup.fragmentation_point[i].position.elev, \
                          travel_time - nom_pick.time + self.setup.fragmentation_point[i].time])
@@ -271,6 +278,8 @@ class FragmentationStaff(QWidget):
         
         for i in range(len(self.setup.fragmentation_point)):
         
+            PRE_SPEED = 3100
+
             X = self.setup.fragmentation_point[i].position.elev
             
             # Distance between frag point and the ground below it
@@ -280,15 +289,17 @@ class FragmentationStaff(QWidget):
             h_dist = self.setup.fragmentation_point[i].position.ground_distance(stn.metadata.position)
             
             # Speed of wave in air
-            v_time = v_dist/310
+            v_time = v_dist/NO_WIND_SPEED
 
             # Speed of wave in ground
-            h_time = h_dist/3100
-
+            h_time = h_dist/PRE_SPEED
             # Total travel time
             Y = v_time + h_time - nom_pick.time
-
-            self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='y')
+            
+            if i == 0:
+                self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='y', label="Precursor Points (Speed = {:.2f} km/s)".format(PRE_SPEED/1000))
+            else:
+                self.height_plot.ax2.scatter(np.array(X)/1000, np.array(Y), c='y')
             # pre_points.addPoints(x=[X], y=[Y], pen=(210, 235, 52), brush=(210, 235, 52), symbol='o')
 
         # self.height_canvas.addItem(pre_points, update=True)
@@ -317,15 +328,15 @@ class FragmentationStaff(QWidget):
                 angle_off.append(np.degrees(np.arccos(np.dot(u/np.sqrt(u.dot(u)), v/np.sqrt(v.dot(v))))))
 
         colour_angle = abs(90 - np.array(angle_off))
-        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r')
+        sc = self.height_plot.ax2.scatter(np.array(self.dots_x)/1000, np.array(self.dots_y), c=colour_angle, cmap='viridis_r', label="Nominal Atmosphere Arrivals")
         cbar = self.height_plot.figure.colorbar(sc, orientation="horizontal", pad=0.2)
         cbar.ax.set_xlabel("Difference from 90 deg [deg]")
         no_wind_points = np.array(no_wind_points)
-        self.height_plot.ax2.scatter(no_wind_points[:, 0]/1000, no_wind_points[:, 1], c='w')
+        self.height_plot.ax2.scatter(no_wind_points[:, 0]/1000, no_wind_points[:, 1], c='w', label="Isotropic Atmosphere Arrivals (Speed = {:.2f} km/s)".format(NO_WIND_SPEED/1000))
 
         for pick in self.pick_list:
             if pick.group == 0:
-                self.height_plot.ax2.axhline(pick.time - nom_pick.time, c='g')
+                self.height_plot.ax2.axhline(pick.time - nom_pick.time, c='g', label="User Picks")
                 # self.height_canvas.addItem(pg.InfiniteLine(pos=(0, pick.time - nom_pick.time), angle=0, pen=QColor(0, 255, 0)))
             else:
                 self.height_plot.ax2.axhline(pick.time - nom_pick.time, c='b')
@@ -363,7 +374,7 @@ class FragmentationStaff(QWidget):
             best_indx = np.nanargmin(abs(angle_off - 90))
             print("Optimal Ballistic Height {:.2f} km with angle of {:.2f} deg".format(X[best_indx]/1000, angle_off[best_indx]))
             
-            self.height_plot.ax2.axvline(X[best_indx]/1000, c='b')
+            self.height_plot.ax2.axvline(X[best_indx]/1000, c='b', label="Optimal Ballistic Solution")
             # self.angle_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
             # self.height_canvas.addItem(pg.InfiniteLine(pos=(X[best_indx], 0), angle=90, pen=QColor(0, 0, 255)))
             # self.angle_canvas.scatterPlot(x=X, y=angle_off, pen=(255, 255, 255), symbol='o', brush=(255, 255, 255))
@@ -395,7 +406,7 @@ class FragmentationStaff(QWidget):
 
         if height is not None:
             # self.angle_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
-            self.height_plot.ax2.axvline(height/1000, c='b')
+            self.height_plot.ax2.axvline(height/1000, c='b', label="Optimal Ballistic Solution")
             # self.height_canvas.addItem(pg.InfiniteLine(pos=(height, 0), angle=90, pen=QColor(0, 0, 255)))
         
         # self.angle_canvas.addItem(pg.InfiniteLine(pos=(0, 90), angle=0, pen=QColor(255, 0, 0)))
@@ -583,6 +594,8 @@ class FragmentationStaff(QWidget):
 
         self.height_plot.ax2.set_xlabel("Height [km]")
         self.height_plot.ax2.set_ylabel("Time after {:.2f} [s]".format(nom_pick.time))
+        self.height_plot.ax2.legend()
+        self.height_plot.ax2.grid(alpha=0.2)
 
         # self.height_plot.ax1.show()
         # self.height_plot.ax2.show()

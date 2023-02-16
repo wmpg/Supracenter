@@ -97,10 +97,9 @@ def processLightCurve(light_curve):
     for ii, line in enumerate(light_curve):
 
         try:
-            float(line[0])
-            t.append(line[0])
-            h.append(line[1])
-            M.append(line[2])
+            t.append(float(line[0]))
+            h.append(float(line[1])/1000)
+            M.append(float(line[2]))
         except ValueError:
             if len(t) > 0:
 
@@ -138,7 +137,7 @@ def readLightCurve(csv):
         for line in f:
             line = line.split(',')
             temp_line = []
-            print(line)
+
             for item in line:
                 if line[0][0] == "#":
 

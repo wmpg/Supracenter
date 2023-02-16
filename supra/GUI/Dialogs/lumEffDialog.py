@@ -29,8 +29,8 @@ from supra.Lightcurve.light_curve import *
 
 from supra.Files.SaveLoad import save
 
-I_0 = 3030
-mode = "cneos"
+I_0 = 1500
+mode = "notcneos"
 
 def findArea(height, energy, data_h, data_m, magnitude=None):
     """ A fragmentation is shown on the light curve as the 
@@ -364,8 +364,8 @@ class lumEffDialog(QWidget):
 
                 func = np.poly1d(np.polyfit(h, M, 10))
                 xp = np.linspace(h[0], h[-1], 100)
-                self.light_curve.ax.plot(h, M)#, label=L.station)
-                self.light_curve.ax.plot(xp, func(xp))
+                self.light_curve.ax.plot(h, M, label=L.station)
+                # self.light_curve.ax.plot(xp, func(xp))
 
             self.light_curve.ax.invert_yaxis()
             # self.light_curve.ax.legend()
@@ -493,10 +493,12 @@ class lumEffDialog(QWidget):
 
         self.lum_curve.ax.set_xlabel("Luminous Efficiency [%]")
         self.lum_curve.ax.set_ylabel("Height [km]")
+        self.lum_curve.ax.grid(alpha=0.2)
         # self.lum_curve.ax.legend()
         self.lum_curve.show()
 
         self.light_curve.ax.set_xlabel("Height [km]")
         self.light_curve.ax.set_ylabel("Magnitude")
+        self.light_curve.ax.grid(alpha=0.2)
         # self.light_curve.ax.legend()
         self.light_curve.show()

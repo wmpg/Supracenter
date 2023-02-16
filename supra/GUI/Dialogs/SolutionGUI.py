@@ -2737,13 +2737,13 @@ class SolutionGUI(QMainWindow):
 
         #     save(self)
 
-        # elif self.bandpass_picks.isChecked():
+        elif self.bandpass_picks.isChecked():
 
 
-        #     # Open bandpass GUI
-        #     self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
-        #     self.bp.setGeometry(QRect(100, 100, 1200, 700))
-        #     self.bp.show()
+            # Open bandpass GUI
+            self.bp = BandpassWindow(self.bam, stn, channel, t_arrival=self.source_dists[self.current_station]/(310/1000))
+            self.bp.setGeometry(QRect(100, 100, 1200, 700))
+            self.bp.show()
 
         # elif self.polmap_picks.isChecked():
 

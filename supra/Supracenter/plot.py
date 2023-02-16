@@ -557,7 +557,7 @@ def residPlot(results_arr, s_name, xstn, output_name, n_stations):
     fig = plt.figure()
     ax3 = fig.add_subplot(111)
 
-    res = ax3.scatter(xstn[:, 0], xstn[:, 1], c=abs(resid), marker='^', cmap='viridis_r', s=21)
+    res = ax3.scatter(xstn[:, 0], xstn[:, 1], c=resid, marker='^', cmap='viridis_r', s=21)
     
     for h in range(n_stations):
 
