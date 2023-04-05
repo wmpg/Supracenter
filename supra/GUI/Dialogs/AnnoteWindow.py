@@ -196,7 +196,7 @@ class AnnoteWindow(QWidget):
 
         self.source_edits = QComboBox()
         layout.addWidget(self.source_edits, 7, 2, 1, 1)
-        for s in ["[None]", "Fragmentation", "Ballisitc"]:
+        for s in ["[None]", "Fragmentation", "Ballisitc", "Indirect"]:
             self.source_edits.addItem(s)
 
         height_label = QLabel("Height: ")

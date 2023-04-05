@@ -662,6 +662,7 @@ class Yield(QWidget):
 
                 self.bam.energy_measurements.append(a)
 
+
     def yieldPlot(self, p_ratio, W, unc='none'):
         if unc == 'none':
             self.count += 1

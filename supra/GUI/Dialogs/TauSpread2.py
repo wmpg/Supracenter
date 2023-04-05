@@ -32,13 +32,13 @@ from supra.Utils.pso import pso
 
 import multiprocessing
 
-FILENAME = "F:\\Desktop\\Nord_09_27_22.csv"
+FILENAME = "F:\\Desktop\\NY_03_07_2023.csv"
 #INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\Romania\\Romania_Yield_Search_Picks.csv"
 #INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\alaska_picks_2.csv"
-INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\meteoroids2020_picks_3.csv"
+INPUT_FILE = "F:\\Documents\\Meteor_Research\\Event\\20200819-014556\\three_infra_picks.csv"
 
-search_min = [59.0, 16.0, 42000]
-search_max = [60.0, 17.5, 50000]
+search_min = [41.5,  -78.0, 48000]
+search_max = [42.5,  -77.0, 50000]
 
 
 class Pick():

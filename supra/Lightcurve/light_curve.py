@@ -1,5 +1,6 @@
 
 import numpy as np
+import math
 
 class LightCurve:
 
@@ -22,6 +23,47 @@ class LightCurve:
             J = self.I[ii + 1]*dt
 
             self.J.append(J)
+
+    def getMatH(self, h_0):
+
+        h_max = np.nanmax(self.h)
+        if h_0 > h_max:
+            return np.nan
+
+        try:
+            def find_nearest(array, value):
+
+                #LC arrays are backwards
+                array = array[::-1]
+                L = len(array)
+                idx = np.searchsorted(array, value, side="left")
+                if idx > 0 and (idx == len(array) or math.fabs(value - array[idx-1]) < math.fabs(value - array[idx])):
+                    return L-(idx-1)
+                else:
+                    return L-idx
+
+            h_a_idx = find_nearest(self.h, h_0)
+
+            L = len(self.h)
+            if h_a_idx - L == 0:
+                return np.nan
+
+            h_b_idx = h_a_idx + 1
+
+            h_a = self.h[h_a_idx]
+            h_b = self.h[h_b_idx]
+
+            M_a = self.M[h_a_idx]
+            M_b = self.M[h_b_idx]
+
+
+            f = (h_0 - h_a)/(h_b - h_a)
+            M_0 = (M_b - M_a)*f + M_a
+
+            return M_0
+        except IndexError:
+            return np.nan
+
 
     def getDataList(self):
 

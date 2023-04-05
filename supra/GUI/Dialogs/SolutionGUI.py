@@ -73,6 +73,8 @@ from supra.GUI.Dialogs.RotatePol import RotatePolWindow
 from supra.GUI.Dialogs.lumEffDialog import lumEffDialog
 from supra.GUI.Dialogs.TauSpread2 import TauSpreadGUI
 
+from supra.Yields.YieldFuncs import transmissionFactor
+
 from supra.GUI.Tools.GUITools import *
 from supra.GUI.Tools.Theme import theme
 from supra.GUI.Tools.WidgetBuilder import *
@@ -120,6 +122,10 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.4660*255, 0.6740*255, 0.1880*255),                
        (0.3010*255, 0.7450*255, 0.9330*255),                
        (0.6350*255, 0.0780*255, 0.1840*255)]
+
+FRAG_LOC = Position(42.0224, -77.8427, 48210)
+ENERGY = 1.73E+06 #J
+
 
 consts = Constants()
 # Main Window
@@ -2852,18 +2858,18 @@ class SolutionGUI(QMainWindow):
         #     self.pm.show()
 
         # ### Annotations
-        # elif self.annote_picks.isChecked():
+        elif self.annote_picks.isChecked():
 
-        #     # Create annotation
-        #     mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
+            # Create annotation
+            mousePoint = self.make_picks_waveform_canvas.vb.mapToView(evt.pos())
 
-        #     # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
+            # pick = Pick(mousePoint.x(), self.stn_list[self.current_station], self.current_station, self.stn_list[self.current_station], self.group_no)
 
 
 
-            # self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
-            # self.a.setGeometry(QRect(200, 300, 1600, 800))
-            # self.a.show()
+            self.a = AnnoteWindow(mousePoint.x(), self.bam.stn_list[self.current_station], self.bam, mode="new", an=None, current_channel=channel)
+            self.a.setGeometry(QRect(200, 300, 1600, 800))
+            self.a.show()
 
         #     self.drawWaveform()
         #     self.alt_pressed = False
@@ -2882,7 +2888,7 @@ class SolutionGUI(QMainWindow):
             # self.make_picks_waveform_canvas.addItem(line, update=True)
             # self.make_picks_waveform_canvas.addItem(line2, update=True)
             length = an.length
-            if length == 0: length = 0.01
+            if length == 0: length = 0.5
             annote_area = pg.ROI((an.time, BOT), size=(length, TOP-BOT), pen=pg.mkPen(an.color),\
                                 movable=False, \
                                 rotatable=False, resizable=False)  
@@ -3277,6 +3283,29 @@ class SolutionGUI(QMainWindow):
                             pass
                 # Fragmentation Prediction
 
+        ### SHOW PRESSURE LINE
+        R = FRAG_LOC.pos_distance(stn.metadata.position)
+        W = (ENERGY/4.184e6)**1/3
+
+        f_d = 1#transmissionFactor(FRAG_LOC.elev)
+        Z = f_d*R/W
+
+        P_0 = 101325
+        P_a = 100
+
+
+        del_p = P_0*808*(1 + (Z/4.5)**2)/(1 + (Z/0.048)**2)**0.5/(1 + (Z/0.32)**2)**0.5/(1 + (Z/1.35)**2)**0.5
+
+        pres_fact = (P_0/P_a)**(1/6)
+
+        del_p = del_p/pres_fact
+
+        del_p_line = pg.InfiniteLine(pos=del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+        self.make_picks_waveform_canvas.addItem(del_p_line)
+
+        del_p_line = pg.InfiniteLine(pos=-del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+        self.make_picks_waveform_canvas.addItem(del_p_line)
+
             # If manual fragmentation search is on
         if self.prefs.frag_en and self.show_frags.getState() == True:
             
@@ -3348,7 +3377,8 @@ class SolutionGUI(QMainWindow):
         if stn_changed:
             stationFormat(stn, self.bam.setup, ref_pos, chn_selected)
 
-        # self.addAnnotes()
+        self.addAnnotes()
+        
     def obtainPerts(self, data, frag):
         data_new = []
 

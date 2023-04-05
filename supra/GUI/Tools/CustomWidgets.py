@@ -264,7 +264,7 @@ class PositionEx(QWidget):
         self.setLayout(layout)
 
 class TauEx(QWidget):
-    def __init__(self, energy, tau, heights):
+    def __init__(self, energy, heights):
         super(TauEx, self).__init__()
 
         self.mark_for_deletion = False
@@ -283,7 +283,19 @@ class TauEx(QWidget):
         self.energy_label = QLabel("{:} @ {:} km".format(self.energy.source_type, self.energy.height/1000))
         main_layout.addWidget(self.energy_label, 1, 2)
 
-        tau_label, self.tau_edits = createLabelEditObj("Tau: ", main_layout, 1, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(tau))
+        self.energy_amount_label = QLabel("{:.2E} J/{:.2f} kT TNT".format(self.energy.chem_pres, self.energy.chem_pres/4.184e12))
+        main_layout.addWidget(self.energy_amount_label, 2, 2)
+
+        try:
+            station_name = "{:}-{:}".format(self.energy.station.metadata.network, self.energy.station.metadata.code)
+        except AttributeError:
+            station_name = "Unknown Station"
+
+        self.energy_station_label = QLabel("Station: {:}".format(station_name))
+        main_layout.addWidget(self.energy_station_label, 3, 2)
+
+
+        # tau_label, self.tau_edits = createLabelEditObj("Tau: ", main_layout, 1, width=1, h_shift=2, tool_tip='', validate='float', default_txt='{:.2f}'.format(tau))
         self.delete_self = createButton("Delete", main_layout, 2, 5, self.deleteSelf, args=[])
 
         FRAG_ICON = os.path.join('supra', 'GUI', 'Images', "Fragmentation.png")
@@ -319,8 +331,8 @@ class TauEx(QWidget):
 
                 QPushButton{color: white; background-color: rgb(0, 100, 200);}
                 """)
-    def getTau(self):
-        return float(self.tau_edits.text())
+    # def getTau(self):
+    #     return float(self.tau_edits.text())
 
     def getHeights(self):
         min_height = float(self.min_h_edits.text())
