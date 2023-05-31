@@ -95,7 +95,7 @@ class FragmentationStaff(QWidget):
                 print("Light curve is None")
 
 
-            light_curve_list = processLightCurve(light_curve)
+            light_curve_list = processLightCurve(light_curve, 1500)
 
             if light_curve_list is None:
                 print("Light curve list is None")
@@ -169,7 +169,7 @@ class FragmentationStaff(QWidget):
 
             light_curve = readLightCurve(self.setup.light_curve_file)
 
-            light_curve_list = processLightCurve(light_curve)
+            light_curve_list = processLightCurve(light_curve, 1500)
 
             if light_curve_list is not None:
 

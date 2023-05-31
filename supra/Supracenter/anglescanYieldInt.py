@@ -225,7 +225,8 @@ def anglescan(S, phi, theta, z_profile, vfreq, wind=True, debug=True, trace=Fals
     P = np.array([P_2, P_1])
 
     ##########################
-    return np.array([f_final, np.exp(g), T, P, path_length, pdr, reed_attenuation])
+
+    return np.array([f_final, np.exp(g), T, P_2, P_1, path_length, pdr, reed_attenuation])
 
 if __name__ == '__main__':
     S = np.array([0, 0, 1000])

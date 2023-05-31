@@ -9,7 +9,7 @@ from scipy.optimize import curve_fit
 #FILE_NAME = "F:\\Desktop\\alaska_ANSI_KG85_winds.csv"
 # FILE_NAME = "F:\\Desktop\\alaska_07_19_22_h.csv"
 #FILE_NAME = "F:\\Desktop\\romania_sens_winds_10_grid.csv"
-FILE_NAME = "F:\\Desktop\\Nord_Low_Frag.csv"
+FILE_NAME = "F:\\Desktop\\NY_03_07_2023.csv"
 # FILE_NAME = "F:\\Desktop\\NZ_07_28_22.csv"
 # FILE_NAME = "F:\\Desktop\\Nord_08_02_22.csv"
 
@@ -42,7 +42,7 @@ def readFile(file_name):
     residuals = []
 
     with open(file_name, "r+") as f:
-        lines = f.readlines()
+        lines = f.readlines()        
         for ll, line in enumerate(lines):
             
             if ll == 0:
