@@ -5,6 +5,9 @@
 from functools import partial
 import numpy as np
 
+import multiprocessing
+
+
 def _obj_wrapper(func, args, kwargs, x):
     return func(x, *args, **kwargs)
 
@@ -19,7 +22,7 @@ def _cons_ieqcons_wrapper(ieqcons, args, kwargs, x):
 
 def _cons_f_ieqcons_wrapper(f_ieqcons, args, kwargs, x):
     return np.array(f_ieqcons(x, *args, **kwargs))
-    
+ 
 def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={}, 
         swarmsize=100, omega=0.5, phip=0.5, phig=0.5, maxiter=100, 
         minstep=1e-8, minfunc=1e-8, debug=False, processes=1,
@@ -93,7 +96,7 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
     """
    
     assert len(lb)==len(ub), 'Lower- and upper-bounds must be the same length'
-    assert hasattr(func, '__call__'), 'Invalid function handle'
+    # assert hasattr(func, '__call__'), 'Invalid function handle'
     lb = np.array(lb)
     ub = np.array(ub)
     assert np.all(ub>lb), 'All upper-bound values must be greater than lower-bound values'
@@ -122,7 +125,7 @@ def pso(func, lb, ub, ieqcons=[], f_ieqcons=None, args=(), kwargs={},
 
     # Initialize the multiprocessing module if necessary
     if processes > 1:
-        import multiprocessing
+        
         mp_pool = multiprocessing.Pool(processes)
 
     # Initialize the particle swarm ############################################

@@ -4,13 +4,14 @@ import math
 
 class LightCurve:
 
-    def __init__(self, station, t, h, M):
+    def __init__(self, station, t, h, M, I_0):
 
         self.station = station
         self.t = t
         self.h = h
         self.M = M
-        self.I = 1500*10**(-np.array(self.M)/2.5)
+        print("I_0 = {:} W".format(I_0))
+        self.I = I_0*10**(-np.array(self.M)/2.5)
 
     def genJoules(self):
 
@@ -105,7 +106,7 @@ class LightCurve:
 
         self.removeNAN()
 
-        dH = self.h[0] - self.h[-1]
+        # dH = self.h[0] - self.h[-1]
 
         N = dh
 
@@ -122,7 +123,7 @@ class LightCurve:
         return x[::-1], f[::-1]
 
 
-def processLightCurve(light_curve):
+def processLightCurve(light_curve, I_0):
 
     t = []
     h = []
@@ -145,7 +146,7 @@ def processLightCurve(light_curve):
         except ValueError:
             if len(t) > 0:
 
-                L = LightCurve(current_station, t, h, M)
+                L = LightCurve(current_station, t, h, M, I_0)
                 light_curve_list.append(L)
 
             current_station = line[0]
@@ -158,7 +159,7 @@ def processLightCurve(light_curve):
         if ii == len(light_curve) - 1:
             if len(t) > 0:
 
-                L = LightCurve(current_station, t, h, M)
+                L = LightCurve(current_station, t, h, M, I_0)
                 light_curve_list.append(L)
 
             current_station = line[0]
@@ -200,7 +201,7 @@ def readLightCurve(csv):
 
     return light_curve
 
-def readCNEOSlc(file_name):
+def readCNEOSlc(file_name, I_0):
 
     data_list = []
 
@@ -238,7 +239,7 @@ def readCNEOSlc(file_name):
     # USING BROWN ET AL 1996 
     M_bol = 6 - 2.5*np.log10(I_list)
 
-    L = LightCurve("CNEOS", t_list, None, M_bol)
+    L = LightCurve("CNEOS", t_list, None, M_bol, I_0)
 
     L.I = I_list
     L.M = M_bol

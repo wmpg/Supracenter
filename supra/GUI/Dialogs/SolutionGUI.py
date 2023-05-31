@@ -109,7 +109,7 @@ from supra.Geminus.geminusGUI import Geminus
 
 from supra.Supracenter.l137 import estPressure
 from supra.Atmosphere.NRLMSISE import getAtmDensity
-from supra.Atmosphere.HWM93 import getHWM
+from supra.Atmosphere.pyHWM93 import getHWM
 from wmpl.Utils.TrajConversions import date2JD
 from wmpl.Utils.OSTools import mkdirP
 HEIGHT_SOLVER_DIV = 250
@@ -124,7 +124,7 @@ PEN = [(0     *255, 0.4470*255, 0.7410*255),
        (0.6350*255, 0.0780*255, 0.1840*255)]
 
 FRAG_LOC = Position(42.0224, -77.8427, 48210)
-ENERGY = 1.73E+06 #J
+ENERGY = None #J
 
 
 consts = Constants()
@@ -1133,7 +1133,7 @@ class SolutionGUI(QMainWindow):
         # self.fatm_canvas.getLabel("left").tickFont = font
         # self.fatm_canvas.getLabel('bottom').setPen(self.color.WHITE) 
         # self.fatm_canvas.getLabel('left').setPen(self.color.WHITE)
-
+        print(sounding)
         self.fatm_plot.ax.grid(alpha=0.2)
         self.fatm_plot.ax.legend()
         self.fatm_plot.show()
@@ -2194,7 +2194,7 @@ class SolutionGUI(QMainWindow):
             llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
             urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='h', ax=self.make_picks_map_graph_view.ax)
+            resolution='l', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
@@ -2434,7 +2434,7 @@ class SolutionGUI(QMainWindow):
         
         self.make_picks_waveform_canvas.scene().sigMouseClicked.connect(self.mouseClicked)
 
-        pg.QtGui.QApplication.processEvents()
+        pg.QtWidgets.QApplication.processEvents()
         # Plot all waveforms
         ######################################################################################3
 
@@ -3284,29 +3284,31 @@ class SolutionGUI(QMainWindow):
                 # Fragmentation Prediction
 
         ### SHOW PRESSURE LINE
-        R = FRAG_LOC.pos_distance(stn.metadata.position)
-        W = (ENERGY/4.184e6)**1/3
 
-        f_d = 1#transmissionFactor(FRAG_LOC.elev)
-        Z = f_d*R/W
+        if ENERGY is not None:
+            R = FRAG_LOC.pos_distance(stn.metadata.position)
+            W = (ENERGY/4.184e6)**1/3
 
-        P_0 = 101325
-        P_a = 100
+            f_d = 1#transmissionFactor(FRAG_LOC.elev)
+            Z = f_d*R/W
+
+            P_0 = 101325
+            P_a = 100
 
 
-        del_p = P_0*808*(1 + (Z/4.5)**2)/(1 + (Z/0.048)**2)**0.5/(1 + (Z/0.32)**2)**0.5/(1 + (Z/1.35)**2)**0.5
+            del_p = P_0*808*(1 + (Z/4.5)**2)/(1 + (Z/0.048)**2)**0.5/(1 + (Z/0.32)**2)**0.5/(1 + (Z/1.35)**2)**0.5
 
-        pres_fact = (P_0/P_a)**(1/6)
+            pres_fact = (P_0/P_a)**(1/6)
 
-        del_p = del_p/pres_fact
+            del_p = del_p/pres_fact
 
-        del_p_line = pg.InfiniteLine(pos=del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
-        self.make_picks_waveform_canvas.addItem(del_p_line)
+            del_p_line = pg.InfiniteLine(pos=del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+            self.make_picks_waveform_canvas.addItem(del_p_line)
 
-        del_p_line = pg.InfiniteLine(pos=-del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
-        self.make_picks_waveform_canvas.addItem(del_p_line)
+            del_p_line = pg.InfiniteLine(pos=-del_p, angle=0, pen=pg.mkPen(color="r", width=2), movable=False, bounds=None, hoverPen=None, label=None, labelOpts=None, span=(0, 1), markers=None, name=None)
+            self.make_picks_waveform_canvas.addItem(del_p_line)
 
-            # If manual fragmentation search is on
+        # If manual fragmentation search is on
         if self.prefs.frag_en and self.show_frags.getState() == True:
             
             for i, frag in enumerate(self.bam.setup.fragmentation_point):

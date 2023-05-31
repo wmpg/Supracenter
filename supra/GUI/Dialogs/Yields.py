@@ -345,15 +345,15 @@ class Yield(QWidget):
 
             self.v = 1/self.T_d
 
-            f, g, T, P, path_length, pdr, reed_attenuation = intscan(S, az_n, tf_n, zProfile, self.v, wind=True)
+            f, g, T, P_2, P_1, path_length, pdr, reed_attenuation = intscan(S, az_n, tf_n, zProfile, self.v, wind=True)
 
             self.reed_attenuation = reed_attenuation
 
-            rf = 1#refractiveFactor(point, stn.metadata.position, zProfile, D_ANGLE=D_ANGLE)
+            rf = refractiveFactor(point, stn.metadata.position, zProfile, D_ANGLE=D_ANGLE)
             trans.append(f)
             ints.append(g)
             ts.append(T)
-            ps = P
+            ps = [P_2, P_1]
 
             rfs.append(rf)
 
@@ -551,8 +551,8 @@ class Yield(QWidget):
             phase_duration = self.Jd*(1/f_t)
 
 
-            reed_yield = ReedYield(self.R, new_pres/pres_fact)
-            ansi_yield = ANSIYield(self.R, self.P, new_pres/pres_fact, self.P_a)
+            # reed_yield = ReedYield(self.R, new_pres/pres_fact)
+            # ansi_yield = ANSIYield(self.R, self.P, new_pres/pres_fact, self.P_a)
             
 
             print("Height Adjusted Pressure: {:.2f} Pa".format(new_pres))
@@ -571,20 +571,21 @@ class Yield(QWidget):
             print("Scaled Distance from Overpressure  (Nuclear):    {:10.2f} km".format(Z_nuc/1000))
             print("Scaled Distance from Duration  (Nuclear):        {:10.2f} km".format(Z_nuc_d/1000))
 
-            Yield_chem = overpressure2YieldKG(del_P, height, stn_pos.elev, true_range)
+            #Yield_chem = overpressure2YieldKG(del_P, height, stn_pos.elev, true_range)
+            Yield_chem = overpressure2YieldKG(new_pres, height, stn_pos.elev, true_range)
             Yield_nuc = (self.f_d*self.R/Z_nuc)**3*self.W_0*1e6
 
             Yield_chem_d = (self.f_d*self.R/Z_chem_d)**3*self.W_0
             Yield_nuc_d = (self.f_d*self.R/Z_nuc_d)**3*self.W_0*1e6
             # Yield_chem_IA = (self.f_d*self.R/Z_chem_IA)**3*self.W_0
             # print("### Previous Yields")
-            print("\tExpected Yield (ANSI 1977 Empirical):    {:.2E} J ({:.2f} kg TNT)".format(ansi_yield, ansi_yield/self.W_0))
-            print("\tExpected Yield (Reed 1977 Empirical):    {:.2E} J ({:.2f} kg TNT)".format(reed_yield, reed_yield/self.W_0))
-            print("\tExpected Yield (Chemical Overpressure):  {:.2E} J ({:.2f} kg TNT)".format(Yield_chem, Yield_chem/self.W_0))
-            print("\tExpected Yield (Chemical Duration):      {:.2E} J ({:.2f} kg TNT)".format(Yield_chem_d, Yield_chem_d/self.W_0))
-            # print("Expected Yield (Chemical Impulse):       {:.2E} J ({:.2f} kg TNT)".format(Yield_chem_IA, Yield_chem_IA/self.W_0))
-            print("\tExpected Yield (Nuclear Overpressure):   {:.2E} J ({:.2f} kT TNT)".format(Yield_nuc, Yield_nuc/self.W_0/1e6))
-            print("\tExpected Yield (Nuclear Duration):       {:.2E} J ({:.2f} kT TNT)".format(Yield_nuc_d, Yield_nuc_d/self.W_0/1e6))
+            # print("\tExpected Yield (ANSI 1977 Empirical):    {:.2E} J ({:.2f} kg TNT)".format(ansi_yield, ansi_yield/self.W_0))
+            # print("\tExpected Yield (Reed 1977 Empirical):    {:.2E} J ({:.2f} kg TNT)".format(reed_yield, reed_yield/self.W_0))
+            # print("\tExpected Yield (Chemical Overpressure):  {:.2E} J ({:.2f} kg TNT)".format(Yield_chem, Yield_chem/self.W_0))
+            # print("\tExpected Yield (Chemical Duration):      {:.2E} J ({:.2f} kg TNT)".format(Yield_chem_d, Yield_chem_d/self.W_0))
+            # # print("Expected Yield (Chemical Impulse):       {:.2E} J ({:.2f} kg TNT)".format(Yield_chem_IA, Yield_chem_IA/self.W_0))
+            # print("\tExpected Yield (Nuclear Overpressure):   {:.2E} J ({:.2f} kT TNT)".format(Yield_nuc, Yield_nuc/self.W_0/1e6))
+            # print("\tExpected Yield (Nuclear Duration):       {:.2E} J ({:.2f} kT TNT)".format(Yield_nuc_d, Yield_nuc_d/self.W_0/1e6))
 
             # factor = 101325/self.P # This is 101325 because that is what the KG85 equations are reference to
 

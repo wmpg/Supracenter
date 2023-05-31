@@ -183,7 +183,7 @@ def overpressure2YieldKG(del_p, H1, H2, R):
 
     print(W)
 
-    return W.j
+    return W.chem
 
 def overpressure2Yield(del_p, R, H, verbose=True):
 
@@ -263,61 +263,95 @@ def overpressure2Yield(del_p, R, H, verbose=True):
 
 if __name__ == "__main__":
 
-    del_p = millibar2Pascal(1225)
+    # del_p = millibar2Pascal(1225)
     H1 = 0
-    H2 = 0
-    R = 3.75
+    H2 = 40000
+    R = 56569
 
-    # W = overpressure2YieldKG(del_p, H1, H2, R)
+    op = np.logspace(-2, 2)
+    p_rat = op
 
-    #Z = np.array([10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700, 725, 750, 800, 850, 900, 950, 1000, 1500, 2000, 3000, 4000, 5000])
-    # p_rat = np.array([3200, 970, 420, 220, 128, 82.9, 57, 41.2, 31, 24, 19.1, 15.5, 12.9, 10.8, 9.22, 6.93, 5.41, 4.35, 3.58, 3, 2.562, 2.215, 1.937, 1.711, 1.524, 1.369, 1.237, 1.125, 1.075, 1.028, 0.985, 0.945, 0.907, 0.871, 0.838, 0.807, 0.778, 0.75, 0.7, 0.655, 0.614, 0.557, 0.5, 0.439, 0.389, 0.348, 0.314, 0.285, 0.261, 0.239, 0.221, 0.205, 0.191, 0.178, 0.167, 0.157, 0.148, 0.140, 0.133, 0.126, 0.114, 0.104, 0.096, 0.088, 0.082, 0.046, 0.032, 0.019, 0.014, 0.011])
-    Z = np.logspace(-1, 6, 100)
-    # r = 1/Z
+    W_list = []
+    for p in p_rat:
+        W = overpressure2YieldKG(p, H1, H2, R)
+        W_list.append(W)
 
-    # z = np.polyfit(r, p_rat, 24)
+
+    W_list = np.array(W_list)
+
+
+    plt.plot(p_rat, W_list)
+    plt.semilogy()
+    plt.xlabel("Overpressure [Pa]")
+    plt.ylabel("Explosive Yield [kg TNT HE]")
+    plt.show()
+
+    # p_rat = 1
+    # R = np.logspace(1, 5)
+
+    # W_list = []
+    # for r in R:
+    #     W = overpressure2YieldKG(p_rat, H1, H2, r)
+    #     W_list.append(W)
+
+    # W_list = np.array(W_list)
+
+
+    # plt.plot(R, W_list/4.184e12)
+    # plt.loglog()
+    # plt.xlabel("Range")
+    # plt.ylabel("Explosive Yield [kT TNT]")
+    # plt.show()
+
+
+    # #Z = np.array([10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190, 200, 210, 215, 220, 225, 230, 235, 240, 245, 250, 255, 260, 270, 280, 290, 300, 325, 350, 375, 400, 425, 450, 475, 500, 525, 550, 575, 600, 625, 650, 675, 700, 725, 750, 800, 850, 900, 950, 1000, 1500, 2000, 3000, 4000, 5000])
+    # # p_rat = np.array([3200, 970, 420, 220, 128, 82.9, 57, 41.2, 31, 24, 19.1, 15.5, 12.9, 10.8, 9.22, 6.93, 5.41, 4.35, 3.58, 3, 2.562, 2.215, 1.937, 1.711, 1.524, 1.369, 1.237, 1.125, 1.075, 1.028, 0.985, 0.945, 0.907, 0.871, 0.838, 0.807, 0.778, 0.75, 0.7, 0.655, 0.614, 0.557, 0.5, 0.439, 0.389, 0.348, 0.314, 0.285, 0.261, 0.239, 0.221, 0.205, 0.191, 0.178, 0.167, 0.157, 0.148, 0.140, 0.133, 0.126, 0.114, 0.104, 0.096, 0.088, 0.082, 0.046, 0.032, 0.019, 0.014, 0.011])
+    # Z = np.logspace(-1, 6, 100)
+    # # r = 1/Z
+
+    # # z = np.polyfit(r, p_rat, 24)
+    # # func = np.poly1d(z)
+
+    # # np.save("supra\\Yields\\examples\\nuc_scaled_curve_fit_inv.npy", func)
+    
+    # # plt.scatter(Z, p_rat)
+
+    # p_rat = []
+    # z_fit = []
+    # p_fit = []
+    # for zz in Z:
+    #     p_rat.append(chemOverpressureRatio(zz))
+    #     if zz >= 10 and zz <= 200:
+    #         z_fit.append(zz)
+    #         p_fit.append(chemOverpressureRatio(zz))
+
+    # z_fit = np.array(z_fit)
+    # p_fit = np.array(p_fit)
+
+    # plt.scatter(Z, np.array(p_rat))
+    # plt.scatter(z_fit, p_fit)
+
+    # r = np.log10(z_fit)
+    # s = np.log10(p_fit)
+    # z = np.polyfit(r, s, 1)
     # func = np.poly1d(z)
 
-    # np.save("supra\\Yields\\examples\\nuc_scaled_curve_fit_inv.npy", func)
-    
-    # plt.scatter(Z, p_rat)
+    # plt.plot(Z, 10**func(np.log10(Z)))
 
-    p_rat = []
-    z_fit = []
-    p_fit = []
-    for zz in Z:
-        p_rat.append(chemOverpressureRatio(zz))
-        if zz >= 10 and zz <= 200:
-            z_fit.append(zz)
-            p_fit.append(chemOverpressureRatio(zz))
+    # def chem_func(Z):
 
-    z_fit = np.array(z_fit)
-    p_fit = np.array(p_fit)
+    #     p_Pa = 808*(1 + (Z/4.5)**2)/(1 + (Z/0.048)**2)**0.5/(1 + (Z/0.32)**2)**0.5/(1 + (Z/1.35)**2)**0.5
+    #     return p_Pa
 
-    plt.scatter(Z, np.array(p_rat))
-    plt.scatter(z_fit, p_fit)
+    # plt.plot(Z, chem_func(Z))
 
-    r = np.log10(z_fit)
-    s = np.log10(p_fit)
-    z = np.polyfit(r, s, 1)
-    func = np.poly1d(z)
+    # np.save("supra\\Yields\\nuc_scaled_curve_fit_extended.npy", func)
 
-    plt.plot(Z, 10**func(np.log10(Z)))
-
-    def chem_func(Z):
-
-        p_Pa = 808*(1 + (Z/4.5)**2)/(1 + (Z/0.048)**2)**0.5/(1 + (Z/0.32)**2)**0.5/(1 + (Z/1.35)**2)**0.5
-        return p_Pa
-
-    plt.plot(Z, chem_func(Z))
-
-    np.save("supra\\Yields\\nuc_scaled_curve_fit_extended.npy", func)
-
-    plt.scatter([100, 125, 150, 200, 250, 300, 400, 500], [0.008, 0.007, 0.005, 0.004, 0.003, 0.003, 0.002, 0.002])
-    plt.ylabel("Pressure Ratio")
-    plt.xlabel("Scaled Distance [m from a 1kT NE explosion]")
-    plt.loglog()
-    plt.show()
+    # plt.scatter([100, 125, 150, 200, 250, 300, 400, 500], [0.008, 0.007, 0.005, 0.004, 0.003, 0.003, 0.002, 0.002])
+    # plt.ylabel("Pressure Ratio")
+    # plt.xlabel("Scaled Distance [m from a 1kT NE explosion]")
+    # plt.loglog()
+    # plt.show()
     # # W = 1e6*4.184e6
     # HOB = 40000
     # R = 100000

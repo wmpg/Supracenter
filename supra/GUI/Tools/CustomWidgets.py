@@ -283,8 +283,15 @@ class TauEx(QWidget):
         self.energy_label = QLabel("{:} @ {:} km".format(self.energy.source_type, self.energy.height/1000))
         main_layout.addWidget(self.energy_label, 1, 2)
 
-        self.energy_amount_label = QLabel("{:.2E} J/{:.2f} kT TNT".format(self.energy.chem_pres, self.energy.chem_pres/4.184e12))
-        main_layout.addWidget(self.energy_amount_label, 2, 2)
+        if self.energy.source_type == "Fragmentation":
+
+            self.energy_amount_label = QLabel("{:.2E} J/{:.2f} kT TNT".format(self.energy.chem_pres, self.energy.chem_pres/4.184e12))
+            main_layout.addWidget(self.energy_amount_label, 2, 2)
+
+        elif self.energy.source_type == "Ballistic":
+
+            self.energy_amount_label = QLabel("{:.2E} J/{:.2f} J".format(self.energy.linear_E, self.energy.ws_E))
+            main_layout.addWidget(self.energy_amount_label, 2, 2)
 
         try:
             station_name = "{:}-{:}".format(self.energy.station.metadata.network, self.energy.station.metadata.code)
