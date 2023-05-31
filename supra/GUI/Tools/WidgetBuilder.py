@@ -157,7 +157,7 @@ def initMainGUI(obj):
 
     obj.ini_dock = QDockWidget("Variables", obj)
     obj.addDockWidget(Qt.LeftDockWidgetArea, obj.ini_dock)
-    obj.ini_dock.setFeatures(QtGui.QDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
+    # obj.ini_dock.setFeatures(QtGui.QtWidQDockWidget.DockWidgetFloatable | QtGui.QDockWidget.DockWidgetMovable)
     
     obj.group_no = 0
     obj.position = []

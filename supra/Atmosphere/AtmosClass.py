@@ -14,7 +14,7 @@ from supra.GUI.Tools.GUITools import *
 from supra.Atmosphere.Pressure import pressureConv, estPressure
 from supra.Atmosphere.NRLMSISE import getAtmDensity
 from wmpl.Utils.TrajConversions import date2JD
-from supra.Atmosphere.HWM93 import getHWM
+from supra.Atmosphere.pyHWM93 import getHWM
 consts = Constants()
 
 
