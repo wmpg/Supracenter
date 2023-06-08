@@ -60,9 +60,14 @@ class TrajInterpWindow(QWidget):
 
         traj = self.setup.trajectory
 
-        points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
-                                  min_p=tryFloat(self.low_point.text()),\
-                                  max_p=tryFloat(self.high_point.text()))
+        
+        try:
+            points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
+                                      min_p=tryFloat(self.low_point.text()),\
+                                      max_p=tryFloat(self.high_point.text()))
+        except AttributeError as e:
+            errorMessage("Unable to interpolate trajectory!", 2, info='Please define a trajectory source in the "sources" tab, save and then restart BAM', title='Yikes!', detail='{:}'.format(e))
+            return None
 
         file_name = saveFile('csv')
 
@@ -76,9 +81,13 @@ class TrajInterpWindow(QWidget):
     def saveEvent(self):
         traj = self.setup.trajectory
         
-        points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
-                                  min_p=tryFloat(self.low_point.text()),\
-                                  max_p=tryFloat(self.high_point.text()))
+        try:
+            points = traj.trajInterp2(div=tryInt(self.divisions.text()),\
+                                      min_p=tryFloat(self.low_point.text()),\
+                                      max_p=tryFloat(self.high_point.text()))
+        except AttributeError as e:
+            errorMessage("Unable to interpolate trajectory!", 2, info='Please define a trajectory source in the "sources" tab, save and then restart BAM', title='Yikes!', detail='{:}'.format(e))
+            return None
 
         for pt in points:
             source = Supracenter(Position(pt[0], pt[1], pt[2]), pt[3])
