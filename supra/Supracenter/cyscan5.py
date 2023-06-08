@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from supra.Supracenter.anglescan2 import anglescan
 from mpl_toolkits.mplot3d import Axes3D
 
+
+
 from supra.Utils.pso import pso
 import multiprocessing
 
@@ -161,13 +163,8 @@ def cyscan(S, D, z_profile, trace=False, plot=False, particle_output=False, debu
 
 if __name__ == '__main__':
   
-    S = np.array([0, 0, 80000])
 
-    #takeoff
-    theta = 135
 
-    #azimuth
-    phi = 0
     def sampleData():
       z_profile = np.array([[ 0.00000000e+00,  3.42743569e+02,  3.50706792e+00,  1.21708086e+00,
        1.00000000e+05],
@@ -371,9 +368,24 @@ if __name__ == '__main__':
        8.00000000e+00]])
       return z_profile
 
+
+    S = np.array([0, 0, 80000])
+
+    #takeoff
+    theta = 135
+
+    #azimuth
+    phi = 0
     z_profile = sampleData()
+
     D = ([1000, 10000, 0])
 
-    start = timer()    
+    start = timer()
+    print("Begin Simulation") 
     r = cyscan(S, D, z_profile, trace=True, plot=False, particle_output=False)
-    print("without GPU:", timer()-start)
+    print("without GPU: {:.2f}s".format(timer()-start))
+    print("Results: {:}".format(r))
+    start = timer()
+    r = cy7(S, D, z_profile, trace=True, plot=False, particle_output=False)
+    print("with GPU: {:.2f}s".format(timer()-start))
+    

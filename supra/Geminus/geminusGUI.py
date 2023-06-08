@@ -215,9 +215,11 @@ class Geminus(QWidget):
             if self.prefs.debug:
                 print(printMessage("Error"), " No source height given!")
             errorMessage("Cannot read source height!", 2, detail='{:}'.format(e))
-
             return None
 
+        except AttributeError as e:
+            errorMessage("Cannot read source - likely missing a trajectory defined in the 'sources' tab", 2, detail='{:}'.format(e))
+            return None
 
         source_list = [source.lat, source.lon, source.elev/1000]
 

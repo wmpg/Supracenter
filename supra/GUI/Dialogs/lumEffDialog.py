@@ -29,13 +29,13 @@ from supra.Lightcurve.light_curve import *
 
 from supra.Files.SaveLoad import save
 
-I_0 = 248
+I_0 = 840/4/np.pi
 #CNEOS I_0 = 248
 C_list = ["y", "m", "c", "r", "g", "b"]
 term_c_list = ["yellow", "magenta", "cyan", "red", "green", "blue"]
 M_list = [".", "v", "^", "s", "*", "D"]
-VEL = 16000
-ZE = 45 #deg
+VEL = 7000
+ZE = 73.62 #deg
 
 def findArea(height, energy, data_h, data_m, magnitude=None):
     """ A fragmentation is shown on the light curve as the 
@@ -134,6 +134,10 @@ def findAreaUnderCurve(h_min, h_max, L=None, avg_curve=None):
         h_list = h_list[::-1]
         M_list = M_list[::-1]
 
+
+    print("I_0", I_0)
+
+
     I_list = I_0*10**((M_list)/-2.5)
 
     # HARD CODED PER EVENT - should change this
@@ -156,6 +160,7 @@ def findAreaUnderCurve(h_min, h_max, L=None, avg_curve=None):
     for ii in range(len(I_list) - 1):
         total_energy += (I_list[ii] + I_list[ii+1])*dh*1000/2/v*4*np.pi
 
+    print("Total Energy", total_energy)
     return total_energy
 
 def findAreaUnderCurveBallistic(h_min, h_max, length, L=None, avg_curve=None):
@@ -564,8 +569,14 @@ class lumEffDialog(QWidget):
   
             # OTHER
             try:
+                
                 light_curve = readLightCurve(self.setup.light_curve_file)
                 self.light_curve_list = processLightCurve(light_curve, I_0)
+                
+                if len(self.light_curve_list) == 0:
+                    raise
+
+                print(printMessage('DEBUG'), "Using LC Reader for non-CNEOS events")
 
         
 
@@ -576,8 +587,10 @@ class lumEffDialog(QWidget):
 
             except:
                 # CNEOS USG DATA
+                
                 self.light_curve_list = readCNEOSlc(self.setup.light_curve_file, I_0)
                 self.light_curve_list[0].estimateHeight(self.bam.setup.trajectory)
+                print(printMessage('DEBUG'), "CNEOS Event Detected. Using CNEOS LC Reader")
 
 
 
@@ -587,7 +600,9 @@ class lumEffDialog(QWidget):
             N = 1600
 
             h_avg_list = np.linspace(H1, H2, num=N)
+
             M_avg = []
+
 
             for ll, L in enumerate(self.light_curve_list):
 
@@ -599,6 +614,7 @@ class lumEffDialog(QWidget):
 
 
                 M_list = []
+
                 for h_val in h_avg_list:
                     a = L.getMatH(h_val)
 
@@ -748,7 +764,7 @@ class lumEffDialog(QWidget):
                 ws_E_total = ballEnergy(ws_e, L)
 
 
-                self.light_curve.ax.axhline(y=h_min/1000, color="w", linestyle='--')
+                self.light_curve.ax.axhline(y=h_min/1000, color="w", linestyle='--', label="Ballisitc Source {:.2f} km".format(h/1000))
                 self.light_curve.ax.axhline(y=h_max/1000, color="w", linestyle='--')
 
                 for ll, LC in enumerate(self.light_curve_list):
@@ -767,13 +783,13 @@ class lumEffDialog(QWidget):
                 # self.light_curve.ax.scatter(ws_mag, h/1000)#, label="Ballistic Measurement - Weak Shock")
 
                 # self.lum_curve.ax.scatter(tau*100, h/1000, c=C_list[ll], label="Infrasound Station: {:}".format(station_name))
-                    self.lum_curve.ax.scatter(tau_lin*100, h/1000, c="w", label="Linear")
-                    self.lum_curve.ax.scatter(tau_ws*100, h/1000, c="b", label="Weak-Shock")
+                    # self.lum_curve.ax.scatter(tau_lin*100, h/1000, c="w", label="Linear")
+                    self.lum_curve.ax.scatter(tau_ws*100, h/1000, c="w", label="Weak-Shock")
                     try:
-                        self.lum_curve.ax.errorbar(tau_lin*100, h/1000,\
-                            yerr=[[np.abs(h/1000 - h_min/1000)], [np.abs(h/1000 - h_max/1000)]], color="w", capsize=5)
+                        # self.lum_curve.ax.errorbar(tau_lin*100, h/1000,\
+                        #     yerr=[[np.abs(h/1000 - h_min/1000)], [np.abs(h/1000 - h_max/1000)]], color="w", capsize=5)
                         self.lum_curve.ax.errorbar(tau_ws*100, h/1000,\
-                            yerr=[[np.abs(h/1000 - h_min/1000)], [np.abs(h/1000 - h_max/1000)]], color="b", capsize=5)
+                            yerr=[[np.abs(h/1000 - h_min/1000)], [np.abs(h/1000 - h_max/1000)]], color="w", capsize=5)
                     except:
                         pass
                 # tau_max = tau
@@ -819,8 +835,11 @@ class lumEffDialog(QWidget):
                     if h_max > total_h_max:
                         total_h_max = h_max
 
+                    if ll == 0 and ee == 0:
+                        self.light_curve.ax.axhline(y=h_min, color=C_list[ll], linestyle='--', alpha=alpha, label="Fragmentation Source {:.2f} km".format(energy.height/1000))
+                    else:
+                        self.light_curve.ax.axhline(y=h_min, color=C_list[ll], linestyle='--', alpha=alpha)
 
-                    self.light_curve.ax.axhline(y=h_min, color=C_list[ll], linestyle='--', alpha=alpha)
                     self.light_curve.ax.axhline(y=h_max, color=C_list[ll], linestyle='--', alpha=alpha)
 
                     Height, Magnitude = L.interpCurve(dh=10000)
