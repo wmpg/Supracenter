@@ -13,15 +13,10 @@ from supra.Utils.Classes import Position, Supracenter
 
 
 
-def theoSearch(bam, prefs):
-    ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
-    s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
+# def theoSearch(bam, prefs, obj):
 
-    n_stations = len(s_name)
 
-    xstn = s_info[0:n_stations, 0:3]
-
-    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, pert_num=0, theo=True)
+#     return results
 
 def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=False, theo=False):
     """
@@ -29,26 +24,47 @@ def supSearch(bam, prefs, manual=True, results_print=False, obj=None, misfits=Fa
     """
     
     if theo:
-        theoSearch(bam, prefs)
-        return None
-    # Reference location to convert to local coordinates
-    ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
+        ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
 
-    # Pull station information from picks file
-    s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
+        s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
 
-    n_stations = len(s_name)
+        n_stations = len(s_name)
 
-    xstn = s_info[0:n_stations, 0:3]
+        xstn = s_info[0:n_stations, 0:3]
 
-    # Nominal Run
-    if prefs.debug:
-        print("Current status: Nominal Supracenter")
+        min_stats = int(obj.no_stats_edits.text())
+        print("Minimum number of stations: {:}".format(min_stats))
 
-    min_stats = int(obj.no_stats_edits.text())
-    print("Minimum number of stations: {:}".format(min_stats))
+        if n_stations < min_stats:
+            print("Error, minimum number of stations is larger than number of stations. Setting minimum number of stations to {:}".format(n_stations))
+            min_stats = n_stations
 
-    results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, min_stats, manual=manual, pert_num=0)
+        results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, min_stats, pert_num=0, theo=True)
+        
+    else:
+        # Reference location to convert to local coordinates
+        ref_pos = Position(bam.setup.lat_centre, bam.setup.lon_centre, 0)
+
+        # Pull station information from picks file
+        s_info, s_name, weights = getStationData(bam.setup.station_picks_file, ref_pos)
+
+        n_stations = len(s_name)
+
+        xstn = s_info[0:n_stations, 0:3]
+
+        # Nominal Run
+        if prefs.debug:
+            print("Current status: Nominal Supracenter")
+
+        min_stats = int(obj.no_stats_edits.text())
+        print("Minimum number of stations: {:}".format(min_stats))
+
+        if n_stations < min_stats:
+            print("Error, minimum number of stations is larger than number of stations. Setting minimum number of stations to {:}".format(n_stations))
+            min_stats = n_stations
+
+
+        results = psoSearch(s_info, weights, s_name, bam, prefs, ref_pos, min_stats, manual=manual, pert_num=0)
 
     # Check for if results returns None
     try:

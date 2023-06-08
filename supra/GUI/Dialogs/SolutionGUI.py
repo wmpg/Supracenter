@@ -797,6 +797,7 @@ class SolutionGUI(QMainWindow):
             plt.scatter(stn.metadata.position.lon, stn.metadata.position.lat, marker='^', c='g')
             plt.text(stn.metadata.position.lon, stn.metadata.position.lat, ''.format(stn.metadata.code))
 
+
         plt.show()
 
         self.show_f_contour.setState(False)
@@ -2186,6 +2187,8 @@ class SolutionGUI(QMainWindow):
 
         BASEMAP_SCALE = 2
 
+        
+
         ### Create Basemap
         # resolution c, l, i, h, f
         self.m = Basemap(projection='merc', \
@@ -2202,8 +2205,18 @@ class SolutionGUI(QMainWindow):
 
         self.m.drawparallels(np.arange(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
             self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
-        self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
+        meridians = self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
             self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", rotation="horizontal", fmt="%.1f")
+
+        #self.make_picks_map_graph_view.ax.set_xticklabels(self.make_picks_map_graph_view.ax.get_xticks(), rotation=45)
+        
+        # for the poor grad student who is looking at this code, basemap uses TEXT objects
+        # instead of matplotlib xticks, so you have to do it THIS way for some reason
+        for m in meridians:
+            try:
+                meridians[m][1][0].set_rotation(45)
+            except:
+                pass
 
         if hasattr(self.bam.setup, "contour_file"):
             if self.bam.setup.contour_file is not None:

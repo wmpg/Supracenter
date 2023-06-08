@@ -191,7 +191,10 @@ def readLightCurve(csv):
 
                     break
                 else:
-                    temp_line.append(float(item.strip()))
+                    try:
+                        temp_line.append(float(item.strip()))
+                    except:
+                        pass
 
 
     
