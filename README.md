@@ -44,4 +44,9 @@ python -m supra.bam
 ```
 In the Anaconda prompt. Make sure you navigate to the folder above supra/ in your Anaconda prompt first.
 
-For further documentation, look for About->Documentation in the GUI or if the GUI is not running,
+For further documentation, look for About->Documentation in the GUI.
+
+## Citations
+
+For academic use, please cite the paper:
+>[McFadden, L., Brown, P., Vida, D. and Spurný, P., 2021. Fireball characteristics derivable from acoustic data. Journal of Atmospheric and Solar-Terrestrial Physics, 216, p.105587.](https://doi.org/10.1016/j.jastp.2021.105587)
