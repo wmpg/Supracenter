@@ -9,6 +9,11 @@ from wmpl.Utils.TrajConversions import latLonAlt2ECEF, ecef2LatLonAlt, ecef2ENU
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtGui, QtCore
 
+try:
+    from geopy import distance
+except:
+    pass
+
 class Config:
 
     def __init__(self):
@@ -183,12 +188,15 @@ class Position:
 
         return dx, dy, dz
 
-    def ground_distance(self, other):
+    def ground_distance(self, other, geospy=False):
         """ 2D horizontal distance between positions 'self' and 'other'
         """
 
         self.pos_loc(self)
         other.pos_loc(self)
+
+        if geospy:
+            return distance.distance((self.lat, self.lon), (other.lat, other.lon)).km*1000 
 
         return np.sqrt((self.x - other.x)**2 + (self.y - other.y)**2)
 
