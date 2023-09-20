@@ -2879,18 +2879,18 @@ class SolutionGUI(QMainWindow):
 
             errorMessage("Station Waveform Saved!", 0, title="Saved!", detail="Waveform saved in project folder {:}".format(dir_path))
 
-        elif self.rotatepol.isChecked():
+        # elif self.rotatepol.isChecked():
 
              
-            rng = self.make_picks_waveform_canvas.getAxis('bottom').range
-            start_time = self.bam.setup.fireball_datetime
+        #     rng = self.make_picks_waveform_canvas.getAxis('bottom').range
+        #     start_time = self.bam.setup.fireball_datetime
 
-            lside = start_time + datetime.timedelta(seconds=rng[0])
-            rside = start_time + datetime.timedelta(seconds=rng[1])
+        #     lside = start_time + datetime.timedelta(seconds=rng[0])
+        #     rside = start_time + datetime.timedelta(seconds=rng[1])
 
-            self.rpol = RotatePolWindow(self.bam.stn_list[self.current_station], channel, lside, rside, start_time)
-            self.rpol.setGeometry(QRect(200, 300, 1600, 800))
-            self.rpol.show()
+        #     self.rpol = RotatePolWindow(self.bam.stn_list[self.current_station], channel, lside, rside, start_time)
+        #     self.rpol.setGeometry(QRect(200, 300, 1600, 800))
+        #     self.rpol.show()
 
 
         # ### Annotations
