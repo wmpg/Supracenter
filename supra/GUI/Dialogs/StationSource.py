@@ -42,7 +42,7 @@ class StationWindow(QWidget):
         self.setLayout(layout)
      
         _, self.edit, self.btn = createFileSearchObj('Source File', layout, 1, width=1, h_shift=0, tool_tip='')
-        self.btn.clicked.connect(partial(fileSearch, ['Mini SEED (*.mseed)', 'SAC File (*.sac)'], self.edit))
+        self.btn.clicked.connect(partial(fileSearch, ['Mini SEED (*.mseed)', 'SAC File (*.sac)', "GCF (*.gcf)"], self.edit))
         self.edit.textChanged.connect(self.loadStn)
 
         _, self.mresp_browser_edits, self.mresp_browser_buton = createFileSearchObj('Response File: ', layout, 2, width=1, h_shift=0)
@@ -60,9 +60,12 @@ class StationWindow(QWidget):
 
     def loadStn(self):
 
+
         st = obspy.read(self.edit.text())
+
         network = st[0].stats.network
         code = st[0].stats.station
+
 
         self.network.setText(network)
         self.code.setText(code)
