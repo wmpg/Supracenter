@@ -1048,7 +1048,7 @@ class SolutionGUI(QMainWindow):
 
         elif self.fatm_variable_combo.currentText() == 'Effective Sound Speed':
             X, nom_range, nom_ray_range = self.effectiveSoundSpeed(sounding)
-            self.fatm_plot.ax.set_xlabel("Sound Speed [m/s]")  
+            self.fatm_plot.ax.set_xlabel("Effective Sound Speed [m/s]")  
         elif self.fatm_variable_combo.currentText() == 'U-Component of Wind':
             dirs = angle2NDE(np.degrees(sounding[:, 3]))
             mags = sounding[:, 2]
@@ -1135,6 +1135,14 @@ class SolutionGUI(QMainWindow):
         # self.fatm_canvas.getLabel('bottom').setPen(self.color.WHITE) 
         # self.fatm_canvas.getLabel('left').setPen(self.color.WHITE)
         print(sounding)
+
+        lat = [tryFloat(self.fatm_start_lat.text()), tryFloat(self.fatm_end_lat.text())]
+        lon = [tryFloat(self.fatm_start_lon.text()), tryFloat(self.fatm_end_lon.text())]
+        elev = [tryFloat(self.fatm_start_elev.text()), tryFloat(self.fatm_end_elev.text())]
+
+        self.fatm_plot.ax.scatter(X[-1], Y[-1]/1000, marker="*", c="r", label="Source: {:.2f}°N {:.2f}°E {:.1f} km".format(lat[0], lon[0], elev[0]/1000))
+        self.fatm_plot.ax.scatter(X[0], Y[0]/1000, marker="^", c="b", label="Reciever: {:.2f}°N {:.2f}°E {:.1f} km".format(lat[1], lon[1], elev[1]/1000))
+        
         self.fatm_plot.ax.grid(alpha=0.2)
         self.fatm_plot.ax.legend()
         self.fatm_plot.show()
@@ -2187,26 +2195,34 @@ class SolutionGUI(QMainWindow):
 
         BASEMAP_SCALE = 2
 
-        
+
+
 
         ### Create Basemap
         # resolution c, l, i, h, f
         self.m = Basemap(projection='merc', \
             llcrnrlat=np.ceil(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius),\
             urcrnrlat=np.floor(self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
-            llcrnrlon=np.ceil(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius), \
-            urcrnrlon=np.floor(self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius), \
+            llcrnrlon=np.ceil(self.bam.setup.lon_centre - 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius), \
+            urcrnrlon=np.floor(self.bam.setup.lon_centre + 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='l', ax=self.make_picks_map_graph_view.ax)
+            resolution='f', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
         self.m.drawlsmask(ocean_color='aqua')
 
         self.m.drawparallels(np.arange(self.bam.setup.lat_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
-            self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
-        meridians = self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - BASEMAP_SCALE*self.bam.setup.deg_radius, \
-            self.bam.setup.lon_centre + BASEMAP_SCALE*self.bam.setup.deg_radius, 1), labels=[1,0,0,1], textcolor="white", rotation="horizontal", fmt="%.1f")
+            self.bam.setup.lat_centre + BASEMAP_SCALE*self.bam.setup.deg_radius + 1, 1), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
+        meridians = self.m.drawmeridians(np.arange(self.bam.setup.lon_centre - 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius, \
+            self.bam.setup.lon_centre + 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius + 1, 1), labels=[1,0,0,1], textcolor="white", rotation="horizontal", fmt="%.1f")
+        
+        self.m.drawmapscale(self.bam.setup.lon_centre - self.bam.setup.deg_radius - 0.25, \
+            self.bam.setup.lat_centre + self.bam.setup.deg_radius, \
+             self.bam.setup.lon_centre, self.bam.setup.lat_centre, 200, \
+            barstyle='fancy', units='km', fontsize=9, yoffset=None, labelstyle='simple', fontcolor='k', \
+            fillcolor1='w', fillcolor2='k', ax=None, format='%d', zorder=None)
+
 
         #self.make_picks_map_graph_view.ax.set_xticklabels(self.make_picks_map_graph_view.ax.get_xticks(), rotation=45)
         
@@ -2225,14 +2241,16 @@ class SolutionGUI(QMainWindow):
                     A = np.load(self.bam.setup.contour_file)
 
                     lat, lon, Z = A[0], A[1], A[2]
-
+                    Z /= 60
                     x, y = self.m(lat, lon)
                     # print(x, y, Z)
-                    self.make_picks_map_graph_view.ax.tricontour(x, y, Z, levels=14, linewidths=0.5, colors='w', zorder=2)
-                    try:
-                        self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, levels=14, cmap="viridis_r", zorder=2, alpha=0.3)
-                    except TypeError as e:
-                        print(printMessage("error"), "Contour error in creating tricontourf! {:}".format(e))
+                    sc = self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, cmap="viridis_r", zorder=2, alpha=0.4)
+                    cb = plt.colorbar(sc)
+                    cb.set_label("Travel Time [min]")
+                    # try:
+                    #     self.make_picks_map_graph_view.ax.tricontourf(x, y, Z, levels=14, cmap="viridis_r", zorder=2, alpha=0.3)
+                    # except TypeError as e:
+                    #     print(printMessage("error"), "Contour error in creating tricontourf! {:}".format(e))
                     # a = self.make_picks_map_graph_view.ax.colorbar(cntr)
                     # a.set_label("Time of Arrival [s]")
                 except FileNotFoundError:
@@ -2267,29 +2285,29 @@ class SolutionGUI(QMainWindow):
         ###
         # Plot reasonably close CTBTO stations (no waveforms)
         #####
-        with open(os.path.join("supra", "Misc", "CTBTO_stats.csv"), "r+") as f:
+        # with open(os.path.join("supra", "Misc", "CTBTO_stats.csv"), "r+") as f:
 
-            a = f.readlines()
-            for stat in a:
-                stat_dat = stat.strip().split(',')
+        #     a = f.readlines()
+        #     for stat in a:
+        #         stat_dat = stat.strip().split(',')
 
-                stat_name = stat_dat[0]
-                stat_lat = float(stat_dat[1])
-                stat_lon = float(stat_dat[2])
+        #         stat_name = stat_dat[0]
+        #         stat_lat = float(stat_dat[1])
+        #         stat_lon = float(stat_dat[2])
 
-                approx_dis = np.sqrt((stat_lat - self.bam.setup.lat_centre)**2 + (stat_lon - self.bam.setup.lon_centre)**2)
+        #         approx_dis = np.sqrt((stat_lat - self.bam.setup.lat_centre)**2 + (stat_lon - self.bam.setup.lon_centre)**2)
 
-                if approx_dis <= 2*self.bam.setup.deg_radius:
+        #         if approx_dis <= 2*self.bam.setup.deg_radius:
 
-                    # marker = pg.ScatterPlotItem()
-                    # marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
-                    txt = "{:}".format(stat_name)
-                    # txt.setPos(stat_lon, stat_lat)
-                    # self.make_picks_map_graph_canvas.addItem(marker, update=True)
-                    # self.make_picks_map_graph_canvas.addItem(txt)
-                    x, y = self.m(stat_lon, stat_lat)
-                    self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='d', color='m', zorder=3) 
-                    self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+        #             # marker = pg.ScatterPlotItem()
+        #             # marker.setPoints(x=[stat_lon], y=[stat_lat], pen=(255, 0, 255), brush=(255, 0, 255), symbol='d')
+        #             txt = "{:}".format(stat_name)
+        #             # txt.setPos(stat_lon, stat_lat)
+        #             # self.make_picks_map_graph_canvas.addItem(marker, update=True)
+        #             # self.make_picks_map_graph_canvas.addItem(txt)
+        #             x, y = self.m(stat_lon, stat_lat)
+        #             self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='d', color='m', zorder=3) 
+        #             self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
 
 
         if self.prefs.frag_en:
@@ -2299,15 +2317,28 @@ class SolutionGUI(QMainWindow):
                 errorMessage('"Show fragmentations" is checked, but could not find any fragmentation sources', 0)
 
             # Fragmentation plot
-            for i, line in enumerate(self.bam.setup.fragmentation_point):
-                x, y = self.m(float(line.position.lon), float(line.position.lat))
-                self.make_picks_map_graph_view.ax.scatter(x, y, marker='+', color='g', zorder=3) 
+            # for i, line in enumerate(self.bam.setup.fragmentation_point):
+            #     x, y = self.m(float(line.position.lon), float(line.position.lat))
+            #     self.make_picks_map_graph_view.ax.scatter(x, y, marker='+', color='g', zorder=3) 
                 # self.make_picks_map_graph_canvas.scatterPlot(x=[float(line.position.lon)], y=[float(line.position.lat)],\
                 #     pen=(0 + i*255/len(self.bam.setup.fragmentation_point), 255 - i*255/len(self.bam.setup.fragmentation_point), 0), symbol='+')
 
         # Plot source location
         x, y = self.m(self.bam.setup.lon_centre, self.bam.setup.lat_centre)
         self.make_picks_map_graph_view.ax.scatter(x, y, marker='+', color='y', zorder=3) 
+
+
+        x, y = self.m(-80.77209, 43.26420)
+        self.make_picks_map_graph_view.ax.scatter(x, y, marker='H', color='r', zorder=3)
+
+
+        x, y = self.m(-82.2225, 41.2928)
+        self.make_picks_map_graph_view.ax.scatter(x, y, marker='H', color='r', zorder=3)
+
+
+        x, y = self.m(-81.1450, 41.3111)
+        self.make_picks_map_graph_view.ax.scatter(x, y, marker='H', color='r', zorder=3)
+
 
         # self.make_picks_map_graph_canvas.scatterPlot(x=[self.bam.setup.lon_centre], y=[self.bam.setup.lat_centre], symbol='+', pen=(255, 255, 0))
 
@@ -2337,15 +2368,16 @@ class SolutionGUI(QMainWindow):
 
                     # Plot the trajectory with the bottom point known
                     x, y = self.m(b_lons, b_lats)
-                    self.make_picks_map_graph_view.ax.plot(x, y, color='b', zorder=3)
+
+                    self.make_picks_map_graph_view.ax.arrow(x[0], y[0], x[-1]-x[0], y[-1]-y[0], color='b', zorder=3, width=4000)
                     # self.make_picks_map_graph_canvas.plot(b_lons,\
                     #                                       b_lats,\
                     #                                         pen=(0, 0, 255))
 
 
                     # Plot intersection with the ground
-                    x, y = self.m(self.bam.setup.trajectory.pos_f.lon, self.bam.setup.trajectory.pos_f.lat)
-                    self.make_picks_map_graph_view.ax.scatter(x, y, color='b', marker='+')
+                    # x, y = self.m(self.bam.setup.trajectory.pos_f.lon, self.bam.setup.trajectory.pos_f.lat)
+                    # self.make_picks_map_graph_view.ax.scatter(x, y, color='b', marker='+')
                 # except (TypeError, AttributeError) as e:
                 #     errorMessage('Trajectory is not defined!', 1, info='If not defining a trajectory, then turn off show ballistic waveform', detail='{:}'.format(e))
                 #     self.prefs.ballistic_en = False
@@ -3023,6 +3055,11 @@ class SolutionGUI(QMainWindow):
 
             txt = "{:}".format(stn.metadata.code)
 
+
+            if txt == "ZACC": txt = "QZAG"
+            if txt == "AR_ZG": txt = "QARH"
+            if txt == "KASN": txt = "QKAS"
+
             x, y = self.m(stn.metadata.position.lon, stn.metadata.position.lat)
 
 
@@ -3031,17 +3068,17 @@ class SolutionGUI(QMainWindow):
 
             toa = station_dist/(310/1000)
 
-
-            if ii == current_stat:
-                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='red', zorder=3)
-                self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='r', marker="^")
-                self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='r')
-                self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
-            else:
-                self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='white', zorder=3) 
-                self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='w', marker="^")
-                self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='w')
-            self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+            ## ENABLE THIS TO HAVE MOVING CURSOR RED STATIONS
+            # if ii == current_stat:
+            #     self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='red', zorder=3)
+            #     self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='r', marker="^")
+            #     self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='r')
+            #     self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="white")
+            # else:
+            self.make_picks_map_graph_view.ax.scatter(x, y, 32, marker='^', color='w', zorder=3) 
+            self.make_picks_station_graph_view.ax.scatter(station_dist, 0, c='w', marker="^")
+            self.make_picks_station_graph_view.ax.axvline(x=station_dist, c='w')
+            self.make_picks_map_graph_view.ax.annotate(txt, xy=(x, y), fontsize=12, color="w")
 
 
 

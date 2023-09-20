@@ -2,14 +2,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm, poisson, lognorm
 from scipy.optimize import curve_fit
-
+from mpl_toolkits.basemap import Basemap
+from matplotlib.ticker import EngFormatter, StrMethodFormatter
 #FILE_NAME = "F:\\Desktop\\alaska_sens_40.csv"
-#FILE_NAME = "F:\\Desktop\\alaska_sens_constrained.csv"
+#FILE_NAME = "F:\\Documents\\to_sort\\alaska_sens_constrained.csv"
 #FILE_NAME = "F:\\Desktop\\alaska_sens_heights.csv"
 #FILE_NAME = "F:\\Desktop\\alaska_ANSI_KG85_winds.csv"
-# FILE_NAME = "F:\\Desktop\\alaska_07_19_22_h.csv"
+FILE_NAME = "F:\\Documents\\to_sort\\alaska_07_19_22.csv"
 #FILE_NAME = "F:\\Desktop\\romania_sens_winds_10_grid.csv"
-FILE_NAME = "F:\\Desktop\\NY_03_07_2023.csv"
+#FILE_NAME = "F:\\Desktop\\NY_03_07_2023.csv"
 # FILE_NAME = "F:\\Desktop\\NZ_07_28_22.csv"
 # FILE_NAME = "F:\\Desktop\\Nord_08_02_22.csv"
 
@@ -17,8 +18,8 @@ FILE_NAME = "F:\\Desktop\\NY_03_07_2023.csv"
 CONTOUR = True
 BIMODAL = False
 
-#STATIONS = [[68.640800, -149.572400, "TA-TOLK"], [67.226900, -150.203800, "AK-COLD"]]
-STATIONS = []
+STATIONS = [[68.640800, 149.572400, "TA-TOLK"], [67.226900, 150.203800, "AK-COLD"]]
+#STATIONS = []
 R_TOL = R_TOL_INIT = 100
 YIELD_TOL = 4.184e14
 YIELD_MIN = 4.184e6
@@ -89,8 +90,8 @@ lats1, lons1, heights1, energies1, residuals1 = readFile(FILE_NAME)
 print("Initializing...")
 N = len(lats1)
 
-plt.ion()
-plt.rcParams["figure.figsize"] = (16,9)
+# plt.ion()
+# plt.rcParams["figure.figsize"] = (16,9)
 
 r_tol_list = []
 mu_list = []
@@ -129,19 +130,19 @@ while True:
         break
     
 
-    plt.clf()
+    # plt.clf()
 
-    plt.subplot(231)
+    # plt.subplot(231)
 
-    plt.scatter((np.array(energies1[rm_ind])/4.186e12), residuals1[rm_ind], c='r')
-    plt.scatter((np.array(energies1_filt)), residuals1_filt, c='k')
-    plt.semilogx()
-    plt.axhline(R_TOL)
-    plt.xlabel("Energy [kT TNT]")
-    plt.ylabel("Error in Solution [s]")
+    # plt.scatter((np.array(energies1[rm_ind])/4.186e12), residuals1[rm_ind], c='r')
+    # plt.scatter((np.array(energies1_filt)), residuals1_filt, c='k')
+    # plt.semilogx()
+    # plt.axhline(R_TOL)
+    # plt.xlabel("Energy [kT TNT]")
+    # plt.ylabel("Error in Solution [s]")
 
-    plt.xlim([(min(energies1)/4.186e12), (max(energies1)/4.186e12)])
-    plt.ylim([0, R_TOL_INIT])
+    # plt.xlim([(min(energies1)/4.186e12), (max(energies1)/4.186e12)])
+    # plt.ylim([0, R_TOL_INIT])
 
     
     # fig = plt.figure()
@@ -156,82 +157,122 @@ while True:
             # plt.colorbar(cntr)
 
             #### 3-D
-            ax = plt.subplot(232, projection="3d")
-            x = lons1_filt
-            y = lats1_filt
+            # ax = plt.subplot(232, projection="3d")
+            # m = Basemap(projection='merc', \
+            # llcrnrlat=67.2,\
+            # urcrnrlat=68.8, \
+            # llcrnrlon=-150.3, \
+            # urcrnrlon=-149.0, \
+            # lat_ts=1, \
+            # resolution='f')
+
+            # m.fillcontinents(color='grey', lake_color='aqua')
+            # m.drawcountries(color='black')
+            # m.drawlsmask(ocean_color='aqua')
+
+            # m.drawparallels(np.arange(67.2, 68.8, 0.2), labels=[1,0,0,1], textcolor="white", fmt="%.1f")
+            # meridians = m.drawmeridians(np.arange(-150.3, -149.0, 0.2), labels=[1,0,0,1], textcolor="white", rotation="horizontal", fmt="%.1f")
+            
+            # m.drawmapscale(-150.3 - 0.25, \
+            #     68.8, \
+            #      -149.6, 68.0, 100, \
+            #     barstyle='fancy', units='km', fontsize=9, yoffset=None, labelstyle='simple', fontcolor='k', \
+            #     fillcolor1='w', fillcolor2='k', ax=None, format='%d', zorder=None)
+
+            # for mmm in meridians:
+            #     try:
+            #         meridians[mmm][1][0].set_rotation(25)
+            #     except:
+            #         pass
+
+            # x = lons1_filt
+            # y = lats1_filt
+            x, y = -lons1_filt, lats1_filt
             z = heights1_filt
-            cntr = ax.scatter(x, y, z, s=5, marker="o", c=residuals1_filt, cmap="viridis")
-            plt.colorbar(cntr)
+            cntr = plt.scatter(x, y, c=residuals1_filt, cmap="viridis_r")
+            #cntr = plt.tricontourf(x, y, residuals1_filt, cmap="viridis_r")
+            cb = plt.colorbar(cntr)
+            cb.set_label("Temporal Error [s]")
+
         except RuntimeError:
             pass
 
-        # for stat in STATIONS:
-        #     plt.scatter(stat[1], stat[0], marker="^", c="k")
-        #     plt.text(stat[1], stat[0], stat[2])
-
-    plt.xlabel("Longitude [E]")
-    plt.ylabel("Latitude [N]")
+        for stat in STATIONS:
+            plt.scatter(stat[1], stat[0], marker="^", c="k")
+            plt.text(stat[1], stat[0], stat[2])
+    plt.scatter(150.01, 67.84, marker="*", c="r", label="Optimal Point - Error = 4.15 s")
+    ax = plt.gca()
+    plt.xlabel("Longitude")
+    plt.ylabel("Latitude")
+    ax.set_xticklabels(ax.get_xticks(), rotation = 45)
+    ax.yaxis.set_major_formatter(EngFormatter(unit=u"°N"))
+    ax.xaxis.set_major_formatter(EngFormatter(unit=u"°W"))
+    plt.legend()
+    plt.gca().invert_xaxis()
+    plt.grid(visible=True)
+    
+    break
     # plt.xlim([-149.5, -148.5])
     # plt.ylim([67.5, 68.5])
 
-    plt.subplot(212)
+    # plt.subplot(212)
 
-    y_hist, x_hist, _ = plt.hist((energies1_filt), density=True, bins=int(n/BINS))
-    x_hist = (x_hist[1:] + x_hist[:-1])/2 # for len(x)==len(y)
+    # y_hist, x_hist, _ = plt.hist((energies1_filt), density=True, bins=int(n/BINS))
+    # x_hist = (x_hist[1:] + x_hist[:-1])/2 # for len(x)==len(y)
 
 
-    plt.xlim([(min(energies1)/4.186e12), (max(energies1)/4.186e12)])
-    # plt.ylim([0, 1])
+    # plt.xlim([(min(energies1)/4.186e12), (max(energies1)/4.186e12)])
+    # # plt.ylim([0, 1])
 
-    mu, std = norm.fit(energies1_filt)
-    xmin, xmax = plt.xlim()
-    x = np.linspace(xmin, xmax, 100)
-    p = norm.pdf(x, mu, std)
+    # mu, std = norm.fit(energies1_filt)
+    # xmin, xmax = plt.xlim()
+    # x = np.linspace(xmin, xmax, 100)
+    # p = norm.pdf(x, mu, std)
 
-    shape, loc, scale = lognorm.fit(np.log10(energies1_filt))
-    logmu = np.log(scale)
-    logstd = shape
+    # shape, loc, scale = lognorm.fit(np.log10(energies1_filt))
+    # logmu = np.log(scale)
+    # logstd = shape
 
-    rng = [(min(energies1_filt)), (max(energies1_filt))]
+    # rng = [(min(energies1_filt)), (max(energies1_filt))]
 
-    if BIMODAL:
-        try:
-            params, cov = curve_fit(bimodal, x_hist, y_hist)
-            plt.plot(x, bimodal(x,*params), color='red', label='Bimodal Distribution {:.2f} ({:.2f}) & {:.2f} ({:.2f}) kg TNT'\
-                        .format(10**params[1], 10**params[2], 10**params[4], 10**params[5]))
-        except RuntimeError:
-            pass 
+    # if BIMODAL:
+    #     try:
+    #         params, cov = curve_fit(bimodal, x_hist, y_hist)
+    #         plt.plot(x, bimodal(x,*params), color='red', label='Bimodal Distribution {:.2f} ({:.2f}) & {:.2f} ({:.2f}) kg TNT'\
+    #                     .format(10**params[1], 10**params[2], 10**params[4], 10**params[5]))
+    #     except RuntimeError:
+    #         pass 
 
-    #plt.plot(x, lognorm.pdf(x, shape, loc, scale), label='Log Norm: Mean {:.2f} ({:.2f}) kT TNT'.format(10**logmu, 10**logstd))
-    plt.plot(x, p, 'k', linewidth=2, label="Normal Distribution: Mean {:.2E} ({:.2E}) ({:.2E} - {:.2E}) kT TNT".format(mu, std, rng[0], rng[1]))
-    plt.semilogx()
-    plt.title("N = {:}, R_TOL = {:}".format(n, R_TOL))
-    plt.ylabel("Normalized Number of Observations")
-    plt.xlabel("Energy [kT TNT]")
-    plt.legend()
+    # #plt.plot(x, lognorm.pdf(x, shape, loc, scale), label='Log Norm: Mean {:.2f} ({:.2f}) kT TNT'.format(10**logmu, 10**logstd))
+    # plt.plot(x, p, 'k', linewidth=2, label="Normal Distribution: Mean {:.2E} ({:.2E}) ({:.2E} - {:.2E}) kT TNT".format(mu, std, rng[0], rng[1]))
+    # plt.semilogx()
+    # plt.title("N = {:}, R_TOL = {:}".format(n, R_TOL))
+    # plt.ylabel("Normalized Number of Observations")
+    # plt.xlabel("Energy [kT TNT]")
+    # plt.legend()
 
-    print(findAvgSol(lats1_filt, lons1_filt, heights1_filt, energies1_filt, residuals1_filt))
-    plt.subplot(233)
+    # print(findAvgSol(lats1_filt, lons1_filt, heights1_filt, energies1_filt, residuals1_filt))
+    # plt.subplot(233)
 
-    SIGMA = 3
+    # SIGMA = 3
 
-    r_tol_list.append(R_TOL)
-    mu_list.append(mu)
-    err_list.append(SIGMA*std)
-    min_list.append(max([min(energies1_filt), mu - SIGMA*std]))
-    max_list.append(min([max(energies1_filt), mu + SIGMA*std]))
+    # r_tol_list.append(R_TOL)
+    # mu_list.append(mu)
+    # err_list.append(SIGMA*std)
+    # min_list.append(max([min(energies1_filt), mu - SIGMA*std]))
+    # max_list.append(min([max(energies1_filt), mu + SIGMA*std]))
 
-    plt.scatter(r_tol_list, mu_list, c='k')
-    plt.errorbar(r_tol_list, mu_list, yerr=err_list, fmt="o", c='k', capsize=5, label="{:} Std Dev".format(SIGMA))
-    # plt.errorbar(r_tol_list, mu_list, yerr=[min_list, max_list], fmt="o", c='r', capsize=5)
-    plt.semilogy()
-    plt.xlabel("Allowed Tolerance [s]")
-    plt.ylabel("Energy Estimate [kT TNT]")
-    plt.gca().invert_xaxis()
-    plt.legend()
+    # plt.scatter(r_tol_list, mu_list, c='k')
+    # plt.errorbar(r_tol_list, mu_list, yerr=err_list, fmt="o", c='k', capsize=5, label="{:} Std Dev".format(SIGMA))
+    # # plt.errorbar(r_tol_list, mu_list, yerr=[min_list, max_list], fmt="o", c='r', capsize=5)
+    # plt.semilogy()
+    # plt.xlabel("Allowed Tolerance [s]")
+    # plt.ylabel("Energy Estimate [kT TNT]")
+    # plt.gca().invert_xaxis()
+    # plt.legend()
 
-    plt.draw()
-    plt.pause(0.0001)
-
-print(best_sol)  
-plt.waitforbuttonpress()
+    # plt.draw()
+    # plt.pause(0.0001)
+plt.show()
+# print(best_sol)  
+# plt.waitforbuttonpress()
