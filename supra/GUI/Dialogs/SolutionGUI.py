@@ -2206,7 +2206,7 @@ class SolutionGUI(QMainWindow):
             llcrnrlon=np.ceil(self.bam.setup.lon_centre - 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius), \
             urcrnrlon=np.floor(self.bam.setup.lon_centre + 1.5*BASEMAP_SCALE*self.bam.setup.deg_radius), \
             lat_ts=1, \
-            resolution='f', ax=self.make_picks_map_graph_view.ax)
+            resolution='l', ax=self.make_picks_map_graph_view.ax)
 
         self.m.fillcontinents(color='grey', lake_color='aqua')
         self.m.drawcountries(color='black')
